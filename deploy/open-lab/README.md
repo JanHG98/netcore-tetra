@@ -36,3 +36,23 @@ The deployer creates a deterministic source archive without PDFs, `.git`, `targe
 - NFS mount prepared separately for Recorder/Media Library when archive features are used.
 
 The tool intentionally does not store passwords, tokens, TLS keys, KMF master material or connector secrets.
+
+## Cross-LXC E2E validation
+
+The same inventory is also the source of truth for the integration runner:
+
+```bash
+# No network access; validate inventory and scenario selection.
+python3 deploy/open-lab/netcore-deploy.py --inventory deploy/open-lab/inventory.toml test --profile full --validate-only
+
+# Read-only service contract and mock-TBS smoke checks.
+python3 deploy/open-lab/netcore-deploy.py --inventory deploy/open-lab/inventory.toml test --profile smoke
+
+# Functional call/SDS/packet-data flow with temporary fixtures.
+python3 deploy/open-lab/netcore-deploy.py --inventory deploy/open-lab/inventory.toml test --profile full --allow-mutations
+
+# Persistence plus deliberate systemd dependency outages.
+python3 deploy/open-lab/netcore-deploy.py --inventory deploy/open-lab/inventory.toml test --profile fault --allow-mutations --allow-restarts
+```
+
+The runner writes JSON, JUnit XML and a compact summary below `tests/e2e/artifacts/<run-id>/`. See `Docs/OPEN_LAB_E2E_RUNBOOK.md` before enabling restarts.

@@ -61,3 +61,8 @@ python3 tools/check_shared_platform.py
 ```
 
 Prüft die gemeinsamen Rust-Crates, JSON-Schemas, build-freien WebUI-Assets, Open-Lab-Service-Registry, Deployment-Inventar, gerenderte Konfigurationen und den Offline-Vertragstest.
+
+
+## Cross-LXC E2E
+
+`check_e2e_integration.py` prüft die statische Vollständigkeit des Open-Lab-E2E-Pakets für 17 Dienste und 11 Szenarien, führt dessen Unit-/Validate-only-Läufe aus und verwirft Pakete mit PDFs oder Python-Laufzeitcaches.

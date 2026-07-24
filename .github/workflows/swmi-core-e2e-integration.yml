@@ -1,0 +1,31 @@
+name: SWMI Core Cross-LXC E2E Integration
+
+on:
+  push:
+    paths:
+      - "tests/e2e/**"
+      - "deploy/open-lab/**"
+      - "tools/check_e2e_integration.py"
+      - "Docs/OPEN_LAB_E2E_RUNBOOK.md"
+      - "Docs/SWMI_CORE_1_PACKAGE_Q_*.md"
+      - ".github/workflows/swmi-core-e2e-integration.yml"
+  pull_request:
+    paths:
+      - "tests/e2e/**"
+      - "deploy/open-lab/**"
+      - "tools/check_e2e_integration.py"
+      - "Docs/OPEN_LAB_E2E_RUNBOOK.md"
+      - "Docs/SWMI_CORE_1_PACKAGE_Q_*.md"
+
+jobs:
+  self-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Static E2E package and runner self-test
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python3 tools/check_e2e_integration.py

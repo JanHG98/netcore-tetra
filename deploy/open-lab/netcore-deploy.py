@@ -375,6 +375,20 @@ def main() -> int:
     apply_parser.add_argument("--dry-run", action="store_true")
     status_parser = sub.add_parser("status", help="check readiness endpoints")
     status_parser.add_argument("services", nargs="*")
+    test_parser = sub.add_parser("test", help="run cross-LXC Open-Lab E2E scenarios")
+    test_parser.add_argument("--profile", choices=("smoke", "full", "fault"), default="smoke")
+    test_parser.add_argument("--scenario", action="append")
+    test_parser.add_argument("--allow-mutations", action="store_true")
+    test_parser.add_argument("--allow-restarts", action="store_true")
+    test_parser.add_argument("--keep-fixtures", action="store_true")
+    test_parser.add_argument("--no-mock-tbs", action="store_true")
+    test_parser.add_argument("--strict-ready", action="store_true")
+    test_parser.add_argument("--validate-only", action="store_true")
+    test_parser.add_argument("--list-scenarios", action="store_true")
+    test_parser.add_argument("--timeout", type=float, default=25.0)
+    test_parser.add_argument("--run-id")
+    test_parser.add_argument("--node-id")
+    test_parser.add_argument("--artifacts-dir", type=Path)
     args = parser.parse_args()
 
     inventory = load_inventory(args.inventory)
@@ -406,6 +420,38 @@ def main() -> int:
         return 0
     if args.command == "status":
         return status(inventory, args.services)
+    if args.command == "test":
+        command = [
+            sys.executable,
+            str(ROOT / "tests/e2e/netcore_open_lab_e2e.py"),
+            "--inventory",
+            str(args.inventory),
+            "--profile",
+            args.profile,
+            "--timeout",
+            str(args.timeout),
+        ]
+        for scenario in args.scenario or []:
+            command.extend(["--scenario", scenario])
+        for value, flag in (
+            (args.run_id, "--run-id"),
+            (args.node_id, "--node-id"),
+            (args.artifacts_dir, "--artifacts-dir"),
+        ):
+            if value is not None:
+                command.extend([flag, str(value)])
+        for enabled, flag in (
+            (args.allow_mutations, "--allow-mutations"),
+            (args.allow_restarts, "--allow-restarts"),
+            (args.keep_fixtures, "--keep-fixtures"),
+            (args.no_mock_tbs, "--no-mock-tbs"),
+            (args.strict_ready, "--strict-ready"),
+            (args.validate_only, "--validate-only"),
+            (args.list_scenarios, "--list-scenarios"),
+        ):
+            if enabled:
+                command.append(flag)
+        return subprocess.run(command, cwd=ROOT).returncode
     return 2
 
 

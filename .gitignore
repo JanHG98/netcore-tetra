@@ -58,3 +58,6 @@ control-room.local.toml
 *.suo
 *.userosscache
 *.sln.docstates
+
+# Generated cross-LXC test evidence
+tests/e2e/artifacts/

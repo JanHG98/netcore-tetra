@@ -1,0 +1,22 @@
+version = 1
+contract_version = "netcore.v1"
+mode = "open_lab"
+
+[profiles.smoke]
+scenarios = ["contracts", "node-gateway", "control-room-federation"]
+destructive = false
+
+[profiles.full]
+scenarios = ["contracts", "node-gateway", "subscriber-group", "call-media-recorder", "sds", "packet-data", "control-room-federation", "platform-services", "observability"]
+destructive = true
+
+[profiles.fault]
+scenarios = ["contracts", "node-gateway", "subscriber-group", "restart-restore", "fault-matrix"]
+destructive = true
+requires_ssh = true
+
+[fixtures]
+subscriber_range_start = 7000000
+group_range_start = 2000000
+cleanup_default = true
+mock_node_prefix = "tbs-e2e-"

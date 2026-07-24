@@ -76,3 +76,7 @@ Alle enthalten Rust-Runtime, REST-API, eigene WebUI, systemd-Unit und Installati
 ## Gemeinsame Plattform und Deployment
 
 Die gemeinsame Vertragsversion ist `netcore.v1`. Die inventory-gesteuerte Open-Lab-LXC-Integration liegt unter `deploy/open-lab/` und erzeugt Servicekatalog, gerenderte Konfigurationen, Portliste, Hosts-Datei und Abhängigkeitsgraph. `shared/` bleibt eine Library und ist kein zusätzlicher Container.
+
+## Cross-LXC-Systemtest
+
+Die 17 Dienste werden über `tests/e2e/` als Gesamtsystem geprüft. Der inventory-gesteuerte Runner enthält einen Mock TBS für die Node-Gateway-Schnittstelle, fachliche Call-/Media-/Recorder-, SDS- und Packet-Data-Szenarien, Control-Room-Federation, redaktierte Plattform-Managementansichten, Persistenztests sowie eine absichtliche Dependency-Ausfallmatrix. Aufruf und Sicherheitsgrenzen stehen in `Docs/OPEN_LAB_E2E_RUNBOOK.md`.

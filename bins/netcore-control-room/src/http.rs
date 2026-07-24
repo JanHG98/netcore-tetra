@@ -159,7 +159,17 @@ fn route_http(
             "text/plain; version=0.0.4; charset=utf-8",
             operations.metrics().into_bytes(),
         ),
-        ("GET", "/api/v1/openapi.json") => HttpResponse::json(200, &control_room_openapi()),
+        ("GET", "/api/v1/status") => HttpResponse::json(200, &json!({
+            "service": "netcore-control-room",
+            "security_mode": "open_lab",
+            "authoritative_state": false,
+            "legacy": state.overview(),
+            "operations": operations.overview(),
+            "timestamp": now_iso(),
+        })),
+        ("GET", "/openapi.json") | ("GET", "/api/v1/openapi.json") => {
+            HttpResponse::json(200, &control_room_openapi())
+        }
         ("GET", "/api/v1/config") => HttpResponse::json(200, &operations.config_snapshot()),
         ("GET", "/api/v1/dependencies") => HttpResponse::json(200, &operations.dependencies()),
         ("GET", "/api/v1/export") => HttpResponse::json(200, &operations.export()),
@@ -1498,6 +1508,8 @@ fn control_room_openapi() -> Value {
             "/health/live": { "get": { "summary": "Liveness" } },
             "/health/ready": { "get": { "summary": "Operator-plane readiness and dependency degradation" } },
             "/metrics": { "get": { "summary": "Prometheus metrics" } },
+            "/api/v1/status": { "get": { "summary": "Common service status contract" } },
+            "/openapi.json": { "get": { "summary": "OpenAPI document" } },
             "/api/v1/control-room/overview": { "get": { "summary": "Combined operator overview" } },
             "/api/v1/services": { "get": { "summary": "Core-service health matrix" } },
             "/api/v1/services/poll": { "post": { "summary": "Trigger an immediate service poll" } },
@@ -1530,6 +1542,8 @@ fn not_found(node_path: &str, ui_path: &str) -> HttpResponse {
                 "GET /health/live",
                 "GET /health/ready",
                 "GET /metrics",
+                "GET /api/v1/status",
+                "GET /openapi.json",
                 "GET /api/v1/control-room/overview",
                 "GET /api/v1/services",
                 "POST /api/v1/services/poll",

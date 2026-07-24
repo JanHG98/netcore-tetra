@@ -31,3 +31,15 @@ python3 deploy/open-lab/netcore-deploy.py status
 ## Rollback
 
 Der Deployer überschreibt keine Fach-State-Dateien. Vor einem Update bleiben die dienstspezifischen Backup-Funktionen maßgeblich. Quellstand und gerenderte Konfiguration sind im Deployment-Bundle reproduzierbar; ein Rollback erfolgt durch erneutes Anwenden des vorherigen Bundles plus Wiederherstellung der jeweiligen Dienst-Backups.
+
+## Cross-LXC-Integrationstest
+
+Nach dem Deployment wird dasselbe Inventory für die E2E-Abnahme verwendet:
+
+```bash
+python3 deploy/open-lab/netcore-deploy.py --inventory deploy/open-lab/inventory.toml test --profile smoke
+python3 deploy/open-lab/netcore-deploy.py --inventory deploy/open-lab/inventory.toml test --profile full --allow-mutations
+python3 deploy/open-lab/netcore-deploy.py --inventory deploy/open-lab/inventory.toml test --profile fault --allow-mutations --allow-restarts
+```
+
+Das Smoke-Profil verändert keine Fachdaten. Das Full-Profil erzeugt eindeutig markierte Test-ISSI/GSSI und räumt sie standardmäßig wieder auf. Das Fault-Profil stoppt und startet ausgewählte systemd-Dienste; es darf nur in einer entbehrlichen Testumgebung laufen. Details und Abnahmekriterien stehen in `Docs/OPEN_LAB_E2E_RUNBOOK.md`.
