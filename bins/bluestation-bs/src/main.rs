@@ -16,7 +16,7 @@ use tetra_entities::net_media::{
     MediaDownlinkSink, MediaUplinkSource, media_bridge_channel,
 };
 
-use tetra_config::bluestation::{PhyBackend, SharedConfig, StackConfig, parsing};
+use tetra_config::bluestation::{PhyBackend, SharedConfig, StackConfig, StackState, parsing};
 use tetra_core::{TdmaTime, debug};
 use tetra_entities::MessageRouter;
 #[cfg(feature = "asterisk")]
@@ -232,6 +232,7 @@ fn start_control_room_worker(
             let mut worker = ControlRoomWorker::new(
                 identity,
                 capabilities,
+                cfg.clone(),
                 telemetry_source,
                 media_uplink_source,
                 media_downlink_sink,
@@ -558,8 +559,18 @@ fn main() {
         } => (config, Some((fallback_path, primary_error))),
     };
 
+    // Restore the last-known central admission/group policy before protocol entities
+    // start.  This keeps an isolated cell deterministic after a host reboot instead
+    // of silently reverting to an open policy.
+    let mut initial_state = StackState::default();
+    match tetra_entities::net_control_room::edge_store::load_edge_policy_cache(&stack_cfg, &mut initial_state) {
+        Ok(true) => eprintln!("Loaded last-known NetCore edge policy cache."),
+        Ok(false) => {}
+        Err(error) => eprintln!("WARNING: edge policy cache could not be loaded: {error}"),
+    }
+
     // Build immutable, cheaply clonable SharedConfig and build the base station stack
-    let mut cfg = SharedConfig::from_parts(stack_cfg, None);
+    let mut cfg = SharedConfig::from_parts(stack_cfg, Some(initial_state));
 
     // If the dashboard OR Telegram alerts are enabled, set up the log capture channel BEFORE
     // logging initialises (Telegram forwards WARN/ERROR lines as its critical-status catch-all).

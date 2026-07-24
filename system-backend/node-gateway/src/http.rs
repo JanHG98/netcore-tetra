@@ -77,6 +77,7 @@ fn route(request: HttpRequest, gateway: &SharedGateway, config: &NodeGatewayConf
             "security_mode": "open_lab",
         })),
         ("GET", "/api/v1/status") => HttpResponse::json(200, &gateway.status()),
+        ("GET", "/api/v1/core-services") => HttpResponse::json(200, &gateway.core_services()),
         ("GET", "/api/v1/nodes") => HttpResponse::json(200, &gateway.nodes()),
         ("GET", "/api/v1/events") => {
             let limit = request.query.get("limit").and_then(|value| value.parse::<usize>().ok()).unwrap_or(100).min(1_000);
@@ -86,6 +87,7 @@ fn route(request: HttpRequest, gateway: &SharedGateway, config: &NodeGatewayConf
             "server": &config.server,
             "security": &config.security,
             "limits": &config.limits,
+            "service_monitor": &config.service_monitor,
             "effective_warning": "NO AUTHENTICATION, NO TOKENS, NO TLS - TEST NETWORK ONLY"
         })),
         ("GET", "/metrics") => HttpResponse::text(200, "text/plain; version=0.0.4; charset=utf-8", gateway.metrics()),
@@ -100,7 +102,7 @@ fn route_dynamic(request: HttpRequest, gateway: &SharedGateway) -> HttpResponse 
             "error": "not found",
             "available": [
                 "GET /", "GET /health/live", "GET /health/ready", "GET /api/v1/status",
-                "GET /api/v1/nodes", "GET /api/v1/nodes/{node_id}", "GET /api/v1/events",
+                "GET /api/v1/core-services", "GET /api/v1/nodes", "GET /api/v1/nodes/{node_id}", "GET /api/v1/events",
                 "GET /api/v1/config", "GET /metrics", "GET /openapi.json",
                 "POST /api/v1/nodes/{node_id}/ping", "POST /api/v1/nodes/{node_id}/disconnect",
                 "POST /api/v1/nodes/{node_id}/commands"
@@ -159,6 +161,7 @@ fn openapi(config: &NodeGatewayConfig) -> Value {
             "/health/live": { "get": { "summary": "Liveness" } },
             "/health/ready": { "get": { "summary": "Readiness" } },
             "/api/v1/status": { "get": { "summary": "Gateway status" } },
+            "/api/v1/core-services": { "get": { "summary": "Backend health matrix delivered to TBS nodes" } },
             "/api/v1/nodes": { "get": { "summary": "Known TBS nodes" } },
             "/api/v1/nodes/{node_id}": { "get": { "summary": "Node detail" } },
             "/api/v1/nodes/{node_id}/ping": { "post": { "summary": "Queue application ping" } },
@@ -296,6 +299,7 @@ const INDEX_HTML: &str = r#"<!doctype html>
 <div class="lab">⚠ OFFENER TESTMODUS: KEINE AUTHENTIFIZIERUNG, KEINE TOKENS, KEIN TLS. Nur im isolierten Testnetz verwenden.</div>
 <div class="toolbar"><div><h1>NetCore Node Gateway</h1><div class="sub">Zentrale TBS-Annahme, Backend-Transport und Verwaltungs-WebUI</div></div><button onclick="refreshAll()">Aktualisieren</button></div>
 <div id="cards" class="cards"></div>
+<div class="panel"><h2>Backend-Dienste / TBS-Fallback</h2><table><thead><tr><th>Status</th><th>Dienst</th><th>Edge-kritisch</th><th>Fallback</th><th>Letzte Prüfung</th><th>Meldung</th></tr></thead><tbody id="services"></tbody></table></div>
 <div class="panel"><h2>Basisstationen</h2><table><thead><tr><th>Status</th><th>Node</th><th>Zelle</th><th>Version</th><th>Letzter Kontakt</th><th>Zähler</th><th>Fähigkeiten</th><th>Aktionen</th></tr></thead><tbody id="nodes"></tbody></table></div>
 <div class="panel"><h2>Letzte Gateway-Ereignisse</h2><pre id="events">Lade…</pre></div>
 <div class="panel small">API: <a href="/openapi.json">OpenAPI</a> · <a href="/metrics">Metriken</a> · <a href="/api/v1/config">Effektive Konfiguration</a></div>
@@ -308,7 +312,8 @@ function card(label,value){return `<div class="card"><div class="value">${esc(va
 function statusPill(n){if(n.stale)return '<span class="pill stale">STALE</span>';return n.connected?'<span class="pill online">ONLINE</span>':'<span class="pill offline">OFFLINE</span>'}
 function caps(c){return Object.entries(c||{}).filter(([,v])=>v===true).map(([k])=>k).join(', ')}
 async function action(id,name){if(name==='disconnect'&&!confirm(`Node ${id} wirklich trennen?`))return;try{await post(`/api/v1/nodes/${encodeURIComponent(id)}/${name}`);setTimeout(refreshAll,300)}catch(e){alert(e.message)}}
-async function refreshAll(){try{const [s,n,e]=await Promise.all([getj('/api/v1/status'),getj('/api/v1/nodes'),getj('/api/v1/events?limit=40')]);document.getElementById('cards').innerHTML=[card('Verbunden',s.connected_nodes),card('Bekannt',s.known_nodes),card('Stale',s.stale_nodes),card('Backend-Clients',s.backend_clients),card('Nachrichten',s.total_node_messages),card('Mediaframes',s.total_media_frames),card('Kommandos',s.total_commands)].join('');document.getElementById('nodes').innerHTML=n.map(x=>`<tr><td>${statusPill(x)}</td><td><b>${esc(x.identity.station_name)}</b><br><span class="small">${esc(x.node_id)}<br>${esc(x.peer)}</span></td><td>MCC ${esc(x.identity.mcc)} / MNC ${esc(x.identity.mnc)}<br>LA ${esc(x.identity.location_area)}, CC ${esc(x.identity.colour_code)}<br>Carrier ${esc(x.identity.main_carrier)}${x.identity.secondary_carrier?` / ${esc(x.identity.secondary_carrier)}`:''}</td><td>${esc(x.identity.stack_version)}</td><td>${esc(x.last_seen)}<br><span class="small">${esc(x.last_message_kind)}</span></td><td>Msg ${esc(x.message_count)}<br>Tel ${esc(x.telemetry_count)}<br>Ack ${esc(x.control_ack_count)}<br>Media ${esc(x.media_frame_count)}</td><td class="small">${esc(caps(x.capabilities))}</td><td><button onclick="action('${esc(x.node_id)}','ping')">Ping</button><button class="danger" onclick="action('${esc(x.node_id)}','disconnect')">Trennen</button></td></tr>`).join('')||'<tr><td colspan="8">Noch keine TBS verbunden.</td></tr>';document.getElementById('events').textContent=e.map(x=>`${x.timestamp} #${x.seq} ${x.kind}${x.node_id?' ['+x.node_id+']':''} ${JSON.stringify(x.detail)}`).join('\n')||'Noch keine Ereignisse.'}catch(e){document.getElementById('events').textContent='Fehler: '+e.message}}
+function servicePill(level){const c=level==='available'?'online':level==='unavailable'?'offline':'stale';return `<span class="pill ${c}">${esc(String(level).toUpperCase())}</span>`}
+async function refreshAll(){try{const [s,cs,n,e]=await Promise.all([getj('/api/v1/status'),getj('/api/v1/core-services'),getj('/api/v1/nodes'),getj('/api/v1/events?limit=40')]);document.getElementById('cards').innerHTML=[card('Verbunden',s.connected_nodes),card('Bekannt',s.known_nodes),card('Stale',s.stale_nodes),card('Dienste OK',s.available_services+'/'+s.monitored_services),card('Dienste gestört',s.degraded_services+s.unavailable_services),card('Backend-Clients',s.backend_clients),card('Nachrichten',s.total_node_messages),card('Mediaframes',s.total_media_frames),card('Kommandos',s.total_commands)].join('');document.getElementById('services').innerHTML=cs.services.map(x=>`<tr><td>${servicePill(x.level)}</td><td><b>${esc(x.service)}</b></td><td>${x.critical_for_edge?'ja':'nein'}</td><td class="small">${esc(x.fallback_mode)}</td><td class="small">${esc(x.checked_at)}<br>${esc(x.last_success_at||'noch nie')}</td><td class="small">${esc(x.message||'')}</td></tr>`).join('')||'<tr><td colspan="6">Keine Monitorziele konfiguriert – TBS bleibt konservativ im Fallback.</td></tr>';document.getElementById('nodes').innerHTML=n.map(x=>`<tr><td>${statusPill(x)}</td><td><b>${esc(x.identity.station_name)}</b><br><span class="small">${esc(x.node_id)}<br>${esc(x.peer)}</span></td><td>MCC ${esc(x.identity.mcc)} / MNC ${esc(x.identity.mnc)}<br>LA ${esc(x.identity.location_area)}, CC ${esc(x.identity.colour_code)}<br>Carrier ${esc(x.identity.main_carrier)}${x.identity.secondary_carrier?` / ${esc(x.identity.secondary_carrier)}`:''}</td><td>${esc(x.identity.stack_version)}</td><td>${esc(x.last_seen)}<br><span class="small">${esc(x.last_message_kind)}</span></td><td>Msg ${esc(x.message_count)}<br>Tel ${esc(x.telemetry_count)}<br>Ack ${esc(x.control_ack_count)}<br>Media ${esc(x.media_frame_count)}</td><td class="small">${esc(caps(x.capabilities))}</td><td><button onclick="action('${esc(x.node_id)}','ping')">Ping</button><button class="danger" onclick="action('${esc(x.node_id)}','disconnect')">Trennen</button></td></tr>`).join('')||'<tr><td colspan="8">Noch keine TBS verbunden.</td></tr>';document.getElementById('events').textContent=e.map(x=>`${x.timestamp} #${x.seq} ${x.kind}${x.node_id?' ['+x.node_id+']':''} ${JSON.stringify(x.detail)}`).join('\n')||'Noch keine Ereignisse.'}catch(e){document.getElementById('events').textContent='Fehler: '+e.message}}
 refreshAll();setInterval(refreshAll,5000);
 </script></body></html>"#;
 

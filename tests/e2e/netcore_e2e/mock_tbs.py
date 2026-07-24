@@ -38,6 +38,7 @@ class MockTbs:
     errors: list[str] = field(default_factory=list, init=False)
     received_commands: list[dict[str, Any]] = field(default_factory=list, init=False)
     downlink_media_frames: int = field(default=0, init=False)
+    core_services_snapshot: dict[str, Any] | None = field(default=None, init=False)
     seq: int = field(default=0, init=False)
     next_call_id: int = field(default=100, init=False)
     calls: dict[int, dict[str, Any]] = field(default_factory=dict, init=False)
@@ -259,6 +260,9 @@ class MockTbs:
             return
         if kind == "media_frame":
             self.downlink_media_frames += 1
+            return
+        if kind == "core_services":
+            self.core_services_snapshot = message.get("snapshot") or {}
             return
         if kind != "command":
             return

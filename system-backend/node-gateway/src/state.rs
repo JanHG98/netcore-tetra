@@ -1,4 +1,4 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::sync::{Arc, Mutex, mpsc};
 
 use serde::{Deserialize, Serialize};
@@ -7,8 +7,8 @@ use tetra_entities::net_control::ControlCommand;
 use tetra_entities::net_media::MediaDownlinkFrame;
 use tetra_entities::net_control_room::{
     CONTROL_ROOM_PROTOCOL_VERSION, ControlCommandEnvelope, ControlRoomNodeCapabilities,
-    ControlRoomNodeIdentity, ControlRoomNodeHello,
-    ControlRoomToNodeMessage, NodeToControlRoomMessage,
+    ControlRoomNodeIdentity, ControlRoomNodeHello, CoreServiceHealth, CoreServiceHealthLevel,
+    CoreServicesSnapshot, ControlRoomToNodeMessage, NodeToControlRoomMessage,
 };
 
 use crate::config::NodeGatewayConfig;
@@ -56,6 +56,10 @@ pub struct GatewayStatus {
     pub connected_nodes: usize,
     pub stale_nodes: usize,
     pub backend_clients: usize,
+    pub monitored_services: usize,
+    pub available_services: usize,
+    pub degraded_services: usize,
+    pub unavailable_services: usize,
     pub total_node_sessions: u64,
     pub total_node_messages: u64,
     pub total_commands: u64,
@@ -67,6 +71,7 @@ pub struct GatewayStatus {
 pub struct GatewaySnapshot {
     pub status: GatewayStatus,
     pub nodes: Vec<NodeSnapshot>,
+    pub core_services: CoreServicesSnapshot,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -142,11 +147,19 @@ struct BackendRuntime {
     media_frames: bool,
 }
 
+struct ServiceRuntime {
+    health: CoreServiceHealth,
+    consecutive_successes: u32,
+    consecutive_failures: u32,
+}
+
 struct GatewayState {
     config: NodeGatewayConfig,
     started_at: String,
     nodes: HashMap<String, NodeRuntime>,
     backend_clients: HashMap<String, BackendRuntime>,
+    services: BTreeMap<String, ServiceRuntime>,
+    service_revision: u64,
     events: VecDeque<EventRecord>,
     next_event_seq: u64,
     total_node_sessions: u64,
@@ -161,11 +174,37 @@ pub struct SharedGateway(Arc<Mutex<GatewayState>>);
 
 impl SharedGateway {
     pub fn new(config: NodeGatewayConfig) -> Self {
+        let checked_at = now_iso();
+        let services = config
+            .service_monitor
+            .targets
+            .iter()
+            .map(|target| {
+                (
+                    target.name.clone(),
+                    ServiceRuntime {
+                        health: CoreServiceHealth {
+                            service: target.name.clone(),
+                            level: CoreServiceHealthLevel::Unknown,
+                            critical_for_edge: target.critical_for_edge,
+                            fallback_mode: target.fallback_mode.clone(),
+                            checked_at: checked_at.clone(),
+                            last_success_at: None,
+                            message: Some("not probed yet".to_string()),
+                        },
+                        consecutive_successes: 0,
+                        consecutive_failures: 0,
+                    },
+                )
+            })
+            .collect();
         Self(Arc::new(Mutex::new(GatewayState {
             config,
             started_at: now_iso(),
             nodes: HashMap::new(),
             backend_clients: HashMap::new(),
+            services,
+            service_revision: 1,
             events: VecDeque::new(),
             next_event_seq: 1,
             total_node_sessions: 0,
@@ -181,8 +220,18 @@ impl SharedGateway {
         status_locked(&state)
     }
 
+    pub fn snapshot(&self) -> GatewaySnapshot {
+        let state = self.0.lock().expect("gateway state poisoned");
+        snapshot_locked(&state)
+    }
+
     pub fn nodes(&self) -> Vec<NodeSnapshot> {
         self.snapshot().nodes
+    }
+
+    pub fn core_services(&self) -> CoreServicesSnapshot {
+        let state = self.0.lock().expect("gateway state poisoned");
+        core_services_locked(&state)
     }
 
     pub fn node(&self, node_id: &str) -> Option<NodeSnapshot> {
@@ -213,6 +262,7 @@ impl SharedGateway {
             return Err("node_id must not be empty".to_string());
         }
 
+        let health_sender = sender.clone();
         let mut state = self.0.lock().expect("gateway state poisoned");
         if let Some(previous) = state.nodes.get_mut(node_id) {
             if let Some(old_sender) = previous.sender.take() {
@@ -259,7 +309,77 @@ impl SharedGateway {
                 snapshot: gateway_snapshot,
             },
         );
+        let _ = health_sender.send(NodeOutbound::Protocol(ControlRoomToNodeMessage::CoreServices {
+            snapshot: core_services_locked(&state),
+        }));
         Ok(())
+    }
+
+    /// Publish the complete matrix even when no level changed. The TBS treats
+    /// this as a renewable lease, so a live WebSocket with a wedged service
+    /// monitor cannot leave stale "available" decisions active forever.
+    pub fn publish_core_services(&self) {
+        let state = self.0.lock().expect("gateway state poisoned");
+        let snapshot = core_services_locked(&state);
+        for sender in state.nodes.values().filter_map(|node| node.sender.as_ref()) {
+            let _ = sender.send(NodeOutbound::Protocol(ControlRoomToNodeMessage::CoreServices {
+                snapshot: snapshot.clone(),
+            }));
+        }
+    }
+
+    /// Update one backend health record and broadcast a complete, revisioned
+    /// matrix to every connected TBS after a state transition.
+    pub fn record_service_probe(&self, service: &str, ok: bool, message: Option<String>) {
+        let mut state = self.0.lock().expect("gateway state poisoned");
+        let failure_threshold = state.config.service_monitor.failure_threshold;
+        let recovery_threshold = state.config.service_monitor.recovery_threshold;
+        let now = now_iso();
+        let (old_level, new_level) = {
+            let Some(runtime) = state.services.get_mut(service) else {
+                return;
+            };
+            let old_level = runtime.health.level;
+            runtime.health.checked_at = now.clone();
+            runtime.health.message = message;
+            if ok {
+                runtime.consecutive_successes = runtime.consecutive_successes.saturating_add(1);
+                runtime.consecutive_failures = 0;
+                runtime.health.last_success_at = Some(now.clone());
+                runtime.health.level = if runtime.consecutive_successes >= recovery_threshold {
+                    CoreServiceHealthLevel::Available
+                } else {
+                    CoreServiceHealthLevel::Degraded
+                };
+            } else {
+                runtime.consecutive_failures = runtime.consecutive_failures.saturating_add(1);
+                runtime.consecutive_successes = 0;
+                runtime.health.level = if runtime.consecutive_failures >= failure_threshold {
+                    CoreServiceHealthLevel::Unavailable
+                } else {
+                    CoreServiceHealthLevel::Degraded
+                };
+            }
+            (old_level, runtime.health.level)
+        };
+        if old_level == new_level {
+            return;
+        }
+        state.service_revision = state.service_revision.wrapping_add(1).max(1);
+        push_event_locked(
+            &mut state,
+            "core_service_state_changed",
+            None,
+            json!({"service": service, "old": format!("{:?}", old_level), "new": format!("{:?}", new_level)}),
+        );
+        let snapshot = core_services_locked(&state);
+        for sender in state.nodes.values().filter_map(|node| node.sender.as_ref()) {
+            let _ = sender.send(NodeOutbound::Protocol(ControlRoomToNodeMessage::CoreServices {
+                snapshot: snapshot.clone(),
+            }));
+        }
+        let gateway_snapshot = snapshot_locked(&state);
+        broadcast_locked(&mut state, BackendEvent::Snapshot { snapshot: gateway_snapshot });
     }
 
     pub fn handle_node_message(&self, node_id: &str, session_id: &str, message: NodeToControlRoomMessage) {
@@ -512,6 +632,14 @@ impl SharedGateway {
                 "netcore_node_gateway_stale_nodes {}\n",
                 "# TYPE netcore_node_gateway_backend_clients gauge\n",
                 "netcore_node_gateway_backend_clients {}\n",
+                "# TYPE netcore_node_gateway_monitored_services gauge\n",
+                "netcore_node_gateway_monitored_services {}\n",
+                "# TYPE netcore_node_gateway_available_services gauge\n",
+                "netcore_node_gateway_available_services {}\n",
+                "# TYPE netcore_node_gateway_degraded_services gauge\n",
+                "netcore_node_gateway_degraded_services {}\n",
+                "# TYPE netcore_node_gateway_unavailable_services gauge\n",
+                "netcore_node_gateway_unavailable_services {}\n",
                 "# TYPE netcore_node_gateway_node_messages_total counter\n",
                 "netcore_node_gateway_node_messages_total {}\n",
                 "# TYPE netcore_node_gateway_commands_total counter\n",
@@ -523,6 +651,10 @@ impl SharedGateway {
             status.connected_nodes,
             status.stale_nodes,
             status.backend_clients,
+            status.monitored_services,
+            status.available_services,
+            status.degraded_services,
+            status.unavailable_services,
             status.total_node_messages,
             status.total_commands,
             status.total_media_frames,
@@ -537,7 +669,11 @@ fn snapshot_locked(state: &GatewayState) -> GatewaySnapshot {
         .map(|node| snapshot_node(node, state.config.server.stale_after_secs))
         .collect();
     nodes.sort_by(|a, b| a.node_id.cmp(&b.node_id));
-    GatewaySnapshot { status: status_locked(state), nodes }
+    GatewaySnapshot {
+        status: status_locked(state),
+        nodes,
+        core_services: core_services_locked(state),
+    }
 }
 
 fn status_locked(state: &GatewayState) -> GatewayStatus {
@@ -558,11 +694,23 @@ fn status_locked(state: &GatewayState) -> GatewayStatus {
         connected_nodes: nodes.iter().filter(|node| node.connected).count(),
         stale_nodes: nodes.iter().filter(|node| node.stale).count(),
         backend_clients: state.backend_clients.len(),
+        monitored_services: state.services.len(),
+        available_services: state.services.values().filter(|service| service.health.level == CoreServiceHealthLevel::Available).count(),
+        degraded_services: state.services.values().filter(|service| service.health.level == CoreServiceHealthLevel::Degraded).count(),
+        unavailable_services: state.services.values().filter(|service| service.health.level == CoreServiceHealthLevel::Unavailable).count(),
         total_node_sessions: state.total_node_sessions,
         total_node_messages: state.total_node_messages,
         total_commands: state.total_commands,
         total_media_frames: state.total_media_frames,
         total_disconnects: state.total_disconnects,
+    }
+}
+
+fn core_services_locked(state: &GatewayState) -> CoreServicesSnapshot {
+    CoreServicesSnapshot {
+        revision: state.service_revision,
+        generated_at: now_iso(),
+        services: state.services.values().map(|service| service.health.clone()).collect(),
     }
 }
 
@@ -716,10 +864,32 @@ mod tests {
     }
 
     #[test]
+    fn service_health_is_thresholded_and_sent_to_nodes() {
+        let mut cfg = NodeGatewayConfig::default();
+        cfg.service_monitor.failure_threshold = 2;
+        cfg.service_monitor.recovery_threshold = 2;
+        cfg.service_monitor.targets.push(crate::config::ServiceTargetConfig {
+            name: "sds-router".to_string(),
+            url: "http://127.0.0.1:8150/health/ready".to_string(),
+            critical_for_edge: true,
+            fallback_mode: "local_delivery".to_string(),
+        });
+        let gateway = SharedGateway::new(cfg);
+        let (tx, rx) = mpsc::channel();
+        gateway.register_node(&hello("tbs-a"), "s1".to_string(), "one".to_string(), tx).unwrap();
+        assert!(matches!(rx.recv().unwrap(), NodeOutbound::Protocol(ControlRoomToNodeMessage::CoreServices { .. })));
+        gateway.record_service_probe("sds-router", false, Some("offline".to_string()));
+        assert_eq!(gateway.core_services().services[0].level, CoreServiceHealthLevel::Degraded);
+        gateway.record_service_probe("sds-router", false, Some("offline".to_string()));
+        assert_eq!(gateway.core_services().services[0].level, CoreServiceHealthLevel::Unavailable);
+    }
+
+    #[test]
     fn duplicate_node_replaces_old_session() {
         let gateway = SharedGateway::new(NodeGatewayConfig::default());
         let (tx1, rx1) = mpsc::channel();
         gateway.register_node(&hello("tbs-a"), "s1".to_string(), "one".to_string(), tx1).unwrap();
+        let _ = rx1.recv();
         let (tx2, _rx2) = mpsc::channel();
         gateway.register_node(&hello("tbs-a"), "s2".to_string(), "two".to_string(), tx2).unwrap();
         assert!(matches!(rx1.recv().unwrap(), NodeOutbound::Close));

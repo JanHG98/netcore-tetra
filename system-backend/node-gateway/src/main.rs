@@ -1,6 +1,7 @@
 mod config;
 mod http;
 mod server;
+mod service_monitor;
 mod state;
 mod ws;
 
@@ -53,6 +54,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "OPEN LAB MODE ACTIVE: every client on the reachable network can view nodes and execute enabled management actions"
     );
     let gateway = SharedGateway::new(config.clone());
+    service_monitor::spawn_service_monitor(gateway.clone(), config.clone());
     NodeGatewayServer::new(config, gateway).run()?;
     Ok(())
 }

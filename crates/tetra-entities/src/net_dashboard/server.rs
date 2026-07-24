@@ -3055,6 +3055,10 @@ fn handle_connection(
             Ok(_) => http_response(buf.into_inner(), 200, "OK"),
             Err(e) => http_response(buf.into_inner(), 500, &e.to_string()),
         }
+    } else if req_line.contains("GET /api/edge-fallback") {
+        let mut s = stream;
+        drain_http_headers(&mut s);
+        serve_edge_fallback(s, &shared_config);
     } else if req_line.contains("GET /api/btsinfo") {
         let mut buf = BufReader::new(stream);
         loop {
@@ -3913,6 +3917,25 @@ fn serve_update_check(mut stream: TcpStream) {
     );
     let _ = stream.write_all(header.as_bytes());
     let _ = stream.write_all(body.as_bytes());
+}
+
+/// GET /api/edge-fallback — current local-autonomy mode, backend service matrix,
+/// policy-cache age and durable replay-spool usage. This endpoint contains no secrets.
+fn serve_edge_fallback(
+    stream: TcpStream,
+    shared_config: &Option<tetra_config::bluestation::SharedConfig>,
+) {
+    let body = match shared_config {
+        Some(cfg) => serde_json::to_string_pretty(&cfg.edge_fallback_snapshot())
+            .unwrap_or_else(|error| serde_json::json!({"error": error.to_string()}).to_string()),
+        None => serde_json::json!({
+            "enabled": false,
+            "mode": "isolated",
+            "reason": "shared stack state is not attached to the dashboard"
+        })
+        .to_string(),
+    };
+    http_json_response(stream, 200, &body);
 }
 
 /// GET /api/whitelist — return the effective whitelist as JSON:

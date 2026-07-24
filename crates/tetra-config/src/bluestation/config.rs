@@ -3,7 +3,7 @@ use std::sync::{Arc, RwLock};
 use tetra_core::freqs::FreqInfo;
 
 use crate::bluestation::{
-    CfgAsterisk, CfgCellInfo, CfgControl, CfgControlRoom, CfgDapnet, CfgEcholink, CfgEmergency, CfgGeoalarm, CfgHealth, CfgMeshcom, CfgNetInfo, CfgPhyIo,
+    CfgAsterisk, CfgCellInfo, CfgControl, CfgControlRoom, CfgEdgeFallback, CfgDapnet, CfgEcholink, CfgEmergency, CfgGeoalarm, CfgHealth, CfgMeshcom, CfgNetInfo, CfgPhyIo,
     CfgAudioPlayer, CfgRecording, CfgRecovery, CfgTts, CfgSecurity, CfgSnomNotify, CfgTpg2200Action, CfgWxService, PhyBackend, StackState,
 };
 
@@ -119,6 +119,9 @@ pub struct StackConfig {
 
     /// NetCore Control-Room endpoint configuration
     pub control_room: Option<CfgControlRoom>,
+
+    /// Automatic local autonomy when the Node Gateway or core services are unavailable.
+    pub edge_fallback: CfgEdgeFallback,
 
     /// Access control / security configuration
     pub security: CfgSecurity,
@@ -559,6 +562,65 @@ impl SharedConfig {
     /// Write guard for mutable state.
     pub fn state_write(&self) -> std::sync::RwLockWriteGuard<'_, StackState> {
         self.state.write().expect("StackState RwLock blocked")
+    }
+
+    /// Whether a particular central service may currently be used by the
+    /// Air-Interface edge. Unknown services are handled according to the
+    /// explicit edge_fallback policy rather than optimistically sending data
+    /// into a black hole.
+    pub fn central_service_available(&self, service: &str) -> bool {
+        if !self.cfg.edge_fallback.enabled {
+            return true;
+        }
+        let state = self.state_read();
+        if !state.core_gateway_connected || !state.edge_service_matrix_fresh {
+            return false;
+        }
+        match state.edge_services.get(service) {
+            Some(status) => matches!(status.level, crate::bluestation::EdgeServiceLevel::Available),
+            None => self.cfg.edge_fallback.unknown_service_is_available,
+        }
+    }
+
+    /// Effective SwMI connectivity used for the SYSINFO system-wide-services
+    /// bit. A Brew link or a healthy NetCore service plane is sufficient.
+    pub fn system_wide_services_available(&self) -> bool {
+        if self.state_read().network_connected {
+            return true;
+        }
+        if self.cfg.control_room.as_ref().is_none_or(|control| !control.enabled) {
+            return self.cfg.cell.system_wide_services;
+        }
+        if !self.cfg.edge_fallback.enabled {
+            return self.state_read().core_gateway_connected;
+        }
+        self.cfg
+            .edge_fallback
+            .required_services
+            .iter()
+            .all(|service| self.central_service_available(service))
+    }
+
+    pub fn edge_fallback_snapshot(&self) -> crate::bluestation::EdgeFallbackSnapshot {
+        let state = self.state_read();
+        let mut services: Vec<_> = state.edge_services.values().cloned().collect();
+        services.sort_by(|a, b| a.service.cmp(&b.service));
+        crate::bluestation::EdgeFallbackSnapshot {
+            enabled: self.cfg.edge_fallback.enabled,
+            gateway_connected: state.core_gateway_connected,
+            mode: state.edge_fallback_mode,
+            reason: state.edge_fallback_reason.clone(),
+            last_transition_at: state.edge_fallback_last_transition_at.clone(),
+            service_revision: state.edge_service_revision,
+            service_matrix_fresh: state.edge_service_matrix_fresh,
+            service_matrix_received_at: state.edge_service_matrix_received_at.clone(),
+            services,
+            policy_loaded_from_cache: state.edge_policy_loaded_from_cache,
+            policy_cache_saved_at: state.edge_policy_cache_saved_at.clone(),
+            policy_cache_age_secs: state.edge_policy_cache_age_secs,
+            event_spool_entries: state.edge_event_spool_entries,
+            event_spool_bytes: state.edge_event_spool_bytes,
+        }
     }
 
     /// Effective WX/METAR service settings: the dashboard runtime override if present,

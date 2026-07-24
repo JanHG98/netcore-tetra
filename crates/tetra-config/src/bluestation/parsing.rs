@@ -7,7 +7,7 @@ use serde::Deserialize;
 use toml::Value;
 
 use crate::bluestation::sec_cell::{CfgNeighborCellCa, SdsCommandControlDto};
-use crate::bluestation::{CellInfoDto, CfgControlDto, CfgControlRoomDto, NetInfoDto, apply_control_patch, apply_control_room_patch, cell_dto_to_cfg, net_dto_to_cfg};
+use crate::bluestation::{CellInfoDto, CfgControlDto, CfgControlRoomDto, CfgEdgeFallbackDto, NetInfoDto, apply_control_patch, apply_control_room_patch, apply_edge_fallback_patch, cell_dto_to_cfg, net_dto_to_cfg};
 
 use super::config::{StackConfig, StackMode};
 use super::sec_asterisk::{CfgAsteriskDto, apply_asterisk_patch};
@@ -222,6 +222,13 @@ pub fn from_toml_str(toml_str: &str) -> Result<StackConfig, Box<dyn std::error::
         return Err(format!("Unrecognized fields in control_room config: {:?}", sorted_keys(&control_room.extra)).into());
     }
 
+    // Optional edge_fallback section — reject misspelled safety controls.
+    if let Some(ref edge_fallback) = root.edge_fallback
+        && !edge_fallback.extra.is_empty()
+    {
+        return Err(format!("Unrecognized fields in edge_fallback config: {:?}", sorted_keys(&edge_fallback.extra)).into());
+    }
+
     // Optional telegram_alerts section
     if let Some(ref telegram) = root.telegram_alerts
         && !telegram.extra.is_empty()
@@ -302,6 +309,7 @@ pub fn from_toml_str(toml_str: &str) -> Result<StackConfig, Box<dyn std::error::
         telemetry: None,
         control: None,
         control_room: None,
+        edge_fallback: apply_edge_fallback_patch(root.edge_fallback.unwrap_or_default())?,
         security: apply_security_patch(root.security.unwrap_or_default()),
         wx_service: apply_wx_service_patch(root.wx_service.unwrap_or_default()),
         recovery: apply_recovery_patch(root.recovery.unwrap_or_default()),
@@ -392,6 +400,7 @@ struct TomlConfigRoot {
     telemetry: Option<CfgTelemetryDto>,
     command: Option<CfgControlDto>,
     control_room: Option<CfgControlRoomDto>,
+    edge_fallback: Option<CfgEdgeFallbackDto>,
     security: Option<CfgSecurityDto>,
     #[serde(rename = "wx_service")]
     wx_service: Option<CfgWxServiceDto>,

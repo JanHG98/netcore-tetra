@@ -509,12 +509,16 @@ impl SdsBsSubentity {
         });
     }
 
-    fn central_sds_routing_enabled(&self) -> bool {
+    fn central_sds_routing_configured(&self) -> bool {
         self.config
             .config()
             .control_room
             .as_ref()
             .is_some_and(|cfg| cfg.enabled && cfg.central_sds_routing)
+    }
+
+    fn central_sds_routing_enabled(&self) -> bool {
+        self.central_sds_routing_configured() && self.config.central_service_available("sds-router")
     }
 
     fn emit_sds_edge_data(
@@ -765,10 +769,13 @@ impl SdsBsSubentity {
             return;
         }
 
-        // In central SDS mode the TBS remains the Air-Interface edge only. The lossless
-        // payload is handed to the SDS Router through the existing Control-Room telemetry
-        // channel; the router will resolve the destination and send a first-class delivery
-        // command back to the serving TBS. Local safety services above remain local.
+        // Resolve local reachability before deciding between central routing and the
+        // isolated-cell path.  That prevents a WAN outage from turning locally addressable
+        // SDS into a black hole.
+        let is_local_issi = self.config.state_read().subscribers.is_registered(dest_ssi);
+        let is_local_group = !is_local_issi && self.config.state_read().subscribers.has_group_members(dest_ssi);
+
+        // In healthy central SDS mode the TBS remains the Air-Interface edge only.
         if self.central_sds_routing_enabled() {
             tracing::info!(
                 "SDS: central handoff {} -> {} (group={}, type={})",
@@ -777,21 +784,33 @@ impl SdsBsSubentity {
                 rx_is_group,
                 pdu.user_defined_data.type_identifier().saturating_add(1)
             );
-            self.emit_sds_edge_data(
-                "air",
-                source_ssi,
-                dest_ssi,
-                rx_is_group,
-                &pdu.user_defined_data,
-                0,
-            );
+            self.emit_sds_edge_data("air", source_ssi, dest_ssi, rx_is_group, &pdu.user_defined_data, 0);
             return;
         }
 
-        // Route: local delivery (ISSI or GSSI), Brew forward, or drop
-        let is_local_issi = self.config.state_read().subscribers.is_registered(dest_ssi);
-        let is_local_group = !is_local_issi && self.config.state_read().subscribers.has_group_members(dest_ssi);
+        // When central routing is configured but unreachable, keep local delivery alive.
+        // Non-local messages and group messages with possible remote legs are durably
+        // spooled by the Control-Room worker and replayed after reconnection.
+        if self.central_sds_routing_configured() {
+            if is_local_issi {
+                tracing::warn!("SDS: central router unavailable; delivering locally {} -> {}", source_ssi, dest_ssi);
+                self.send_d_sds_data(queue, source_ssi, dest_ssi, SsiType::Issi, pdu.user_defined_data);
+                self.emit(TelemetryEvent::SdsActivity { source_issi: source_ssi, dest_issi: dest_ssi, source: "fallback-local".to_string() });
+                return;
+            }
+            if is_local_group {
+                tracing::warn!("SDS: central router unavailable; serving local group leg and queueing remote legs {} -> GSSI {}", source_ssi, dest_ssi);
+                self.send_d_sds_data(queue, source_ssi, dest_ssi, SsiType::Gssi, pdu.user_defined_data.clone());
+                self.emit_sds_edge_data("air_fallback_local_delivered", source_ssi, dest_ssi, true, &pdu.user_defined_data, 0);
+                self.emit(TelemetryEvent::SdsActivity { source_issi: source_ssi, dest_issi: dest_ssi, source: "fallback-local".to_string() });
+                return;
+            }
+            tracing::warn!("SDS: central router unavailable; queueing non-local message {} -> {}", source_ssi, dest_ssi);
+            self.emit_sds_edge_data("air_fallback_queued", source_ssi, dest_ssi, rx_is_group, &pdu.user_defined_data, 0);
+            return;
+        }
 
+        // Legacy route: local delivery (ISSI or GSSI), Brew forward, or drop.
         if is_local_issi {
             tracing::info!("SDS: local delivery: {} -> {}", source_ssi, dest_ssi);
             self.send_d_sds_data(queue, source_ssi, dest_ssi, SsiType::Issi, pdu.user_defined_data);
@@ -1160,12 +1179,18 @@ impl SdsBsSubentity {
                 dest_ssi,
                 pdu.pre_coded_status
             );
-            self.emit_sds_edge_status(
-                "air",
-                source_ssi,
-                dest_ssi,
-                pdu.pre_coded_status,
-            );
+            self.emit_sds_edge_status("air", source_ssi, dest_ssi, pdu.pre_coded_status);
+            return;
+        }
+
+        if self.central_sds_routing_configured() {
+            if self.config.state_read().subscribers.is_registered(dest_ssi) {
+                tracing::warn!("SDS-STATUS: central router unavailable; delivering locally {} -> {}", source_ssi, dest_ssi);
+                self.send_d_status(queue, source_ssi, dest_ssi, pdu.pre_coded_status);
+            } else {
+                tracing::warn!("SDS-STATUS: central router unavailable; queueing {} -> {}", source_ssi, dest_ssi);
+                self.emit_sds_edge_status("air_fallback_queued", source_ssi, dest_ssi, pdu.pre_coded_status);
+            }
             return;
         }
 

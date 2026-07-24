@@ -33,7 +33,7 @@ def parse_scenarios(args: argparse.Namespace) -> list[str]:
     if args.profile == "smoke":
         return list(DEFAULT_SMOKE)
     if args.profile == "fault":
-        return ["contracts", "node-gateway", "subscriber-group", "restart-restore", "fault-matrix"]
+        return ["contracts", "node-gateway", "edge-fallback-contract", "subscriber-group", "restart-restore", "fault-matrix", "edge-service-outages"]
     return list(DEFAULT_FULL)
 
 

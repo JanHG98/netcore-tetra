@@ -17,6 +17,9 @@ required = {
     "webui warning": (ROOT / "system-backend/node-gateway/src/http.rs", "OFFENER TESTMODUS"),
     "health live": (ROOT / "system-backend/node-gateway/src/http.rs", '"/health/live"'),
     "metrics": (ROOT / "system-backend/node-gateway/src/http.rs", '"/metrics"'),
+    "core service API": (ROOT / "system-backend/node-gateway/src/http.rs", '"/api/v1/core-services"'),
+    "service health monitor": (ROOT / "system-backend/node-gateway/src/service_monitor.rs", "spawn_service_monitor"),
+    "service health protocol": (ROOT / "crates/tetra-entities/src/net_control_room/protocol.rs", "CoreServicesSnapshot"),
     "systemd": (ROOT / "system-backend/node-gateway/systemd/netcore-node-gateway.service", "OPEN LAB MODE"),
     "install script": (ROOT / "system-backend/node-gateway/install/install.sh", "cargo build --release -p netcore-node-gateway"),
     "package docs": (ROOT / "Docs/SWMI_MOBILITY_1_PACKAGE_D_NODE_GATEWAY.md", "ohne Tokens"),
@@ -65,5 +68,6 @@ print("SWMI Mobility 1 Package D Node Gateway checks passed.")
 print("  deployable LXC service: present")
 print("  integrated WebUI and REST API: present")
 print("  TBS and backend WebSockets: present")
+print("  per-service health matrix and edge fallback distribution: present")
 print("  explicit open_lab mode: present")
 print("  token/password fields: absent")

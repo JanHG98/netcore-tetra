@@ -1,0 +1,59 @@
+name: Full system integration audit
+
+on:
+  push:
+    paths:
+      - "bins/**"
+      - "crates/**"
+      - "system-backend/**"
+      - "deploy/open-lab/**"
+      - "tests/e2e/**"
+      - "tools/check_full_system_integration.py"
+      - "config.toml"
+      - "config.toml.fallback"
+      - ".github/workflows/full-system-integration.yml"
+  pull_request:
+    paths:
+      - "bins/**"
+      - "crates/**"
+      - "system-backend/**"
+      - "deploy/open-lab/**"
+      - "tests/e2e/**"
+      - "tools/check_full_system_integration.py"
+      - "config.toml"
+      - "config.toml.fallback"
+      - ".github/workflows/full-system-integration.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contracts-and-fallback:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Validate full service graph and edge fallback
+        run: python3 tools/check_full_system_integration.py
+
+      - name: Validate Open-Lab inventory
+        run: python3 deploy/open-lab/netcore-deploy.py validate
+
+      - name: Render all service configurations
+        run: python3 deploy/open-lab/netcore-deploy.py render
+
+      - name: Validate E2E profiles without live services
+        run: |
+          python3 deploy/open-lab/netcore-deploy.py test --profile smoke --validate-only
+          python3 deploy/open-lab/netcore-deploy.py test --profile full --validate-only
+          python3 deploy/open-lab/netcore-deploy.py test --profile fault --validate-only
+
+      - name: Run E2E support unit tests
+        run: python3 -m unittest discover -s tests/e2e/unit -v

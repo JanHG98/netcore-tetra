@@ -17,3 +17,109 @@ allow_remote_management = true
 [limits]
 max_message_bytes = 1048576
 max_http_body_bytes = 1048576
+
+[service_monitor]
+# Health is evaluated by service, not by Internet reachability. The TBS receives
+# this matrix over its existing Node Gateway WebSocket and chooses central or
+# local authority per feature.
+enabled = true
+interval_secs = 5
+timeout_ms = 1500
+failure_threshold = 2
+recovery_threshold = 2
+
+[[service_monitor.targets]]
+name = "mobility-core"
+url = "http://10.0.20.11:8090/health/ready"
+critical_for_edge = true
+fallback_mode = "local_registration_and_location_area"
+
+[[service_monitor.targets]]
+name = "subscriber-core"
+url = "http://10.0.20.12:8100/health/ready"
+critical_for_edge = true
+fallback_mode = "cached_policy_then_static_config"
+
+[[service_monitor.targets]]
+name = "group-core"
+url = "http://10.0.20.13:8110/health/ready"
+critical_for_edge = true
+fallback_mode = "cached_policy_then_local_affiliations"
+
+[[service_monitor.targets]]
+name = "call-control"
+url = "http://10.0.20.14:8120/health/ready"
+critical_for_edge = true
+fallback_mode = "local_cell_calls_only"
+
+[[service_monitor.targets]]
+name = "media-switch"
+url = "http://10.0.20.15:8130/health/ready"
+critical_for_edge = true
+fallback_mode = "local_air_interface_media_only"
+
+[[service_monitor.targets]]
+name = "recorder"
+url = "http://10.0.20.16:8140/health/ready"
+critical_for_edge = false
+fallback_mode = "local_recorder_continues"
+
+[[service_monitor.targets]]
+name = "sds-router"
+url = "http://10.0.20.17:8150/health/ready"
+critical_for_edge = true
+fallback_mode = "local_delivery_and_durable_store_forward"
+
+[[service_monitor.targets]]
+name = "packet-core"
+url = "http://10.0.20.18:8160/health/ready"
+critical_for_edge = false
+fallback_mode = "local_sndcp_contexts"
+
+[[service_monitor.targets]]
+name = "ip-gateway"
+url = "http://10.0.20.19:8170/health/ready"
+critical_for_edge = false
+fallback_mode = "local_tun_gateway_when_configured"
+
+[[service_monitor.targets]]
+name = "security-core"
+url = "http://10.0.20.20:8180/health/ready"
+critical_for_edge = false
+fallback_mode = "last_known_security_policy_no_downgrade"
+
+[[service_monitor.targets]]
+name = "kmf"
+url = "http://10.0.20.21:8190/health/ready"
+critical_for_edge = false
+fallback_mode = "installed_keys_only_no_otar"
+
+[[service_monitor.targets]]
+name = "transit"
+url = "http://10.0.20.22:8200/health/ready"
+critical_for_edge = false
+fallback_mode = "no_inter_region_routing"
+
+[[service_monitor.targets]]
+name = "observability"
+url = "http://10.0.20.26:8210/health/ready"
+critical_for_edge = false
+fallback_mode = "local_logs_and_health_continue"
+
+[[service_monitor.targets]]
+name = "application-gateway"
+url = "http://10.0.20.23:8220/health/ready"
+critical_for_edge = false
+fallback_mode = "local_integrations_only"
+
+[[service_monitor.targets]]
+name = "media-library"
+url = "http://10.0.20.24:8230/health/ready"
+critical_for_edge = false
+fallback_mode = "local_media_cache_and_playout"
+
+[[service_monitor.targets]]
+name = "control-room"
+url = "http://10.0.20.25:9010/health/ready"
+critical_for_edge = false
+fallback_mode = "local_dashboard_and_audit"

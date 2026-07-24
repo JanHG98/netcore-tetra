@@ -1,22 +1,27 @@
 //! Bidirectional base-station worker for the NetCore Control Room.
 //!
-//! One WebSocket carries:
-//! - node hello/heartbeat
-//! - telemetry events BS -> Control Room
-//! - control commands Control Room -> BS
-//! - accepted/rejected command acks and legacy entity responses BS -> Control Room
+//! One WebSocket carries node state, telemetry, control commands and media.
+//! The worker also owns the edge-autonomy state machine: loss of the gateway
+//! or one required backend service never stops local RF operation.
 
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
+use tetra_config::bluestation::{
+    EdgeFallbackMode, EdgeServiceLevel, EdgeServiceRuntime, SharedConfig,
+};
 use tetra_core::tetra_entities::TetraEntity;
 
 use crate::{
     net_control::{CommandDispatcher, ControlCommand, ControlResponse},
     net_control_room::{
-        CONTROL_ROOM_HEARTBEAT_INTERVAL, CONTROL_ROOM_PROTOCOL_VERSION, ControlCommandAck, ControlCommandEnvelope, ControlResponseEnvelope,
-        ControlRoomCodecJson, ControlRoomNodeCapabilities, ControlRoomNodeHeartbeat, ControlRoomNodeHello, ControlRoomNodeIdentity,
-        ControlRoomToNodeMessage, NodeTelemetryEnvelope, NodeToControlRoomMessage,
+        edge_store::{EdgeEventSpool, update_spool_stats},
+        CONTROL_ROOM_HEARTBEAT_INTERVAL, CONTROL_ROOM_PROTOCOL_VERSION,
+        ControlCommandAck, ControlCommandEnvelope, ControlResponseEnvelope,
+        ControlRoomCodecJson, ControlRoomNodeCapabilities, ControlRoomNodeHeartbeat,
+        ControlRoomNodeHello, ControlRoomNodeIdentity, ControlRoomToNodeMessage,
+        CoreServiceHealthLevel, CoreServicesSnapshot, NodeTelemetryEnvelope,
+        NodeToControlRoomMessage,
     },
     net_media::{MediaDownlinkSink, MediaTryRecvError, MediaUplinkFrame, MediaUplinkSource},
     net_telemetry::{TelemetryEvent, TelemetrySource, channel::RecvEvent},
@@ -47,6 +52,7 @@ enum CommandCorrelationKey {
 pub struct ControlRoomWorker<T: NetworkTransport> {
     identity: ControlRoomNodeIdentity,
     capabilities: ControlRoomNodeCapabilities,
+    config: SharedConfig,
     telemetry_source: TelemetrySource,
     media_uplink_source: Option<MediaUplinkSource>,
     media_downlink_sink: Option<MediaDownlinkSink>,
@@ -58,12 +64,17 @@ pub struct ControlRoomWorker<T: NetworkTransport> {
     started_at: String,
     seq: u64,
     pending_commands: HashMap<CommandCorrelationKey, (String, TetraEntity)>,
+    event_spool: EdgeEventSpool,
+    unhealthy_since: Option<Instant>,
+    healthy_since: Option<Instant>,
+    last_service_snapshot_at: Option<Instant>,
 }
 
 impl<T: NetworkTransport> ControlRoomWorker<T> {
     pub fn new(
         identity: ControlRoomNodeIdentity,
         capabilities: ControlRoomNodeCapabilities,
+        config: SharedConfig,
         telemetry_source: TelemetrySource,
         media_uplink_source: Option<MediaUplinkSource>,
         media_downlink_sink: Option<MediaDownlinkSink>,
@@ -71,9 +82,12 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
         transport: T,
     ) -> Self {
         let now = Instant::now();
+        let event_spool = EdgeEventSpool::from_config(config.config().as_ref());
+        update_spool_stats(&config, &event_spool);
         Self {
             identity,
             capabilities,
+            config,
             telemetry_source,
             media_uplink_source,
             media_downlink_sink,
@@ -85,6 +99,10 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
             started_at: now_iso(),
             seq: 0,
             pending_commands: HashMap::new(),
+            event_spool,
+            unhealthy_since: Some(now),
+            healthy_since: None,
+            last_service_snapshot_at: None,
         }
     }
 
@@ -107,6 +125,7 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
                 self.poll_downlink();
                 self.collect_responses();
                 self.send_periodic_heartbeat();
+                self.replay_spool();
             } else {
                 std::thread::sleep(POLL_TIMEOUT);
             }
@@ -115,7 +134,10 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
                 tracing::warn!("ControlRoom transport disconnected");
                 self.transport.disconnect();
                 self.connected = false;
+                self.mark_gateway_connected(false, "Node Gateway transport disconnected");
             }
+
+            self.tick_edge_fallback();
 
             if !self.connected && self.reconnect_due() {
                 self.try_connect();
@@ -123,6 +145,7 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
         }
 
         self.transport.disconnect();
+        self.mark_gateway_connected(false, "Control Room worker stopped");
         tracing::info!("ControlRoom worker exiting");
     }
 
@@ -139,15 +162,21 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
             Ok(()) => {
                 tracing::info!("ControlRoom transport connected");
                 self.connected = true;
+                self.mark_gateway_connected(true, "Node Gateway connected; waiting for healthy service matrix");
                 self.last_heartbeat_at = Instant::now() - CONTROL_ROOM_HEARTBEAT_INTERVAL;
                 if self.send_hello() {
                     self.send_periodic_heartbeat();
                 }
             }
-            Err(e) => {
-                tracing::warn!("ControlRoom transport connection failed: {}, will retry in {:?}", e, RECONNECT_DELAY);
+            Err(error) => {
+                tracing::warn!(
+                    "ControlRoom transport connection failed: {}, will retry in {:?}",
+                    error,
+                    RECONNECT_DELAY
+                );
                 self.transport.disconnect();
                 self.connected = false;
+                self.mark_gateway_connected(false, &format!("Node Gateway connection failed: {error}"));
             }
         }
     }
@@ -180,6 +209,7 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
 
     fn forward_telemetry(&mut self, event: TelemetryEvent) {
         if !self.ensure_connected() {
+            self.spool_event(event);
             return;
         }
         self.seq = self.seq.wrapping_add(1);
@@ -187,9 +217,52 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
             node_id: self.identity.node_id.clone(),
             seq: self.seq,
             timestamp: now_iso(),
-            event,
+            event: event.clone(),
         };
-        self.send_uplink(&NodeToControlRoomMessage::Telemetry { envelope });
+        if !self.send_uplink(&NodeToControlRoomMessage::Telemetry { envelope }) {
+            self.spool_event(event);
+        }
+    }
+
+    fn spool_event(&mut self, event: TelemetryEvent) {
+        if let Err(error) = self.event_spool.append(event) {
+            tracing::error!("failed to persist edge fallback event: {}", error);
+        }
+        update_spool_stats(&self.config, &self.event_spool);
+    }
+
+    fn replay_spool(&mut self) {
+        if !self.connected || !self.config.edge_fallback_snapshot().gateway_connected {
+            return;
+        }
+        let batch_size = self.config.config().edge_fallback.replay_batch_size;
+        let records = match self.event_spool.peek_batch(batch_size) {
+            Ok(records) => records,
+            Err(error) => {
+                tracing::warn!("failed to read edge fallback spool: {}", error);
+                return;
+            }
+        };
+        let mut acknowledged = None;
+        for record in records {
+            self.seq = self.seq.wrapping_add(1);
+            let envelope = NodeTelemetryEnvelope {
+                node_id: self.identity.node_id.clone(),
+                seq: self.seq,
+                timestamp: record.timestamp.clone(),
+                event: record.event,
+            };
+            if !self.send_uplink(&NodeToControlRoomMessage::Telemetry { envelope }) {
+                break;
+            }
+            acknowledged = Some(record.sequence);
+        }
+        if let Some(sequence) = acknowledged {
+            if let Err(error) = self.event_spool.acknowledge_through(sequence) {
+                tracing::warn!("failed to acknowledge edge fallback spool: {}", error);
+            }
+            update_spool_stats(&self.config, &self.event_spool);
+        }
     }
 
     fn drain_media_uplink(&mut self) {
@@ -218,6 +291,8 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
                 payload: frame.payload,
             };
             if !self.send_uplink(&NodeToControlRoomMessage::MediaFrame { frame }) {
+                // Speech is real-time. Never fill storage with stale audio frames;
+                // the local RF call continues and the local recorder remains active.
                 break;
             }
         }
@@ -229,11 +304,18 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
             match codec.decode_downlink(&msg.payload) {
                 Ok(ControlRoomToNodeMessage::HelloAck { accepted, message }) => {
                     if accepted {
-                        tracing::info!("ControlRoom hello accepted: {}", message.unwrap_or_else(|| "ok".to_string()));
+                        tracing::info!(
+                            "ControlRoom hello accepted: {}",
+                            message.unwrap_or_else(|| "ok".to_string())
+                        );
                     } else {
-                        tracing::warn!("ControlRoom hello rejected: {}", message.unwrap_or_else(|| "no reason".to_string()));
+                        tracing::warn!(
+                            "ControlRoom hello rejected: {}",
+                            message.unwrap_or_else(|| "no reason".to_string())
+                        );
                         self.transport.disconnect();
                         self.connected = false;
+                        self.mark_gateway_connected(false, "Node Gateway rejected node hello");
                         break;
                     }
                 }
@@ -241,8 +323,18 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
                     tracing::trace!("ControlRoom ping seq={}", seq);
                     self.send_periodic_heartbeat();
                 }
+                Ok(ControlRoomToNodeMessage::CoreServices { snapshot }) => {
+                    self.apply_core_services(snapshot);
+                }
                 Ok(ControlRoomToNodeMessage::Command { envelope }) => self.handle_command(envelope),
                 Ok(ControlRoomToNodeMessage::MediaFrame { frame }) => {
+                    if !self.config.central_service_available("media-switch") {
+                        tracing::warn!(
+                            session_id = %frame.session_id,
+                            "ignoring central media frame while media-switch is unavailable"
+                        );
+                        continue;
+                    }
                     let Some(sink) = self.media_downlink_sink.as_ref() else {
                         tracing::warn!(
                             session_id = %frame.session_id,
@@ -255,12 +347,57 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
                         tracing::warn!("dropping Media Switch downlink frame: {:?}", error);
                     }
                 }
-                Err(e) => {
-                    tracing::warn!("ControlRoom: failed to decode downlink message ({} bytes): {}", msg.payload.len(), e);
-                    self.send_error(format!("failed to decode downlink message: {}", e));
+                Err(error) => {
+                    tracing::warn!(
+                        "ControlRoom: failed to decode downlink message ({} bytes): {}",
+                        msg.payload.len(),
+                        error
+                    );
+                    self.send_error(format!("failed to decode downlink message: {error}"));
                 }
             }
         }
+    }
+
+    fn apply_core_services(&mut self, snapshot: CoreServicesSnapshot) {
+        let mut state = self.config.state_write();
+        if snapshot.revision < state.edge_service_revision {
+            tracing::warn!(
+                received = snapshot.revision,
+                current = state.edge_service_revision,
+                "ignoring stale core-service matrix"
+            );
+            return;
+        }
+        state.edge_service_revision = snapshot.revision;
+        state.edge_service_matrix_fresh = true;
+        state.edge_service_matrix_received_at = Some(now_iso());
+        state.edge_services.clear();
+        for service in snapshot.services {
+            let level = match service.level {
+                CoreServiceHealthLevel::Unknown => EdgeServiceLevel::Unknown,
+                CoreServiceHealthLevel::Available => EdgeServiceLevel::Available,
+                CoreServiceHealthLevel::Degraded => EdgeServiceLevel::Degraded,
+                CoreServiceHealthLevel::Unavailable => EdgeServiceLevel::Unavailable,
+            };
+            state.edge_services.insert(
+                service.service.clone(),
+                EdgeServiceRuntime {
+                    service: service.service,
+                    level,
+                    critical_for_edge: service.critical_for_edge,
+                    fallback_mode: service.fallback_mode,
+                    checked_at: service.checked_at,
+                    last_success_at: service.last_success_at,
+                    message: service.message,
+                },
+            );
+        }
+        drop(state);
+        // Equal revisions are deliberate lease renewals carrying a complete
+        // current matrix. Older revisions above do not renew the lease.
+        self.last_service_snapshot_at = Some(Instant::now());
+        self.tick_edge_fallback();
     }
 
     fn handle_command(&mut self, envelope: ControlCommandEnvelope) {
@@ -279,7 +416,12 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
 
         let target = route_control_command(&envelope.command);
         let Some(dispatcher) = self.dispatchers.get(&target) else {
-            self.send_ack(envelope.command_id, false, Some(target), format!("no dispatcher registered for {:?}", target));
+            self.send_ack(
+                envelope.command_id,
+                false,
+                Some(target),
+                format!("no dispatcher registered for {:?}", target),
+            );
             return;
         };
 
@@ -293,11 +435,10 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
 
     fn collect_responses(&mut self) {
         let mut outgoing: Vec<(ControlResponse, Option<String>, Option<TetraEntity>)> = Vec::new();
-
         for (entity, dispatcher) in &self.dispatchers {
             for response in dispatcher.try_recv_responses() {
                 let key = correlation_key_for_response(&response);
-                let correlated = key.and_then(|k| self.pending_commands.remove(&k));
+                let correlated = key.and_then(|key| self.pending_commands.remove(&key));
                 let (command_id, target_entity) = match correlated {
                     Some((id, entity)) => (Some(id), Some(entity)),
                     None => (None, Some(*entity)),
@@ -318,7 +459,13 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
         }
     }
 
-    fn send_ack(&mut self, command_id: String, accepted: bool, target_entity: Option<TetraEntity>, message: String) {
+    fn send_ack(
+        &mut self,
+        command_id: String,
+        accepted: bool,
+        target_entity: Option<TetraEntity>,
+        message: String,
+    ) {
         let ack = ControlCommandAck {
             command_id,
             node_id: self.identity.node_id.clone(),
@@ -343,17 +490,15 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
         if self.connected && self.transport.is_connected() {
             return true;
         }
-
         if self.connected {
             tracing::warn!("ControlRoom transport no longer connected");
             self.transport.disconnect();
             self.connected = false;
+            self.mark_gateway_connected(false, "Node Gateway transport no longer connected");
         }
-
         if !self.reconnect_due() {
             return false;
         }
-
         self.try_connect();
         self.connected
     }
@@ -366,12 +511,127 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
         let payload = codec.encode_uplink(message);
         match self.transport.send_reliable(&payload) {
             Ok(()) => true,
-            Err(e) => {
-                tracing::warn!("ControlRoom transport send failed: {}, will retry in {:?}", e, RECONNECT_DELAY);
+            Err(error) => {
+                tracing::warn!(
+                    "ControlRoom transport send failed: {}, will retry in {:?}",
+                    error,
+                    RECONNECT_DELAY
+                );
                 self.transport.disconnect();
                 self.connected = false;
+                self.mark_gateway_connected(false, &format!("Node Gateway send failed: {error}"));
                 false
             }
+        }
+    }
+
+    fn mark_gateway_connected(&mut self, connected: bool, reason: &str) {
+        {
+            let mut state = self.config.state_write();
+            state.core_gateway_connected = connected;
+            if !connected {
+                state.edge_service_matrix_fresh = false;
+                state.edge_fallback_reason = reason.to_string();
+            } else {
+                // A newly connected socket is not authoritative until a full
+                // service matrix arrives and renews the lease.
+                state.edge_service_matrix_fresh = false;
+            }
+        }
+        if connected {
+            self.unhealthy_since = None;
+            self.healthy_since = Some(Instant::now());
+        } else {
+            self.healthy_since = None;
+            self.unhealthy_since.get_or_insert_with(Instant::now);
+        }
+        self.tick_edge_fallback();
+    }
+
+    fn tick_edge_fallback(&mut self) {
+        let cfg = self.config.config();
+        if !cfg.edge_fallback.enabled {
+            self.set_edge_mode(EdgeFallbackMode::Online, "edge fallback disabled by configuration");
+            return;
+        }
+
+        let (gateway_connected, unavailable) = {
+            let state = self.config.state_read();
+            let unavailable = cfg
+                .edge_fallback
+                .required_services
+                .iter()
+                .filter(|service| match state.edge_services.get(service.as_str()) {
+                    Some(status) => !matches!(status.level, EdgeServiceLevel::Available),
+                    None => !cfg.edge_fallback.unknown_service_is_available,
+                })
+                .cloned()
+                .collect::<Vec<_>>();
+            (state.core_gateway_connected, unavailable)
+        };
+
+        let matrix_stale = self
+            .last_service_snapshot_at
+            .is_none_or(|received| received.elapsed() > Duration::from_secs(cfg.edge_fallback.service_matrix_lease_secs));
+        {
+            let mut state = self.config.state_write();
+            state.edge_service_matrix_fresh = gateway_connected && !matrix_stale;
+        }
+
+        let unhealthy_reason = if !gateway_connected {
+            Some((
+                "Node Gateway unreachable; local edge authority active".to_string(),
+                true,
+            ))
+        } else if matrix_stale {
+            Some((
+                "Node Gateway health matrix missing or stale; conservative local edge authority active".to_string(),
+                true,
+            ))
+        } else if !unavailable.is_empty() {
+            Some((
+                format!(
+                    "required core service(s) unavailable: {}; service-specific fallbacks active",
+                    unavailable.join(", ")
+                ),
+                false,
+            ))
+        } else {
+            None
+        };
+
+        if let Some((reason, full_isolation)) = unhealthy_reason {
+            self.healthy_since = None;
+            let since = self.unhealthy_since.get_or_insert_with(Instant::now);
+            if full_isolation && since.elapsed() >= Duration::from_secs(cfg.edge_fallback.enter_after_secs) {
+                self.set_edge_mode(EdgeFallbackMode::Isolated, &reason);
+            } else {
+                // A single backend failure activates only its documented
+                // service-specific fallback. Other central services remain in
+                // use; this is degraded operation rather than total isolation.
+                self.set_edge_mode(EdgeFallbackMode::Degraded, &reason);
+            }
+        } else {
+            self.unhealthy_since = None;
+            let since = self.healthy_since.get_or_insert_with(Instant::now);
+            if since.elapsed() >= Duration::from_secs(cfg.edge_fallback.recover_after_secs) {
+                self.set_edge_mode(EdgeFallbackMode::Online, "central service plane healthy");
+            } else {
+                self.set_edge_mode(
+                    EdgeFallbackMode::Recovering,
+                    "central service plane healthy; hysteresis/replay in progress",
+                );
+            }
+        }
+    }
+
+    fn set_edge_mode(&self, mode: EdgeFallbackMode, reason: &str) {
+        let mut state = self.config.state_write();
+        if state.edge_fallback_mode != mode || state.edge_fallback_reason != reason {
+            tracing::warn!(old = ?state.edge_fallback_mode, new = ?mode, reason, "edge fallback transition");
+            state.edge_fallback_mode = mode;
+            state.edge_fallback_reason = reason.to_string();
+            state.edge_fallback_last_transition_at = now_iso();
         }
     }
 }

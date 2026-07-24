@@ -39,6 +39,7 @@ class E2ESupportTests(unittest.TestCase):
         expected = {
             "contracts",
             "node-gateway",
+            "edge-fallback-contract",
             "subscriber-group",
             "call-media-recorder",
             "sds",
@@ -48,6 +49,7 @@ class E2ESupportTests(unittest.TestCase):
             "platform-services",
             "restart-restore",
             "fault-matrix",
+            "edge-service-outages",
         }
         self.assertEqual(set(SCENARIOS), expected)
         inventory = load_inventory(ROOT / "deploy/open-lab/inventory.example.toml")

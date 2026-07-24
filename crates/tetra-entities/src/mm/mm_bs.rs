@@ -1884,6 +1884,9 @@ impl MmBs {
         };
         let group_count = policy.groups.len() as u32;
         self.config.state_write().group_policy_override = Some(policy.clone());
+        if let Err(error) = crate::net_control_room::edge_store::persist_edge_policy_cache(&self.config) {
+            tracing::warn!("MM: failed to persist central group policy for edge fallback: {}", error);
+        }
 
         let mut attached_count = 0u32;
         let mut detached_count = 0u32;
@@ -2760,6 +2763,10 @@ impl TetraEntityTrait for MmBs {
                             let mut state = self.config.state_write();
                             state.issi_whitelist_deny_all = !allow_all && allowed_issis.is_empty();
                             state.issi_whitelist_override = Some(allowed_issis.clone());
+                            state.subscriber_policy_revision = revision;
+                        }
+                        if let Err(error) = crate::net_control_room::edge_store::persist_edge_policy_cache(&self.config) {
+                            tracing::warn!("MM: failed to persist central subscriber policy for edge fallback: {}", error);
                         }
 
                         for issi in &to_disconnect {

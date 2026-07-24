@@ -1414,3 +1414,34 @@ Der Code- und Paketbaustein ist damit vorbereitet. Der nächste operative Schrit
 4. produktive Secrets-/HSM-Anbindung;
 5. standardisierte ISI-Adapter und Mehrregionstests;
 6. Last-, Soak-, Chaos- und Upgrade-/Rollback-Tests.
+
+---
+
+## Package R – Full-System Audit und TBS Edge Fallback ✅ statisch abgeschlossen
+
+Alle 17 Runtime-Dienste werden nun als gemeinsames System gegengeprüft. Der
+Node Gateway überwacht die `/health/ready`-Endpunkte der übrigen 16 LXCs und
+verteilt eine revisionierte Service-Matrix an jede verbundene TBS. Die TBS
+schaltet nicht pauschal ab, sondern pro Funktion auf den dokumentierten lokalen
+Fallback um.
+
+Enthalten sind:
+
+- Online/Degraded/Isolated/Recovering-State-Machine mit Hysterese;
+- partielle Dienststörung bleibt `degraded`; vollständige Isolation erfolgt nur bei Gateway-/Matrixverlust;
+- 60-Sekunden-Lease für die vollständige Service-Matrix; alte Revisionen verlängern die Lease nicht;
+- last-known Subscriber-/Group-Policy-Cache über TBS-Neustarts hinweg;
+- lokale Registrierung, lokale Rufe und lokale Medienführung bei WAN-Ausfall;
+- lokale SDS-Zustellung und begrenzter, fsync-basierter Store-and-Forward-Spool;
+- replay-sichere Wiederanlieferung ohne doppelte lokale Gruppen-SDS;
+- dynamische SYSINFO-System-Wide-Services-Anzeige;
+- explizite Fallback-Beschreibung für jeden der 17 Runtime-Dienste;
+- WebUI- und REST-Sicht auf die Backend-Health-Matrix im Node Gateway;
+- neuer E2E-Vertragstest für die Zustellung der Service-Matrix an eine Mock-TBS;
+- destruktives Fault-Szenario für Ausfall und Recovery jedes der 16 Remote-LXCs;
+- tolerante Recovery eines durch Stromausfall abgerissenen letzten JSONL-Spool-Eintrags;
+- `tools/check_full_system_integration.py` mit Port-, URL-, Dependency-,
+  API-, WebUI- und Fallback-Abgleich.
+
+Der echte Multi-LXC-, Stromausfall-, VPN-Abbruch- und On-Air-Test bleibt eine
+operative Abnahme und kann nicht durch statische Prüfung ersetzt werden.

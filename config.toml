@@ -745,11 +745,14 @@ timeout_ms = 2000
 # [control_room] is enabled to avoid split command responses.
 
 [control_room]
+# In the distributed LXC topology the TBS connects to the Node Gateway, not
+# directly to the Control Room. The gateway supplies the per-service health
+# matrix used by the local edge-fallback state machine.
 enabled = false
-host = "10.0.1.25"
-port = 9010
+host = "10.0.20.10"
+port = 8080
 use_tls = false
-endpoint_path = "/node"
+endpoint_path = "/ws/node"
 
 # Optional, but recommended: stable and human-readable.
 node_id = "SRV-M_TBS-01"
@@ -760,17 +763,48 @@ site = "Main"
 # Keep disabled for a fully local standalone TBS.
 central_sds_routing = false
 
-# REQUIRED when the Control Room runs with [auth] enabled:
-# Use exactly the same node token as NETCORE_CONTROL_ROOM_NODE_TOKEN on the
-# Control Room host. The token is sent as Basic auth user "node".
-# token = "replace-with-the-control-room-node-token"
-#
-# Alternative explicit HTTP Basic Auth:
-# username = "node"
-# password = "replace-with-the-control-room-node-token"
+# Open-Lab phase: no token, username/password or TLS is configured here.
+# Keep this endpoint inside the isolated test/management network.
 
-# Optional self-signed TLS root certificate; requires use_tls = true:
-# ca_cert = "/etc/netcore/control-room-ca.der"
+###############################################################################
+
+# EDGE AUTONOMY / WAN FALLBACK
+# The base station keeps local RF, registration, local calls, local SDS and
+# installed security material alive when the Node Gateway or individual Core
+# services are unreachable.  No Internet connection is required for local mode.
+[edge_fallback]
+enabled = true
+enter_after_secs = 15
+recover_after_secs = 20
+unknown_service_is_available = false
+service_matrix_lease_secs = 60
+policy_cache_path = "/var/lib/flowstation/edge-policy-cache.json"
+policy_cache_max_age_secs = 604800
+keep_last_known_policy = true
+event_spool_path = "/var/lib/flowstation/edge-event-spool.jsonl"
+event_spool_max_entries = 10000
+event_spool_max_bytes = 16777216
+replay_batch_size = 128
+required_services = ["subscriber-core", "group-core", "mobility-core", "call-control", "media-switch", "sds-router"]
+
+[edge_fallback.service_fallbacks]
+node-gateway = "local_edge_autonomy"
+subscriber-core = "cached_policy_then_static_config"
+group-core = "cached_policy_then_local_affiliations"
+mobility-core = "local_registration_and_location_area"
+call-control = "local_cell_calls_only"
+media-switch = "local_air_interface_media_only"
+recorder = "local_recorder_continues"
+sds-router = "local_delivery_and_durable_store_forward"
+packet-core = "local_sndcp_contexts"
+ip-gateway = "local_tun_gateway_when_configured"
+security-core = "last_known_security_policy_no_downgrade"
+kmf = "installed_keys_only_no_otar"
+transit = "no_inter_region_routing"
+control-room = "local_dashboard_and_audit"
+observability = "local_logs_and_health_continue"
+application-gateway = "local_integrations_only"
+media-library = "local_media_cache_and_playout"
 
 ###############################################################################
 

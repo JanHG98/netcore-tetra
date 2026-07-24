@@ -39,6 +39,7 @@ Use `--inventory deploy/open-lab/inventory.toml` when the real lab addresses dif
 | `observability` | Central scrape plus searchable structured E2E marker | yes | no |
 | `restart-restore` | Subscriber and group persistence after systemd restart | yes | yes |
 | `fault-matrix` | Dependency degradation and recovery for Call/Media, Packet/IP and Media/Recorder paths | no | yes |
+| `edge-service-outages` | Stop each of the 16 remote backends in turn and verify Gateway + TBS fallback/recovery state | no | yes |
 
 A custom subset can be selected repeatedly or as a comma-separated list:
 

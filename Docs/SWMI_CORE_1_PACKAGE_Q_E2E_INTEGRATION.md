@@ -79,7 +79,7 @@ Ein zentraler Scrape wird ausgelöst und ein strukturierter Logmarker mit Trace-
 
 ### Neustart und Abhängigkeitsausfall
 
-Subscriber- und Group-Daten werden über einen echten systemd-Neustart hinweg geprüft. Zusätzlich stoppt die Fault-Matrix ausgewählte Upstream-Dienste und verlangt eine nachvollziehbare Readiness-Degradation sowie vollständige Erholung der abhängigen Dienste.
+Subscriber- und Group-Daten werden über einen echten systemd-Neustart hinweg geprüft. Zusätzlich stoppt die Fault-Matrix ausgewählte Upstream-Dienste und verlangt eine nachvollziehbare Readiness-Degradation sowie vollständige Erholung der abhängigen Dienste. Das Szenario `edge-service-outages` stoppt darüber hinaus jeden der 16 vom Node Gateway überwachten Remote-Dienste einzeln und prüft die Zustandsänderung bis zur verbundenen Mock-TBS sowie die anschließende Erholung.
 
 ## Sicherheitsgrenze
 
@@ -102,7 +102,7 @@ Paket Q ist statisch abgeschlossen, wenn:
 
 ```text
 Inventory mit 17 Diensten validiert
-alle 11 Szenarien maschinenlesbar registriert
+alle 13 Szenarien maschinenlesbar registriert
 read-only, mutating und fault gates wirksam
 Mock TBS handshake- und control-response-fähig
 JSON- und JUnit-Reports erzeugt

@@ -999,3 +999,43 @@ local_user = "101"
 auth_user = "101"
 password = "101"
 realm = "asterisk"
+###############################################################################
+
+# EDGE AUTONOMY / WAN FALLBACK
+# The base station keeps local RF, registration, local calls, local SDS and
+# installed security material alive when the Node Gateway or individual Core
+# services are unreachable.  No Internet connection is required for local mode.
+[edge_fallback]
+enabled = true
+enter_after_secs = 15
+recover_after_secs = 20
+unknown_service_is_available = false
+service_matrix_lease_secs = 60
+policy_cache_path = "/var/lib/flowstation/edge-policy-cache.json"
+policy_cache_max_age_secs = 604800
+keep_last_known_policy = true
+event_spool_path = "/var/lib/flowstation/edge-event-spool.jsonl"
+event_spool_max_entries = 10000
+event_spool_max_bytes = 16777216
+replay_batch_size = 128
+required_services = ["subscriber-core", "group-core", "mobility-core", "call-control", "media-switch", "sds-router"]
+
+[edge_fallback.service_fallbacks]
+node-gateway = "local_edge_autonomy"
+subscriber-core = "cached_policy_then_static_config"
+group-core = "cached_policy_then_local_affiliations"
+mobility-core = "local_registration_and_location_area"
+call-control = "local_cell_calls_only"
+media-switch = "local_air_interface_media_only"
+recorder = "local_recorder_continues"
+sds-router = "local_delivery_and_durable_store_forward"
+packet-core = "local_sndcp_contexts"
+ip-gateway = "local_tun_gateway_when_configured"
+security-core = "last_known_security_policy_no_downgrade"
+kmf = "installed_keys_only_no_otar"
+transit = "no_inter_region_routing"
+control-room = "local_dashboard_and_audit"
+observability = "local_logs_and_health_continue"
+application-gateway = "local_integrations_only"
+media-library = "local_media_cache_and_playout"
+

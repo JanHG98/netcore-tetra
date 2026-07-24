@@ -3,15 +3,15 @@ contract_version = "netcore.v1"
 mode = "open_lab"
 
 [profiles.smoke]
-scenarios = ["contracts", "node-gateway", "control-room-federation"]
+scenarios = ["contracts", "node-gateway", "edge-fallback-contract", "control-room-federation"]
 destructive = false
 
 [profiles.full]
-scenarios = ["contracts", "node-gateway", "subscriber-group", "call-media-recorder", "sds", "packet-data", "control-room-federation", "platform-services", "observability"]
+scenarios = ["contracts", "node-gateway", "edge-fallback-contract", "subscriber-group", "call-media-recorder", "sds", "packet-data", "control-room-federation", "platform-services", "observability"]
 destructive = true
 
 [profiles.fault]
-scenarios = ["contracts", "node-gateway", "subscriber-group", "restart-restore", "fault-matrix"]
+scenarios = ["contracts", "node-gateway", "edge-fallback-contract", "subscriber-group", "restart-restore", "fault-matrix", "edge-service-outages"]
 destructive = true
 requires_ssh = true
 

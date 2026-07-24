@@ -1,4 +1,5 @@
 use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
+use serde::{Deserialize, Serialize};
 use tetra_core::TimeslotAllocator;
 use tetra_core::tetra_entities::TetraEntity;
 
@@ -619,8 +620,69 @@ impl Default for GeoalarmRuntimeStatus {
 }
 
 
+
+/// Runtime state of the central service plane as observed by the TBS.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EdgeFallbackMode {
+    Online,
+    Degraded,
+    Isolated,
+    Recovering,
+}
+
+impl Default for EdgeFallbackMode {
+    fn default() -> Self {
+        Self::Isolated
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EdgeServiceLevel {
+    Unknown,
+    Available,
+    Degraded,
+    Unavailable,
+}
+
+impl Default for EdgeServiceLevel {
+    fn default() -> Self {
+        Self::Unknown
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EdgeServiceRuntime {
+    pub service: String,
+    pub level: EdgeServiceLevel,
+    pub critical_for_edge: bool,
+    pub fallback_mode: String,
+    pub checked_at: String,
+    pub last_success_at: Option<String>,
+    pub message: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct EdgeFallbackSnapshot {
+    pub enabled: bool,
+    pub gateway_connected: bool,
+    pub mode: EdgeFallbackMode,
+    pub reason: String,
+    pub last_transition_at: String,
+    pub service_revision: u64,
+    pub service_matrix_fresh: bool,
+    pub service_matrix_received_at: Option<String>,
+    pub services: Vec<EdgeServiceRuntime>,
+    pub policy_loaded_from_cache: bool,
+    pub policy_cache_saved_at: Option<String>,
+    pub policy_cache_age_secs: Option<u64>,
+    pub event_spool_entries: usize,
+    pub event_spool_bytes: u64,
+}
+
 /// One centrally managed group definition distributed by the Group Core.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CentralGroupDefinition {
     pub gssi: u32,
     pub enabled: bool,
@@ -634,7 +696,7 @@ pub struct CentralGroupDefinition {
 }
 
 /// Runtime group policy installed by the central Group Core.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CentralGroupPolicy {
     pub revision: u64,
     pub allow_unlisted_groups: bool,
@@ -725,6 +787,24 @@ pub struct StackState {
     pub timeslot_alloc: TimeslotAllocator,
     /// Backhaul/network connection to SwMI (e.g., Brew/TetraPack). False -> fallback mode.
     pub network_connected: bool,
+    /// Direct Node Gateway transport state.  Kept separate from Brew so an
+    /// isolated NetCore deployment can fall back without disturbing local RF.
+    pub core_gateway_connected: bool,
+    pub edge_fallback_mode: EdgeFallbackMode,
+    pub edge_fallback_reason: String,
+    pub edge_fallback_last_transition_at: String,
+    pub edge_service_revision: u64,
+    /// True only while the complete Node-Gateway service matrix is within its
+    /// configured lease. A live WebSocket alone is not sufficient.
+    pub edge_service_matrix_fresh: bool,
+    pub edge_service_matrix_received_at: Option<String>,
+    pub edge_services: HashMap<String, EdgeServiceRuntime>,
+    pub edge_policy_loaded_from_cache: bool,
+    pub edge_policy_cache_saved_at: Option<String>,
+    pub edge_policy_cache_age_secs: Option<u64>,
+    pub edge_event_spool_entries: usize,
+    pub edge_event_spool_bytes: u64,
+    pub subscriber_policy_revision: u64,
     /// Per Brew entity connection state. `network_connected` is the aggregate over this map.
     pub brew_entity_connected: HashMap<TetraEntity, bool>,
     /// Centralized subscriber registry for local-first routing decisions.
@@ -972,6 +1052,20 @@ impl Default for StackState {
         Self {
             timeslot_alloc: TimeslotAllocator::default(),
             network_connected: false,
+            core_gateway_connected: false,
+            edge_fallback_mode: EdgeFallbackMode::Isolated,
+            edge_fallback_reason: "central service state not established".to_string(),
+            edge_fallback_last_transition_at: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+            edge_service_revision: 0,
+            edge_service_matrix_fresh: false,
+            edge_service_matrix_received_at: None,
+            edge_services: HashMap::new(),
+            edge_policy_loaded_from_cache: false,
+            edge_policy_cache_saved_at: None,
+            edge_policy_cache_age_secs: None,
+            edge_event_spool_entries: 0,
+            edge_event_spool_bytes: 0,
+            subscriber_policy_revision: 0,
             brew_entity_connected: HashMap::new(),
             subscribers: SubscriberRegistry::new(),
             live_sds_queue: VecDeque::new(),

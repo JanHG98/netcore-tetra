@@ -26,6 +26,7 @@ REQUIRED_FILES = [
     "tests/e2e/on_air_template.json",
     "tests/e2e/validate_on_air_evidence.py",
     "tests/e2e/unit/test_e2e_support.py",
+    "tests/e2e/unit/test_edge_fallback_reference.py",
     "deploy/open-lab/netcore-e2e.py",
     "Docs/OPEN_LAB_E2E_RUNBOOK.md",
     "Docs/SWMI_CORE_1_PACKAGE_Q_E2E_INTEGRATION.md",
@@ -61,6 +62,7 @@ EXPECTED_SERVICES = {
 EXPECTED_SCENARIOS = {
     "contracts",
     "node-gateway",
+    "edge-fallback-contract",
     "subscriber-group",
     "call-media-recorder",
     "sds",
@@ -70,6 +72,7 @@ EXPECTED_SCENARIOS = {
     "platform-services",
     "restart-restore",
     "fault-matrix",
+    "edge-service-outages",
 }
 
 
@@ -153,7 +156,7 @@ def main() -> int:
     if errors:
         print("\n".join(errors), file=sys.stderr)
         return 1
-    print("Cross-LXC E2E integration package check: OK (17 services, 11 scenarios)")
+    print(f"Cross-LXC E2E integration package check: OK (17 services, {len(EXPECTED_SCENARIOS)} scenarios)")
     return 0
 
 

@@ -1344,6 +1344,11 @@ fn plan_message_locked(state: &mut RouterState, id: &str, force_nodes: &[String]
                 target_nodes.insert(location.node_id.clone());
             }
         }
+        if snapshot.ingress.contains("local_delivered") {
+            if let Some(ingress_node) = snapshot.ingress_node_id.as_ref() {
+                target_nodes.remove(ingress_node);
+            }
+        }
     }
 
     let now = now_iso();

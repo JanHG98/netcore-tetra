@@ -483,12 +483,7 @@ impl UmacBs {
     /// Retrieve currently set value of system-wide services. If SwMI is active, this governs connection state
     /// Otherwise, value from config is used.
     fn get_system_wide_services_state(config: &SharedConfig) -> bool {
-        let cfg = config.config();
-        if cfg.brew.is_some() || cfg.brew2.is_some() {
-            config.state_read().network_connected
-        } else {
-            cfg.cell.system_wide_services
-        }
+        config.system_wide_services_available()
     }
 
     fn refresh_system_wide_services(&mut self) {

@@ -114,6 +114,41 @@ def scenario_node_gateway(ctx: E2EContext) -> None:
     ctx.check("application ping reaches mock TBS", ping, scenario=scenario, service="node-gateway")
 
 
+def scenario_edge_fallback_contract(ctx: E2EContext) -> None:
+    scenario = "edge-fallback-contract"
+    expected = {service.name for service in ctx.inventory.services if service.name != "node-gateway"}
+
+    def health_matrix() -> dict[str, Any]:
+        value = ctx.client.get(ctx.base("node-gateway") + "/api/v1/core-services").json()
+        services = _as_list(value)
+        names = {item.get("service") for item in services}
+        if names != expected:
+            raise AssertionError(f"backend health matrix mismatch: expected={sorted(expected)} got={sorted(names)}")
+        for item in services:
+            if not item.get("fallback_mode"):
+                raise AssertionError(f"missing fallback mode: {item}")
+            if item.get("level") not in {"unknown", "available", "degraded", "unavailable"}:
+                raise AssertionError(f"invalid health level: {item}")
+        return {"revision": value.get("revision"), "services": len(services)}
+
+    ctx.check("Node Gateway exposes complete edge-health matrix", health_matrix, scenario=scenario, service="node-gateway")
+
+    if ctx.mock_tbs is None:
+        ctx.check("health matrix reaches TBS", lambda: None, scenario=scenario, skip="mock TBS disabled")
+        return
+
+    def delivered() -> dict[str, Any]:
+        snapshot = wait_for(
+            "core service matrix delivered to mock TBS",
+            lambda: ctx.mock_tbs.core_services_snapshot,
+            lambda value: isinstance(value, dict) and len(_as_list(value)) == len(expected),
+            timeout=ctx.timeout,
+        )
+        return {"revision": snapshot.get("revision"), "services": len(_as_list(snapshot))}
+
+    ctx.check("revisioned health matrix reaches connected TBS", delivered, scenario=scenario, service="node-gateway")
+
+
 def _upsert_subscriber(ctx: E2EContext, issi: int, gssi: int) -> dict[str, Any]:
     payload = {
         "issi": issi,
@@ -890,6 +925,109 @@ def scenario_fault_matrix(ctx: E2EContext) -> None:
         )
 
 
+
+def scenario_edge_service_outages(ctx: E2EContext) -> None:
+    """Prove the per-service health/fallback contract for every remote backend.
+
+    The Node Gateway itself cannot be stopped in this scenario because it is
+    the control link carrying the matrix to the TBS. Its loss is covered by the
+    TBS-side connection/lease state machine and the offline reference tests.
+    """
+
+    scenario = "edge-service-outages"
+    if not ctx.allow_restarts:
+        ctx.check("all backend outage transitions", lambda: None, scenario=scenario, skip="requires --allow-restarts")
+        return
+
+    victims = [service.name for service in ctx.inventory.services if service.name != "node-gateway"]
+    gateway_url = ctx.base("node-gateway") + "/api/v1/core-services"
+
+    def gateway_level(service_name: str) -> tuple[str | None, int | None]:
+        payload = ctx.client.get(gateway_url).json()
+        item = next((entry for entry in _as_list(payload) if entry.get("service") == service_name), None)
+        return (item.get("level") if item else None, payload.get("revision"))
+
+    def tbs_level(service_name: str) -> tuple[str | None, int | None]:
+        if ctx.mock_tbs is None or not isinstance(ctx.mock_tbs.core_services_snapshot, dict):
+            return None, None
+        payload = ctx.mock_tbs.core_services_snapshot
+        item = next((entry for entry in _as_list(payload) if entry.get("service") == service_name), None)
+        return (item.get("level") if item else None, payload.get("revision"))
+
+    for victim in victims:
+        def run_outage(victim_name: str = victim) -> dict[str, Any]:
+            service = ctx.service(victim_name)
+            initial_level, initial_revision = wait_for(
+                f"{victim_name} initially available in edge matrix",
+                lambda: gateway_level(victim_name),
+                lambda value: value[0] == "available",
+                timeout=max(ctx.timeout, 75.0),
+            )
+            stopped_revision: int | None = None
+            recovered_revision: int | None = None
+            try:
+                ctx.ssh(victim_name, f"systemctl stop {service.unit}")
+                wait_for(
+                    f"{victim_name} listener to stop",
+                    lambda: _http_status_or_zero(ctx, ctx.base(victim_name) + "/health/live"),
+                    lambda value: value == 0,
+                    timeout=max(ctx.timeout, 45.0),
+                )
+                _, stopped_revision = wait_for(
+                    f"Node Gateway marks {victim_name} unavailable",
+                    lambda: gateway_level(victim_name),
+                    lambda value: value[0] == "unavailable" and (value[1] or 0) > (initial_revision or 0),
+                    timeout=max(ctx.timeout, 75.0),
+                )
+                if ctx.mock_tbs is not None:
+                    wait_for(
+                        f"mock TBS receives {victim_name} unavailable",
+                        lambda: tbs_level(victim_name),
+                        lambda value: value[0] == "unavailable" and (value[1] or 0) >= (stopped_revision or 0),
+                        timeout=max(ctx.timeout, 45.0),
+                    )
+            finally:
+                ctx.ssh(
+                    victim_name,
+                    f"systemctl start {service.unit} && systemctl is-active --quiet {service.unit}",
+                    check=False,
+                )
+
+            wait_for(
+                f"{victim_name} liveness recovery",
+                lambda: _http_status_or_zero(ctx, ctx.base(victim_name) + "/health/live"),
+                lambda value: value == 200,
+                timeout=max(ctx.timeout, 75.0),
+            )
+            _, recovered_revision = wait_for(
+                f"Node Gateway marks {victim_name} available again",
+                lambda: gateway_level(victim_name),
+                lambda value: value[0] == "available" and (value[1] or 0) > (stopped_revision or 0),
+                timeout=max(ctx.timeout, 90.0),
+            )
+            if ctx.mock_tbs is not None:
+                wait_for(
+                    f"mock TBS receives {victim_name} recovery",
+                    lambda: tbs_level(victim_name),
+                    lambda value: value[0] == "available" and (value[1] or 0) >= (recovered_revision or 0),
+                    timeout=max(ctx.timeout, 45.0),
+                )
+            return {
+                "initial_level": initial_level,
+                "initial_revision": initial_revision,
+                "outage_revision": stopped_revision,
+                "recovery_revision": recovered_revision,
+                "fallback_transport": "node-gateway-core-services-snapshot",
+            }
+
+        ctx.check(
+            f"{victim} outage enters fallback and recovers",
+            run_outage,
+            scenario=scenario,
+            service=victim,
+        )
+
+
 def _http_status_or_zero(ctx: E2EContext, url: str) -> int:
     try:
         return ctx.client.get(url, expected=(200, 503)).status
@@ -900,6 +1038,7 @@ def _http_status_or_zero(ctx: E2EContext, url: str) -> int:
 SCENARIOS: dict[str, Callable[[E2EContext], None]] = {
     "contracts": scenario_contracts,
     "node-gateway": scenario_node_gateway,
+    "edge-fallback-contract": scenario_edge_fallback_contract,
     "subscriber-group": scenario_subscriber_group,
     "call-media-recorder": scenario_call_media_recorder,
     "sds": scenario_sds,
@@ -909,12 +1048,14 @@ SCENARIOS: dict[str, Callable[[E2EContext], None]] = {
     "platform-services": scenario_platform_services,
     "restart-restore": scenario_restart_restore,
     "fault-matrix": scenario_fault_matrix,
+    "edge-service-outages": scenario_edge_service_outages,
 }
 
-DEFAULT_SMOKE = ["contracts", "node-gateway", "control-room-federation"]
+DEFAULT_SMOKE = ["contracts", "node-gateway", "edge-fallback-contract", "control-room-federation"]
 DEFAULT_FULL = [
     "contracts",
     "node-gateway",
+    "edge-fallback-contract",
     "subscriber-group",
     "call-media-recorder",
     "sds",

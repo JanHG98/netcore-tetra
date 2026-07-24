@@ -3,21 +3,23 @@ use std::collections::HashMap;
 use serde::Deserialize;
 use toml::Value;
 
-/// NetCore Control-Room node endpoint configuration.
+/// NetCore Node-Gateway/Core node endpoint configuration.
 ///
-/// This is the future Leitstelle/Core connection: one bidirectional WebSocket
-/// for hello/heartbeat, telemetry and operator commands.
+/// In the distributed LXC topology the TBS connects to the Node Gateway. The
+/// gateway forwards commands and telemetry and also publishes the per-service
+/// health matrix used by edge fallback. A direct legacy Control-Room endpoint
+/// may still be configured explicitly.
 #[derive(Debug, Clone)]
 pub struct CfgControlRoom {
     /// Master switch.  A present section defaults to enabled=true.
     pub enabled: bool,
-    /// Control-Room Core hostname or IP.
+    /// Node-Gateway/Core hostname or IP.
     pub host: String,
-    /// Control-Room Core port.
+    /// Node-Gateway/Core port.
     pub port: u16,
     /// Use TLS (wss://).
     pub use_tls: bool,
-    /// HTTP path for the node WebSocket endpoint.  Default: "/node".
+    /// HTTP path for the node WebSocket endpoint.  Default: "/ws/node".
     pub endpoint_path: String,
     /// Optional path to a DER-encoded CA certificate for self-signed TLS.
     pub ca_cert: Option<String>,
@@ -102,7 +104,7 @@ pub fn apply_control_room_patch(src: CfgControlRoomDto) -> Result<CfgControlRoom
         (false, None) => 0,
     };
 
-    let endpoint_path = src.endpoint_path.unwrap_or_else(|| "/node".to_string());
+    let endpoint_path = src.endpoint_path.unwrap_or_else(|| "/ws/node".to_string());
     if !endpoint_path.starts_with('/') {
         return Err("control_room: endpoint_path must start with '/'".to_string());
     }

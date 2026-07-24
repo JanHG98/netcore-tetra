@@ -7,12 +7,16 @@
 pub mod codec;
 pub mod protocol;
 #[cfg(feature = "runtime")]
+pub mod edge_store;
+#[cfg(feature = "runtime")]
 pub mod worker;
 
 use std::time::Duration;
 
 pub use self::codec::{ControlRoomCodecError, ControlRoomCodecJson};
 pub use self::protocol::*;
+#[cfg(feature = "runtime")]
+pub use self::edge_store::{EdgeEventSpool, load_edge_policy_cache, persist_edge_policy_cache};
 #[cfg(feature = "runtime")]
 pub use self::worker::ControlRoomWorker;
 

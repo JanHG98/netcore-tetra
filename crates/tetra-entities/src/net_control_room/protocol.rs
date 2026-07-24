@@ -181,6 +181,37 @@ pub struct ControlResponseEnvelope {
     pub response: ControlResponse,
 }
 
+/// Health level reported by the Node Gateway for one backend service.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Encode, Decode, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CoreServiceHealthLevel {
+    Unknown,
+    Available,
+    Degraded,
+    Unavailable,
+}
+
+#[derive(Debug, Clone, Encode, Decode, Serialize, Deserialize)]
+pub struct CoreServiceHealth {
+    pub service: String,
+    pub level: CoreServiceHealthLevel,
+    pub critical_for_edge: bool,
+    pub fallback_mode: String,
+    pub checked_at: String,
+    pub last_success_at: Option<String>,
+    pub message: Option<String>,
+}
+
+/// Complete service-health matrix sent to each TBS.  The node uses it to
+/// switch individual functions between central and local authority without
+/// waiting for a total WebSocket failure.
+#[derive(Debug, Clone, Encode, Decode, Serialize, Deserialize)]
+pub struct CoreServicesSnapshot {
+    pub revision: u64,
+    pub generated_at: String,
+    pub services: Vec<CoreServiceHealth>,
+}
+
 /// Messages sent from the base station node to the Control-Room Core.
 #[derive(Debug, Clone, Encode, Decode, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
@@ -204,4 +235,7 @@ pub enum ControlRoomToNodeMessage {
     Command { envelope: ControlCommandEnvelope },
     /// Packed speech frame routed by the Media Switch to one local TBS leg.
     MediaFrame { frame: MediaDownlinkFrame },
+    /// Per-service availability used by the TBS edge-autonomy state machine.
+    /// Appended after the original variants to retain the bitcode enum order.
+    CoreServices { snapshot: CoreServicesSnapshot },
 }
