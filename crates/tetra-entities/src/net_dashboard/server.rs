@@ -1175,6 +1175,27 @@ impl DashboardServer {
                         hw_id: hw_id.clone(),
                     });
                 }
+                TelemetryEvent::SdsEdgeIngress {
+                    message_id,
+                    ingress,
+                    source_issi,
+                    dest_issi,
+                    is_group,
+                    sds_type,
+                    protocol_id,
+                    len_bits,
+                    payload: _,
+                    priority,
+                } => {
+                    s.push_log(
+                        "INFO",
+                        format!(
+                            "SDS edge ingress {} {} {} -> {} group={} type={} pid={} bits={} prio={}",
+                            message_id, ingress, source_issi, dest_issi, is_group, sds_type,
+                            protocol_id, len_bits, priority
+                        ),
+                    );
+                }
                 TelemetryEvent::BrewSubscriberRegistered { .. } | TelemetryEvent::BrewSubscriberDeregistered { .. } => {}
             }
         }
@@ -1352,6 +1373,30 @@ fn event_to_ws_msg(event: &TelemetryEvent) -> Option<String> {
             "gateway": gateway,
             "contexts": contexts,
             "bearers": bearers,
+        }),
+        TelemetryEvent::SdsEdgeIngress {
+            message_id,
+            ingress,
+            source_issi,
+            dest_issi,
+            is_group,
+            sds_type,
+            protocol_id,
+            len_bits,
+            payload,
+            priority,
+        } => serde_json::json!({
+            "type":"sds_edge_ingress",
+            "message_id":message_id,
+            "ingress":ingress,
+            "source_issi":source_issi,
+            "dest_issi":dest_issi,
+            "is_group":is_group,
+            "sds_type":sds_type,
+            "protocol_id":protocol_id,
+            "len_bits":len_bits,
+            "payload":payload,
+            "priority":priority
         }),
         // Emergency add/remove are broadcast explicitly (transition-gated) from handle_telemetry,
         // so the generic path stays silent — otherwise every periodic re-send would re-broadcast.

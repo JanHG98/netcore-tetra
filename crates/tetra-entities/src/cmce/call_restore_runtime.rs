@@ -346,7 +346,6 @@ pub struct CallRestoreTransaction {
     pub new_call_id: Option<u16>,
     pub timeslot: Option<u8>,
     pub usage: Option<u8>,
-    pub request_to_transmit: bool,
     pub transmission_grant: Option<TransmissionGrant>,
     pub reject_reason: Option<RestoreRejectReason>,
     pub started_at: TdmaTime,

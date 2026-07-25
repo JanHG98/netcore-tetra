@@ -1,6 +1,7 @@
 mod config;
 mod gateway;
 mod http;
+mod media_ws;
 mod protocol;
 mod state;
 

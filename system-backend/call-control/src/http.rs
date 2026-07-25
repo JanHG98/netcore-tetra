@@ -3,14 +3,17 @@ use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::sync::mpsc::Sender;
 use std::thread;
+use std::time::{Duration, Instant};
 
 use serde::Serialize;
 use serde_json::json;
 
 use crate::config::CallControlConfig;
+use crate::media_ws::{MEDIA_EVENT_PATH, handle_media_websocket};
 use crate::protocol::BackendRequest;
 use crate::state::{
-    FloorInput, GroupCallInput, IndividualCallInput, RestoreInput, SharedCalls,
+    FloorInput, GroupCallInput, IndividualCallInput, MediaRouteReadyInput, RestoreInput,
+    SharedCalls,
 };
 
 pub fn spawn_http_server(
@@ -39,6 +42,45 @@ pub fn spawn_http_server(
     }))
 }
 
+fn is_media_websocket_request(stream: &TcpStream) -> bool {
+    let previous_timeout = stream.read_timeout().ok().flatten();
+    let _ = stream.set_read_timeout(Some(Duration::from_millis(50)));
+    let deadline = Instant::now() + Duration::from_secs(2);
+    let mut preview = [0u8; 8_192];
+
+    let detected = loop {
+        match stream.peek(&mut preview) {
+            Ok(0) => break false,
+            Ok(size) => {
+                let text = String::from_utf8_lossy(&preview[..size]);
+                if let Some(first_line) = text.lines().next() {
+                    let media_path = first_line
+                        .split_whitespace()
+                        .nth(1)
+                        .is_some_and(|path| path.split('?').next() == Some(MEDIA_EVENT_PATH));
+                    if media_path && text.to_ascii_lowercase().contains("\r\nupgrade: websocket") {
+                        break true;
+                    }
+                    if first_line.contains(" HTTP/") && text.contains("\r\n\r\n") {
+                        break false;
+                    }
+                }
+            }
+            Err(error)
+                if error.kind() == std::io::ErrorKind::WouldBlock
+                    || error.kind() == std::io::ErrorKind::TimedOut => {}
+            Err(_) => break false,
+        }
+        if Instant::now() >= deadline {
+            break false;
+        }
+        thread::sleep(Duration::from_millis(5));
+    };
+
+    let _ = stream.set_read_timeout(previous_timeout);
+    detected
+}
+
 struct HttpRequest {
     method: String,
     path: String,
@@ -58,6 +100,11 @@ fn handle_connection(
     calls: SharedCalls,
     gateway_tx: Sender<BackendRequest>,
 ) -> Result<(), String> {
+    if is_media_websocket_request(&stream) {
+        handle_media_websocket(stream, calls);
+        return Ok(());
+    }
+
     let request = read_request(&mut stream, config.limits.max_body_bytes)?;
     let response = route(request, calls, gateway_tx);
     write_response(&mut stream, response).map_err(|error| error.to_string())
@@ -93,6 +140,14 @@ fn route(
             json_response(200, &calls.events(limit))
         }
         ("GET", "/api/v1/config") => json_response(200, &calls.config_view()),
+        ("POST", "/api/v1/media/route-ready") => {
+            match parse_json::<MediaRouteReadyInput>(&request.body)
+                .and_then(|input| calls.mark_media_route_ready(input))
+            {
+                Ok(status) => json_response(200, &status),
+                Err(error) => json_response(409, &json!({"error": error})),
+            }
+        }
         ("GET", "/metrics") => text("text/plain; version=0.0.4; charset=utf-8", calls.metrics()),
         ("GET", "/openapi.json") => json_response(200, &openapi()),
         ("POST", "/api/v1/calls/group") => {
@@ -230,7 +285,9 @@ fn openapi() -> serde_json::Value {
             "/api/v1/restores/{restore_id}/cancel":{"post":{}},
             "/health/live":{"get":{}},
             "/health/ready":{"get":{}},
-            "/metrics":{"get":{}}
+            "/metrics":{"get":{}},
+            "/api/v1/media/route-ready":{"post":{"description":"Media Switch RouteReady acknowledgement"}},
+            "/ws/media":{"get":{"description":"Call/media topology event WebSocket"}}
         }
     })
 }

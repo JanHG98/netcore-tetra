@@ -849,7 +849,7 @@ impl CcBsSubentity {
         true
     }
 
-    pub(super) fn drive_queued_call_restores(&mut self, queue: &mut MessageQueue) {
+    pub(crate) fn drive_queued_call_restores(&mut self, queue: &mut MessageQueue) {
         let queued = self.call_restore.queued_transactions();
         for transaction in queued {
             let Some(context) = self.call_restore.context(transaction.key.old_call_id).cloned() else {
@@ -901,7 +901,7 @@ impl CcBsSubentity {
         }
     }
 
-    pub(super) fn send_timed_out_restore_release(
+    pub(crate) fn send_timed_out_restore_release(
         &self,
         queue: &mut MessageQueue,
         key: crate::cmce::call_restore_runtime::RestoreTransactionKey,

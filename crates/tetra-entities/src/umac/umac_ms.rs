@@ -6,7 +6,7 @@ use tetra_saps::common::{
     MeasurementReport, MeasurementValue, QualityIndication, RfChannelNumber, SelectionResult,
 };
 use tetra_saps::tlmb::TlmbSysinfoInd;
-use tetra_saps::tlmc::{TlmcConfigureReq, TlmcReportInd};
+use tetra_saps::tlmc::TlmcReportInd;
 use tetra_saps::tma::TmaUnitdataInd;
 use tetra_saps::tmv::TmvConfigureReq;
 use tetra_saps::tmv::enums::logical_chans::LogicalChannel;

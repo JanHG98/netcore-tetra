@@ -98,6 +98,18 @@ pub enum BackendRequest {
     },
 }
 
+pub const CALL_CONTROL_MEDIA_PROTOCOL_VERSION: &str = "netcore-call-control-media-v1";
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CallControlMediaEvent {
+    pub kind: String,
+    pub revision: u64,
+    pub emitted_at: String,
+    pub reason: String,
+    pub logical_call_id: Option<String>,
+    pub calls: Vec<CallControlCall>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CallControlLeg {
     pub node_id: String,

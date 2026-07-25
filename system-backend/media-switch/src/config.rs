@@ -62,6 +62,14 @@ impl MediaSwitchConfig {
         if !self.call_control.url.starts_with("http://") {
             return Err("call_control.url must use http:// in open_lab mode".to_string());
         }
+        if !self.call_control.events_url.starts_with("ws://") {
+            return Err("call_control.events_url must use ws:// in open_lab mode".to_string());
+        }
+        if !self.call_control.route_ready_url.starts_with("http://") {
+            return Err(
+                "call_control.route_ready_url must use http:// in open_lab mode".to_string(),
+            );
+        }
         if !self.security.allow_remote_management && !self.server.bind.ip().is_loopback() {
             return Err(
                 "server.bind must use a loopback address when allow_remote_management=false"
@@ -71,14 +79,29 @@ impl MediaSwitchConfig {
 
         self.server.history_limit = self.server.history_limit.max(100);
         self.node_gateway.reconnect_secs = self.node_gateway.reconnect_secs.max(1);
-        self.call_control.reconcile_secs = self.call_control.reconcile_secs.max(1);
+        self.call_control.reconcile_secs = self.call_control.reconcile_secs.max(5);
+        self.call_control.reconnect_secs = self.call_control.reconnect_secs.max(1);
         self.call_control.request_timeout_secs = self.call_control.request_timeout_secs.max(1);
         self.media.frame_duration_ms = self.media.frame_duration_ms.clamp(10, 1_000);
+        self.media.max_jitter_buffer_frames = self.media.max_jitter_buffer_frames.max(1);
+        self.media.min_jitter_buffer_frames = self
+            .media
+            .min_jitter_buffer_frames
+            .clamp(1, self.media.max_jitter_buffer_frames);
         self.media.jitter_buffer_frames = self
             .media
             .jitter_buffer_frames
-            .min(self.media.max_jitter_buffer_frames.max(1));
-        self.media.max_jitter_buffer_frames = self.media.max_jitter_buffer_frames.max(1);
+            .clamp(
+                self.media.min_jitter_buffer_frames,
+                self.media.max_jitter_buffer_frames,
+            );
+        self.media.cold_start_buffer_frames = self.media.cold_start_buffer_frames.clamp(1, 32);
+        self.media.cold_start_buffer_max_age_ms =
+            self.media.cold_start_buffer_max_age_ms.clamp(60, 5_000);
+        self.media.adaptive_jitter_up_threshold_ms =
+            self.media.adaptive_jitter_up_threshold_ms.clamp(1, 1_000);
+        self.media.adaptive_jitter_down_stable_frames =
+            self.media.adaptive_jitter_down_stable_frames.max(10);
         self.media.session_idle_secs = self.media.session_idle_secs.max(5);
         self.media.max_frames_per_tick = self.media.max_frames_per_tick.max(1);
         self.media.tap_history_frames = self.media.tap_history_frames.max(16);
@@ -127,8 +150,15 @@ impl Default for NodeGatewayConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct CallControlConfig {
+    /// HTTP snapshot endpoint used only for startup/fallback reconciliation.
     pub url: String,
+    /// Event-driven WebSocket endpoint used by the live media path.
+    pub events_url: String,
+    /// Call Control endpoint used to confirm that all media legs are routable.
+    pub route_ready_url: String,
+    /// Safety reconciliation interval while the event socket is healthy.
     pub reconcile_secs: u64,
+    pub reconnect_secs: u64,
     pub request_timeout_secs: u64,
 }
 
@@ -136,7 +166,10 @@ impl Default for CallControlConfig {
     fn default() -> Self {
         Self {
             url: "http://127.0.0.1:8120/api/v1/calls".to_string(),
-            reconcile_secs: 2,
+            events_url: "ws://127.0.0.1:8120/ws/media".to_string(),
+            route_ready_url: "http://127.0.0.1:8120/api/v1/media/route-ready".to_string(),
+            reconcile_secs: 15,
+            reconnect_secs: 1,
             request_timeout_secs: 2,
         }
     }
@@ -146,8 +179,16 @@ impl Default for CallControlConfig {
 #[serde(default)]
 pub struct MediaConfig {
     pub frame_duration_ms: u64,
+    /// Startup target. Two packed 60-ms frames keep the normal path direct.
     pub jitter_buffer_frames: usize,
+    pub min_jitter_buffer_frames: usize,
     pub max_jitter_buffer_frames: usize,
+    pub adaptive_jitter: bool,
+    pub adaptive_jitter_up_threshold_ms: u64,
+    pub adaptive_jitter_down_stable_frames: u32,
+    /// Preserve the first speech packets while the call/leg event is in flight.
+    pub cold_start_buffer_frames: usize,
+    pub cold_start_buffer_max_age_ms: u64,
     pub session_idle_secs: u64,
     pub max_frames_per_tick: usize,
     pub allow_same_leg_loopback: bool,
@@ -159,8 +200,14 @@ impl Default for MediaConfig {
     fn default() -> Self {
         Self {
             frame_duration_ms: 60,
-            jitter_buffer_frames: 3,
+            jitter_buffer_frames: 2,
+            min_jitter_buffer_frames: 1,
             max_jitter_buffer_frames: 12,
+            adaptive_jitter: true,
+            adaptive_jitter_up_threshold_ms: 18,
+            adaptive_jitter_down_stable_frames: 120,
+            cold_start_buffer_frames: 5,
+            cold_start_buffer_max_age_ms: 600,
             session_idle_secs: 30,
             max_frames_per_tick: 256,
             allow_same_leg_loopback: false,

@@ -1246,16 +1246,25 @@ Die folgenden Tabellen listen die eindeutigen Schlüssel der mitgelieferten Beis
 ### `call_control`
 | Schlüssel | Beispielwert | Bedeutung / Hinweis |
 |---|---|---|
-| `url` | `"http://10.0.1.24:8120/api/v1/calls"` | URL der Abhängigkeit. |
-| `reconcile_secs` | `2` | Dienstspezifischer Parameter; vor Änderung mit WebUI/README und Logs abgleichen. |
-| `request_timeout_secs` | `2` | Dienstspezifischer Parameter; vor Änderung mit WebUI/README und Logs abgleichen. |
+| `url` | `"http://10.0.1.24:8120/api/v1/calls"` | Startup- und Fallback-Snapshot der Rufstruktur. |
+| `events_url` | `"ws://10.0.1.24:8120/ws/media"` | Ereignisgesteuerter Call-/Leg-/Floor-Pfad zum Media Switch. |
+| `route_ready_url` | `"http://10.0.1.24:8120/api/v1/media/route-ready"` | Bestätigung des Media Switch, dass alle Ziel-Legs routbar sind. |
+| `reconcile_secs` | `15` | Nur Sicherheitsabgleich; nicht mehr Bestandteil des Sprachpfads. |
+| `reconnect_secs` | `1` | Zeit zwischen WebSocket-Wiederverbindungsversuchen. |
+| `request_timeout_secs` | `2` | Timeout für Snapshot- und RouteReady-HTTP-Aufrufe. |
 
 ### `media`
 | Schlüssel | Beispielwert | Bedeutung / Hinweis |
 |---|---|---|
 | `frame_duration_ms` | `60` | Ein gepackter TETRA-TCH/S-Sprachframe pro 60-ms-Rahmen. |
-| `jitter_buffer_frames` | `3` | Fester Startpuffer. 3 Frames entsprechen standardmäßig 180 ms. |
+| `jitter_buffer_frames` | `2` | Startwert von 120 ms für den adaptiven Jitterpuffer. |
+| `min_jitter_buffer_frames` | `1` | Untergrenze von 60 ms bei stabilem Transport. |
 | `max_jitter_buffer_frames` | `12` | Harte Obergrenze pro Zielstream. |
+| `adaptive_jitter` | `true` | Regelt den Puffer anhand der gemessenen Ankunftsschwankung. |
+| `adaptive_jitter_up_threshold_ms` | `18` | Abweichung, ab der der Zielpuffer erhöht wird. |
+| `adaptive_jitter_down_stable_frames` | `120` | Stabile Frames bis zur vorsichtigen Verringerung. |
+| `cold_start_buffer_frames` | `5` | Schützt die ersten 300 ms eines kalten Rufes bis RouteReady. |
+| `cold_start_buffer_max_age_ms` | `600` | Maximales Alter noch replay-fähiger Startframes. |
 | `session_idle_secs` | `30` | Dienstspezifischer Parameter; vor Änderung mit WebUI/README und Logs abgleichen. |
 | `max_frames_per_tick` | `256` | Dienstspezifischer Parameter; vor Änderung mit WebUI/README und Logs abgleichen. |
 | `allow_same_leg_loopback` | `false` | Dienstspezifischer Parameter; vor Änderung mit WebUI/README und Logs abgleichen. |

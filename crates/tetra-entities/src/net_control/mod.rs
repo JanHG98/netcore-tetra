@@ -17,8 +17,9 @@ use std::time::Duration;
 #[cfg(feature = "runtime")]
 pub use self::channel::{CommandDispatcher, ControlEndpoint, make_control_link};
 pub use self::commands::{
-    ControlCommand, ControlResponse, ManagedCallKind, ManagedCallRestoreContextPayload,
-    ManagedNetworkCircuitCallPayload,
+    ControlCommand, ControlResponse, GroupMembershipPolicy, GroupPolicyDefinition,
+    ManagedCallKind, ManagedCallRestoreContextPayload, ManagedNetworkCircuitCallPayload,
+    MobilityClassOfMs, MobilityClientState, MobilityContextPayload,
 };
 #[cfg(feature = "runtime")]
 pub use self::worker::ControlWorker;

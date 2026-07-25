@@ -36,3 +36,23 @@ Diese Ausbaustufe besitzt absichtlich keine Tokens, Passwörter, Benutzeranmeldu
 - kompatible TBS mit `call_control` und für Restore zusätzlich `call_restore_context`
 - Teilnehmer- und Gruppenlage aus TBS-Telemetrie
 - später Media Switch für den eigentlichen netzweiten Sprachtransport
+
+## Echtzeit-Medienereignisse
+
+Der Media Switch pollt den Callgraphen nicht mehr im Zwei-Sekunden-Takt. Call Control
+stellt auf demselben Port den WebSocket `ws://<LXC-IP>:8120/ws/media` mit dem
+Subprotokoll `netcore-call-control-media-v1` bereit. Bei relevanten Zustandswechseln wird
+sofort ein revisionsbehafteter Snapshot ausgesendet. Die Ereignisarten entsprechen dem
+Medienlebenszyklus: `call_created`, `leg_ready`, `floor_changed`, `call_updated` und
+`call_released`.
+
+Jedes Ereignis enthält bewusst den vollständigen kompakten Snapshot aller nicht-terminalen
+Calls und Legs. Dadurch bleibt der Media Switch auch nach Verbindungsunterbrechung,
+Reconnect oder Prozessneustart ohne eine komplizierte Delta-Replay-Logik konsistent.
+
+Operator-Floor-Anforderungen werden erst angenommen, wenn alle nicht-terminalen Legs
+eine aktive lokale Call-ID und einen Timeslot besitzen **und** der Media Switch den
+Routinggraphen über `POST /api/v1/media/route-ready` für die aktuelle Ereignisrevision
+bestätigt hat. Ein älteres oder für eine andere Topologie gesendetes ACK wird abgewiesen.
+Bei funkausgelösten Rufen schützt der Kaltstart-Vorpuffer des Media Switch zusätzlich die
+ersten Sprachframes, während die restlichen Ziel-Legs aufgebaut werden.

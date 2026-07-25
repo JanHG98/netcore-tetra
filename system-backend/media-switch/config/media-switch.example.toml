@@ -10,17 +10,27 @@ url = "ws://10.0.1.20:8080/ws/backend"
 reconnect_secs = 2
 
 [call_control]
+# HTTP ist nur Startup-/Fallback-Snapshot. Der Sprachpfad folgt dem WebSocket.
 url = "http://10.0.1.24:8120/api/v1/calls"
-reconcile_secs = 2
+events_url = "ws://10.0.1.24:8120/ws/media"
+route_ready_url = "http://10.0.1.24:8120/api/v1/media/route-ready"
+reconcile_secs = 15
+reconnect_secs = 1
 request_timeout_secs = 2
 
 [media]
 # Ein gepackter TETRA-TCH/S-Sprachframe pro 60-ms-Rahmen.
 frame_duration_ms = 60
-# Fester Startpuffer. 3 Frames entsprechen standardmäßig 180 ms.
-jitter_buffer_frames = 3
-# Harte Obergrenze pro Zielstream.
+# Normaler Startwert: 2 Frames = 120 ms. Adaptiv ist 1..12 möglich.
+jitter_buffer_frames = 2
+min_jitter_buffer_frames = 1
 max_jitter_buffer_frames = 12
+adaptive_jitter = true
+adaptive_jitter_up_threshold_ms = 18
+adaptive_jitter_down_stable_frames = 120
+# Ersten Satz halten, bis CallCreated/LegReady den Routinggraphen komplettieren.
+cold_start_buffer_frames = 5
+cold_start_buffer_max_age_ms = 600
 session_idle_secs = 30
 max_frames_per_tick = 256
 allow_same_leg_loopback = false

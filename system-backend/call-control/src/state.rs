@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 use std::fs;
 use std::io::Write;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, mpsc};
 use std::time::{Duration, Instant};
 
 use chrono::Utc;
@@ -208,6 +208,22 @@ pub struct EventRecord {
     pub detail: Value,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct MediaControlEvent {
+    pub kind: String,
+    pub revision: u64,
+    pub emitted_at: String,
+    pub reason: String,
+    pub logical_call_id: Option<String>,
+    pub calls: Vec<LogicalCall>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct MediaRouteReadyInput {
+    pub logical_call_id: String,
+    pub revision: u64,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct GroupCallInput {
     pub gssi: u32,
@@ -302,6 +318,10 @@ struct CallState {
     next_event_seq: u64,
     next_handle: u32,
     database_revision: u64,
+    media_revision: u64,
+    media_required_revision: HashMap<String, u64>,
+    media_ready_revision: HashMap<String, u64>,
+    media_subscribers: Vec<mpsc::Sender<MediaControlEvent>>,
 }
 
 #[derive(Clone)]
@@ -338,6 +358,12 @@ impl SharedCalls {
             restores.insert(operation.restore_id.clone(), operation);
         }
 
+        let media_required_revision = calls
+            .values()
+            .filter(|call| !call.phase.is_terminal())
+            .map(|call| (call.logical_call_id.clone(), database.revision))
+            .collect();
+
         Ok(Self(Arc::new(Mutex::new(CallState {
             config,
             started_at: now,
@@ -352,7 +378,96 @@ impl SharedCalls {
             next_event_seq: 1,
             next_handle: 1,
             database_revision: database.revision,
+            media_revision: database.revision,
+            media_required_revision,
+            media_ready_revision: HashMap::new(),
+            media_subscribers: Vec::new(),
         }))))
+    }
+
+    pub fn subscribe_media(&self) -> mpsc::Receiver<MediaControlEvent> {
+        let (tx, rx) = mpsc::channel();
+        let mut state = self.0.lock().expect("call state poisoned");
+        state.media_revision = state.media_revision.saturating_add(1);
+        let revision = state.media_revision;
+        let active_calls = state
+            .calls
+            .values()
+            .filter(|call| !call.phase.is_terminal())
+            .map(|call| call.logical_call_id.clone())
+            .collect::<Vec<_>>();
+        for logical_call_id in active_calls {
+            state
+                .media_required_revision
+                .insert(logical_call_id.clone(), revision);
+            state.media_ready_revision.remove(&logical_call_id);
+        }
+        let snapshot = state.media_event("snapshot", "initial_snapshot", None);
+        state
+            .media_subscribers
+            .retain(|subscriber| subscriber.send(snapshot.clone()).is_ok());
+        let _ = tx.send(snapshot);
+        state.media_subscribers.push(tx);
+        rx
+    }
+
+    pub fn mark_media_route_ready(
+        &self,
+        input: MediaRouteReadyInput,
+    ) -> Result<Value, String> {
+        let mut state = self.0.lock().expect("call state poisoned");
+        let call = state
+            .calls
+            .get(&input.logical_call_id)
+            .cloned()
+            .ok_or_else(|| "logical call not found".to_string())?;
+        if call.phase.is_terminal() {
+            return Err("logical call is terminal".to_string());
+        }
+        if input.revision > state.media_revision {
+            return Err("media route acknowledgement is from a future revision".to_string());
+        }
+        let required_revision = state
+            .media_required_revision
+            .get(&input.logical_call_id)
+            .copied()
+            .unwrap_or(state.media_revision);
+        if input.revision < required_revision {
+            return Err(format!(
+                "stale media route acknowledgement: revision {} is older than required revision {}",
+                input.revision, required_revision
+            ));
+        }
+        let nonterminal_legs = call
+            .legs
+            .values()
+            .filter(|leg| !leg.phase.is_terminal())
+            .collect::<Vec<_>>();
+        let legs_ready = !nonterminal_legs.is_empty()
+            && nonterminal_legs.iter().all(|leg| {
+                leg.phase == LegPhase::Active
+                    && leg.local_call_id.is_some()
+                    && leg.timeslot.is_some()
+            });
+        if !legs_ready {
+            return Err("media route is not ready for every non-terminal call leg".to_string());
+        }
+
+        state
+            .media_ready_revision
+            .insert(input.logical_call_id.clone(), input.revision);
+        state.push_event(
+            "media_route_ready",
+            None,
+            Some(input.logical_call_id.clone()),
+            None,
+            json!({"revision": input.revision}),
+        );
+        Ok(json!({
+            "logical_call_id": input.logical_call_id,
+            "revision": input.revision,
+            "route_ready": true
+        }))
     }
 
     pub fn status(&self) -> CallControlStatus {
@@ -734,6 +849,39 @@ impl SharedCalls {
         if call.phase.is_terminal() {
             return Err("logical call is terminal".to_string());
         }
+        let nonterminal_legs = call
+            .legs
+            .values()
+            .filter(|leg| !leg.phase.is_terminal())
+            .collect::<Vec<_>>();
+        let media_route_ready = !nonterminal_legs.is_empty()
+            && nonterminal_legs.iter().all(|leg| {
+                leg.phase == LegPhase::Active
+                    && leg.local_call_id.is_some()
+                    && leg.timeslot.is_some()
+            });
+        if !media_route_ready {
+            return Err(
+                "floor is held until all non-terminal call legs are media-ready".to_string(),
+            );
+        }
+        let required_revision = state
+            .media_required_revision
+            .get(logical_call_id)
+            .copied()
+            .unwrap_or(state.media_revision);
+        let ready_revision = state
+            .media_ready_revision
+            .get(logical_call_id)
+            .copied()
+            .unwrap_or(0);
+        if ready_revision < required_revision {
+            return Err(format!(
+                "floor is held until Media Switch confirms RouteReady for revision {}",
+                required_revision
+            ));
+        }
+
         let mut requests = Vec::new();
         for leg in call.legs.values().filter(|leg| leg.phase == LegPhase::Active) {
             let Some(call_id) = leg.local_call_id else {
@@ -2212,7 +2360,7 @@ impl CallState {
             timestamp: now(),
             kind: kind.to_string(),
             node_id,
-            logical_call_id,
+            logical_call_id: logical_call_id.clone(),
             local_call_id,
             detail,
         };
@@ -2221,6 +2369,60 @@ impl CallState {
         while self.events.len() > self.config.server.history_limit {
             self.events.pop_front();
         }
+
+        if let Some(media_kind) = media_event_kind(kind) {
+            self.publish_media(media_kind, kind, logical_call_id);
+        }
+    }
+
+    fn media_event(
+        &self,
+        kind: &str,
+        reason: &str,
+        logical_call_id: Option<String>,
+    ) -> MediaControlEvent {
+        MediaControlEvent {
+            kind: kind.to_string(),
+            revision: self.media_revision,
+            emitted_at: now(),
+            reason: reason.to_string(),
+            logical_call_id,
+            calls: self
+                .calls
+                .values()
+                .filter(|call| !call.phase.is_terminal())
+                .cloned()
+                .collect(),
+        }
+    }
+
+    fn publish_media(
+        &mut self,
+        kind: &str,
+        reason: &str,
+        logical_call_id: Option<String>,
+    ) {
+        self.media_revision = self.media_revision.saturating_add(1);
+        if let Some(logical_call_id) = logical_call_id.as_ref() {
+            let terminal = self
+                .calls
+                .get(logical_call_id)
+                .is_none_or(|call| call.phase.is_terminal());
+            if terminal {
+                self.media_required_revision.remove(logical_call_id);
+                self.media_ready_revision.remove(logical_call_id);
+            } else if matches!(
+                kind,
+                "call_created" | "leg_ready" | "call_updated" | "call_released"
+            ) {
+                self.media_required_revision
+                    .insert(logical_call_id.clone(), self.media_revision);
+                self.media_ready_revision.remove(logical_call_id);
+            }
+        }
+        let event = self.media_event(kind, reason, logical_call_id);
+        self.media_subscribers
+            .retain(|subscriber| subscriber.send(event.clone()).is_ok());
     }
 
     fn bump_and_persist(&mut self) {
@@ -2265,6 +2467,26 @@ impl CallState {
         fs::rename(&temporary, &self.config.storage.database_path)
             .map_err(|error| format!("replace database failed: {error}"))?;
         Ok(())
+    }
+}
+
+fn media_event_kind(reason: &str) -> Option<&'static str> {
+    match reason {
+        "group_call_requested" | "individual_call_requested" => Some("call_created"),
+        "group_call_started" | "individual_call_started" | "call_leg_started" => {
+            Some("leg_ready")
+        }
+        "call_release_requested" | "call_leg_release_response" | "call_leg_ended" => {
+            Some("call_released")
+        }
+        "floor_requested" | "floor_release_requested" | "floor_response"
+        | "floor_changed" => Some("floor_changed"),
+        "restore_requested" | "restore_cancelled" | "restore_timed_out"
+        | "restore_context_exported" | "restore_context_cleanup"
+        | "restore_completed" | "restore_cleanup_not_queued"
+        | "restore_context_cleanup_failed" | "restore_failed" => Some("call_updated"),
+        "call_command_failed" | "call_leg_failed" | "node_error" => Some("call_updated"),
+        _ => None,
     }
 }
 

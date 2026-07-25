@@ -7,9 +7,10 @@ Der Media Switch ist der zentrale, eigenständig deploybare LXC-Dienst für den 
 - eigener HTTP-Dienst und eigene WebUI auf Port `8130`
 - offener Labormodus ohne Login, Tokens, Passwörter oder TLS
 - WebSocket-Anbindung an den Node Gateway
-- periodischer Abgleich der aktiven logischen Calls und TBS-Legs mit Call Control
+- ereignisgesteuerter Call-/Leg-/Floor-Abgleich per Call-Control-WebSocket; HTTP nur als Fallback
 - Routing gepackter 35-Byte-TETRA-ACELP-Frames
-- feste, begrenzte Jitter-Puffer je Zielstream
+- adaptiver 1–12-Frame-Jitterpuffer mit 2 Frames Startwert
+- fünf Frames Kaltstart-Vorpuffer gegen verlorene erste Worte
 - Duplikat-, Unbekannt-Stream- und Überlastschutz
 - Stream-Mute, Session-Flush und Testframe-Injection
 - payloadfreier Diagnose-Tap und replay-fähiger Vollframe-Tap für den Recorder
@@ -28,7 +29,7 @@ TBS A / UMAC
   -> TBS B / UMAC / lokaler DL-Circuit
 ```
 
-Call Control bleibt Eigentümer der logischen Calls. Der Media Switch liest dessen aktive Legs und erzeugt daraus ausschließlich den Media-Routinggraphen.
+Call Control bleibt Eigentümer der logischen Calls. Änderungen werden über `ws://<call-control>:8120/ws/media` sofort als `call_created`, `leg_ready`, `floor_changed`, `call_updated` oder `call_released` übertragen. Der Media Switch erzeugt daraus ausschließlich den Media-Routinggraphen und bestätigt vollständig aktive Routen revisionsgebunden über `POST /api/v1/media/route-ready`. Erst danach darf Call Control einen angeforderten Floor freigeben. Der HTTP-Abgleich läuft nur noch als langsames Sicherheitsnetz und wiederholt bei Bedarf ein fehlgeschlagenes RouteReady-ACK.
 
 ## WebUI zur Verwaltung
 
