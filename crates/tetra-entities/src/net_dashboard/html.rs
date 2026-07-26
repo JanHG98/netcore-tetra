@@ -1685,12 +1685,24 @@ tbody tr:hover td{background:color-mix(in srgb,var(--bg3) 70%, transparent);}
   margin-bottom:14px;
 }
 .core-service-grid{
-  display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;
 }
 .core-service-card{
-  position:relative;min-width:0;padding:14px 15px;
+  position:relative;min-width:0;padding:11px 12px;
   background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-card);
   box-shadow:var(--hair);overflow:hidden;
+  transition:border-color .16s ease,box-shadow .16s ease,background .16s ease;
+}
+.core-service-card.is-critical{border-top-width:2px;}
+.core-service-card.is-fallback-active{
+  background:color-mix(in srgb,var(--warn) 6%,var(--bg2));
+  border-color:color-mix(in srgb,var(--warn) 38%,var(--border));
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--warn) 10%,transparent),var(--hair);
+}
+.core-service-card.is-danger.is-fallback-active{
+  background:color-mix(in srgb,var(--danger) 7%,var(--bg2));
+  border-color:color-mix(in srgb,var(--danger) 48%,var(--border));
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--danger) 12%,transparent),var(--hair);
 }
 .core-service-card::before{
   content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--text3);
@@ -1699,19 +1711,29 @@ tbody tr:hover td{background:color-mix(in srgb,var(--bg3) 70%, transparent);}
 .core-service-card.is-warn::before{background:var(--warn);}
 .core-service-card.is-danger::before{background:var(--danger);}
 .core-service-card.is-info::before{background:var(--accent2);}
-.core-service-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
-.core-service-name{font-size:14px;font-weight:650;color:var(--text);line-height:1.25;}
-.core-service-tech{font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:3px;}
-.core-service-role{font-size:12px;line-height:1.45;color:var(--text2);margin-top:10px;min-height:34px;}
+.core-service-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+.core-service-pills{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px;}
+.core-service-fallback-pill{font-size:8px;padding:2px 5px;letter-spacing:.04em;}
+.core-service-name{font-size:13px;font-weight:650;color:var(--text);line-height:1.2;}
+.core-service-tech{font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:2px;}
+.core-service-role{font-size:11px;line-height:1.35;color:var(--text2);margin-top:8px;min-height:30px;}
 .core-service-fallback{
-  margin-top:10px;padding-top:9px;border-top:1px solid var(--sep);
-  font-size:11px;line-height:1.4;color:var(--text2);
+  margin-top:8px;padding:7px 8px;border-top:1px solid var(--sep);border-radius:6px;
+  font-size:10px;line-height:1.35;color:var(--text2);
+}
+.core-service-card.is-fallback-active .core-service-fallback{
+  background:color-mix(in srgb,var(--warn) 9%,transparent);
+  border-top-color:color-mix(in srgb,var(--warn) 28%,var(--sep));
+}
+.core-service-card.is-danger.is-fallback-active .core-service-fallback{
+  background:color-mix(in srgb,var(--danger) 9%,transparent);
+  border-top-color:color-mix(in srgb,var(--danger) 30%,var(--sep));
 }
 .core-service-fallback strong{color:var(--text);font-weight:600;}
 .core-service-card.is-warn .core-service-fallback strong,
 .core-service-card.is-danger .core-service-fallback strong{color:var(--warn);}
-.core-service-meta{display:flex;flex-wrap:wrap;gap:6px 10px;margin-top:8px;font-size:10px;color:var(--text3);}
-.core-service-critical{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.04em;color:var(--warn);}
+.core-service-meta{display:flex;flex-wrap:wrap;gap:5px 8px;margin-top:7px;font-size:9px;color:var(--text3);}
+.core-service-critical{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.04em;color:var(--warn);}
 .core-plane-note{
   display:flex;align-items:flex-start;gap:9px;padding:10px 12px;margin-bottom:14px;
   border:1px solid var(--border);border-radius:var(--r-ctrl);background:var(--bg3);
@@ -1721,6 +1743,8 @@ tbody tr:hover td{background:color-mix(in srgb,var(--bg3) 70%, transparent);}
 .core-plane-note.is-warn{border-color:color-mix(in srgb,var(--warn) 40%,var(--border));}
 .core-plane-note.is-danger{border-color:color-mix(in srgb,var(--danger) 42%,var(--border));}
 .core-plane-note .banner-ico{margin-top:1px;}
+@media(max-width:1500px){.core-service-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
+@media(max-width:1050px){.core-service-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:700px){
   .core-service-grid{grid-template-columns:1fr;}
   .core-service-role{min-height:0;}
@@ -8905,6 +8929,9 @@ const CORE_FALLBACK_TEXT={
   local_logs_and_health_continue:'Lokale Logs und Zustandsüberwachung laufen weiter.',
   local_dashboard_and_audit:'Lokales Dashboard und lokaler Audit-Pfad bleiben erreichbar.',
 };
+const CORE_CRITICAL_SERVICES=new Set([
+  'node-gateway','mobility-core','subscriber-core','group-core','call-control','media-switch','sds-router'
+]);
 const CORE_DEFAULT_FALLBACK=Object.fromEntries([
   ['node-gateway','local_edge_autonomy'],['subscriber-core','cached_policy_then_static_config'],
   ['group-core','cached_policy_then_local_affiliations'],['mobility-core','local_registration_and_location_area'],
@@ -8979,8 +9006,9 @@ function renderCoreServiceGrid(gridId,services,d){
     const fallback=CORE_FALLBACK_TEXT[x.fallback_mode]||String(x.fallback_mode||'Kein lokaler Ersatzmodus dokumentiert.').replaceAll('_',' ');
     const fallbackActiveForService=x.level!=='available'&&d.enabled!==false;
     const statusMessage=coreMessageText(x.message);
-    return `<div class="core-service-card ${lm.card}">
-      <div class="core-service-top"><div><div class="core-service-name">${escHtml(x.name)}</div><div class="core-service-tech">${escHtml(x.service)}</div></div><span class="pill ${lm.pill}">${lm.label}</span></div>
+    const cardClasses=[lm.card,x.critical_for_edge?'is-critical':'',fallbackActiveForService?'is-fallback-active':''].filter(Boolean).join(' ');
+    return `<div class="core-service-card ${cardClasses}">
+      <div class="core-service-top"><div><div class="core-service-name">${escHtml(x.name)}</div><div class="core-service-tech">${escHtml(x.service)}</div></div><div class="core-service-pills"><span class="pill ${lm.pill}">${lm.label}</span>${fallbackActiveForService?'<span class="pill pill-warn core-service-fallback-pill">FALLBACK</span>':''}</div></div>
       <div class="core-service-role">${escHtml(x.role)}</div>
       <div class="core-service-fallback"><strong>${fallbackActiveForService?'Lokaler Ersatz aktiv/bereit':'Bei Ausfall'}:</strong> ${escHtml(fallback)}</div>
       <div class="core-service-meta">${x.critical_for_edge?'<span class="core-service-critical">NETZKRITISCH</span>':''}<span>Prüfung: ${escHtml(coreTimestamp(x.checked_at))}</span>${statusMessage?'<span>'+escHtml(statusMessage)+'</span>':''}</div>
@@ -9006,14 +9034,19 @@ function renderEdgeFallback(){
 
   const reported=new Map((Array.isArray(d.services)?d.services:[]).map(x=>[String(x.service||''),x]));
   const matrixAuthoritative=d.gateway_connected===true&&d.service_matrix_fresh===true;
-  const services=CORE_SERVICE_CATALOG.map(([service,name,role])=>{
+  const services=CORE_SERVICE_CATALOG.map(([service,name,role],catalogOrder)=>{
     const runtime=reported.get(service)||{};
     const reportedLevel=String(runtime.level||'unknown').toLowerCase();
     const effectiveLevel=(service==='node-gateway'||matrixAuthoritative)?reportedLevel:'unknown';
-    return {service,name,role,level:effectiveLevel,critical_for_edge:!!runtime.critical_for_edge,
+    const hasCriticalFlag=Object.prototype.hasOwnProperty.call(runtime,'critical_for_edge');
+    const criticalForEdge=hasCriticalFlag?runtime.critical_for_edge===true:CORE_CRITICAL_SERVICES.has(service);
+    return {service,name,role,level:effectiveLevel,critical_for_edge:criticalForEdge,catalog_order:catalogOrder,
       fallback_mode:runtime.fallback_mode||CORE_DEFAULT_FALLBACK[service]||'',checked_at:runtime.checked_at||null,
       last_success_at:runtime.last_success_at||null,message:runtime.message||''};
   });
+  const levelOrder={unavailable:0,degraded:1,unknown:2,available:3};
+  services.sort((a,b)=>(Number(b.critical_for_edge)-Number(a.critical_for_edge))||
+    ((levelOrder[a.level]??9)-(levelOrder[b.level]??9))||(a.catalog_order-b.catalog_order));
   const counts={available:0,degraded:0,unavailable:0,unknown:0};
   services.forEach(x=>{counts[x.level]=(counts[x.level]||0)+1;});
   const centralOk=counts.available;
