@@ -15,7 +15,8 @@ if [[ ! -e "${CONFIG}" ]]; then
   install -o root -g netcore-app-gateway -m 0640 "${ROOT}/system-backend/application-gateway/config/application-gateway.example.toml" "${CONFIG}"
 fi
 install -o root -g root -m 0644 "${ROOT}/system-backend/application-gateway/systemd/netcore-application-gateway.service" "${SERVICE}"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../shared/install" && pwd)/lxc-network.sh"
+netcore_configure_lxc_endpoint "${CONFIG}" "application-gateway" "8220"
 systemctl daemon-reload
 systemctl enable --now netcore-application-gateway.service
-echo "NetCore Application Gateway installed. WebUI: http://<lxc>:8220"
 echo "OPEN LAB: no login, no management tokens and no TLS. Isolated management network only."

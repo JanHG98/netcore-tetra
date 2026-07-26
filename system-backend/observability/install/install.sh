@@ -14,7 +14,8 @@ install -o root -g root -m 0644 "${ROOT}/system-backend/observability/README.md"
 cp -a "${ROOT}/system-backend/observability/stack/." "${PREFIX}/stack/"
 if [[ ! -e "${CONFIG}" ]]; then install -o root -g netcore-observability -m 0640 "${ROOT}/system-backend/observability/config/observability.example.toml" "${CONFIG}"; fi
 install -o root -g root -m 0644 "${ROOT}/system-backend/observability/systemd/netcore-observability.service" "${SERVICE}"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../shared/install" && pwd)/lxc-network.sh"
+netcore_configure_lxc_endpoint "${CONFIG}" "observability" "8210"
 systemctl daemon-reload
 systemctl enable --now netcore-observability.service
-echo "NetCore Observability installed. WebUI: http://<lxc>:8210"
 echo "OPEN LAB: no login, no tokens and no TLS. Isolated management network only."

@@ -23,9 +23,10 @@ if [[ ! -f /etc/netcore/mobility-core.toml ]]; then
   install -m 0644 system-backend/mobility-core/config/mobility-core.example.toml /etc/netcore/mobility-core.toml
 fi
 install -m 0644 system-backend/mobility-core/systemd/netcore-mobility-core.service /etc/systemd/system/netcore-mobility-core.service
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../shared/install" && pwd)/lxc-network.sh"
+netcore_configure_lxc_endpoint "/etc/netcore/mobility-core.toml" "mobility-core" "8090"
 systemctl daemon-reload
 systemctl enable --now netcore-mobility-core.service
 systemctl --no-pager --full status netcore-mobility-core.service
 
-echo "WebUI: http://<LXC-IP>:8090/"
 echo "WARNUNG: offener Testmodus ohne Authentifizierung, Tokens oder TLS."

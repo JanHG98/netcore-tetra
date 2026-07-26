@@ -23,9 +23,10 @@ if [[ ! -f /etc/netcore/node-gateway.toml ]]; then
   install -m 0644 system-backend/node-gateway/config/node-gateway.example.toml /etc/netcore/node-gateway.toml
 fi
 install -m 0644 system-backend/node-gateway/systemd/netcore-node-gateway.service /etc/systemd/system/netcore-node-gateway.service
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../shared/install" && pwd)/lxc-network.sh"
+netcore_configure_lxc_endpoint "/etc/netcore/node-gateway.toml" "node-gateway" "8080"
 systemctl daemon-reload
 systemctl enable --now netcore-node-gateway.service
 systemctl --no-pager --full status netcore-node-gateway.service
 
-echo "WebUI: http://<LXC-IP>:8080/"
 echo "WARNUNG: offener Testmodus ohne Authentifizierung oder Tokens."

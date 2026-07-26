@@ -29,6 +29,8 @@ cargo clean
 cargo build --release -p netcore-recorder
 install -m 0755 target/release/netcore-recorder /usr/local/bin/netcore-recorder
 install -m 0644 "$UNIT_SRC" /etc/systemd/system/netcore-recorder.service
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../shared/install" && pwd)/lxc-network.sh"
+netcore_configure_lxc_endpoint "/etc/netcore/recorder.toml" "recorder" "8140"
 systemctl daemon-reload
 systemctl enable --now netcore-recorder.service
 systemctl --no-pager --full status netcore-recorder.service

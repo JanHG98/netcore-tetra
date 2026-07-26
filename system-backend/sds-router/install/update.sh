@@ -7,6 +7,8 @@ cd "$REPO_ROOT"
 cargo build --release -p netcore-sds-router
 install -m 0755 target/release/netcore-sds-router /usr/local/bin/netcore-sds-router
 install -m 0644 system-backend/sds-router/systemd/netcore-sds-router.service /etc/systemd/system/netcore-sds-router.service
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../shared/install" && pwd)/lxc-network.sh"
+netcore_configure_lxc_endpoint "/etc/netcore/sds-router.toml" "sds-router" "8150"
 systemctl daemon-reload
 systemctl restart netcore-sds-router.service
 systemctl --no-pager --full status netcore-sds-router.service

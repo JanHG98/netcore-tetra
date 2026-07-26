@@ -34,6 +34,8 @@ cd "$REPO_ROOT"
 cargo build --release -p netcore-ip-gateway
 install -m 0755 target/release/netcore-ip-gateway /usr/local/bin/netcore-ip-gateway
 install -m 0644 "$UNIT_SRC" /etc/systemd/system/netcore-ip-gateway.service
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../shared/install" && pwd)/lxc-network.sh"
+netcore_configure_lxc_endpoint "/etc/netcore/ip-gateway.toml" "ip-gateway" "8170"
 systemctl daemon-reload
 systemctl enable --now netcore-ip-gateway.service
 systemctl --no-pager --full status netcore-ip-gateway.service

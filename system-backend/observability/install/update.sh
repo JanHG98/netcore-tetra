@@ -6,4 +6,6 @@ PREFIX="${PREFIX:-/opt/netcore-observability}"
 cargo build --locked --release --package netcore-observability --manifest-path "${ROOT}/Cargo.toml"
 install -o root -g root -m 0755 "${ROOT}/target/release/netcore-observability" "${PREFIX}/bin/netcore-observability"
 cp -a "${ROOT}/system-backend/observability/stack/." "${PREFIX}/stack/"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../shared/install" && pwd)/lxc-network.sh"
+netcore_configure_lxc_endpoint "/etc/netcore/observability.toml" "observability" "8210"
 systemctl restart netcore-observability.service

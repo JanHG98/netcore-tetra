@@ -13,5 +13,7 @@ cargo build --locked --release --package netcore-transit --manifest-path "${ROOT
 install -o root -g root -m 0755 "${ROOT}/target/release/netcore-transit" "${PREFIX}/bin/netcore-transit"
 install -o root -g root -m 0644 "${ROOT}/system-backend/transit/README.md" "${PREFIX}/README.md"
 install -o root -g root -m 0644 "${ROOT}/system-backend/transit/systemd/netcore-transit.service" /etc/systemd/system/netcore-transit.service
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../shared/install" && pwd)/lxc-network.sh"
+netcore_configure_lxc_endpoint "/etc/netcore/transit.toml" "transit" "8200"
 systemctl daemon-reload
 systemctl restart netcore-transit.service

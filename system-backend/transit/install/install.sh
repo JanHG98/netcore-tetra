@@ -23,8 +23,9 @@ if [[ ! -e "${CONFIG}" ]]; then
   install -o root -g netcore-transit -m 0640 "${ROOT}/system-backend/transit/config/transit.example.toml" "${CONFIG}"
 fi
 install -o root -g root -m 0644 "${ROOT}/system-backend/transit/systemd/netcore-transit.service" "${SERVICE}"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../shared/install" && pwd)/lxc-network.sh"
+netcore_configure_lxc_endpoint "${CONFIG}" "transit" "8200"
 systemctl daemon-reload
 systemctl enable --now netcore-transit.service
 
-echo "NetCore Transit installed. WebUI: http://<lxc>:8200"
 echo "OPEN LAB: place this LXC only on an isolated test-management network."

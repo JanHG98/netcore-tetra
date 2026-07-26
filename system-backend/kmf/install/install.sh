@@ -20,6 +20,8 @@ if [[ ! -e /etc/netcore/kmf.toml ]]; then
   install -m 0640 -o root -g netcore-kmf "$PACKAGE/config/kmf.example.toml" /etc/netcore/kmf.toml
 fi
 install -m 0644 "$PACKAGE/systemd/netcore-kmf.service" /etc/systemd/system/netcore-kmf.service
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../shared/install" && pwd)/lxc-network.sh"
+netcore_configure_lxc_endpoint "/etc/netcore/kmf.toml" "kmf" "8190"
 systemctl daemon-reload
 systemctl enable --now netcore-kmf.service
 

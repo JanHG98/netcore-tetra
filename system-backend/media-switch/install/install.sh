@@ -27,6 +27,8 @@ cargo clean
 cargo build --release -p netcore-media-switch
 install -m 0755 target/release/netcore-media-switch /usr/local/bin/netcore-media-switch
 install -m 0644 "$UNIT_SRC" /etc/systemd/system/netcore-media-switch.service
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../shared/install" && pwd)/lxc-network.sh"
+netcore_configure_lxc_endpoint "/etc/netcore/media-switch.toml" "media-switch" "8130"
 systemctl daemon-reload
 systemctl enable --now netcore-media-switch.service
 systemctl --no-pager --full status netcore-media-switch.service

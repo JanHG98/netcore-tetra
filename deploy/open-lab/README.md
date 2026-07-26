@@ -26,6 +26,8 @@ python3 deploy/open-lab/netcore-deploy.py --inventory deploy/open-lab/inventory.
 
 The deployer creates a deterministic source archive without PDFs, `.git`, `target`, caches or Node modules. Each LXC builds its own binary through the service's existing installer, receives its rendered config and is restarted in dependency order.
 
+When services are installed manually, every installer detects the IPv4 address currently assigned to its LXC (including DHCP static leases), binds the WebUI to that address and prints the resulting URL. `NETCORE_LXC_IP` can override the automatic choice on multi-homed containers. Cross-LXC dependency addresses still come from this inventory or from local DNS; one container cannot infer every other lease by itself.
+
 ## Requirements
 
 - Debian 13 or compatible LXC with systemd,

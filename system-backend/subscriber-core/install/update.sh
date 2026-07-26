@@ -14,8 +14,9 @@ install -d -m 0755 /etc/netcore
 install -m 0755 target/release/netcore-subscriber-core /usr/local/bin/netcore-subscriber-core
 if [[ ! -f /etc/netcore/subscriber-core.toml ]]; then install -m 0644 system-backend/subscriber-core/config/subscriber-core.example.toml /etc/netcore/subscriber-core.toml; fi
 install -m 0644 system-backend/subscriber-core/systemd/netcore-subscriber-core.service /etc/systemd/system/netcore-subscriber-core.service
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../shared/install" && pwd)/lxc-network.sh"
+netcore_configure_lxc_endpoint "/etc/netcore/subscriber-core.toml" "subscriber-core" "8100"
 systemctl daemon-reload
 systemctl enable --now netcore-subscriber-core.service
 systemctl --no-pager --full status netcore-subscriber-core.service
-echo "WebUI: http://<LXC-IP>:8100/"
 echo "WARNUNG: offener Testmodus ohne Authentifizierung, Tokens oder TLS."

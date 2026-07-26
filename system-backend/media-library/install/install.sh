@@ -15,8 +15,9 @@ if [[ ! -e "${CONFIG}" ]]; then
   install -o root -g netcore-media-library -m 0640 "${ROOT}/system-backend/media-library/config/media-library.example.toml" "${CONFIG}"
 fi
 install -o root -g root -m 0644 "${ROOT}/system-backend/media-library/systemd/netcore-media-library.service" "${SERVICE}"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../shared/install" && pwd)/lxc-network.sh"
+netcore_configure_lxc_endpoint "${CONFIG}" "media-library" "8230"
 systemctl daemon-reload
 systemctl enable --now netcore-media-library.service
 command -v ffmpeg >/dev/null || echo "WARNING: ffmpeg is missing; non-canonical WAV and MP3 preview processing will fail." >&2
-echo "NetCore Media Library installed. WebUI: http://<lxc>:8230"
 echo "OPEN LAB: no login, no tokens and no TLS. Isolated management network only."

@@ -16,6 +16,8 @@ cargo clean -p netcore-node-gateway
 cargo build --release -p netcore-node-gateway
 install -m 0755 target/release/netcore-node-gateway /usr/local/bin/netcore-node-gateway
 install -m 0644 system-backend/node-gateway/systemd/netcore-node-gateway.service /etc/systemd/system/netcore-node-gateway.service
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../shared/install" && pwd)/lxc-network.sh"
+netcore_configure_lxc_endpoint "/etc/netcore/node-gateway.toml" "node-gateway" "8080"
 systemctl daemon-reload
 systemctl start netcore-node-gateway.service
 systemctl --no-pager --full status netcore-node-gateway.service

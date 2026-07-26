@@ -10,6 +10,8 @@ cargo build --release --package netcore-kmf
 systemctl stop netcore-kmf.service
 install -m 0755 "$ROOT/target/release/netcore-kmf" /usr/local/bin/netcore-kmf
 install -m 0644 "$ROOT/system-backend/kmf/systemd/netcore-kmf.service" /etc/systemd/system/netcore-kmf.service
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../shared/install" && pwd)/lxc-network.sh"
+netcore_configure_lxc_endpoint "/etc/netcore/kmf.toml" "kmf" "8190"
 systemctl daemon-reload
 systemctl start netcore-kmf.service
 systemctl --no-pager --full status netcore-kmf.service

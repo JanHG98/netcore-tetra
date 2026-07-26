@@ -12,5 +12,7 @@ install -m 0644 "$ROOT/system-backend/control-room/systemd/netcore-control-room.
 if [[ ! -f /etc/netcore-control-room/control-room.toml ]]; then
   install -m 0640 "$ROOT/system-backend/control-room/config/control-room.example.toml" /etc/netcore-control-room/control-room.toml
 fi
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../shared/install" && pwd)/lxc-network.sh"
+netcore_configure_lxc_endpoint "/etc/netcore-control-room/control-room.toml" "control-room" "9010"
 systemctl daemon-reload
 systemctl enable --now netcore-control-room.service
