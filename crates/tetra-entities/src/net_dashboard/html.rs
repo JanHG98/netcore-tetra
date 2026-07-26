@@ -1570,6 +1570,7 @@ tbody tr:hover td{background:color-mix(in srgb,var(--bg3) 70%, transparent);}
 .hero-dot.is-ok{--pc:var(--ok);}
 .hero-dot.is-warn{--pc:var(--warn);}
 .hero-dot.is-danger{--pc:var(--danger);}
+.hero-dot.is-info{--pc:var(--accent2);}
 .hero-dot.is-idle{--pc:var(--text3);}
 .hero-main{flex:1;min-width:0;}
 .hero-title{font-size:15px;font-weight:600;color:var(--text);letter-spacing:-0.01em;}
@@ -1677,6 +1678,53 @@ tbody tr:hover td{background:color-mix(in srgb,var(--bg3) 70%, transparent);}
   animation:fs-breathe 2.5s ease-in-out infinite;
 }
 @keyframes fs-breathe{0%,100%{opacity:1;}50%{opacity:.45;}}
+
+/* ── NetCore service plane / edge-fallback overview ───────────────────── */
+.core-summary-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;
+  margin-bottom:14px;
+}
+.core-service-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;
+}
+.core-service-card{
+  position:relative;min-width:0;padding:14px 15px;
+  background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-card);
+  box-shadow:var(--hair);overflow:hidden;
+}
+.core-service-card::before{
+  content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--text3);
+}
+.core-service-card.is-ok::before{background:var(--ok);}
+.core-service-card.is-warn::before{background:var(--warn);}
+.core-service-card.is-danger::before{background:var(--danger);}
+.core-service-card.is-info::before{background:var(--accent2);}
+.core-service-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+.core-service-name{font-size:14px;font-weight:650;color:var(--text);line-height:1.25;}
+.core-service-tech{font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:3px;}
+.core-service-role{font-size:12px;line-height:1.45;color:var(--text2);margin-top:10px;min-height:34px;}
+.core-service-fallback{
+  margin-top:10px;padding-top:9px;border-top:1px solid var(--sep);
+  font-size:11px;line-height:1.4;color:var(--text2);
+}
+.core-service-fallback strong{color:var(--text);font-weight:600;}
+.core-service-card.is-warn .core-service-fallback strong,
+.core-service-card.is-danger .core-service-fallback strong{color:var(--warn);}
+.core-service-meta{display:flex;flex-wrap:wrap;gap:6px 10px;margin-top:8px;font-size:10px;color:var(--text3);}
+.core-service-critical{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.04em;color:var(--warn);}
+.core-plane-note{
+  display:flex;align-items:flex-start;gap:9px;padding:10px 12px;margin-bottom:14px;
+  border:1px solid var(--border);border-radius:var(--r-ctrl);background:var(--bg3);
+  font-size:12px;line-height:1.45;color:var(--text2);
+}
+.core-plane-note.is-ok{border-color:color-mix(in srgb,var(--ok) 32%,var(--border));}
+.core-plane-note.is-warn{border-color:color-mix(in srgb,var(--warn) 40%,var(--border));}
+.core-plane-note.is-danger{border-color:color-mix(in srgb,var(--danger) 42%,var(--border));}
+.core-plane-note .banner-ico{margin-top:1px;}
+@media(max-width:700px){
+  .core-service-grid{grid-template-columns:1fr;}
+  .core-service-role{min-height:0;}
+}
 
 /* ── Empty state (one component for the duplicated stubs) ──
    v3 flex layout; keeps the legacy .empty-icon/.empty-text children working
@@ -2479,6 +2527,7 @@ tbody tr:hover td{background:color-mix(in srgb,var(--bg3) 70%, transparent);}
     <div class="topbar-chips" aria-hidden="false">
       <span class="pill pill-idle" id="chip-bs" title="Verbindung zur Basisstation"><span data-i18n="bs_label">BS</span></span>
       <span class="pill pill-idle" id="chip-brew" title="Brew-Netzwerk"><span>Brew</span></span>
+      <span class="pill pill-idle" id="chip-core" style="display:none" title="NetCore-Dienstebene"><span>CORE …</span></span>
       <span class="pill pill-danger" id="chip-emergency" style="display:none" title="Notfall aktiv">
         <span class="pill-icon" data-icon="emergency"></span><span data-i18n="emg_chip">NOTFALL</span>
       </span>
@@ -2553,6 +2602,15 @@ tbody tr:hover td{background:color-mix(in srgb,var(--bg3) 70%, transparent);}
     <div class="banner-body">
       <div data-i18n="fallback_title">FALLBACK-KONFIGURATION AKTIV — Primäre Konfiguration konnte nicht geladen werden</div>
       <div id="fallback-reason" class="banner-sub"></div>
+    </div>
+  </div>
+
+  <!-- Runtime edge-fallback banner. This is separate from the configuration-file fallback above. -->
+  <div id="edge-fallback-banner" class="banner banner-warn" style="display:none">
+    <span class="banner-ico" data-icon="network"></span>
+    <div class="banner-body">
+      <div id="edge-fallback-title">LOKALER FALLBACK AKTIV</div>
+      <div id="edge-fallback-reason" class="banner-sub"></div>
     </div>
   </div>
 
@@ -4524,6 +4582,55 @@ tbody tr:hover td{background:color-mix(in srgb,var(--bg3) 70%, transparent);}
         </div>
       </div>
 
+      <!-- Complete NetCore service plane + per-service fallback state. -->
+      <div class="section-label" data-i18n="sys_sec_core">NetCore-Dienstebene</div>
+      <div class="card" id="core-services-card">
+        <div class="card-head">
+          <div>
+            <div class="card-title" data-i18n="core_services_title">Systemweite Dienste und Fallback</div>
+            <div class="card-sub" id="core-services-sub">Warte auf den Node-Gateway-Status…</div>
+          </div>
+          <div class="card-actions" style="display:flex;align-items:center;gap:8px">
+            <span class="pill pill-idle" id="core-mode-pill">UNBEKANNT</span>
+            <button class="btn btn-sm" onclick="loadEdgeFallback(true)"><span class="btn-icon" data-icon="restart"></span><span data-i18n="sys_refresh">Aktualisieren</span></button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="core-summary-grid">
+            <div class="stat-card is-idle" id="core-gateway-card">
+              <div class="stat-label">Node Gateway</div>
+              <div class="stat-value is-text" id="core-gateway-status">UNBEKANNT</div>
+              <div class="stat-sub" id="core-gateway-sub">—</div>
+            </div>
+            <div class="stat-card is-idle" id="core-mode-card">
+              <div class="stat-label">Betriebsmodus</div>
+              <div class="stat-value is-text" id="core-mode-status">UNBEKANNT</div>
+              <div class="stat-sub" id="core-mode-sub">—</div>
+            </div>
+            <div class="stat-card is-idle" id="core-count-card">
+              <div class="stat-label">Zentrale Dienste</div>
+              <div class="stat-value is-text" id="core-count-status">0 / 17</div>
+              <div class="stat-sub" id="core-count-sub">noch keine Matrix</div>
+            </div>
+            <div class="stat-card is-idle" id="core-fallback-card">
+              <div class="stat-label">Lokale Ersatzfunktionen</div>
+              <div class="stat-value is-text" id="core-fallback-status">—</div>
+              <div class="stat-sub" id="core-fallback-sub">—</div>
+            </div>
+          </div>
+          <div class="core-plane-note" id="core-plane-note">
+            <span class="banner-ico" data-icon="network"></span>
+            <div>
+              <div id="core-plane-reason">Der Zustand der systemweiten Dienste wird geladen.</div>
+              <div id="core-plane-meta" class="banner-sub">—</div>
+            </div>
+          </div>
+          <div class="core-service-grid" id="core-services-grid">
+            <div class="sds-empty" style="grid-column:1/-1;padding:18px 0">Dienstestatus wird geladen…</div>
+          </div>
+        </div>
+      </div>
+
       <!-- Display brightness (FH-FEAT-008) — hidden unless a backlight panel exists -->
       <div class="card" id="brightness-card" style="display:none">
         <div class="card-head">
@@ -5044,6 +5151,8 @@ const LANGS={
     "sys_ram":"RAM",
     "sys_refresh":"Aktualisieren",
     "sys_rf":"RF-Hardware (SoapySDR)",
+    "sys_sec_core":"NetCore-Dienstebene",
+    "core_services_title":"Systemweite Dienste und Fallback",
     "sys_sec_host":"Host",
     "sys_sec_profiles":"Profile",
     "sys_sec_radio":"Funk-Hardware",
@@ -5331,7 +5440,7 @@ function showPage(name,el){
   if(name==='audio'){loadAudioPage(true);loadRecordings(true);}
   if(name==='config'){loadConfig();loadWhitelist();loadWx();}
   if(name==='telegram'){loadTelegram();}
-  if(name==='system'){loadSystemInfo();loadConfigProfiles();loadLiveSds();loadBrightness();}
+  if(name==='system'){loadSystemInfo();loadEdgeFallback(true);loadConfigProfiles();loadLiveSds();loadBrightness();}
   else if(sysAutoRefreshTimer){clearInterval(sysAutoRefreshTimer);sysAutoRefreshTimer=null;const cb=document.getElementById('sys-autorefresh');if(cb)cb.checked=false;}
   if(name==='wifi')wifiRefresh();
   if(window.innerWidth<=700)closeMobileSidebar();
@@ -8750,7 +8859,195 @@ let sysData=null;
 let sysAutoRefreshTimer = null;
 function toggleSysAutoRefresh(on) {
   if (sysAutoRefreshTimer) { clearInterval(sysAutoRefreshTimer); sysAutoRefreshTimer = null; }
-  if (on) sysAutoRefreshTimer = setInterval(loadSystemInfo, 5000);
+  if (on) sysAutoRefreshTimer = setInterval(()=>{loadSystemInfo();loadEdgeFallback();}, 5000);
+}
+
+// ── NetCore service plane / edge fallback ────────────────────────────────────
+const CORE_SERVICE_CATALOG=[
+  ['node-gateway','Node Gateway','Verbindung der Basisstation mit der zentralen NetCore-Dienstebene.'],
+  ['subscriber-core','Teilnehmerverwaltung','Zentrale Teilnehmer-, Berechtigungs- und Zugangsrichtlinien.'],
+  ['group-core','Gruppenverwaltung','Rufgruppen, Mitgliedschaften, DGNA und Gruppenrichtlinien.'],
+  ['mobility-core','Mobilitätsverwaltung','Registrierung, Attach/Detach, Location Areas und Mobilitätskontexte.'],
+  ['call-control','Rufsteuerung','Aufbau, Legs, Floor Control, Prioritäten und Rufwiederherstellung.'],
+  ['media-switch','Medienvermittlung','Sprachrouting zwischen Zellen, Leitstellen und weiteren Teilnehmern.'],
+  ['sds-router','SDS-Router','Systemweites SDS-/Status-Routing und Store-and-Forward.'],
+  ['packet-core','Paketdatenkern','SNDCP-/PDCH-Kontexte und paketvermittelte Datendienste.'],
+  ['ip-gateway','IP-Gateway','TUN/TAP-, Routing- und optionale NAT-Anbindung für Paketdaten.'],
+  ['security-core','Sicherheitskern','Zentrale Sicherheitsrichtlinien ohne automatische Herabstufung.'],
+  ['kmf','Schlüsselverwaltung (KMF)','Schlüsselbestand, OTAR-Steuerung und Schlüsselverteilung.'],
+  ['transit','Transit / Interconnect','Verbindungen zu weiteren Regionen, Netzen und Übergängen.'],
+  ['application-gateway','Anwendungs-Gateway','Zentrale Anwendungen, TTS und weitere Integrationen.'],
+  ['media-library','Medienbibliothek','Zentrale Aufzeichnungen, TTS-Dateien und Audioaussendungen.'],
+  ['recorder','Recorder','Systemweite Rufaufzeichnung und Metadatenübergabe.'],
+  ['observability','Observability','Metriken, Logs, Health und zentrale Betriebsdiagnose.'],
+  ['control-room','Leitstelle','Operator-Zugriff, Disposition, Audit und zentrale Bedienung.'],
+];
+const CORE_FALLBACK_TEXT={
+  local_edge_autonomy:'Die Zelle arbeitet mit lokaler Edge-Autorität weiter.',
+  cached_policy_then_static_config:'Letzte zentrale Teilnehmerrichtlinie, danach statische lokale Konfiguration.',
+  cached_policy_then_local_affiliations:'Letzte Gruppenrichtlinie, danach lokale Gruppenmitgliedschaften.',
+  local_registration_and_location_area:'Lokale Registrierung und lokale Location Area bleiben verfügbar.',
+  local_cell_calls_only:'Rufe bleiben innerhalb dieser Zelle möglich; keine zellübergreifende Rufsteuerung.',
+  local_air_interface_media_only:'Lokales TETRA-Audio bleibt aktiv; keine Medienweiterleitung zu anderen Zellen.',
+  local_delivery_and_durable_store_forward:'Lokale SDS-Zustellung; externe Nachrichten werden dauerhaft zwischengespeichert.',
+  local_sndcp_contexts:'Bereits lokale SNDCP-Kontexte arbeiten weiter.',
+  local_tun_gateway_when_configured:'Lokales TUN-Gateway bleibt verfügbar, sofern auf der Station konfiguriert.',
+  last_known_security_policy_no_downgrade:'Letzte bekannte Sicherheitsrichtlinie bleibt aktiv; keine unsichere Herabstufung.',
+  installed_keys_only_no_otar:'Installierte Schlüssel bleiben nutzbar; kein OTAR bis zur Wiederanbindung.',
+  no_inter_region_routing:'Kein Routing zu anderen Regionen oder externen Netzen.',
+  local_integrations_only:'Nur lokal auf der Basisstation verfügbare Integrationen bleiben aktiv.',
+  local_media_cache_and_playout:'Lokaler Mediencache und lokale Wiedergabe bleiben verfügbar.',
+  local_recorder_continues:'Die lokale Aufzeichnung läuft unabhängig weiter.',
+  local_logs_and_health_continue:'Lokale Logs und Zustandsüberwachung laufen weiter.',
+  local_dashboard_and_audit:'Lokales Dashboard und lokaler Audit-Pfad bleiben erreichbar.',
+};
+const CORE_DEFAULT_FALLBACK=Object.fromEntries([
+  ['node-gateway','local_edge_autonomy'],['subscriber-core','cached_policy_then_static_config'],
+  ['group-core','cached_policy_then_local_affiliations'],['mobility-core','local_registration_and_location_area'],
+  ['call-control','local_cell_calls_only'],['media-switch','local_air_interface_media_only'],
+  ['sds-router','local_delivery_and_durable_store_forward'],['packet-core','local_sndcp_contexts'],
+  ['ip-gateway','local_tun_gateway_when_configured'],['security-core','last_known_security_policy_no_downgrade'],
+  ['kmf','installed_keys_only_no_otar'],['transit','no_inter_region_routing'],
+  ['application-gateway','local_integrations_only'],['media-library','local_media_cache_and_playout'],
+  ['recorder','local_recorder_continues'],['observability','local_logs_and_health_continue'],
+  ['control-room','local_dashboard_and_audit'],
+]);
+const CORE_LEVEL_META={
+  available:{label:'ONLINE',pill:'pill-ok',card:'is-ok'},
+  degraded:{label:'EINGESCHRÄNKT',pill:'pill-warn',card:'is-warn'},
+  unavailable:{label:'AUSGEFALLEN',pill:'pill-danger',card:'is-danger'},
+  unknown:{label:'UNKLAR',pill:'pill-idle',card:'is-idle'},
+};
+let edgeFallbackData=null;
+let edgeFallbackLoading=false;
+
+function edgeModeMeta(data){
+  if(data&&data.enabled===false)return {label:'FALLBACK AUS',short:'FALLBACK AUS',pill:'pill-idle',card:'is-idle',banner:'',title:'Fallback-Automatik ist deaktiviert'};
+  const mode=String(data?.mode||'isolated').toLowerCase();
+  return ({
+    online:{label:'ZENTRAL ONLINE',short:'CORE ONLINE',pill:'pill-ok',card:'is-ok',banner:'',title:'Zentrale NetCore-Dienste sind verfügbar'},
+    degraded:{label:'TEIL-FALLBACK',short:'TEIL-FALLBACK',pill:'pill-warn',card:'is-warn',banner:'banner-warn',title:'TEIL-FALLBACK AKTIV — einzelne Dienste werden lokal ersetzt'},
+    isolated:{label:'LOKALER FALLBACK',short:'FALLBACK LOKAL',pill:'pill-danger',card:'is-danger',banner:'banner-danger',title:'LOKALER FALLBACK AKTIV — die Zelle arbeitet eigenständig'},
+    recovering:{label:'WIEDERANBINDUNG',short:'WIEDERANBINDUNG',pill:'pill-info',card:'is-info',banner:'',title:'Zentrale Dienste wieder erreichbar — Wiederanbindung läuft'},
+  })[mode]||{label:'UNBEKANNT',short:'CORE ?',pill:'pill-idle',card:'is-idle',banner:'banner-warn',title:'Status der NetCore-Dienstebene ist unklar'};
+}
+function coreReasonText(reason){
+  const r=String(reason||'').trim();
+  if(!r)return '';
+  if(r==='Node Gateway unreachable; local edge authority active')return 'Node Gateway nicht erreichbar; lokale Edge-Autorität ist aktiv.';
+  if(r==='Node Gateway health matrix missing or stale; conservative local edge authority active')return 'Die Dienstematrix des Node Gateways fehlt oder ist veraltet; vorsichtshalber arbeitet die Zelle lokal.';
+  if(r==='central service plane healthy')return 'Die zentrale NetCore-Dienstebene ist vollständig verfügbar.';
+  if(r==='central service plane healthy; hysteresis/replay in progress')return 'Die zentrale Dienstebene ist wieder verfügbar; Hysterese und Replay laufen noch.';
+  if(r==='edge fallback disabled by configuration')return 'Die automatische Fallback-Umschaltung ist in der Konfiguration deaktiviert.';
+  const m=r.match(/^required core service\(s\) unavailable: (.+); service-specific fallbacks active$/);
+  if(m)return 'Erforderliche zentrale Dienste nicht verfügbar: '+m[1]+'. Dienstspezifische Fallbacks sind aktiv.';
+  return r;
+}
+function coreMessageText(message){
+  const m=String(message||'').trim();
+  if(!m)return '';
+  if(m==='not reported by Node Gateway')return 'Noch nicht vom Node Gateway gemeldet';
+  if(m==='Node Gateway WebSocket connected')return 'WebSocket verbunden';
+  if(m==='Node Gateway unreachable')return 'Nicht erreichbar';
+  if(m==='not probed yet')return 'Noch nicht geprüft';
+  return m;
+}
+function coreTimestamp(value){
+  if(!value)return '—';
+  const d=new Date(value);if(Number.isNaN(d.getTime()))return String(value);
+  return d.toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+function coreBytes(value){
+  let n=Number(value||0);if(!Number.isFinite(n)||n<=0)return '0 B';
+  const u=['B','KiB','MiB','GiB'];let i=0;while(n>=1024&&i<u.length-1){n/=1024;i++;}
+  return (i===0?Math.round(n):n.toFixed(n>=10?1:2))+' '+u[i];
+}
+function setCoreStat(cardId,valueId,subId,cardClass,value,sub){
+  const card=document.getElementById(cardId);if(card)card.className='stat-card '+cardClass;
+  const val=document.getElementById(valueId);if(val)val.textContent=value;
+  const subEl=document.getElementById(subId);if(subEl)subEl.textContent=sub;
+}
+function renderEdgeFallback(){
+  const d=edgeFallbackData||{};
+  const mode=edgeModeMeta(d);
+  const chip=document.getElementById('chip-core');
+  if(chip){chip.style.display='inline-flex';chip.className='pill '+mode.pill;chip.textContent=mode.short;chip.title=(coreReasonText(d.reason)||mode.title);}
+
+  const banner=document.getElementById('edge-fallback-banner');
+  const bannerTitle=document.getElementById('edge-fallback-title');
+  const bannerReason=document.getElementById('edge-fallback-reason');
+  const shouldBanner=d.enabled!==false&&String(d.mode||'').toLowerCase()!=='online';
+  if(banner){
+    banner.style.display=shouldBanner?'flex':'none';
+    banner.className='banner '+(mode.banner||'');
+  }
+  if(bannerTitle)bannerTitle.textContent=mode.title;
+  if(bannerReason)bannerReason.textContent=coreReasonText(d.reason)||'Keine Begründung vom Edge-Fallback-Controller gemeldet.';
+
+  const reported=new Map((Array.isArray(d.services)?d.services:[]).map(x=>[String(x.service||''),x]));
+  const matrixAuthoritative=d.gateway_connected===true&&d.service_matrix_fresh===true;
+  const services=CORE_SERVICE_CATALOG.map(([service,name,role])=>{
+    const runtime=reported.get(service)||{};
+    const reportedLevel=String(runtime.level||'unknown').toLowerCase();
+    const effectiveLevel=(service==='node-gateway'||matrixAuthoritative)?reportedLevel:'unknown';
+    return {service,name,role,level:effectiveLevel,critical_for_edge:!!runtime.critical_for_edge,
+      fallback_mode:runtime.fallback_mode||CORE_DEFAULT_FALLBACK[service]||'',checked_at:runtime.checked_at||null,
+      last_success_at:runtime.last_success_at||null,message:runtime.message||''};
+  });
+  const counts={available:0,degraded:0,unavailable:0,unknown:0};
+  services.forEach(x=>{counts[x.level]=(counts[x.level]||0)+1;});
+  const centralOk=counts.available;
+  const fallbackActive=services.filter(x=>x.level==='degraded'||x.level==='unavailable'||x.level==='unknown').length;
+
+  const gateway=d.gateway_connected===true;
+  setCoreStat('core-gateway-card','core-gateway-status','core-gateway-sub',gateway?'is-ok':'is-danger',gateway?'VERBUNDEN':'GETRENNT',gateway?'Node-Gateway-WebSocket aktiv':'Lokale Edge-Autorität aktiv');
+  setCoreStat('core-mode-card','core-mode-status','core-mode-sub',mode.card,mode.label,d.enabled===false?'Automatische Umschaltung deaktiviert':(coreReasonText(d.reason)||'—'));
+  const countClass=counts.unavailable?'is-danger':(counts.degraded||counts.unknown?'is-warn':'is-ok');
+  setCoreStat('core-count-card','core-count-status','core-count-sub',countClass,centralOk+' / '+services.length,
+    counts.unavailable+' ausgefallen · '+counts.degraded+' eingeschränkt · '+counts.unknown+' unklar');
+  const fallbackClass=d.enabled===false?'is-idle':(String(d.mode||'').toLowerCase()==='isolated'?'is-danger':fallbackActive?'is-warn':'is-ok');
+  setCoreStat('core-fallback-card','core-fallback-status','core-fallback-sub',fallbackClass,d.enabled===false?'DEAKTIVIERT':(fallbackActive?fallbackActive+' BEREIT/AKTIV':'BEREITSCHAFT'),
+    'Cache '+(d.policy_loaded_from_cache?'geladen':'lokal')+' · Spool '+(d.event_spool_entries||0)+' Einträge');
+
+  const pill=document.getElementById('core-mode-pill');if(pill){pill.className='pill '+mode.pill;pill.textContent=mode.label;}
+  const sub=document.getElementById('core-services-sub');if(sub)sub.textContent='Alle '+services.length+' NetCore-Dienste · Matrix Revision '+(d.service_revision||0);
+  const note=document.getElementById('core-plane-note');if(note)note.className='core-plane-note '+mode.card;
+  const reason=document.getElementById('core-plane-reason');if(reason)reason.textContent=coreReasonText(d.reason)||mode.title;
+  const meta=document.getElementById('core-plane-meta');if(meta){
+    const matrix=d.service_matrix_fresh?'frisch':'FEHLEND/VERALTET';
+    meta.textContent='Service-Matrix '+matrix+' · zuletzt '+coreTimestamp(d.service_matrix_received_at)+' · Übergang '+coreTimestamp(d.last_transition_at)+' · Event-Spool '+coreBytes(d.event_spool_bytes);
+  }
+
+  const grid=document.getElementById('core-services-grid');
+  if(grid){
+    grid.innerHTML=services.map(x=>{
+      const lm=CORE_LEVEL_META[x.level]||CORE_LEVEL_META.unknown;
+      const fallback=CORE_FALLBACK_TEXT[x.fallback_mode]||String(x.fallback_mode||'Kein lokaler Ersatzmodus dokumentiert.').replaceAll('_',' ');
+      const fallbackActiveForService=x.level!=='available'&&d.enabled!==false;
+      const statusMessage=coreMessageText(x.message);
+      return `<div class="core-service-card ${lm.card}">
+        <div class="core-service-top"><div><div class="core-service-name">${escHtml(x.name)}</div><div class="core-service-tech">${escHtml(x.service)}</div></div><span class="pill ${lm.pill}">${lm.label}</span></div>
+        <div class="core-service-role">${escHtml(x.role)}</div>
+        <div class="core-service-fallback"><strong>${fallbackActiveForService?'Lokaler Ersatz aktiv/bereit':'Bei Ausfall'}:</strong> ${escHtml(fallback)}</div>
+        <div class="core-service-meta">${x.critical_for_edge?'<span class="core-service-critical">NETZKRITISCH</span>':''}<span>Prüfung: ${escHtml(coreTimestamp(x.checked_at))}</span>${statusMessage?'<span>'+escHtml(statusMessage)+'</span>':''}</div>
+      </div>`;
+    }).join('');
+  }
+  if(typeof paintIcons==='function')paintIcons(document.getElementById('core-services-card'));
+  updateSysHero();
+}
+async function loadEdgeFallback(force){
+  if(edgeFallbackLoading&&!force)return;
+  edgeFallbackLoading=true;
+  try{
+    const r=await fetch('/api/edge-fallback',{cache:'no-store',credentials:'same-origin'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    edgeFallbackData=await r.json();
+    renderEdgeFallback();
+  }catch(error){
+    edgeFallbackData={enabled:true,gateway_connected:false,mode:'isolated',reason:'Fallback-Status konnte lokal nicht gelesen werden: '+error.message,services:[]};
+    renderEdgeFallback();
+  }finally{edgeFallbackLoading=false;}
 }
 
 // ── Display brightness (FH-FEAT-008) ─────────────────────────────────────────
@@ -8972,10 +9269,14 @@ function updateSysHero(){
   const btsCard=document.getElementById('sysBtsCard');
   const btsOnline=btsCard&&btsCard.classList.contains('is-ok');
   const brewSummary=brewUiSummary(state.brewOnline,state.brewVer);
-  if(dot) dot.className='hero-dot '+(btsOnline?'is-ok':'is-danger');
+  const coreKnown=!!edgeFallbackData;
+  const coreMode=coreKnown?edgeModeMeta(edgeFallbackData):{label:'CORE WIRD GELADEN'};
+  const coreState=String(edgeFallbackData?.mode||'').toLowerCase();
+  const heroClass=!btsOnline?'is-danger':(!coreKnown?'is-idle':coreState==='isolated'?'is-danger':coreState==='degraded'?'is-warn':coreState==='recovering'?'is-info':'is-ok');
+  if(dot) dot.className='hero-dot '+heroClass;
   if(sub){
     const host=(sysData&&sysData.hostname)||document.getElementById('sysHostname').textContent||'—';
-    sub.textContent=(btsOnline?t('online'):t('offline'))+' · '+brewSummary.value+' · '+host;
+    sub.textContent=(btsOnline?t('online'):t('offline'))+' · '+coreMode.label+' · '+brewSummary.value+' · '+host;
   }
   if(tempV){
     const tc=document.getElementById('sysCpuTemp');
@@ -10626,6 +10927,8 @@ async function boot(){
   // Populate the topbar SDR badge (and prime system data) immediately on load,
   // instead of waiting for the user to open the System tab.
   loadSystemInfo();
+  loadEdgeFallback(true);
+  setInterval(()=>loadEdgeFallback(),5000);
   loadBtsInfo();        // TETRA BTS Details card on the default (Radios) page
   loadDualCarrierInfo();
   refreshBrewServerStatus(true);

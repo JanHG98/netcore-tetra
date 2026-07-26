@@ -603,7 +603,68 @@ impl SharedConfig {
 
     pub fn edge_fallback_snapshot(&self) -> crate::bluestation::EdgeFallbackSnapshot {
         let state = self.state_read();
-        let mut services: Vec<_> = state.edge_services.values().cloned().collect();
+
+        // Always expose the complete configured NetCore service plane to the
+        // local TBS WebUI.  Before the first Node-Gateway matrix arrives (or
+        // while it is stale), services that have not reported yet remain
+        // explicitly `unknown` instead of disappearing from the dashboard.
+        // The Node Gateway itself is represented from the WebSocket state.
+        let required: std::collections::HashSet<&str> = self
+            .cfg
+            .edge_fallback
+            .required_services
+            .iter()
+            .map(String::as_str)
+            .collect();
+        let mut service_map = state.edge_services.clone();
+        for (service, fallback_mode) in &self.cfg.edge_fallback.service_fallbacks {
+            service_map.entry(service.clone()).or_insert_with(|| {
+                let is_gateway = service == "node-gateway";
+                let gateway_available = is_gateway && state.core_gateway_connected;
+                crate::bluestation::EdgeServiceRuntime {
+                    service: service.clone(),
+                    level: if is_gateway {
+                        if gateway_available {
+                            crate::bluestation::EdgeServiceLevel::Available
+                        } else {
+                            crate::bluestation::EdgeServiceLevel::Unavailable
+                        }
+                    } else {
+                        crate::bluestation::EdgeServiceLevel::Unknown
+                    },
+                    critical_for_edge: is_gateway || required.contains(service.as_str()),
+                    fallback_mode: fallback_mode.clone(),
+                    checked_at: state
+                        .edge_service_matrix_received_at
+                        .clone()
+                        .unwrap_or_else(|| state.edge_fallback_last_transition_at.clone()),
+                    last_success_at: if gateway_available {
+                        state.edge_service_matrix_received_at.clone()
+                    } else {
+                        None
+                    },
+                    message: Some(if is_gateway {
+                        if gateway_available {
+                            "Node Gateway WebSocket connected".to_string()
+                        } else {
+                            "Node Gateway unreachable".to_string()
+                        }
+                    } else {
+                        "not reported by Node Gateway".to_string()
+                    }),
+                }
+            });
+        }
+        for service in service_map.values_mut() {
+            service.critical_for_edge = service.service == "node-gateway"
+                || required.contains(service.service.as_str());
+            if service.fallback_mode.trim().is_empty()
+                && let Some(mode) = self.cfg.edge_fallback.service_fallbacks.get(&service.service)
+            {
+                service.fallback_mode = mode.clone();
+            }
+        }
+        let mut services: Vec<_> = service_map.into_values().collect();
         services.sort_by(|a, b| a.service.cmp(&b.service));
         crate::bluestation::EdgeFallbackSnapshot {
             enabled: self.cfg.edge_fallback.enabled,
