@@ -4529,6 +4529,10 @@ tbody tr:hover td{background:color-mix(in srgb,var(--bg3) 70%, transparent);}
         <div id="health-integrations-grid" class="h-grid">
           <div class="sds-empty" style="padding:12px 0">Zustand der Integrationen wird geladen…</div>
         </div>
+        <div class="h-sec">Systemweite Dienste</div>
+        <div id="health-core-services-grid" class="core-service-grid">
+          <div class="sds-empty" style="grid-column:1/-1;padding:18px 0">Dienstestatus wird geladen…</div>
+        </div>
         <div class="h-note">
           Automatische Aktualisierung alle paar Sekunden. Stufen:
           <b class="ok">OK</b> · <b class="warn">EINGESCHRÄNKT</b> · <b class="bad">KRITISCH</b>.
@@ -8967,6 +8971,22 @@ function setCoreStat(cardId,valueId,subId,cardClass,value,sub){
   const val=document.getElementById(valueId);if(val)val.textContent=value;
   const subEl=document.getElementById(subId);if(subEl)subEl.textContent=sub;
 }
+function renderCoreServiceGrid(gridId,services,d){
+  const grid=document.getElementById(gridId);
+  if(!grid)return;
+  grid.innerHTML=services.map(x=>{
+    const lm=CORE_LEVEL_META[x.level]||CORE_LEVEL_META.unknown;
+    const fallback=CORE_FALLBACK_TEXT[x.fallback_mode]||String(x.fallback_mode||'Kein lokaler Ersatzmodus dokumentiert.').replaceAll('_',' ');
+    const fallbackActiveForService=x.level!=='available'&&d.enabled!==false;
+    const statusMessage=coreMessageText(x.message);
+    return `<div class="core-service-card ${lm.card}">
+      <div class="core-service-top"><div><div class="core-service-name">${escHtml(x.name)}</div><div class="core-service-tech">${escHtml(x.service)}</div></div><span class="pill ${lm.pill}">${lm.label}</span></div>
+      <div class="core-service-role">${escHtml(x.role)}</div>
+      <div class="core-service-fallback"><strong>${fallbackActiveForService?'Lokaler Ersatz aktiv/bereit':'Bei Ausfall'}:</strong> ${escHtml(fallback)}</div>
+      <div class="core-service-meta">${x.critical_for_edge?'<span class="core-service-critical">NETZKRITISCH</span>':''}<span>Prüfung: ${escHtml(coreTimestamp(x.checked_at))}</span>${statusMessage?'<span>'+escHtml(statusMessage)+'</span>':''}</div>
+    </div>`;
+  }).join('');
+}
 function renderEdgeFallback(){
   const d=edgeFallbackData||{};
   const mode=edgeModeMeta(d);
@@ -9018,21 +9038,8 @@ function renderEdgeFallback(){
     meta.textContent='Service-Matrix '+matrix+' · zuletzt '+coreTimestamp(d.service_matrix_received_at)+' · Übergang '+coreTimestamp(d.last_transition_at)+' · Event-Spool '+coreBytes(d.event_spool_bytes);
   }
 
-  const grid=document.getElementById('core-services-grid');
-  if(grid){
-    grid.innerHTML=services.map(x=>{
-      const lm=CORE_LEVEL_META[x.level]||CORE_LEVEL_META.unknown;
-      const fallback=CORE_FALLBACK_TEXT[x.fallback_mode]||String(x.fallback_mode||'Kein lokaler Ersatzmodus dokumentiert.').replaceAll('_',' ');
-      const fallbackActiveForService=x.level!=='available'&&d.enabled!==false;
-      const statusMessage=coreMessageText(x.message);
-      return `<div class="core-service-card ${lm.card}">
-        <div class="core-service-top"><div><div class="core-service-name">${escHtml(x.name)}</div><div class="core-service-tech">${escHtml(x.service)}</div></div><span class="pill ${lm.pill}">${lm.label}</span></div>
-        <div class="core-service-role">${escHtml(x.role)}</div>
-        <div class="core-service-fallback"><strong>${fallbackActiveForService?'Lokaler Ersatz aktiv/bereit':'Bei Ausfall'}:</strong> ${escHtml(fallback)}</div>
-        <div class="core-service-meta">${x.critical_for_edge?'<span class="core-service-critical">NETZKRITISCH</span>':''}<span>Prüfung: ${escHtml(coreTimestamp(x.checked_at))}</span>${statusMessage?'<span>'+escHtml(statusMessage)+'</span>':''}</div>
-      </div>`;
-    }).join('');
-  }
+  renderCoreServiceGrid('core-services-grid',services,d);
+  renderCoreServiceGrid('health-core-services-grid',services,d);
   if(typeof paintIcons==='function')paintIcons(document.getElementById('core-services-card'));
   updateSysHero();
 }
