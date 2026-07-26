@@ -81,6 +81,9 @@ pub enum BackendEvent {
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum BackendRequest {
+    // Kept as part of the backend wire protocol even though call-control currently
+    // only sends commands. Other backend peers may still use it for liveness checks.
+    #[allow(dead_code)]
     Ping { request_id: Option<String> },
     Command {
         request_id: Option<String>,
