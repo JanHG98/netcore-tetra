@@ -218,7 +218,7 @@ async function refresh() {{
     $('poll-time').textContent = `Letzte Prüfung: ${{fmt((overview.operations||{{}}).last_poll_finished_at)}}`;
   }} catch(error) {{ $('poll-time').textContent = `Fehler: ${{error.message}}`; }}
 }}
-$('poll').addEventListener('click', async () => {{ try {{ await api('/api/v1/services/poll',{{method:'POST',body:'{}'}}); setTimeout(refresh,600); }} catch(error) {{ alert(error.message); }} }});
+$('poll').addEventListener('click', async () => {{ try {{ await api('/api/v1/services/poll',{{method:'POST',body:'{{}}'}}); setTimeout(refresh,600); }} catch(error) {{ alert(error.message); }} }});
 $('command-form').addEventListener('submit', async (event) => {{
   event.preventDefault();
   const form = Object.fromEntries(new FormData(event.target));

@@ -850,6 +850,7 @@ impl SharedMedia {
             queued,
             &input.payload,
             true,
+            true,
         );
         push_event_locked(
             &mut state,
@@ -992,6 +993,17 @@ impl SharedMedia {
         };
 
         if count_received && !media_route_ready_locked(&state, &session_id) {
+            push_tap_locked(
+                &mut state,
+                &session_id,
+                &frame.node_id,
+                frame.logical_ts,
+                frame.sequence,
+                0,
+                &frame.payload,
+                false,
+                true,
+            );
             buffer_early_uplink_locked(&mut state, frame);
             return;
         }
@@ -1132,6 +1144,7 @@ impl SharedMedia {
             routed,
             &frame.payload,
             false,
+            count_received,
         );
     }
 }
@@ -1541,32 +1554,15 @@ fn push_tap_locked(
     target_count: usize,
     payload: &[u8],
     injected: bool,
+    record_for_recorder: bool,
 ) {
-    let session = state.sessions.get(session_id);
-    let full_record = RecorderTapRecord {
-        seq: state.next_tap_seq,
-        timestamp: now_iso(),
-        session_id: session_id.to_string(),
-        call_kind: session.map_or_else(|| "unknown".to_string(), |value| value.kind.clone()),
-        call_phase: session.map_or_else(|| "unknown".to_string(), |value| value.phase.clone()),
-        source_issi: session.and_then(|value| value.source_issi),
-        gssi: session.and_then(|value| value.gssi),
-        calling_issi: session.and_then(|value| value.calling_issi),
-        called_issi: session.and_then(|value| value.called_issi),
-        priority: session.map_or(0, |value| value.priority),
-        emergency: session.is_some_and(|value| value.emergency),
-        speaker_issi: session.and_then(|value| value.floor_holder),
-        source_node_id: source_node_id.to_string(),
-        source_logical_ts,
-        source_sequence,
-        target_count,
-        codec: "tetra_acelp0".to_string(),
-        payload: payload.to_vec(),
-        injected,
-    };
-    let record = TapRecord {
-        seq: full_record.seq,
-        timestamp: full_record.timestamp.clone(),
+    let seq = state.next_tap_seq;
+    let timestamp = now_iso();
+    state.next_tap_seq = state.next_tap_seq.wrapping_add(1);
+
+    state.taps.push_back(TapRecord {
+        seq,
+        timestamp: timestamp.clone(),
         session_id: session_id.to_string(),
         source_node_id: source_node_id.to_string(),
         source_logical_ts,
@@ -1574,10 +1570,33 @@ fn push_tap_locked(
         target_count,
         payload_bytes: payload.len(),
         injected,
-    };
-    state.next_tap_seq = state.next_tap_seq.wrapping_add(1);
-    state.taps.push_back(record);
-    state.recorder_taps.push_back(full_record);
+    });
+
+    if record_for_recorder {
+        let session = state.sessions.get(session_id);
+        state.recorder_taps.push_back(RecorderTapRecord {
+            seq,
+            timestamp,
+            session_id: session_id.to_string(),
+            call_kind: session.map_or_else(|| "unknown".to_string(), |value| value.kind.clone()),
+            call_phase: session.map_or_else(|| "unknown".to_string(), |value| value.phase.clone()),
+            source_issi: session.and_then(|value| value.source_issi),
+            gssi: session.and_then(|value| value.gssi),
+            calling_issi: session.and_then(|value| value.calling_issi),
+            called_issi: session.and_then(|value| value.called_issi),
+            priority: session.map_or(0, |value| value.priority),
+            emergency: session.is_some_and(|value| value.emergency),
+            speaker_issi: session.and_then(|value| value.floor_holder),
+            source_node_id: source_node_id.to_string(),
+            source_logical_ts,
+            source_sequence,
+            target_count,
+            codec: "tetra_acelp0".to_string(),
+            payload: payload.to_vec(),
+            injected,
+        });
+    }
+
     while state.taps.len() > state.config.media.tap_history_frames {
         state.taps.pop_front();
     }

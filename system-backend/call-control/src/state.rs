@@ -1091,7 +1091,7 @@ impl SharedCalls {
             if remove_placeholder {
                 call.legs.remove(&target_node);
             }
-            Self::recompute_call_phase(call);
+            CallState::recompute_call_phase(call);
         }
         state.push_event(
             "restore_cancelled",

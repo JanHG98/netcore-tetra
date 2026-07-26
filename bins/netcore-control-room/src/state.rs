@@ -948,6 +948,22 @@ impl NodeState {
                 self.apply_position_from_sds(&entry);
                 self.push_sds(entry);
             }
+            TelemetryEvent::SdsEdgeIngress {
+                source_issi,
+                dest_issi,
+                is_group,
+                ingress,
+                ..
+            } => {
+                self.subscriber_mut(*source_issi).last_seen = Some(timestamp.to_string());
+                if !*is_group {
+                    self.subscriber_mut(*dest_issi).last_seen = Some(timestamp.to_string());
+                }
+                self.timeslot_activity.insert(
+                    format!("sds-edge:{}->{}", source_issi, dest_issi),
+                    format!("{} via {}", timestamp, ingress),
+                );
+            }
             TelemetryEvent::TsVoiceActivity { carrier_num, ts } => {
                 self.timeslot_activity
                     .insert(format!("c{}:ts{}", carrier_num, ts), timestamp.to_string());
@@ -2041,6 +2057,7 @@ pub fn telemetry_event_type(event: &TelemetryEvent) -> &'static str {
         TelemetryEvent::BrewSubscriberRegistered { .. } => "brew_subscriber_registered",
         TelemetryEvent::BrewSubscriberDeregistered { .. } => "brew_subscriber_deregistered",
         TelemetryEvent::PacketDataSnapshot { .. } => "packet_data_snapshot",
+        TelemetryEvent::SdsEdgeIngress { .. } => "sds_edge_ingress",
     }
 }
 
