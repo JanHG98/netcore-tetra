@@ -36,3 +36,19 @@ if [ -r /run/netcore-tetra/packet-gateway-sysctls ]; then
 else
     echo "No persisted sysctl state (gateway stopped or no values changed)."
 fi
+
+
+echo
+echo "== Basis-station service privileges =="
+SERVICE=${2:-}
+if [ -z "$SERVICE" ]; then
+    for candidate in bluestation.service bluestation-bs.service tetra.service; do
+        if systemctl is-active --quiet "$candidate" 2>/dev/null; then SERVICE=$candidate; break; fi
+    done
+fi
+if [ -n "$SERVICE" ]; then
+    echo "Service: $SERVICE"
+    systemctl show "$SERVICE" -p AmbientCapabilities -p CapabilityBoundingSet -p PrivateDevices -p DevicePolicy -p DeviceAllow -p ProtectKernelTunables --no-pager
+else
+    echo "No active basis-station service detected."
+fi

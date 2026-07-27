@@ -1,16 +1,48 @@
 #!/bin/sh
 set -eu
 
-SERVICE=${1:-tetra.service}
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 DROPIN_SOURCE="$SCRIPT_DIR/../systemd/tetra.service.d/20-packet-data-gateway.conf"
 CLEANUP_SOURCE="$SCRIPT_DIR/netcore-tetra-packet-gateway-cleanup"
-DROPIN_DIR="/etc/systemd/system/${SERVICE}.d"
 
 if [ "$(id -u)" -ne 0 ]; then
     echo "Run as root: sudo $0 [service-name]" >&2
     exit 1
 fi
+
+find_service() {
+    if [ "$#" -gt 0 ] && [ -n "$1" ]; then
+        printf '%s\n' "$1"
+        return
+    fi
+
+    # Prefer the unit that is actually active. NetCore installations have used
+    # all three names over time.
+    for candidate in bluestation.service bluestation-bs.service tetra.service; do
+        if systemctl is-active --quiet "$candidate" 2>/dev/null; then
+            printf '%s\n' "$candidate"
+            return
+        fi
+    done
+    for candidate in bluestation.service bluestation-bs.service tetra.service; do
+        if systemctl cat "$candidate" >/dev/null 2>&1; then
+            printf '%s\n' "$candidate"
+            return
+        fi
+    done
+
+    echo "No basis-station systemd unit found (tried bluestation.service, bluestation-bs.service, tetra.service)." >&2
+    echo "Pass it explicitly: $0 your-unit.service" >&2
+    exit 1
+}
+
+SERVICE=$(find_service "${1:-}")
+DROPIN_DIR="/etc/systemd/system/${SERVICE}.d"
+
+systemctl cat "$SERVICE" >/dev/null 2>&1 || {
+    echo "Systemd unit '$SERVICE' does not exist." >&2
+    exit 1
+}
 
 command -v ip >/dev/null 2>&1 || {
     echo "Missing iproute2 ('ip' command)." >&2
@@ -19,6 +51,10 @@ command -v ip >/dev/null 2>&1 || {
 if ! command -v nft >/dev/null 2>&1 && ! command -v iptables >/dev/null 2>&1; then
     echo "Install nftables or iptables before enabling managed forwarding/NAT." >&2
     exit 1
+fi
+
+if [ ! -c /dev/net/tun ]; then
+    modprobe tun 2>/dev/null || true
 fi
 [ -c /dev/net/tun ] || {
     echo "/dev/net/tun is missing; load the tun module or enable TUN support." >&2
@@ -38,5 +74,32 @@ systemctl daemon-reload
 systemctl reset-failed "$SERVICE" >/dev/null 2>&1 || true
 
 echo "Installed packet-data systemd integration for $SERVICE."
-echo "Review with: systemctl cat $SERVICE"
-echo "Then restart with: systemctl restart $SERVICE"
+echo "TUN device: $(ls -l /dev/net/tun)"
+echo "Effective capability/device settings:"
+systemctl show "$SERVICE" \
+    -p AmbientCapabilities \
+    -p CapabilityBoundingSet \
+    -p PrivateDevices \
+    -p DevicePolicy \
+    -p DeviceAllow \
+    -p ProtectKernelTunables --no-pager
+
+if systemctl is-active --quiet "$SERVICE"; then
+    echo "Restarting active basis-station service..."
+    if ! systemctl restart "$SERVICE"; then
+        echo "Restart failed. Recent log:" >&2
+        journalctl -u "$SERVICE" -n 80 --no-pager >&2 || true
+        exit 1
+    fi
+    sleep 2
+    if ! systemctl is-active --quiet "$SERVICE"; then
+        echo "$SERVICE is not active after restart. Recent log:" >&2
+        journalctl -u "$SERVICE" -n 80 --no-pager >&2 || true
+        exit 1
+    fi
+    echo "$SERVICE restarted successfully."
+else
+    echo "$SERVICE is not active; start it with: systemctl start $SERVICE"
+fi
+
+echo "Check SNDCP with: journalctl -u $SERVICE -n 100 --no-pager | grep -E 'SNDCP|packet gateway'"

@@ -327,7 +327,18 @@ fn open_tun(name: &str) -> Result<File, GatewayError> {
     ifreq[..name_bytes.len()].copy_from_slice(name_bytes);
     ifreq[IFNAMSIZ..IFNAMSIZ + 2].copy_from_slice(&(IFF_TUN | IFF_NO_PI).to_ne_bytes());
     let result = unsafe { libc::ioctl(file.as_raw_fd(), TUNSETIFF, ifreq.as_mut_ptr()) };
-    if result < 0 { return Err(GatewayError::Io(io::Error::last_os_error())); }
+    if result < 0 {
+        let error = io::Error::last_os_error();
+        if error.kind() == io::ErrorKind::PermissionDenied {
+            return Err(GatewayError::Io(io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                format!(
+                    "{error}; TUNSETIFF requires CAP_NET_ADMIN in the basis-station systemd unit. Run contrib/packet-data/netcore-tetra-packet-gateway-install for the active service"
+                ),
+            )));
+        }
+        return Err(GatewayError::Io(error));
+    }
     Ok(file)
 }
 

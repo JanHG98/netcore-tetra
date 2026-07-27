@@ -1,20 +1,35 @@
 #!/bin/sh
 set -eu
 
-SERVICE=${1:-tetra.service}
-DROPIN="/etc/systemd/system/${SERVICE}.d/20-packet-data-gateway.conf"
-CLEANUP=/usr/local/libexec/netcore-tetra-packet-gateway-cleanup
-
 if [ "$(id -u)" -ne 0 ]; then
     echo "Run as root: sudo $0 [service-name]" >&2
     exit 1
 fi
 
+find_service() {
+    if [ "$#" -gt 0 ] && [ -n "$1" ]; then
+        printf '%s\n' "$1"
+        return
+    fi
+    for candidate in bluestation.service bluestation-bs.service tetra.service; do
+        if [ -e "/etc/systemd/system/${candidate}.d/20-packet-data-gateway.conf" ]; then
+            printf '%s\n' "$candidate"
+            return
+        fi
+    done
+    echo "No installed packet-data drop-in found; pass the service explicitly." >&2
+    exit 1
+}
+
+SERVICE=$(find_service "${1:-}")
+DROPIN="/etc/systemd/system/${SERVICE}.d/20-packet-data-gateway.conf"
+CLEANUP=/usr/local/libexec/netcore-tetra-packet-gateway-cleanup
 if [ -x "$CLEANUP" ]; then
     "$CLEANUP" || true
 fi
-rm -f "$DROPIN" "$CLEANUP"
+rm -f "$DROPIN"
 rmdir "/etc/systemd/system/${SERVICE}.d" 2>/dev/null || true
+rm -f "$CLEANUP"
 systemctl daemon-reload
-
-echo "Removed packet-data systemd integration for $SERVICE."
+systemctl reset-failed "$SERVICE" >/dev/null 2>&1 || true
+echo "Removed packet-data systemd integration from $SERVICE."
