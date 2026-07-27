@@ -237,20 +237,20 @@ fn dynamic_route(
                 Err(error) => json_response(500, &json!({"error":error})),
             }
         }
-        ("POST", ["api", "v1", "connectors", connector_id, action]) => {
-            match parse_json_or_default::<ActionInput>(&request.body)
-                .and_then(|input| gateway.connector_action(connector_id, action, input))
-            {
-                Ok(value) => json_response(200, &value),
-                Err(error) => conflict(error),
-            }
-        }
         ("GET", ["api", "v1", "connectors", connector_id, "secrets"]) => {
             json_response(200, &gateway.secret_statuses(Some(connector_id)))
         }
         ("POST", ["api", "v1", "connectors", connector_id, "secrets"]) => {
             match parse_json::<SecretSetInput>(&request.body)
                 .and_then(|input| gateway.set_secret(connector_id, input))
+            {
+                Ok(value) => json_response(200, &value),
+                Err(error) => conflict(error),
+            }
+        }
+        ("POST", ["api", "v1", "connectors", connector_id, action]) => {
+            match parse_json_or_default::<ActionInput>(&request.body)
+                .and_then(|input| gateway.connector_action(connector_id, action, input))
             {
                 Ok(value) => json_response(200, &value),
                 Err(error) => conflict(error),

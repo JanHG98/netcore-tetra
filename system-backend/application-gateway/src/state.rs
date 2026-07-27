@@ -740,6 +740,7 @@ impl SharedGateway {
             "speaker_id": input.speaker_id,
         });
         let expires_at = now + Duration::seconds(inner.config.runtime.default_ttl_secs as i64);
+        let max_attempts = inner.config.runtime.max_attempts;
         inner.state.events.push(EventRecord {
             event_id: event_id.clone(),
             source_connector: "tts".to_string(),
@@ -771,7 +772,7 @@ impl SharedGateway {
             priority: input.priority.unwrap_or(3) as i32,
             state: "queued".to_string(),
             attempts: 0,
-            max_attempts: inner.config.runtime.max_attempts,
+            max_attempts,
             next_attempt_at: now,
             expires_at,
             last_attempt_at: None,
@@ -871,6 +872,7 @@ impl SharedGateway {
             }
         });
         let expires_at = now + Duration::seconds(inner.config.runtime.default_ttl_secs as i64);
+        let max_attempts = inner.config.runtime.max_attempts;
         inner.state.events.push(EventRecord {
             event_id: event_id.clone(),
             source_connector: "tts".to_string(),
@@ -902,7 +904,7 @@ impl SharedGateway {
             priority: priority as i32,
             state: "queued".to_string(),
             attempts: 0,
-            max_attempts: inner.config.runtime.max_attempts,
+            max_attempts,
             next_attempt_at: now,
             expires_at,
             last_attempt_at: None,
@@ -1574,12 +1576,13 @@ fn dispatch_locked(inner: &mut GatewayInner, input: DispatchInput) -> Result<Eve
 
     if !input.target_connectors.is_empty() {
         for connector_id in input.target_connectors.iter().map(|value| slug(value)) {
+            let destination = event.destination.clone();
             create_delivery_locked(
                 inner,
                 &mut event,
                 &connector_id,
                 input.template_id.as_deref(),
-                event.destination.clone(),
+                destination,
                 now,
             )?;
         }
@@ -1603,12 +1606,13 @@ fn dispatch_locked(inner: &mut GatewayInner, input: DispatchInput) -> Result<Eve
                 record.updated_at = now;
             }
             event.matched_rules.push(rule_id);
+            let destination = rule.destination.clone().or_else(|| event.destination.clone());
             create_delivery_locked(
                 inner,
                 &mut event,
                 &rule.target_connector,
                 input.template_id.as_deref().or(rule.template_id.as_deref()),
-                rule.destination.clone().or(event.destination.clone()),
+                destination,
                 now,
             )?;
             if rule.stop_processing {
@@ -1675,6 +1679,7 @@ fn create_delivery_locked(
         (payload, "application/json".to_string(), None)
     };
     let delivery_id = Uuid::new_v4().to_string();
+    let max_attempts = inner.config.runtime.max_attempts;
     inner.state.deliveries.push(DeliveryRecord {
         delivery_id: delivery_id.clone(),
         event_id: event.event_id.clone(),
@@ -1689,7 +1694,7 @@ fn create_delivery_locked(
         priority: event.priority,
         state: "queued".to_string(),
         attempts: 0,
-        max_attempts: inner.config.runtime.max_attempts,
+        max_attempts,
         next_attempt_at: now,
         expires_at: event.expires_at,
         last_attempt_at: None,
