@@ -1,5 +1,5 @@
 use std::fs;
-use std::net::{Ipv4Addr, SocketAddr};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
@@ -143,6 +143,20 @@ impl IpGatewayConfig {
         parse_cidr(&self.interface.address)
             .map(|(address, _)| address)
             .unwrap_or(Ipv4Addr::new(10, 0, 0, 1))
+    }
+
+    /// Resolve a wildcard DNS bind to the packet-data gateway address.
+    ///
+    /// Binding the embedded DNS service to 0.0.0.0:53 would collide with
+    /// systemd-resolved/dnsmasq on many LXCs and would also expose it on the
+    /// management interface. Existing configurations may keep 0.0.0.0:53;
+    /// at runtime it is narrowed automatically to the TUN gateway address.
+    pub fn effective_dns_bind(&self) -> SocketAddr {
+        if self.dns.bind.ip().is_unspecified() {
+            SocketAddr::new(IpAddr::V4(self.gateway_ipv4()), self.dns.bind.port())
+        } else {
+            self.dns.bind
+        }
     }
 }
 
@@ -291,7 +305,7 @@ impl Default for DnsConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            bind: "0.0.0.0:53".parse().expect("valid DNS bind"),
+            bind: "10.0.0.1:53".parse().expect("valid DNS bind"),
             upstream: "1.1.1.1:53".to_string(),
             local_domain: "netcore.test".to_string(),
             ttl_secs: 30,

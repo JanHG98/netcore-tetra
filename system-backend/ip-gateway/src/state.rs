@@ -158,6 +158,26 @@ struct GatewayDatabase {
     events: VecDeque<GatewayEventRecord>,
 }
 
+fn compact_reconcile_events(events: &mut VecDeque<GatewayEventRecord>) {
+    let mut compacted = VecDeque::with_capacity(events.len());
+    for event in events.drain(..) {
+        let is_reconcile = matches!(
+            event.kind.as_str(),
+            "kernel_reconciled" | "kernel_plan_ready" | "kernel_reconcile_failed"
+        );
+        let duplicate = is_reconcile
+            && compacted.back().is_some_and(|previous: &GatewayEventRecord| {
+                previous.kind == event.kind && previous.detail == event.detail
+            });
+        if duplicate {
+            // Keep the newest timestamp/sequence from a run of identical entries.
+            compacted.pop_back();
+        }
+        compacted.push_back(event);
+    }
+    *events = compacted;
+}
+
 impl Default for GatewayDatabase {
     fn default() -> Self {
         Self {
@@ -278,6 +298,7 @@ impl SharedGateway {
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => GatewayDatabase::default(),
             Err(error) => return Err(error.into()),
         };
+        compact_reconcile_events(&mut database.events);
         for capture in database.captures.values_mut() {
             if capture.state == CaptureState::Active {
                 capture.state = CaptureState::Stopped;
@@ -372,6 +393,7 @@ impl SharedGateway {
         state.packet_core_last_error = None;
         state.packet_core_last_seen = Some(now_iso());
         if changed {
+            tracing::info!("Packet Core connected (mode={mode})");
             state.event("packet_core_connected", json!({"mode":mode}));
         }
     }
@@ -382,6 +404,7 @@ impl SharedGateway {
         state.packet_core_connected = false;
         state.packet_core_last_error = Some(error.clone());
         if changed {
+            tracing::warn!("Packet Core disconnected: {error}");
             state.event("packet_core_disconnected", json!({"error":error}));
         }
     }
@@ -417,25 +440,37 @@ impl SharedGateway {
         state.tun_open = false;
         state.tun_last_error = error.clone();
         if changed {
+            if let Some(message) = error.as_deref() {
+                tracing::warn!("TUN {} closed: {message}", state.tun_name);
+            }
             state.event("tun_closed", json!({"error":error}));
         }
     }
 
-    pub fn kernel_reconciled(&self, revision: u64, error: Option<String>) {
+    pub fn kernel_reconciled(&self, revision: u64, error: Option<String>, applied: bool) {
         let mut state = self.lock();
+        let first = state.kernel_last_reconcile.is_none();
+        let error_changed = state.kernel_last_error != error;
+        let revision_changed = applied && state.kernel_applied_revision != Some(revision);
         state.kernel_last_reconcile = Some(now_iso());
         state.kernel_last_error = error.clone();
-        if error.is_none() {
+        if error.is_none() && applied {
             state.kernel_applied_revision = Some(revision);
         }
-        state.event(
-            if error.is_none() {
-                "kernel_reconciled"
-            } else {
-                "kernel_reconcile_failed"
-            },
-            json!({"revision":revision,"error":error}),
-        );
+        // Reconciliation runs every few seconds. Only record meaningful state
+        // changes; otherwise the event ring is flooded with identical entries.
+        if first || error_changed || revision_changed {
+            state.event(
+                if error.is_some() {
+                    "kernel_reconcile_failed"
+                } else if applied {
+                    "kernel_reconciled"
+                } else {
+                    "kernel_plan_ready"
+                },
+                json!({"revision":revision,"error":error,"applied":applied}),
+            );
+        }
     }
 
     pub fn record_packet_core_delete(&self) {

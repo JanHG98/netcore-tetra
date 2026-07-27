@@ -101,11 +101,13 @@ fn run(config: IpGatewayConfig, gateway: SharedGateway, rx: Receiver<RuntimeComm
 
         if last_context_refresh.elapsed() >= context_interval {
             match client.status() {
-                Ok(status) => gateway.packet_core_connected(status.mode),
-                Err(error) => gateway.packet_core_disconnected(error),
-            }
-            match client.contexts() {
-                Ok(contexts) => gateway.replace_contexts(contexts),
+                Ok(status) => {
+                    gateway.packet_core_connected(status.mode);
+                    match client.contexts() {
+                        Ok(contexts) => gateway.replace_contexts(contexts),
+                        Err(error) => gateway.packet_core_disconnected(error),
+                    }
+                }
                 Err(error) => gateway.packet_core_disconnected(error),
             }
             last_context_refresh = Instant::now();
@@ -147,14 +149,22 @@ fn reconcile_now(
     let snapshot = gateway.kernel_snapshot();
     match kernel::reconcile(config, &snapshot, previous_snapshot.as_ref()) {
         Ok(plan) => {
-            gateway.kernel_reconciled(snapshot.revision, None);
+            gateway.kernel_reconciled(
+                snapshot.revision,
+                None,
+                config.interface.mode == MODE_AUTHORITATIVE,
+            );
             if config.interface.mode == MODE_AUTHORITATIVE {
                 *previous_snapshot = Some(snapshot);
             }
             Ok(plan)
         }
         Err(error) => {
-            gateway.kernel_reconciled(snapshot.revision, Some(error.clone()));
+            gateway.kernel_reconciled(
+                snapshot.revision,
+                Some(error.clone()),
+                config.interface.mode == MODE_AUTHORITATIVE,
+            );
             Err(error)
         }
     }

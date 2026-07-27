@@ -130,3 +130,11 @@ GET    /openapi.json
 ```
 
 Weitere Details stehen unter `docs/`.
+
+
+## Betriebsmodus und Statusanzeige
+
+`shadow` validiert nur Konfiguration und Kernel-Plan. Ein geschlossenes TUN ist
+in diesem Modus erwartbar. Für echten Pakettransport `interface.mode =
+"authoritative"` setzen und den Dienst neu starten. Der DNS-Listener wird erst
+dann am TUN-Gateway aktiviert.

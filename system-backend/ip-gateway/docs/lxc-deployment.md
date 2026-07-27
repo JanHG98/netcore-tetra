@@ -45,6 +45,19 @@ sudo systemctl restart netcore-ip-gateway
 journalctl -u netcore-ip-gateway -f
 ```
 
+
+## Anzeige in Shadow- und Authoritative-Modus
+
+Im `shadow`-Modus bleibt `ntc-tun0` **absichtlich geschlossen**. Die WebUI zeigt
+dann „Shadow – absichtlich nicht geöffnet“ und „Kernel-Plan bereit“. Erst mit
+`mode = "authoritative"` werden TUN, IP-Adresse, Routing, NAT und nftables
+tatsächlich aktiviert.
+
+Der eingebaute DNS-Proxy bindet nur im Authoritative-Modus. Ein konfiguriertes
+`0.0.0.0:53` wird automatisch auf die TUN-Gateway-Adresse (standardmäßig
+`10.0.0.1:53`) eingegrenzt, damit es nicht mit systemd-resolved oder dnsmasq
+auf dem Management-Interface kollidiert.
+
 ## Egress-Interface
 
 `nat.egress_interface` muss dem tatsächlichen Interface des Containers entsprechen, zum Beispiel `eth0`. Ein falsch gesetztes Interface führt nicht zu heimlichem Fallback, sondern zu einem sichtbar fehlerhaften nftables-Reconcile.

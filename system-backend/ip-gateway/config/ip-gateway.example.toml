@@ -44,7 +44,9 @@ log_drops = false
 
 [dns]
 enabled = true
-bind = "0.0.0.0:53"
+# Nur am Packet-Data-Gateway binden; 0.0.0.0 wird zur Laufzeit ebenfalls
+# automatisch auf diese TUN-Adresse eingegrenzt.
+bind = "10.0.0.1:53"
 upstream = "1.1.1.1:53"
 local_domain = "netcore.test"
 ttl_secs = 30

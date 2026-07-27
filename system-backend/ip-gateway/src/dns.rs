@@ -2,25 +2,42 @@ use std::net::{SocketAddr, UdpSocket};
 use std::thread;
 use std::time::Duration;
 
-use crate::config::IpGatewayConfig;
+use crate::config::{IpGatewayConfig, MODE_AUTHORITATIVE};
 use crate::state::SharedGateway;
 
 pub fn spawn_dns(config: IpGatewayConfig, gateway: SharedGateway) -> Option<thread::JoinHandle<()>> {
     if !config.dns.enabled {
         return None;
     }
+    if config.interface.mode != MODE_AUTHORITATIVE {
+        tracing::info!(
+            "IP Gateway DNS not started in shadow mode; switch interface.mode to authoritative to activate packet-data DNS"
+        );
+        return None;
+    }
     Some(thread::spawn(move || run(config, gateway)))
 }
 
 fn run(config: IpGatewayConfig, gateway: SharedGateway) {
-    let socket = match UdpSocket::bind(config.dns.bind) {
-        Ok(socket) => socket,
-        Err(error) => {
-            tracing::error!("DNS bind {} failed: {error}", config.dns.bind);
-            return;
+    let bind = config.effective_dns_bind();
+    let mut attempts = 0u64;
+    let socket = loop {
+        match UdpSocket::bind(bind) {
+            Ok(socket) => break socket,
+            Err(error) => {
+                // The authoritative runtime creates and addresses the TUN in a
+                // separate worker. A short startup race is therefore normal.
+                attempts = attempts.saturating_add(1);
+                if attempts == 1 || attempts % 15 == 0 {
+                    tracing::warn!(
+                        "DNS bind {bind} not ready yet: {error}; retrying in 2 seconds"
+                    );
+                }
+                thread::sleep(Duration::from_secs(2));
+            }
         }
     };
-    tracing::info!("IP Gateway DNS listening on udp://{}", config.dns.bind);
+    tracing::info!("IP Gateway DNS listening on udp://{bind}");
     let _ = socket.set_read_timeout(Some(Duration::from_secs(1)));
     let mut buffer = [0u8; 4096];
     loop {

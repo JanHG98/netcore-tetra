@@ -48,6 +48,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "IP Gateway starts in OPEN LAB mode: no authentication, no tokens and no TLS"
     );
     tracing::info!("IP Gateway operating mode: {}", config.interface.mode);
+    if config.interface.mode == config::MODE_SHADOW {
+        tracing::warn!(
+            "shadow mode active: TUN, routing, NAT and firewall are intentionally not applied"
+        );
+    }
 
     let gateway = SharedGateway::load(config.clone())?;
     let runtime = runtime::spawn_runtime(config.clone(), gateway.clone());
