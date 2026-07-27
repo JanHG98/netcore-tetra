@@ -591,8 +591,8 @@ bind = "0.0.0.0"               # bind address (default: 0.0.0.0 = all interfaces
 # the public internet without TLS. For internet-facing use, put a reverse proxy
 # with HTTPS (e.g. nginx, Caddy) in front of the dashboard.
 #
-username = "j.hoffmeister"
-password = "DagurUranus2014#"
+username = "admin"
+password = "admin"
 #
 # OPTIONAL: public read-only overview (FH-FEAT-033). When true AND username/password
 # are set, anonymous visitors see a small read-only status page (radio count, active
