@@ -409,17 +409,20 @@ fn read_request(stream: &mut TcpStream, max_body_bytes: usize) -> Result<HttpReq
             break position + 4;
         }
     };
-    let header = std::str::from_utf8(&bytes[..header_end]).map_err(|_| "request header is not UTF-8")?;
-    let mut lines = header.split("\r\n");
-    let first = lines.next().ok_or("missing request line")?;
-    let mut request_line = first.split_whitespace();
-    let method = request_line.next().ok_or("missing request method")?.to_string();
-    let target = request_line.next().ok_or("missing request target")?;
-    let content_length = lines
-        .filter_map(|line| line.split_once(':'))
-        .find(|(name, _)| name.eq_ignore_ascii_case("content-length"))
-        .and_then(|(_, value)| value.trim().parse::<usize>().ok())
-        .unwrap_or(0);
+    let (method, target, content_length) = {
+        let header = std::str::from_utf8(&bytes[..header_end]).map_err(|_| "request header is not UTF-8")?;
+        let mut lines = header.split("\r\n");
+        let first = lines.next().ok_or("missing request line")?;
+        let mut request_line = first.split_whitespace();
+        let method = request_line.next().ok_or("missing request method")?.to_string();
+        let target = request_line.next().ok_or("missing request target")?.to_string();
+        let content_length = lines
+            .filter_map(|line| line.split_once(':'))
+            .find(|(name, _)| name.eq_ignore_ascii_case("content-length"))
+            .and_then(|(_, value)| value.trim().parse::<usize>().ok())
+            .unwrap_or(0);
+        (method, target, content_length)
+    };
     if content_length > max_body_bytes {
         return Err(format!("request body exceeds {max_body_bytes} bytes"));
     }
@@ -431,7 +434,7 @@ fn read_request(stream: &mut TcpStream, max_body_bytes: usize) -> Result<HttpReq
         bytes.extend_from_slice(&buffer[..count]);
     }
     let body = bytes[header_end..header_end + content_length].to_vec();
-    let (raw_path, raw_query) = target.split_once('?').unwrap_or((target, ""));
+    let (raw_path, raw_query) = target.split_once('?').unwrap_or((target.as_str(), ""));
     Ok(HttpRequest {
         method,
         path: percent_decode(raw_path),

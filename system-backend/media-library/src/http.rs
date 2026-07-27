@@ -353,19 +353,22 @@ fn read_request(stream: &mut TcpStream, max_body_bytes: usize) -> Result<HttpReq
             break position + 4;
         }
     };
-    let header = String::from_utf8_lossy(&bytes[..header_end]);
-    let mut lines = header.lines();
-    let request_line = lines.next().ok_or_else(|| "missing request line".to_string())?;
-    let mut request_parts = request_line.split_whitespace();
-    let method = request_parts.next().ok_or_else(|| "missing method".to_string())?.to_string();
-    let target = request_parts.next().ok_or_else(|| "missing target".to_string())?;
-    let content_length = lines
-        .filter_map(|line| line.split_once(':'))
-        .find(|(name, _)| name.eq_ignore_ascii_case("content-length"))
-        .map(|(_, value)| value.trim().parse::<usize>())
-        .transpose()
-        .map_err(|error| format!("invalid Content-Length: {error}"))?
-        .unwrap_or(0);
+    let (method, target, content_length) = {
+        let header = String::from_utf8_lossy(&bytes[..header_end]);
+        let mut lines = header.lines();
+        let request_line = lines.next().ok_or_else(|| "missing request line".to_string())?;
+        let mut request_parts = request_line.split_whitespace();
+        let method = request_parts.next().ok_or_else(|| "missing method".to_string())?.to_string();
+        let target = request_parts.next().ok_or_else(|| "missing target".to_string())?.to_string();
+        let content_length = lines
+            .filter_map(|line| line.split_once(':'))
+            .find(|(name, _)| name.eq_ignore_ascii_case("content-length"))
+            .map(|(_, value)| value.trim().parse::<usize>())
+            .transpose()
+            .map_err(|error| format!("invalid Content-Length: {error}"))?
+            .unwrap_or(0);
+        (method, target, content_length)
+    };
     if content_length > max_body_bytes {
         return Err(format!("request body exceeds {max_body_bytes} byte limit"));
     }
@@ -377,7 +380,7 @@ fn read_request(stream: &mut TcpStream, max_body_bytes: usize) -> Result<HttpReq
         bytes.extend_from_slice(&buffer[..read]);
     }
     let body = bytes[header_end..header_end + content_length].to_vec();
-    let (path, query) = parse_path_and_query(target);
+    let (path, query) = parse_path_and_query(&target);
     Ok(HttpRequest { method, path, query, body })
 }
 

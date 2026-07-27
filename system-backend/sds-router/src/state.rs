@@ -1345,7 +1345,7 @@ fn plan_message_locked(state: &mut RouterState, id: &str, force_nodes: &[String]
             }
         }
         if snapshot.ingress.contains("local_delivered") {
-            if let Some(ingress_node) = snapshot.ingress_node_id.as_ref() {
+            if let Some(ingress_node) = snapshot.ingress_node.as_ref() {
                 target_nodes.remove(ingress_node);
             }
         }

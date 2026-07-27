@@ -8,7 +8,7 @@ SERVICE="${SERVICE:-/etc/systemd/system/netcore-observability.service}"
 id -u netcore-observability >/dev/null 2>&1 || useradd --system --home /var/lib/netcore-observability --shell /usr/sbin/nologin netcore-observability
 install -d -o netcore-observability -g netcore-observability -m 0750 /var/lib/netcore-observability /var/lib/netcore-observability/diagnostics
 install -d -o root -g root -m 0755 "${PREFIX}/bin" "${PREFIX}/stack" "$(dirname "${CONFIG}")"
-cargo build --locked --release --package netcore-observability --manifest-path "${ROOT}/Cargo.toml"
+cargo build --release --package netcore-observability --manifest-path "${ROOT}/Cargo.toml"
 install -o root -g root -m 0755 "${ROOT}/target/release/netcore-observability" "${PREFIX}/bin/netcore-observability"
 install -o root -g root -m 0644 "${ROOT}/system-backend/observability/README.md" "${PREFIX}/README.md"
 cp -a "${ROOT}/system-backend/observability/stack/." "${PREFIX}/stack/"

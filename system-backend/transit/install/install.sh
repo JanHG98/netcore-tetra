@@ -15,7 +15,7 @@ id -u netcore-transit >/dev/null 2>&1 || useradd --system --home /var/lib/netcor
 install -d -o netcore-transit -g netcore-transit -m 0750 /var/lib/netcore-transit
 install -d -o root -g root -m 0755 "${PREFIX}/bin"
 
-cargo build --locked --release --package netcore-transit --manifest-path "${ROOT}/Cargo.toml"
+cargo build --release --package netcore-transit --manifest-path "${ROOT}/Cargo.toml"
 install -o root -g root -m 0755 "${ROOT}/target/release/netcore-transit" "${PREFIX}/bin/netcore-transit"
 install -o root -g root -m 0644 "${ROOT}/system-backend/transit/README.md" "${PREFIX}/README.md"
 install -d -o root -g netcore-transit -m 0750 "$(dirname "${CONFIG}")"

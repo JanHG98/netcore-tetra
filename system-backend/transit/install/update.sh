@@ -9,7 +9,7 @@ if [[ ${EUID} -ne 0 ]]; then
   exit 1
 fi
 
-cargo build --locked --release --package netcore-transit --manifest-path "${ROOT}/Cargo.toml"
+cargo build --release --package netcore-transit --manifest-path "${ROOT}/Cargo.toml"
 install -o root -g root -m 0755 "${ROOT}/target/release/netcore-transit" "${PREFIX}/bin/netcore-transit"
 install -o root -g root -m 0644 "${ROOT}/system-backend/transit/README.md" "${PREFIX}/README.md"
 install -o root -g root -m 0644 "${ROOT}/system-backend/transit/systemd/netcore-transit.service" /etc/systemd/system/netcore-transit.service

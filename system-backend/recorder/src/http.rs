@@ -285,25 +285,29 @@ fn read_request(stream: &mut TcpStream, max_body_bytes: usize) -> Result<HttpReq
         }
     }
 
-    let header = std::str::from_utf8(&buffer[..header_end])
-        .map_err(|_| "request headers are not UTF-8".to_string())?;
-    let mut lines = header.lines();
-    let request_line = lines
-        .next()
-        .ok_or_else(|| "missing request line".to_string())?;
-    let mut request_parts = request_line.split_whitespace();
-    let method = request_parts
-        .next()
-        .ok_or_else(|| "missing method".to_string())?
-        .to_string();
-    let raw_path = request_parts
-        .next()
-        .ok_or_else(|| "missing path".to_string())?;
-    let content_length = lines
-        .filter_map(|line| line.split_once(':'))
-        .find(|(name, _)| name.eq_ignore_ascii_case("content-length"))
-        .and_then(|(_, value)| value.trim().parse::<usize>().ok())
-        .unwrap_or(0);
+    let (method, raw_path, content_length) = {
+        let header = std::str::from_utf8(&buffer[..header_end])
+            .map_err(|_| "request headers are not UTF-8".to_string())?;
+        let mut lines = header.lines();
+        let request_line = lines
+            .next()
+            .ok_or_else(|| "missing request line".to_string())?;
+        let mut request_parts = request_line.split_whitespace();
+        let method = request_parts
+            .next()
+            .ok_or_else(|| "missing method".to_string())?
+            .to_string();
+        let raw_path = request_parts
+            .next()
+            .ok_or_else(|| "missing path".to_string())?
+            .to_string();
+        let content_length = lines
+            .filter_map(|line| line.split_once(':'))
+            .find(|(name, _)| name.eq_ignore_ascii_case("content-length"))
+            .and_then(|(_, value)| value.trim().parse::<usize>().ok())
+            .unwrap_or(0);
+        (method, raw_path, content_length)
+    };
     if content_length > max_body_bytes {
         return Err("request body is too large".to_string());
     }
@@ -318,7 +322,7 @@ fn read_request(stream: &mut TcpStream, max_body_bytes: usize) -> Result<HttpReq
         }
         buffer.extend_from_slice(&chunk[..read]);
     }
-    let (path, query) = parse_path_and_query(raw_path);
+    let (path, query) = parse_path_and_query(&raw_path);
     Ok(HttpRequest {
         method,
         path,

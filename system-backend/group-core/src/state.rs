@@ -433,6 +433,7 @@ impl SharedGroups {
         for input in request.memberships {
             validate_membership_input(&state, &input)?;
             state.database_revision = state.database_revision.saturating_add(1);
+            let revision = state.database_revision;
             let key = (input.issi, input.gssi);
             let now = now_iso();
             let created = state.memberships.get(&key).map(|item| item.created_at.clone()).unwrap_or_else(|| now.clone());
@@ -445,7 +446,7 @@ impl SharedGroups {
                 notes: input.notes.trim().to_string(),
                 created_at: created,
                 updated_at: now,
-                revision: state.database_revision,
+                revision,
             });
         }
         persist_locked(&state)?;
@@ -480,10 +481,11 @@ impl SharedGroups {
                 let membership = MembershipInput { issi: input.issi, gssi: input.gssi, allowed: true, auto_attach: input.auto_attach, locked: false, notes: "created by DGNA operation".to_string() };
                 validate_membership_input(&state, &membership)?;
                 state.database_revision = state.database_revision.saturating_add(1);
+                let revision = state.database_revision;
                 let now = now_iso();
                 state.memberships.insert((input.issi, input.gssi), MembershipRecord {
                     issi: input.issi, gssi: input.gssi, allowed: true, auto_attach: input.auto_attach, locked: false,
-                    notes: membership.notes, created_at: now.clone(), updated_at: now, revision: state.database_revision,
+                    notes: membership.notes, created_at: now.clone(), updated_at: now, revision,
                 });
             } else {
                 state.memberships.remove(&(input.issi, input.gssi));

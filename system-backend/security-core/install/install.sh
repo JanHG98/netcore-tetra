@@ -21,7 +21,7 @@ if [[ ! -f /etc/netcore/security-core.toml ]]; then
 fi
 
 cd "$REPO_ROOT"
-cargo build --release -p netcore-security-core
+CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-1}" cargo build --release -p netcore-security-core
 install -m 0755 target/release/netcore-security-core /usr/local/bin/netcore-security-core
 install -m 0644 "$UNIT_SRC" /etc/systemd/system/netcore-security-core.service
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../shared/install" && pwd)/lxc-network.sh"
