@@ -749,19 +749,19 @@ timeout_ms = 2000
 # directly to the Control Room. The gateway supplies the per-service health
 # matrix used by the local edge-fallback state machine.
 enabled = false
-host = "10.0.20.10"
+host = "10.0.1.179"
 port = 8080
 use_tls = false
 endpoint_path = "/ws/node"
 
 # Optional, but recommended: stable and human-readable.
-node_id = "SRV-M_TBS-01"
-station_name = "SRV-M_TBS-01"
-site = "Main"
+node_id = "SRV-M-TBS-01"
+station_name = "SRV-M-TBS-01"
+site = "Heim-Region"
 
 # Route normal SDS and status traffic through the central SDS Router.
 # Keep disabled for a fully local standalone TBS.
-central_sds_routing = false
+central_sds_routing = true
 
 # Open-Lab phase: no token, username/password or TLS is configured here.
 # Keep this endpoint inside the isolated test/management network.
