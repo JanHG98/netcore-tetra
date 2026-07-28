@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::HashSet;
 use std::fs::{self, File};
 use std::io::Read;
@@ -21,6 +24,8 @@ use super::templates::{
 use super::types::{TtsState, TtsStatus, TtsVoiceStatus};
 
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für provider Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct ProviderStatus {
     available: bool,
     error: Option<String>,
@@ -28,7 +33,11 @@ struct ProviderStatus {
     voice_models: HashSet<String>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for ProviderStatus`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for ProviderStatus {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             available: false,
@@ -40,6 +49,8 @@ impl Default for ProviderStatus {
 }
 
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für live Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct LiveStatus {
     state: TtsState,
     job_id: Option<String>,
@@ -57,7 +68,11 @@ struct LiveStatus {
     last_error: Option<String>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for LiveStatus`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for LiveStatus {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             state: TtsState::Idle,
@@ -78,6 +93,8 @@ impl Default for LiveStatus {
     }
 }
 
+// Was: Bündelt die zusammengehörigen Werte für tts shared in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct TtsShared {
     config: CfgTts,
     cache_root: PathBuf,
@@ -94,13 +111,21 @@ struct TtsShared {
 }
 
 #[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tts handle in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TtsHandle {
     inner: Arc<TtsShared>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `TtsHandle`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl TtsHandle {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(mut config: CfgTts, audio_player: AudioPlayerHandle, recorder: RecorderHandle) -> Result<Self, String> {
         let configured_cache = PathBuf::from(&config.cache_directory);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let (cache_root, startup_warning) = match prepare_writable_cache(&configured_cache) {
             Ok(path) => (path, None),
             Err(primary_error) => {
@@ -110,7 +135,11 @@ impl TtsHandle {
                 ];
                 let mut failures = Vec::new();
                 let mut selected = None;
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for candidate in candidates {
+                    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                     match prepare_writable_cache(&candidate) {
                         Ok(path) => {
                             selected = Some(path);
@@ -139,6 +168,8 @@ impl TtsHandle {
         cleanup_stale_cache(&cache_root, config.cache_retention_minutes);
 
         let configured_templates = PathBuf::from(&config.template_directory);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let (template_root, template_error) = match prepare_writable_template_directory(&configured_templates) {
             Ok(path) => (Some(path), None),
             Err(error) => {
@@ -180,18 +211,26 @@ impl TtsHandle {
         Ok(handle)
     }
 
+    // Was: Führt den Arbeitsschritt `config` für Konfiguration aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn config(&self) -> &CfgTts {
         &self.inner.config
     }
 
+    // Was: Führt den Arbeitsschritt `cache_root` für Zwischenspeicher root aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn cache_root(&self) -> &Path {
         &self.inner.cache_root
     }
 
+    // Was: Führt den Arbeitsschritt `startup_warning` für startup warning aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn startup_warning(&self) -> Option<&str> {
         self.inner.startup_warning.as_deref()
     }
 
+    // Was: Führt den Arbeitsschritt `status` für Status aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn status(&self) -> TtsStatus {
         let provider = self.inner.provider.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         let live = self.inner.live.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
@@ -227,6 +266,8 @@ impl TtsHandle {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `voices` für voices aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn voices(&self) -> Vec<TtsVoiceStatus> {
         let provider = self.inner.provider.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         self.inner
@@ -253,6 +294,8 @@ impl TtsHandle {
             .collect()
     }
 
+    // Was: Führt den Arbeitsschritt `templates` für templates aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn templates(&self) -> Result<Vec<TtsTemplate>, String> {
         let root = self.template_root()?;
         let _guard = self
@@ -263,6 +306,8 @@ impl TtsHandle {
         list_templates(root)
     }
 
+    // Was: Diese Funktion speichert template.
+    // Warum: Die Speicherung wird dadurch einheitlich durchgeführt und Fehler gehen nicht unbemerkt verloren.
     pub fn save_template(&self, mut draft: TtsTemplateDraft) -> Result<TtsTemplate, String> {
         draft.name = normalize_template_name(&draft.name)?;
         draft.text = normalize_text(&draft.text, self.inner.config.max_text_characters)?;
@@ -283,6 +328,8 @@ impl TtsHandle {
         Ok(template)
     }
 
+    // Was: Diese Funktion löscht template.
+    // Warum: Das Entfernen wird dadurch kontrolliert durchgeführt und hinterlässt keine verwaisten Verweise.
     pub fn delete_template(&self, id: &str) -> Result<(), String> {
         let root = self.template_root()?;
         let _guard = self
@@ -295,6 +342,8 @@ impl TtsHandle {
         Ok(())
     }
 
+    // Was: Diese Funktion erzeugt preview.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn generate_preview(
         &self,
         text: &str,
@@ -307,6 +356,8 @@ impl TtsHandle {
     }
 
 
+    // Was: Führt den Arbeitsschritt `preview_path` für preview path aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn preview_path(&self, job_id: &str) -> Result<PathBuf, String> {
         let live = self.inner.live.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         if live.job_id.as_deref() != Some(job_id) {
@@ -322,10 +373,14 @@ impl TtsHandle {
         Ok(path.clone())
     }
 
+    // Was: Diese Funktion stoppt den vorgesehenen Arbeitsschritt.
+    // Warum: Der Betrieb wird dadurch geordnet beendet und Ressourcen werden freigegeben.
     pub fn stop(&self) -> Result<(), String> {
         self.inner.cancel_requested.store(true, Ordering::SeqCst);
         let path = {
             let mut live = self.inner.live.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match live.state {
                 TtsState::Idle => return Ok(()),
                 TtsState::Synthesizing => {
@@ -346,6 +401,8 @@ impl TtsHandle {
         Ok(())
     }
 
+    // Was: Diese Funktion startet job.
+    // Warum: Der Dienst oder Teilprozess wird so in einer festen und überprüfbaren Reihenfolge gestartet.
     fn start_job(
         &self,
         text: &str,
@@ -410,6 +467,8 @@ impl TtsHandle {
         Ok(job_id)
     }
 
+    // Was: Diese Funktion führt job.
+    // Warum: Der Lebenszyklus des Dienstes bleibt so an einer zentralen Stelle steuerbar.
     fn run_job(
         &self,
         job_id: String,
@@ -418,6 +477,8 @@ impl TtsHandle {
         speed: f32,
         recording_name: String,
     ) {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let path = match self.synthesize(&job_id, &text, &voice, speed) {
             Ok(path) => path,
             Err(error) => {
@@ -446,6 +507,8 @@ impl TtsHandle {
             }
         }
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.inner.recorder.import_named_wav(&path, &recording_name, "tts") {
             Ok(metadata) => {
                 let mut live = self.inner.live.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
@@ -470,6 +533,8 @@ impl TtsHandle {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `synthesize` für synthesize aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn synthesize(&self, job_id: &str, text: &str, voice: &CfgTtsVoice, speed: f32) -> Result<PathBuf, String> {
         let provider_part_path = self.inner.cache_root.join(format!("{job_id}.provider.part.wav"));
         let recording_part_path = self.inner.cache_root.join(format!("{job_id}.recording.part.wav"));
@@ -557,6 +622,8 @@ impl TtsHandle {
         result
     }
 
+    // Was: Diese Funktion ermittelt voice.
+    // Warum: Unklare oder indirekte Angaben werden so vor der weiteren Verarbeitung eindeutig gemacht.
     fn resolve_voice(&self, voice_id: Option<&str>) -> Result<&CfgTtsVoice, String> {
         let id = voice_id
             .map(str::trim)
@@ -570,6 +637,8 @@ impl TtsHandle {
             .ok_or_else(|| format!("unknown TTS voice '{id}'"))
     }
 
+    // Was: Führt den Arbeitsschritt `template_root` für template root aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn template_root(&self) -> Result<&Path, String> {
         self.inner
             .template_root
@@ -582,6 +651,8 @@ impl TtsHandle {
             })
     }
 
+    // Was: Diese Funktion stellt voice available.
+    // Warum: So wird die notwendige Voraussetzung hergestellt, bevor abhängiger Code weiterläuft.
     fn ensure_voice_available(&self, voice: &CfgTtsVoice) -> Result<(), String> {
         let provider = self
             .inner
@@ -603,6 +674,8 @@ impl TtsHandle {
         Ok(())
     }
 
+    // Was: Führt den Arbeitsschritt `auto_save_generated` für auto save generated aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn auto_save_generated(
         &self,
         text: &str,
@@ -634,6 +707,8 @@ impl TtsHandle {
             .template_lock
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match auto_save_template(root, draft) {
             Ok(template) => {
                 tracing::info!(
@@ -650,6 +725,8 @@ impl TtsHandle {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `current_job_matches` für current job matches aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn current_job_matches(&self, job_id: &str) -> bool {
         self.inner
             .live
@@ -660,6 +737,8 @@ impl TtsHandle {
             == Some(job_id)
     }
 
+    // Was: Diese Funktion kennzeichnet failed.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn mark_failed(&self, job_id: &str, error: String) {
         tracing::error!("TTS: job={} failed: {}", job_id, error);
         let mut live = self.inner.live.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
@@ -670,6 +749,8 @@ impl TtsHandle {
         }
     }
 
+    // Was: Diese Funktion kennzeichnet cancelled.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn mark_cancelled(&self, job_id: &str, reason: String) {
         let mut live = self.inner.live.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         if live.job_id.as_deref() == Some(job_id) {
@@ -679,6 +760,8 @@ impl TtsHandle {
         }
     }
 
+    // Was: Diese Funktion startet monitor.
+    // Warum: Länger laufende Arbeit blockiert dadurch nicht den aufrufenden Ablauf.
     fn spawn_monitor(&self) {
         let handle = self.clone();
         thread::Builder::new()
@@ -691,6 +774,8 @@ impl TtsHandle {
     }
 
 
+    // Was: Führt den Arbeitsschritt `refresh_provider_if_stale` für refresh provider if stale aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn refresh_provider_if_stale(&self) {
         let stale = {
             let provider = self.inner.provider.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
@@ -704,6 +789,8 @@ impl TtsHandle {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `probe_provider` für probe provider aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn probe_provider(&self) {
         let url = piper_voices_url(&self.inner.config.endpoint);
         let result = (|| -> Result<HashSet<String>, String> {
@@ -728,6 +815,8 @@ impl TtsHandle {
         })();
         let mut provider = self.inner.provider.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         provider.last_probe = Some(Instant::now());
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match result {
             Ok(models) => {
                 provider.available = true;
@@ -744,6 +833,8 @@ impl TtsHandle {
 }
 
 
+// Was: Führt den Arbeitsschritt `piper_base_url` für piper base url aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn piper_base_url(endpoint: &str) -> String {
     let endpoint = endpoint.trim().trim_end_matches('/');
     endpoint
@@ -753,14 +844,20 @@ fn piper_base_url(endpoint: &str) -> String {
         .to_string()
 }
 
+// Was: Führt den Arbeitsschritt `piper_synthesis_url` für piper synthesis url aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn piper_synthesis_url(endpoint: &str) -> String {
     format!("{}/synthesize", piper_base_url(endpoint))
 }
 
+// Was: Führt den Arbeitsschritt `piper_voices_url` für piper voices url aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn piper_voices_url(endpoint: &str) -> String {
     format!("{}/voices", piper_base_url(endpoint))
 }
 
+// Was: Führt den Arbeitsschritt `normalize_text` für normalize text aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn normalize_text(text: &str, max_characters: usize) -> Result<String, String> {
     let normalized = text
         .replace("\r\n", "\n")
@@ -779,6 +876,8 @@ fn normalize_text(text: &str, max_characters: usize) -> Result<String, String> {
     Ok(normalized)
 }
 
+// Was: Führt den Arbeitsschritt `normalize_recording_name` für normalize recording name aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn normalize_recording_name(name: &str) -> Result<String, String> {
     let name = name.split_whitespace().collect::<Vec<_>>().join(" ");
     let count = name.chars().count();
@@ -791,6 +890,8 @@ fn normalize_recording_name(name: &str) -> Result<String, String> {
     Ok(name)
 }
 
+// Was: Führt den Arbeitsschritt `normalize_template_name` für normalize template name aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn normalize_template_name(name: &str) -> Result<String, String> {
     let name = name.split_whitespace().collect::<Vec<_>>().join(" ");
     let count = name.chars().count();
@@ -800,10 +901,14 @@ fn normalize_template_name(name: &str) -> Result<String, String> {
     Ok(name)
 }
 
+// Was: Diese Funktion prüft optional target.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_optional_target(
     target_type: Option<AudioTargetType>,
     target_id: Option<u32>,
 ) -> Result<(), String> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match (target_type, target_id) {
         (None, None) => Ok(()),
         (Some(_), Some(target_id)) => validate_target(target_id),
@@ -811,6 +916,8 @@ fn validate_optional_target(
     }
 }
 
+// Was: Führt den Arbeitsschritt `auto_template_name` für auto template name aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn auto_template_name(text: &str) -> String {
     let mut name = text.split_whitespace().collect::<Vec<_>>().join(" ");
     if name.chars().count() > 72 {
@@ -820,6 +927,8 @@ fn auto_template_name(text: &str) -> String {
     format!("Auto · {name}")
 }
 
+// Was: Diese Funktion prüft speed.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_speed(speed: f32) -> Result<(), String> {
     if !speed.is_finite() || !(0.50..=1.50).contains(&speed) {
         return Err("TTS speed must be between 0.50 and 1.50".to_string());
@@ -827,6 +936,8 @@ fn validate_speed(speed: f32) -> Result<(), String> {
     Ok(())
 }
 
+// Was: Diese Funktion prüft target.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_target(target_id: u32) -> Result<(), String> {
     if target_id == 0 || target_id > 0x00ff_ffff {
         return Err("target must be a valid 24-bit ISSI/GSSI".to_string());
@@ -834,6 +945,8 @@ fn validate_target(target_id: u32) -> Result<(), String> {
     Ok(())
 }
 
+// Was: Diese Funktion prüft Priorität.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_priority(priority: u8) -> Result<(), String> {
     if priority > 15 {
         return Err("priority must be 0-15".to_string());
@@ -841,7 +954,11 @@ fn validate_priority(priority: u8) -> Result<(), String> {
     Ok(())
 }
 
+// Was: Führt den Arbeitsschritt `short_text_preview` für short text preview aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn short_text_preview(text: &str) -> String {
+    // Was: Legt den festen Wert `LIMIT` für limit fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const LIMIT: usize = 180;
     let mut preview = text.split_whitespace().collect::<Vec<_>>().join(" ");
     if preview.chars().count() > LIMIT {
@@ -851,6 +968,8 @@ fn short_text_preview(text: &str) -> String {
     preview
 }
 
+// Was: Diese Funktion bereitet writable Zwischenspeicher.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn prepare_writable_cache(path: &Path) -> Result<PathBuf, String> {
     fs::create_dir_all(path).map_err(|error| format!("cannot create {}: {error}", path.display()))?;
     let canonical = path
@@ -866,6 +985,8 @@ fn prepare_writable_cache(path: &Path) -> Result<PathBuf, String> {
     Ok(canonical)
 }
 
+// Was: Diese Funktion bereitet writable template directory.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn prepare_writable_template_directory(path: &Path) -> Result<PathBuf, String> {
     fs::create_dir_all(path).map_err(|error| format!("cannot create {}: {error}", path.display()))?;
     let canonical = path
@@ -882,6 +1003,8 @@ fn prepare_writable_template_directory(path: &Path) -> Result<PathBuf, String> {
     Ok(canonical)
 }
 
+// Was: Diese Funktion räumt stale Zwischenspeicher.
+// Warum: Zurückgelassene Ressourcen würden sonst spätere Starts oder Verbindungen stören.
 fn cleanup_stale_cache(root: &Path, retention_minutes: u64) {
     if retention_minutes == 0 {
         return;
@@ -892,6 +1015,8 @@ fn cleanup_stale_cache(root: &Path, retention_minutes: u64) {
     let Ok(entries) = fs::read_dir(root) else {
         return;
     };
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for entry in entries.flatten() {
         let Ok(file_type) = entry.file_type() else {
             continue;
@@ -908,6 +1033,8 @@ fn cleanup_stale_cache(root: &Path, retention_minutes: u64) {
     }
 }
 
+// Was: Prüft, ob tts Zwischenspeicher name zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
 fn is_tts_cache_name(name: &str) -> bool {
     let Some((uuid, suffix)) = name.split_once('.') else {
         return false;
@@ -915,6 +1042,8 @@ fn is_tts_cache_name(name: &str) -> bool {
     Uuid::parse_str(uuid).is_ok() && matches!(suffix, "wav" | "part.wav")
 }
 
+// Was: Diese Funktion prüft wav.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_wav(path: &Path) -> Result<(), String> {
     let metadata = path.metadata().map_err(|error| format!("cannot inspect Piper output: {error}"))?;
     if !metadata.is_file() || metadata.len() < 44 {
@@ -930,6 +1059,8 @@ fn validate_wav(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
+// Was: Diese Funktion entfernt generated file.
+// Warum: Das Entfernen bleibt damit vollständig und hinterlässt keinen widersprüchlichen Zustand.
 fn remove_generated_file(path: Option<&Path>) {
     if let Some(path) = path
         && let Err(error) = fs::remove_file(path)

@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Einlesen und Prüfen der TETRA-Konfiguration.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use serde::Deserialize;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use toml::Value;
@@ -8,6 +11,8 @@ use toml::Value;
 /// MeshCom position packets. Devices entering the configured radius around the station can be
 /// forwarded to the existing TPG2200, SDS, Snom/SIP and Telegram paths.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für cfg geoalarm in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgGeoalarm {
     pub enabled: bool,
     pub flowstation_lat: f64,
@@ -44,7 +49,11 @@ pub struct CfgGeoalarm {
     pub telegram_prefix: String,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for CfgGeoalarm`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for CfgGeoalarm {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             enabled: false,
@@ -85,6 +94,8 @@ impl Default for CfgGeoalarm {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für cfg geoalarm dto in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgGeoalarmDto {
     #[serde(default)]
     pub enabled: bool,
@@ -159,7 +170,11 @@ pub struct CfgGeoalarmDto {
     pub extra: HashMap<String, Value>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for CfgGeoalarmDto`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for CfgGeoalarmDto {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             enabled: false,
@@ -201,34 +216,50 @@ impl Default for CfgGeoalarmDto {
     }
 }
 
+// Was: Führt den Arbeitsschritt `default_true` für default true aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_true() -> bool {
     true
 }
 
+// Was: Führt den Arbeitsschritt `default_radius_m` für default radius m aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_radius_m() -> f64 {
     500.0
 }
 
+// Was: Führt den Arbeitsschritt `default_cooldown_secs` für default cooldown secs aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_cooldown_secs() -> u64 {
     300
 }
 
+// Was: Führt den Arbeitsschritt `default_source_issi` für default source Teilnehmerkennung (ISSI) aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_source_issi() -> u32 {
     4010001
 }
 
+// Was: Führt den Arbeitsschritt `default_tpg2200_callout_id_base` für default tpg2200 callout Kennung base aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_tpg2200_callout_id_base() -> u16 {
     0x21
 }
 
+// Was: Führt den Arbeitsschritt `default_tpg2200_ric` für default tpg2200 ric aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_tpg2200_ric() -> u32 {
     0x0009_0D10
 }
 
+// Was: Führt den Arbeitsschritt `default_tpg2200_priority` für default tpg2200 Priorität aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_tpg2200_priority() -> u8 {
     15
 }
 
+// Was: Führt den Arbeitsschritt `legacy_incident_selector` für legacy incident selector aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn legacy_incident_selector(incident: u16) -> u16 {
     let incident = incident.clamp(1, 256);
     let zero_based = incident - 1;
@@ -237,6 +268,8 @@ fn legacy_incident_selector(incident: u16) -> u16 {
     (major << 4) | minor
 }
 
+// Was: Diese Funktion wählt tpg2200 callout Kennung base.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn select_tpg2200_callout_id_base(src: &CfgGeoalarmDto) -> u16 {
     src.tpg2200_callout_id_base
         .map(|id| id.min(255))
@@ -244,14 +277,20 @@ fn select_tpg2200_callout_id_base(src: &CfgGeoalarmDto) -> u16 {
         .unwrap_or_else(default_tpg2200_callout_id_base)
 }
 
+// Was: Führt den Arbeitsschritt `default_tpg2200_max_text_chars` für default tpg2200 max text chars aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_tpg2200_max_text_chars() -> usize {
     80
 }
 
+// Was: Führt den Arbeitsschritt `default_geoalarm_prefix` für default geoalarm prefix aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_geoalarm_prefix() -> String {
     "GeoAlarm".to_string()
 }
 
+// Was: Diese Funktion wendet geoalarm patch.
+// Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
 pub fn apply_geoalarm_patch(src: CfgGeoalarmDto) -> Result<CfgGeoalarm, String> {
     let tpg2200_callout_id_base = select_tpg2200_callout_id_base(&src);
     if src.enabled {
@@ -317,6 +356,8 @@ pub fn apply_geoalarm_patch(src: CfgGeoalarmDto) -> Result<CfgGeoalarm, String> 
     })
 }
 
+// Was: Diese Funktion prüft lat lon.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_lat_lon(lat: f64, lon: f64) -> Result<(), String> {
     if !lat.is_finite() || !(-90.0..=90.0).contains(&lat) {
         return Err("geoalarm: flowstation_lat must be -90..=90".to_string());
@@ -327,6 +368,8 @@ fn validate_lat_lon(lat: f64, lon: f64) -> Result<(), String> {
     Ok(())
 }
 
+// Was: Diese Funktion prüft Teilnehmerkennung (ISSI).
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_issi(label: &str, value: u32, nonzero: bool) -> Result<(), String> {
     if nonzero && value == 0 {
         return Err(format!("{label} must be non-zero"));
@@ -337,8 +380,12 @@ fn validate_issi(label: &str, value: u32, nonzero: bool) -> Result<(), String> {
     Ok(())
 }
 
+// Was: Führt den Arbeitsschritt `normalize_issi_set` für normalize Teilnehmerkennung (ISSI) set aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn normalize_issi_set(values: Vec<u32>) -> Result<BTreeSet<u32>, String> {
     let mut out = BTreeSet::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for value in values {
         validate_issi("geoalarm: ISSI list entry", value, false)?;
         out.insert(value);
@@ -346,8 +393,12 @@ fn normalize_issi_set(values: Vec<u32>) -> Result<BTreeSet<u32>, String> {
     Ok(out)
 }
 
+// Was: Führt den Arbeitsschritt `normalize_issi_priority_map` für normalize Teilnehmerkennung (ISSI) Priorität map aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn normalize_issi_priority_map(field: &str, values: HashMap<String, u8>) -> Result<BTreeMap<u32, u8>, String> {
     let mut out = BTreeMap::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (raw_issi, priority) in values {
         let issi = raw_issi
             .trim()
@@ -362,8 +413,12 @@ fn normalize_issi_priority_map(field: &str, values: HashMap<String, u8>) -> Resu
     Ok(out)
 }
 
+// Was: Führt den Arbeitsschritt `normalize_ric_priority_map` für normalize ric Priorität map aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn normalize_ric_priority_map(field: &str, values: HashMap<String, u8>) -> Result<BTreeMap<u32, u8>, String> {
     let mut out = BTreeMap::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (raw_ric, priority) in values {
         let ric = parse_ric_key(&raw_ric)?;
         if priority > 15 {
@@ -374,6 +429,8 @@ fn normalize_ric_priority_map(field: &str, values: HashMap<String, u8>) -> Resul
     Ok(out)
 }
 
+// Was: Diese Funktion liest und prüft ric key.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_ric_key(raw: &str) -> Result<u32, String> {
     let key = raw.trim();
     if key.is_empty() {
@@ -385,6 +442,8 @@ fn parse_ric_key(raw: &str) -> Result<u32, String> {
     key.parse::<u32>().map_err(|_| format!("invalid decimal TPG RIC key '{raw}'"))
 }
 
+// Was: Führt den Arbeitsschritt `normalize_source_list` für normalize source list aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn normalize_source_list(values: Vec<String>) -> BTreeSet<String> {
     values
         .into_iter()
@@ -399,6 +458,8 @@ fn normalize_source_list(values: Vec<String>) -> BTreeSet<String> {
         .collect()
 }
 
+// Was: Führt den Arbeitsschritt `non_empty_or` für non empty or aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn non_empty_or(value: String, fallback: &str) -> String {
     let trimmed = value.trim();
     if trimmed.is_empty() {

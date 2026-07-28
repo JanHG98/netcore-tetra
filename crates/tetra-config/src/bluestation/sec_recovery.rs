@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Einlesen und Prüfen der TETRA-Konfiguration.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::HashMap;
 
 use serde::Deserialize;
@@ -28,6 +31,8 @@ use toml::Value;
 /// miss: a radio still camped and believing it is registered, whose first PTT would otherwise be
 /// silently rejected ("no listeners") until its own periodic T351 — or a manual DMO/TMO toggle.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für cfg recovery in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgRecovery {
     /// Master on/off for the *proactive* boot-time cache replay (does not gate `reactive_enabled`).
     pub enabled: bool,
@@ -60,7 +65,11 @@ pub struct CfgRecovery {
     pub reactive_cooldown_secs: u64,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for CfgRecovery`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for CfgRecovery {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         CfgRecovery {
             enabled: false,
@@ -82,6 +91,8 @@ impl Default for CfgRecovery {
 // `unwrap_or_default()`, so the manual impl below makes "no section" behave identically to an
 // empty `[recovery]` table — in particular keeping reactive recovery ON by default.
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für cfg recovery dto in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgRecoveryDto {
     #[serde(default)]
     pub enabled: bool,
@@ -108,7 +119,11 @@ pub struct CfgRecoveryDto {
     pub extra: HashMap<String, Value>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for CfgRecoveryDto`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for CfgRecoveryDto {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         CfgRecoveryDto {
             enabled: false,
@@ -125,25 +140,39 @@ impl Default for CfgRecoveryDto {
     }
 }
 
+// Was: Führt den Arbeitsschritt `default_max_replay_attempts` für default max replay attempts aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_max_replay_attempts() -> u32 {
     150
 }
+// Was: Führt den Arbeitsschritt `default_replay_per_frame` für default replay per Funkrahmen aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_replay_per_frame() -> u32 {
     1
 }
+// Was: Führt den Arbeitsschritt `default_debounce_secs` für default debounce secs aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_debounce_secs() -> u64 {
     5
 }
+// Was: Führt den Arbeitsschritt `default_max_cached_issis` für default max cached issis aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_max_cached_issis() -> u32 {
     1024
 }
+// Was: Führt den Arbeitsschritt `default_reactive_enabled` für default reactive enabled aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_reactive_enabled() -> bool {
     true
 }
+// Was: Führt den Arbeitsschritt `default_reactive_cooldown_secs` für default reactive cooldown secs aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_reactive_cooldown_secs() -> u64 {
     10
 }
 
+// Was: Diese Funktion wendet recovery patch.
+// Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
 pub fn apply_recovery_patch(dto: CfgRecoveryDto) -> CfgRecovery {
     CfgRecovery {
         enabled: dto.enabled,
@@ -163,10 +192,14 @@ pub fn apply_recovery_patch(dto: CfgRecoveryDto) -> CfgRecovery {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
     #[test]
+    // Was: Führt den Arbeitsschritt `serde_defaults_apply_when_only_enabled_set` für serde defaults apply when only enabled set aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn serde_defaults_apply_when_only_enabled_set() {
         // A minimal `[recovery]` table with just `enabled = true` must pick up the serde
         // field defaults (these are applied during deserialization, NOT via derive(Default)).
@@ -184,6 +217,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `reactive_defaults_on_when_section_absent` für reactive defaults on when section absent aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn reactive_defaults_on_when_section_absent() {
         // parsing.rs resolves a missing `[recovery]` table via `CfgRecoveryDto::default()`, so the
         // manual Default must keep reactive recovery ON (and the proactive cache OFF), matching an
@@ -196,6 +231,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `reactive_can_be_disabled_and_cooldown_clamps` für reactive can be disabled and cooldown clamps aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn reactive_can_be_disabled_and_cooldown_clamps() {
         let dto: CfgRecoveryDto = toml::from_str("reactive_enabled = false\nreactive_cooldown_secs = 1").unwrap();
         let c = apply_recovery_patch(dto);
@@ -204,6 +241,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `clamps_out_of_range` für clamps out of range aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn clamps_out_of_range() {
         let dto = CfgRecoveryDto {
             enabled: true,
@@ -230,6 +269,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `empty_cache_path_becomes_none` für empty Zwischenspeicher path becomes none aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn empty_cache_path_becomes_none() {
         // The documented `cache_path = ""` must mean "use the default", not a literal empty path.
         let dto = CfgRecoveryDto {

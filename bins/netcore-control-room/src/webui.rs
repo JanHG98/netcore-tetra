@@ -1,3 +1,8 @@
+// NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für Weboberfläche.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+// Was: Führt den Arbeitsschritt `index_html` für index html aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn index_html(node_path: &str, ui_path: &str) -> String {
     format!(
         r####"<!doctype html>

@@ -1,15 +1,24 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! Dashboard-side persistence helpers for GeoAlarm settings.
 
 use tetra_config::bluestation::GeoalarmRuntimeOverride;
 
+// Was: Führt den Arbeitsschritt `toml_escape` für toml escape aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn toml_escape(s: &str) -> String {
     s.replace('\\', "\\\\").replace('"', "\\\"")
 }
 
+// Was: Führt den Arbeitsschritt `u32_set_toml` für u32 set toml aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn u32_set_toml(values: &std::collections::BTreeSet<u32>) -> String {
     values.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(", ")
 }
 
+// Was: Führt den Arbeitsschritt `u32_priority_map_toml` für u32 Priorität map toml aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn u32_priority_map_toml(values: &std::collections::BTreeMap<u32, u8>) -> String {
     values
         .iter()
@@ -18,6 +27,8 @@ fn u32_priority_map_toml(values: &std::collections::BTreeMap<u32, u8>) -> String
         .join(", ")
 }
 
+// Was: Führt den Arbeitsschritt `tpg_ric_priority_map_toml` für tpg ric Priorität map toml aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn tpg_ric_priority_map_toml(values: &std::collections::BTreeMap<u32, u8>) -> String {
     values
         .iter()
@@ -26,6 +37,8 @@ fn tpg_ric_priority_map_toml(values: &std::collections::BTreeMap<u32, u8>) -> St
         .join(", ")
 }
 
+// Was: Führt den Arbeitsschritt `string_set_toml` für string set toml aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn string_set_toml(values: &std::collections::BTreeSet<String>) -> String {
     values
         .iter()
@@ -35,6 +48,8 @@ fn string_set_toml(values: &std::collections::BTreeSet<String>) -> String {
 }
 
 /// Rewrite (or insert) the `[geoalarm]` section in the TOML file. A `.geoalarm.bak` backup is made.
+// Was: Diese Funktion schreibt geoalarm to toml.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 pub fn write_geoalarm_to_toml(config_path: &str, ov: &GeoalarmRuntimeOverride) -> std::io::Result<()> {
     let original = std::fs::read_to_string(config_path)?;
     let section = format!(
@@ -112,12 +127,16 @@ pub fn write_geoalarm_to_toml(config_path: &str, ov: &GeoalarmRuntimeOverride) -
     let mut i = 0;
     let mut replaced = false;
 
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while i < lines.len() {
         let trimmed = lines[i].trim_start();
         if trimmed.starts_with("[geoalarm]") {
             out.push(section.clone());
             replaced = true;
             i += 1;
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             while i < lines.len() {
                 let t = lines[i].trim_start();
                 if t.starts_with('[') && t.contains(']') {

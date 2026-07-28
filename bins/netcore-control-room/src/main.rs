@@ -1,11 +1,32 @@
+// NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für main.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+// Was: Bindet das Untermodul Anmeldung und Berechtigung in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod auth;
+// Was: Bindet das Untermodul Konfiguration in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod config;
+// Was: Bindet das Untermodul HTTP in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod http;
+// Was: Bindet das Untermodul operations in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod operations;
+// Was: Bindet das Untermodul persistence in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod persistence;
+// Was: Bindet das Untermodul server in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod server;
+// Was: Bindet das Untermodul Zustand in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod state;
+// Was: Bindet das Untermodul Weboberfläche in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod webui;
+// Was: Bindet das Untermodul ws in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod ws;
 
 use std::net::SocketAddr;
@@ -22,6 +43,8 @@ use crate::persistence::PersistenceHandle;
 #[derive(Debug, Clone, Parser)]
 #[command(name = "netcore-control-room")]
 #[command(about = "NetCore-Tetra Control-Room Core server for FlowStation nodes")]
+// Was: Bündelt die zusammengehörigen Werte für args in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct Args {
     /// Optional TOML config file. CLI flags override values from this file.
     #[arg(long)]
@@ -72,6 +95,8 @@ struct Args {
     no_persistence: bool,
 }
 
+// Was: Startet das Programm, lädt die benötigten Einstellungen und übergibt an den eigentlichen Dienstablauf.
+// Warum: Ein klarer Einstiegspunkt hält Startreihenfolge, Fehlerausgabe und geordnetes Beenden zusammen.
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 

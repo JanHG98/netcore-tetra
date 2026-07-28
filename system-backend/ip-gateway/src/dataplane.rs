@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für die Kopplung von TETRA-Paketdaten an IP-Netze.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream, UdpSocket};
 use std::thread;
@@ -8,6 +11,8 @@ use serde_json::json;
 use crate::config::IpGatewayConfig;
 use crate::state::SharedGateway;
 
+// Was: Diese Funktion startet test services.
+// Warum: Länger laufende Arbeit blockiert dadurch nicht den aufrufenden Ablauf.
 pub fn spawn_test_services(config: IpGatewayConfig, gateway: SharedGateway) {
     if !config.test_server.enabled {
         return;
@@ -18,7 +23,11 @@ pub fn spawn_test_services(config: IpGatewayConfig, gateway: SharedGateway) {
     thread::spawn(move || run_udp_echo(config, gateway));
 }
 
+// Was: Diese Funktion führt HTTP.
+// Warum: Der Lebenszyklus des Dienstes bleibt so an einer zentralen Stelle steuerbar.
 fn run_http(config: IpGatewayConfig, gateway: SharedGateway) {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let listener = match TcpListener::bind(config.test_server.bind) {
         Ok(listener) => listener,
         Err(error) => {
@@ -33,7 +42,11 @@ fn run_http(config: IpGatewayConfig, gateway: SharedGateway) {
         "packet-data WAP/test server listening on http://{}",
         config.test_server.bind
     );
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for stream in listener.incoming() {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match stream {
             Ok(stream) => {
                 let gateway = gateway.clone();
@@ -49,6 +62,8 @@ fn run_http(config: IpGatewayConfig, gateway: SharedGateway) {
     }
 }
 
+// Was: Diese Funktion verarbeitet HTTP.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 fn handle_http(
     mut stream: TcpStream,
     gateway: SharedGateway,
@@ -78,6 +93,8 @@ fn handle_http(
     gateway.record_test_request(path, &peer);
     let gateway_address = config.gateway_ipv4();
     let domain = config.dns.local_domain.trim_end_matches('.');
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match path {
         "/" => {
             let body = format!(
@@ -165,6 +182,8 @@ fn handle_http(
     }
 }
 
+// Was: Diese Funktion schreibt response.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 fn write_response(
     stream: &mut TcpStream,
     status: u16,
@@ -172,6 +191,8 @@ fn write_response(
     body: &[u8],
     head_only: bool,
 ) -> Result<(), String> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let reason = match status {
         200 => "OK",
         404 => "Not Found",
@@ -194,7 +215,11 @@ fn write_response(
         .map_err(|error| error.to_string())
 }
 
+// Was: Diese Funktion führt UDP echo.
+// Warum: Der Lebenszyklus des Dienstes bleibt so an einer zentralen Stelle steuerbar.
 fn run_udp_echo(config: IpGatewayConfig, gateway: SharedGateway) {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let socket = match UdpSocket::bind(config.test_server.udp_echo_bind) {
         Ok(socket) => socket,
         Err(error) => {
@@ -210,7 +235,11 @@ fn run_udp_echo(config: IpGatewayConfig, gateway: SharedGateway) {
         config.test_server.udp_echo_bind
     );
     let mut buffer = [0u8; 65_535];
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
     loop {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match socket.recv_from(&mut buffer) {
             Ok((size, peer)) => {
                 gateway.record_test_request("udp_echo", &peer.to_string());

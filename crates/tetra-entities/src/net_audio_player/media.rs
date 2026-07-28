@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::fs;
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
@@ -18,6 +21,8 @@ use super::types::PreparedAudio;
 /// `AudioPlayerHandle::play_recording`, so generated announcements and saved
 /// recordings enter the radio path with the same file format and the same
 /// playback entrypoint.
+// Was: Führt den Arbeitsschritt `materialize_recording_wav` für materialize recording wav aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub(crate) fn materialize_recording_wav(
     config: &CfgAudioPlayer,
     source_path: &Path,
@@ -86,6 +91,8 @@ pub(crate) fn materialize_recording_wav(
     Ok(canonical)
 }
 
+// Was: Diese Funktion schreibt recording wav.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 fn write_recording_wav(path: &Path, pcm: &[i16]) -> Result<(), String> {
     let data_bytes = pcm
         .len()
@@ -115,6 +122,8 @@ fn write_recording_wav(path: &Path, pcm: &[i16]) -> Result<(), String> {
     output.write_all(&16u16.to_le_bytes()).map_err(|e| e.to_string())?;
     output.write_all(b"data").map_err(|e| e.to_string())?;
     output.write_all(&data_len.to_le_bytes()).map_err(|e| e.to_string())?;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for sample in pcm {
         output.write_all(&sample.to_le_bytes()).map_err(|e| e.to_string())?;
     }
@@ -124,6 +133,8 @@ fn write_recording_wav(path: &Path, pcm: &[i16]) -> Result<(), String> {
     Ok(())
 }
 
+// Was: Diese Funktion bereitet audio.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub(crate) fn prepare_audio(
     config: &CfgAudioPlayer,
     job_id: String,
@@ -147,6 +158,8 @@ pub(crate) fn prepare_audio(
     result
 }
 
+// Was: Diese Funktion bereitet audio from path.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn prepare_audio_from_path(
     config: &CfgAudioPlayer,
     job_id: String,
@@ -172,6 +185,8 @@ fn prepare_audio_from_path(
         .and_then(|ext| ext.to_str())
         .unwrap_or("")
         .to_ascii_lowercase();
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let mut pcm = match extension.as_str() {
         "wav" => decode_wav_native(source_path).or_else(|native_err| {
             tracing::debug!(
@@ -213,6 +228,8 @@ fn prepare_audio_from_path(
     // the same scheduler turn. Subscriber radios still need a short, real TCH/S
     // window to receive D-SETUP and tune to the assigned channel. Sending encoded
     // silence here prevents short prompts from disappearing before the MS joins.
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for _ in 0..config.lead_in_silence_blocks {
         let encoded = encoder
             .encode_complete_block(&silence)
@@ -220,12 +237,16 @@ fn prepare_audio_from_path(
         blocks.push(encoded);
     }
 
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for block in pcm.chunks_exact(TETRA_PCM_SAMPLES_PER_BLOCK) {
         let encoded = encoder
             .encode_complete_block(block)
             .ok_or_else(|| "failed to encode a complete TETRA speech block".to_string())?;
         blocks.push(encoded);
     }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for _ in 0..config.tail_silence_blocks {
         let encoded = encoder
             .encode_complete_block(&silence)
@@ -247,6 +268,8 @@ fn prepare_audio_from_path(
     })
 }
 
+// Was: Führt den Arbeitsschritt `cache_network_source` für Zwischenspeicher network source aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn cache_network_source(config: &CfgAudioPlayer, job_id: &str, source_path: &Path) -> Result<PathBuf, String> {
     let metadata = fs::metadata(source_path).map_err(|e| format!("cannot stat server file {}: {e}", source_path.display()))?;
     if !metadata.is_file() {
@@ -316,6 +339,8 @@ fn cache_network_source(config: &CfgAudioPlayer, job_id: &str, source_path: &Pat
     Ok(canonical)
 }
 
+// Was: Diese Funktion dekodiert with ffmpeg.
+// Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
 fn decode_with_ffmpeg(ffmpeg_path: &str, path: &Path, max_duration_seconds: u32) -> Result<Vec<i16>, String> {
     // Bound decoder output as well as source-file size. A highly compressed or malformed
     // input must not be able to make the preparation worker allocate unbounded PCM.
@@ -346,6 +371,8 @@ fn decode_with_ffmpeg(ffmpeg_path: &str, path: &Path, max_duration_seconds: u32)
         .collect())
 }
 
+// Was: Diese Funktion dekodiert wav native.
+// Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
 fn decode_wav_native(path: &Path) -> Result<Vec<i16>, String> {
     let data = fs::read(path).map_err(|e| e.to_string())?;
     if data.len() < 12 || &data[0..4] != b"RIFF" || &data[8..12] != b"WAVE" {
@@ -355,6 +382,8 @@ fn decode_wav_native(path: &Path) -> Result<Vec<i16>, String> {
     let mut offset = 12usize;
     let mut format: Option<WavFormat> = None;
     let mut pcm_data: Option<&[u8]> = None;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while offset + 8 <= data.len() {
         let id = &data[offset..offset + 4];
         let size = read_u32_le(&data[offset + 4..offset + 8])? as usize;
@@ -363,6 +392,8 @@ fn decode_wav_native(path: &Path) -> Result<Vec<i16>, String> {
         if end > data.len() {
             return Err("truncated WAV chunk".to_string());
         }
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match id {
             b"fmt " => format = Some(parse_wav_format(&data[start..end])?),
             b"data" => pcm_data = Some(&data[start..end]),
@@ -382,6 +413,8 @@ fn decode_wav_native(path: &Path) -> Result<Vec<i16>, String> {
 }
 
 #[derive(Clone, Copy)]
+// Was: Bündelt die zusammengehörigen Werte für wav format in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct WavFormat {
     audio_format: u16,
     channels: u16,
@@ -390,6 +423,8 @@ struct WavFormat {
     block_align: u16,
 }
 
+// Was: Diese Funktion liest und prüft wav format.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_wav_format(data: &[u8]) -> Result<WavFormat, String> {
     if data.len() < 16 {
         return Err("WAV fmt chunk too short".to_string());
@@ -416,6 +451,8 @@ fn parse_wav_format(data: &[u8]) -> Result<WavFormat, String> {
     Ok(format)
 }
 
+// Was: Diese Funktion dekodiert wav samples.
+// Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
 fn decode_wav_samples(data: &[u8], format: WavFormat) -> Result<Vec<i16>, String> {
     let frame_bytes = format.block_align as usize;
     let bytes_per_sample = (format.bits_per_sample as usize + 7) / 8;
@@ -424,8 +461,12 @@ fn decode_wav_samples(data: &[u8], format: WavFormat) -> Result<Vec<i16>, String
     }
 
     let mut out = Vec::with_capacity(data.len() / frame_bytes);
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for frame in data.chunks_exact(frame_bytes) {
         let mut sum = 0i64;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for channel in 0..format.channels as usize {
             let start = channel * bytes_per_sample;
             let sample = decode_one_sample(&frame[start..start + bytes_per_sample], format.audio_format, format.bits_per_sample)?;
@@ -437,6 +478,8 @@ fn decode_wav_samples(data: &[u8], format: WavFormat) -> Result<Vec<i16>, String
     Ok(out)
 }
 
+// Was: Diese Funktion dekodiert one sample.
+// Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
 fn decode_one_sample(bytes: &[u8], audio_format: u16, bits: u16) -> Result<i16, String> {
     if audio_format == 3 {
         if bits != 32 || bytes.len() != 4 {
@@ -447,6 +490,8 @@ fn decode_one_sample(bytes: &[u8], audio_format: u16, bits: u16) -> Result<i16, 
         return Ok((clamped * i16::MAX as f32) as i16);
     }
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match bits {
         8 => Ok(((bytes[0] as i16) - 128) << 8),
         16 if bytes.len() >= 2 => Ok(i16::from_le_bytes([bytes[0], bytes[1]])),
@@ -462,12 +507,16 @@ fn decode_one_sample(bytes: &[u8], audio_format: u16, bits: u16) -> Result<i16, 
     }
 }
 
+// Was: Führt den Arbeitsschritt `resample_linear` für resample linear aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn resample_linear(input: &[i16], source_rate: u32, target_rate: u32) -> Vec<i16> {
     if input.is_empty() || source_rate == target_rate {
         return input.to_vec();
     }
     let output_len = ((input.len() as u128 * target_rate as u128) / source_rate as u128) as usize;
     let mut output = Vec::with_capacity(output_len);
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for index in 0..output_len {
         let numerator = index as u128 * source_rate as u128;
         let base = (numerator / target_rate as u128) as usize;
@@ -479,32 +528,44 @@ fn resample_linear(input: &[i16], source_rate: u32, target_rate: u32) -> Vec<i16
     output
 }
 
+// Was: Diese Funktion liest u16 le.
+// Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
 fn read_u16_le(bytes: &[u8]) -> Result<u16, String> {
     let bytes: [u8; 2] = bytes.try_into().map_err(|_| "short u16".to_string())?;
     Ok(u16::from_le_bytes(bytes))
 }
 
+// Was: Diese Funktion liest u32 le.
+// Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
 fn read_u32_le(bytes: &[u8]) -> Result<u32, String> {
     let bytes: [u8; 4] = bytes.try_into().map_err(|_| "short u32".to_string())?;
     Ok(u32::from_le_bytes(bytes))
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
     #[test]
+    // Was: Führt den Arbeitsschritt `linear_resampler_keeps_8khz_input` für linear resampler keeps 8khz input aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn linear_resampler_keeps_8khz_input() {
         let input = vec![1i16, 2, 3];
         assert_eq!(resample_linear(&input, 8_000, 8_000), input);
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `decodes_pcm16_sample` für decodes pcm16 sample aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn decodes_pcm16_sample() {
         assert_eq!(decode_one_sample(&1234i16.to_le_bytes(), 1, 16).unwrap(), 1234);
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `materialized_recording_wav_has_recorder_format` für materialized recording wav has Aufzeichnung format aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn materialized_recording_wav_has_recorder_format() {
         let dir = std::env::temp_dir().join(format!("netcore-tts-recording-wav-test-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);

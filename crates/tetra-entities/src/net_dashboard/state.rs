@@ -1,9 +1,14 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::time::Instant;
 
 /// Per-MS state tracked by the dashboard
 #[derive(Debug, Clone, serde::Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für ms Zustand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MsState {
     pub issi: u32,
     pub groups: Vec<u32>,
@@ -20,6 +25,8 @@ pub struct MsState {
 
 /// Active call state
 #[derive(Debug, Clone, serde::Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Ruf Zustand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CallState {
     pub call_id: u16,
     pub call_type: &'static str, // "group" or "individual"
@@ -38,6 +45,8 @@ pub struct CallState {
 
 /// Active emergency state sent to the dashboard (wire form of `EmergencyEntry`).
 #[derive(Debug, Clone, serde::Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für emergency Zustand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct EmergencyState {
     pub issi: u32,
     pub dest_ssi: u32,
@@ -46,6 +55,8 @@ pub struct EmergencyState {
 
 /// Log entry
 #[derive(Debug, Clone, serde::Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für log entry in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LogEntry {
     pub ts: String,
     pub level: String,
@@ -54,6 +65,8 @@ pub struct LogEntry {
 
 /// Last Heard entry — one entry per call start or SDS activity
 #[derive(Debug, Clone, serde::Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für last heard entry in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LastHeardEntry {
     pub ts: String,                 // HH:MM:SS timestamp
     pub issi: u32,                  // source ISSI
@@ -67,6 +80,8 @@ pub struct LastHeardEntry {
 /// SDS Log entry — one SDS message the BS sent or received locally. Persisted to disk
 /// (`sds_log.json` next to the active config) so the log survives a restart.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Kurznachricht (SDS) log entry in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SdsLogEntry {
     pub ts: String,        // "YYYY-MM-DD HH:MM:SS" local time
     pub direction: String, // "rx" (from MS) | "net" (from network) | "tx" (from dashboard)
@@ -80,6 +95,8 @@ pub struct SdsLogEntry {
 /// DAPNET Log entry — one inbound RWTH-core message or outbound Hampager API send. Persisted to
 /// disk (`dapnet_log.json` next to the active config) so the history survives a restart.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für dapnet log entry in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DapnetLogEntry {
     pub ts: String,        // "YYYY-MM-DD HH:MM:SS" local time
     pub direction: String, // "rx" | "tx"
@@ -94,6 +111,8 @@ pub struct DapnetLogEntry {
 /// MeshCom packet log entry. Persisted to disk (`meshcom_messages.json` next to the active
 /// config) so the packet history survives a FlowStation restart.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für meshcom Nachricht log entry in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MeshcomMessageLogEntry {
     pub ts: String,
     pub direction: String,
@@ -117,6 +136,8 @@ pub struct MeshcomMessageLogEntry {
 /// MeshCom node directory entry. Persisted to disk (`meshcom_nodes.json` next to the active
 /// config) so the node list survives a FlowStation restart.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für meshcom Netzknoten log entry in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MeshcomNodeLogEntry {
     pub src: String,
     #[serde(default)]
@@ -136,6 +157,8 @@ pub struct MeshcomNodeLogEntry {
 
 /// Shared mutable state for the dashboard, protected by RwLock
 #[derive(Debug, Default)]
+// Was: Bündelt die zusammengehörigen Werte für dashboard Zustand inner in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DashboardStateInner {
     pub ms_map: HashMap<u32, MsEntry>,
     pub calls: HashMap<u16, CallEntry>,
@@ -184,6 +207,8 @@ pub struct DashboardStateInner {
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Datenpaket data dashboard snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PacketDataDashboardSnapshot {
     pub gateway: crate::net_telemetry::events::PacketDataGatewayTelemetry,
     pub contexts: Vec<crate::net_telemetry::events::PacketDataContextTelemetry>,
@@ -193,6 +218,8 @@ pub struct PacketDataDashboardSnapshot {
 /// Fast-path visual snapshot — spectrum + IQ + RMS/peak. Refreshed several times
 /// per second so the RF page renders fluidly.
 #[derive(Debug, Clone, serde::Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für tx visual snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TxVisualSnapshot {
     pub sample_rate: f32,
     pub center_freq_hz: f64,
@@ -205,6 +232,8 @@ pub struct TxVisualSnapshot {
 /// Slow-path quality snapshot — derived metrics shown on the RF page as stable
 /// readouts. Refreshed once per second.
 #[derive(Debug, Clone, serde::Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für tx quality snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TxQualitySnapshot {
     pub papr_db: f32,
     pub evm_pct: f32,
@@ -219,6 +248,8 @@ pub struct TxQualitySnapshot {
 /// Snapshot of host system health (temperatures, voltages, currents, power).
 /// Mirrored from TelemetryEvent::SysHealth.
 #[derive(Debug, Clone, serde::Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für sys health snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SysHealthSnapshot {
     pub total_power_w: Option<f32>,
     pub sensors: Vec<crate::net_telemetry::events::SysSensor>,
@@ -226,24 +257,38 @@ pub struct SysHealthSnapshot {
 
 /// SDR hardware health snapshot, mirrored from TelemetryEvent::SdrHealth.
 #[derive(Debug, Clone, serde::Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für sdr health snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SdrHealthSnapshot {
     pub temperature_c: Option<f32>,
     pub tx_gains: Vec<(String, f32)>,
     pub rx_gains: Vec<(String, f32)>,
 }
 
+// Was: Legt den festen Wert `LAST_HEARD_MAX` für last heard max fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const LAST_HEARD_MAX: usize = 50;
 /// Max SDS Log entries kept in memory and on disk. The log is human-messaging volume, so a
 /// few hundred entries cover a long history while keeping the JSON file small.
+// Was: Legt den festen Wert `SDS_LOG_MAX` für TETRA-Kurznachricht (SDS) log max fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const SDS_LOG_MAX: usize = 500;
 /// Max DAPNET Log entries kept in memory and on disk.
+// Was: Legt den festen Wert `DAPNET_LOG_MAX` für dapnet log max fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const DAPNET_LOG_MAX: usize = 500;
 /// Max MeshCom message entries kept in memory and on disk.
+// Was: Legt den festen Wert `MESHCOM_MESSAGES_MAX` für meshcom messages max fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const MESHCOM_MESSAGES_MAX: usize = 10_000;
 /// Max MeshCom nodes kept in memory and on disk.
+// Was: Legt den festen Wert `MESHCOM_NODES_MAX` für meshcom nodes max fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const MESHCOM_NODES_MAX: usize = 65_535;
 
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für ms entry in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MsEntry {
     pub issi: u32,
     pub groups: Vec<u32>,
@@ -257,6 +302,8 @@ pub struct MsEntry {
 }
 
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für Ruf entry in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CallEntry {
     pub call_id: u16,
     pub is_group: bool,
@@ -276,15 +323,23 @@ pub struct CallEntry {
 /// One active emergency in the dashboard's live view (keyed by ISSI in `emergencies`). Raised by
 /// an emergency status (U-STATUS) via EmergencyAlarm/EmergencyCancel telemetry.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für emergency entry in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct EmergencyEntry {
     pub issi: u32,
     pub dest_ssi: u32,
     pub started_at: Instant,
 }
 
+// Was: Vergibt für dashboard Zustand einen fachlich verständlichen Typnamen.
+// Warum: Der Alias macht Signaturen lesbarer und hält technische Details aus dem aufrufenden Code heraus.
 pub type DashboardState = Arc<RwLock<DashboardStateInner>>;
 
+// Was: Implementiert das zugehörige Verhalten für `DashboardStateInner`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl DashboardStateInner {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(config_path: String) -> Self {
         // The SDS Log is persisted next to the active config, mirroring radioid_cache.json.
         let sds_log_path = std::path::Path::new(&config_path)
@@ -355,6 +410,8 @@ impl DashboardStateInner {
         }
     }
 
+    // Was: Diese Funktion legt last heard.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn push_last_heard(&mut self, issi: u32, activity: &str, dest: u32, source: &str, call_id: Option<u16>) {
         let entry = LastHeardEntry {
             ts: chrono::Local::now().format("%H:%M:%S").to_string(),
@@ -371,7 +428,11 @@ impl DashboardStateInner {
         self.last_heard.push_front(entry);
     }
 
+    // Was: Führt den Arbeitsschritt `finish_last_heard_call` für finish last heard Ruf aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn finish_last_heard_call(&mut self, call_id: u16, duration_secs: u64) {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for entry in &mut self.last_heard {
             if entry.call_id == Some(call_id) {
                 entry.duration_secs = Some(duration_secs);
@@ -379,6 +440,8 @@ impl DashboardStateInner {
         }
     }
 
+    // Was: Diese Funktion legt log.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn push_log(&mut self, level: &str, msg: String) {
         let entry = LogEntry {
             ts: chrono::Local::now().format("%H:%M:%S%.3f").to_string(),
@@ -394,6 +457,8 @@ impl DashboardStateInner {
     /// Append one SDS to the log (newest at the back), evicting the oldest past SDS_LOG_MAX,
     /// then persist the whole ring to disk so it survives a restart. The file is small and
     /// SDS traffic is low-volume, so a full rewrite per entry is cheap.
+    // Was: Diese Funktion legt TETRA-Kurznachricht (SDS) log.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn push_sds_log(&mut self, direction: &str, source_issi: u32, dest_issi: u32, is_group: bool, protocol_id: u8, text: String) {
         let entry = SdsLogEntry {
             ts: chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
@@ -411,6 +476,8 @@ impl DashboardStateInner {
         self.persist_sds_log();
     }
 
+    // Was: Diese Funktion speichert TETRA-Kurznachricht (SDS) log.
+    // Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
     fn persist_sds_log(&self) {
         if self.sds_log_path.as_os_str().is_empty() {
             return;
@@ -420,6 +487,8 @@ impl DashboardStateInner {
         }
     }
 
+    // Was: Diese Funktion leert TETRA-Kurznachricht (SDS) log.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn clear_sds_log(&mut self) {
         self.sds_log.clear();
         self.persist_sds_log();
@@ -427,6 +496,8 @@ impl DashboardStateInner {
 
     /// Append one DAPNET event to the log, evicting the oldest past DAPNET_LOG_MAX, then persist
     /// the ring to disk. Best-effort only: write failures never affect radio operation.
+    // Was: Diese Funktion legt dapnet log.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn push_dapnet_log(
         &mut self,
         direction: &str,
@@ -454,6 +525,8 @@ impl DashboardStateInner {
         self.persist_dapnet_log();
     }
 
+    // Was: Diese Funktion speichert dapnet log.
+    // Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
     fn persist_dapnet_log(&self) {
         if self.dapnet_log_path.as_os_str().is_empty() {
             return;
@@ -463,6 +536,8 @@ impl DashboardStateInner {
         }
     }
 
+    // Was: Diese Funktion leert dapnet log.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn clear_dapnet_log(&mut self) {
         self.dapnet_log.clear();
         self.persist_dapnet_log();
@@ -470,15 +545,21 @@ impl DashboardStateInner {
 
     /// Append one MeshCom packet to the persistent packet log. Best-effort only: write failures
     /// never affect UDP handling.
+    // Was: Diese Funktion legt meshcom Nachricht.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn push_meshcom_message(&mut self, mut entry: MeshcomMessageLogEntry) {
         normalize_meshcom_message_route(&mut entry);
         self.meshcom_messages.push_front(entry);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while self.meshcom_messages.len() > MESHCOM_MESSAGES_MAX {
             self.meshcom_messages.pop_back();
         }
         self.persist_meshcom_messages();
     }
 
+    // Was: Diese Funktion speichert meshcom messages.
+    // Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
     fn persist_meshcom_messages(&self) {
         if self.meshcom_messages_path.as_os_str().is_empty() {
             return;
@@ -488,6 +569,8 @@ impl DashboardStateInner {
         }
     }
 
+    // Was: Diese Funktion leert meshcom messages.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn clear_meshcom_messages(&mut self) {
         self.meshcom_messages.clear();
         self.persist_meshcom_messages();
@@ -495,6 +578,8 @@ impl DashboardStateInner {
 
     /// Merge one MeshCom node update into the persistent node directory. Empty optional fields do
     /// not erase previously observed metadata for the same node.
+    // Was: Führt den Arbeitsschritt `upsert_meshcom_node` für upsert meshcom Netzknoten aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn upsert_meshcom_node(&mut self, mut update: MeshcomNodeLogEntry) {
         normalize_meshcom_node_route(&mut update);
         if let Some(pos) = self.meshcom_nodes.iter().position(|node| node.src == update.src) {
@@ -533,12 +618,16 @@ impl DashboardStateInner {
         } else {
             self.meshcom_nodes.insert(0, update);
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while self.meshcom_nodes.len() > MESHCOM_NODES_MAX {
             self.meshcom_nodes.pop();
         }
         self.persist_meshcom_nodes();
     }
 
+    // Was: Diese Funktion speichert meshcom nodes.
+    // Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
     fn persist_meshcom_nodes(&self) {
         if self.meshcom_nodes_path.as_os_str().is_empty() {
             return;
@@ -548,11 +637,15 @@ impl DashboardStateInner {
         }
     }
 
+    // Was: Diese Funktion leert meshcom nodes.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn clear_meshcom_nodes(&mut self) {
         self.meshcom_nodes.clear();
         self.persist_meshcom_nodes();
     }
 
+    // Was: Diese Funktion erzeugt ms.
+    // Warum: Die Oberfläche und andere Dienste erhalten dadurch eine in sich stimmige Momentaufnahme.
     pub fn snapshot_ms(&self) -> Vec<MsState> {
         self.ms_map
             .values()
@@ -572,6 +665,8 @@ impl DashboardStateInner {
             .collect()
     }
 
+    // Was: Diese Funktion erzeugt calls.
+    // Warum: Die Oberfläche und andere Dienste erhalten dadurch eine in sich stimmige Momentaufnahme.
     pub fn snapshot_calls(&self) -> Vec<CallState> {
         self.calls
             .values()
@@ -591,6 +686,8 @@ impl DashboardStateInner {
             .collect()
     }
 
+    // Was: Diese Funktion erzeugt emergencies.
+    // Warum: Die Oberfläche und andere Dienste erhalten dadurch eine in sich stimmige Momentaufnahme.
     pub fn snapshot_emergencies(&self) -> Vec<EmergencyState> {
         self.emergencies
             .values()
@@ -604,7 +701,11 @@ impl DashboardStateInner {
 
     /// Raise (or refresh) an emergency for `issi`. Returns true only on the idle→emergency
     /// transition, so the caller broadcasts `emergency_added` + logs only once per session.
+    // Was: Führt den Arbeitsschritt `emergency_enter` für emergency enter aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn emergency_enter(&mut self, issi: u32, dest_ssi: u32) -> bool {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.emergencies.get_mut(&issi) {
             Some(e) => {
                 if dest_ssi != 0 {
@@ -627,6 +728,8 @@ impl DashboardStateInner {
     }
 
     /// Clear an emergency for `issi`. Returns true if one was present (caller broadcasts removal).
+    // Was: Führt den Arbeitsschritt `emergency_clear` für emergency clear aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn emergency_clear(&mut self, issi: u32) -> bool {
         self.emergencies.remove(&issi).is_some()
     }
@@ -634,6 +737,8 @@ impl DashboardStateInner {
 
 /// Load the persisted SDS Log from disk. Returns an empty ring when the file is missing or
 /// unparseable (e.g. first run, or a schema change) — the log is best-effort, never fatal.
+// Was: Diese Funktion lädt TETRA-Kurznachricht (SDS) log.
+// Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
 fn load_sds_log(path: &std::path::Path) -> std::collections::VecDeque<SdsLogEntry> {
     let Ok(text) = std::fs::read_to_string(path) else {
         return std::collections::VecDeque::new();
@@ -641,6 +746,8 @@ fn load_sds_log(path: &std::path::Path) -> std::collections::VecDeque<SdsLogEntr
     serde_json::from_str(&text).unwrap_or_default()
 }
 
+// Was: Diese Funktion lädt dapnet log.
+// Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
 fn load_dapnet_log(path: &std::path::Path) -> std::collections::VecDeque<DapnetLogEntry> {
     let Ok(text) = std::fs::read_to_string(path) else {
         return std::collections::VecDeque::new();
@@ -648,28 +755,38 @@ fn load_dapnet_log(path: &std::path::Path) -> std::collections::VecDeque<DapnetL
     serde_json::from_str(&text).unwrap_or_default()
 }
 
+// Was: Diese Funktion lädt meshcom messages.
+// Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
 fn load_meshcom_messages(path: &std::path::Path) -> std::collections::VecDeque<MeshcomMessageLogEntry> {
     let Ok(text) = std::fs::read_to_string(path) else {
         return std::collections::VecDeque::new();
     };
     let mut entries: std::collections::VecDeque<MeshcomMessageLogEntry> = serde_json::from_str(&text).unwrap_or_default();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for entry in &mut entries {
         normalize_meshcom_message_route(entry);
     }
     entries
 }
 
+// Was: Diese Funktion lädt meshcom nodes.
+// Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
 fn load_meshcom_nodes(path: &std::path::Path) -> Vec<MeshcomNodeLogEntry> {
     let Ok(text) = std::fs::read_to_string(path) else {
         return Vec::new();
     };
     let mut entries: Vec<MeshcomNodeLogEntry> = serde_json::from_str(&text).unwrap_or_default();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for entry in &mut entries {
         normalize_meshcom_node_route(entry);
     }
     entries
 }
 
+// Was: Führt den Arbeitsschritt `normalize_meshcom_message_route` für normalize meshcom Nachricht Weiterleitung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn normalize_meshcom_message_route(entry: &mut MeshcomMessageLogEntry) {
     if !entry.via.is_empty() {
         return;
@@ -684,6 +801,8 @@ fn normalize_meshcom_message_route(entry: &mut MeshcomMessageLogEntry) {
     }
 }
 
+// Was: Führt den Arbeitsschritt `normalize_meshcom_node_route` für normalize meshcom Netzknoten Weiterleitung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn normalize_meshcom_node_route(entry: &mut MeshcomNodeLogEntry) {
     if !entry.via.is_empty() {
         return;
@@ -695,6 +814,8 @@ fn normalize_meshcom_node_route(entry: &mut MeshcomNodeLogEntry) {
     }
 }
 
+// Was: Führt den Arbeitsschritt `split_meshcom_route` für split meshcom Weiterleitung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn split_meshcom_route(src: &str) -> (String, Vec<String>) {
     let mut parts = src.split(',').map(str::trim).filter(|s| !s.is_empty());
     let origin = parts.next().unwrap_or(src.trim()).to_string();

@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für check Steuerung room.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 from pathlib import Path
 import re
 import subprocess
@@ -32,12 +35,16 @@ MARKERS = {
 }
 
 
+# Was: Führt den Arbeitsschritt `rust_balanced` für rust balanced aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def rust_balanced(path: Path) -> str | None:
     text = path.read_text(errors="replace")
     stack: list[tuple[str, int]] = []
     pairs = {')': '(', ']': '[', '}': '{'}
     i = 0
     line = 1
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     while i < len(text):
         if text[i] == "\n":
             line += 1; i += 1; continue
@@ -45,6 +52,8 @@ def rust_balanced(path: Path) -> str | None:
             end = text.find("\n", i); i = len(text) if end < 0 else end; continue
         if text.startswith("/*", i):
             depth = 1; i += 2
+            # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+            # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
             while i < len(text) and depth:
                 if text.startswith("/*", i): depth += 1; i += 2
                 elif text.startswith("*/", i): depth -= 1; i += 2
@@ -62,6 +71,8 @@ def rust_balanced(path: Path) -> str | None:
                 line += text[i:end + len(end_marker)].count("\n"); i = end + len(end_marker); continue
         if text[i] == '"':
             i += 1
+            # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+            # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
             while i < len(text):
                 if text[i] == "\\": i += 2; continue
                 if text[i] == '"': i += 1; break
@@ -70,6 +81,8 @@ def rust_balanced(path: Path) -> str | None:
             continue
         if text[i] == "'":
             end = i + 1
+            # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+            # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
             while end < min(len(text), i + 12):
                 if text[end] == "'" and text[end - 1] != "\\": i = end + 1; break
                 end += 1
@@ -85,17 +98,27 @@ def rust_balanced(path: Path) -> str | None:
     return None
 
 
+# Was: Startet das Programm, lädt die benötigten Einstellungen und übergibt an den eigentlichen Dienstablauf.
+# Warum: Ein klarer Einstiegspunkt hält Startreihenfolge, Fehlerausgabe und geordnetes Beenden zusammen.
 def main() -> int:
     errors: list[str] = []
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for relative in REQUIRED:
         if not (ROOT / relative).is_file(): errors.append(f"missing {relative}")
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for synthetic, marker in MARKERS.items():
         relative = synthetic.split("#", 1)[0]
         path = ROOT / relative
         if not path.is_file() or marker not in path.read_text(errors="replace"):
             errors.append(f"missing marker {marker!r} in {relative}")
 
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for relative in ["Cargo.toml", "system-backend/services.toml", "system-backend/control-room/config/control-room.example.toml"]:
+        # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+        # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
         try: tomllib.loads((ROOT / relative).read_text())
         except Exception as error: errors.append(f"invalid TOML {relative}: {error}")
 
@@ -107,6 +130,8 @@ def main() -> int:
     if len(config.get("services", [])) < 14:
         errors.append("Control Room example must list all implemented backend services")
 
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for relative in [
         "bins/netcore-control-room/src/main.rs",
         "bins/netcore-control-room/src/config.rs",
@@ -126,12 +151,16 @@ def main() -> int:
         rendered = match.group(1).replace("{{", "{").replace("}}", "}")
         with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False) as handle:
             handle.write(rendered); js_path = Path(handle.name)
+        # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+        # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
         try:
             result = subprocess.run(["node", "--check", str(js_path)], capture_output=True, text=True)
             if result.returncode: errors.append(f"WebUI JavaScript invalid: {result.stderr.strip()}")
         except FileNotFoundError: pass
         finally: js_path.unlink(missing_ok=True)
 
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for script in sorted((ROOT / "system-backend/control-room/install").glob("*.sh")):
         result = subprocess.run(["bash", "-n", str(script)], capture_output=True, text=True)
         if result.returncode: errors.append(f"shell syntax {script.relative_to(ROOT)}: {result.stderr.strip()}")
@@ -144,5 +173,7 @@ def main() -> int:
     print("Control Room static package check: OK"); return 0
 
 
+# Was: Startet den Programmablauf nur dann, wenn diese Datei direkt ausgeführt wird.
+# Warum: Beim Import als Modul sollen nur Funktionen bereitstehen und keine Nebenwirkungen automatisch starten.
 if __name__ == "__main__":
     raise SystemExit(main())

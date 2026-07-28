@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Rufaufbau, Rufzustände und Rufwiederherstellung.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 use std::fs;
 use std::io::Write;
@@ -17,9 +20,13 @@ use uuid::Uuid;
 use crate::config::CallControlConfig;
 use crate::protocol::{BackendEvent, BackendRequest, GatewaySnapshot};
 
+// Was: Legt den festen Wert `DATABASE_SCHEMA_VERSION` für Datenbank schema version fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const DATABASE_SCHEMA_VERSION: u32 = 1;
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Ruf Steuerung Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CallControlStatus {
     pub service: &'static str,
     pub started_at: String,
@@ -40,6 +47,8 @@ pub struct CallControlStatus {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Netzknoten Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct NodeRecord {
     pub node_id: String,
     pub station_name: String,
@@ -56,6 +65,8 @@ pub struct NodeRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für participant Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ParticipantRecord {
     pub node_id: String,
     pub issi: u32,
@@ -66,13 +77,21 @@ pub struct ParticipantRecord {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für Ruf kind auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum CallKind {
     Group,
     Individual,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `From<ManagedCallKind> for CallKind`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl From<ManagedCallKind> for CallKind {
+    // Was: Wandelt Eingangsdaten in den vorgesehenen Arbeitsschritt um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn from(value: ManagedCallKind) -> Self {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match value {
             ManagedCallKind::Group => Self::Group,
             ManagedCallKind::Individual => Self::Individual,
@@ -82,6 +101,8 @@ impl From<ManagedCallKind> for CallKind {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für Ruf phase auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum CallPhase {
     Starting,
     Partial,
@@ -92,7 +113,11 @@ pub enum CallPhase {
     Interrupted,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `CallPhase`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl CallPhase {
+    // Was: Prüft, ob terminal zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     fn is_terminal(self) -> bool {
         matches!(self, Self::Ended | Self::Failed | Self::Interrupted)
     }
@@ -100,6 +125,8 @@ impl CallPhase {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für Rufzweig phase auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum LegPhase {
     Requested,
     Starting,
@@ -111,13 +138,19 @@ pub enum LegPhase {
     Offline,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `LegPhase`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl LegPhase {
+    // Was: Prüft, ob terminal zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     fn is_terminal(self) -> bool {
         matches!(self, Self::Ended | Self::Failed | Self::TimedOut | Self::Offline)
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Ruf Rufzweig in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CallLeg {
     pub node_id: String,
     pub local_call_id: Option<u16>,
@@ -136,6 +169,8 @@ pub struct CallLeg {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für logical Ruf in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LogicalCall {
     pub logical_call_id: String,
     pub operation_id: String,
@@ -161,6 +196,8 @@ pub struct LogicalCall {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für Wiederherstellung phase auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum RestorePhase {
     ExportQueued,
     ExportRequested,
@@ -173,7 +210,11 @@ pub enum RestorePhase {
     TimedOut,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `RestorePhase`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl RestorePhase {
+    // Was: Prüft, ob terminal zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     fn is_terminal(self) -> bool {
         matches!(
             self,
@@ -183,6 +224,8 @@ impl RestorePhase {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Wiederherstellung operation in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct RestoreOperation {
     pub restore_id: String,
     pub logical_call_id: String,
@@ -198,6 +241,8 @@ pub struct RestoreOperation {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Ereignis Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct EventRecord {
     pub seq: u64,
     pub timestamp: String,
@@ -209,6 +254,8 @@ pub struct EventRecord {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Audio- und Mediendaten Steuerung Ereignis in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MediaControlEvent {
     pub kind: String,
     pub revision: u64,
@@ -219,12 +266,16 @@ pub struct MediaControlEvent {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Audio- und Mediendaten Weiterleitung ready input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MediaRouteReadyInput {
     pub logical_call_id: String,
     pub revision: u64,
 }
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Gruppe Ruf input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GroupCallInput {
     pub gssi: u32,
     pub source_issi: u32,
@@ -235,6 +286,8 @@ pub struct GroupCallInput {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für individual Ruf input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct IndividualCallInput {
     pub calling_issi: u32,
     pub called_issi: u32,
@@ -246,6 +299,8 @@ pub struct IndividualCallInput {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für floor input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct FloorInput {
     pub source_issi: u32,
     #[serde(default)]
@@ -253,6 +308,8 @@ pub struct FloorInput {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Wiederherstellung input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct RestoreInput {
     pub logical_call_id: String,
     pub source_node: String,
@@ -260,11 +317,15 @@ pub struct RestoreInput {
     pub source_call_id: Option<u16>,
 }
 
+// Was: Führt den Arbeitsschritt `default_true` für default true aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_true() -> bool {
     true
 }
 
 #[derive(Debug, Clone)]
+// Was: Listet die möglichen Varianten für pending action auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 enum PendingAction {
     StartLeg { logical_call_id: String },
     ReleaseLeg { logical_call_id: String },
@@ -276,6 +337,8 @@ enum PendingAction {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für pending command in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct PendingCommand {
     request_id: String,
     command_id: Option<String>,
@@ -286,6 +349,8 @@ struct PendingCommand {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für persisted Datenbank in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct PersistedDatabase {
     schema_version: u32,
     revision: u64,
@@ -293,7 +358,11 @@ struct PersistedDatabase {
     restores: Vec<RestoreOperation>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for PersistedDatabase`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for PersistedDatabase {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             schema_version: DATABASE_SCHEMA_VERSION,
@@ -304,6 +373,8 @@ impl Default for PersistedDatabase {
     }
 }
 
+// Was: Bündelt die zusammengehörigen Werte für Ruf Zustand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct CallState {
     config: CallControlConfig,
     started_at: String,
@@ -325,19 +396,29 @@ struct CallState {
 }
 
 #[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für shared calls in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SharedCalls(Arc<Mutex<CallState>>);
 
+// Was: Implementiert das zugehörige Verhalten für `SharedCalls`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SharedCalls {
+    // Was: Diese Funktion lädt den vorgesehenen Arbeitsschritt.
+    // Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
     pub fn load(config: CallControlConfig) -> Result<Self, Box<dyn std::error::Error>> {
         let database = load_database(&config)?;
         let now = now();
         let mut calls = BTreeMap::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for mut call in database.calls {
             if !call.phase.is_terminal() {
                 call.phase = CallPhase::Interrupted;
                 call.ended_at = Some(now.clone());
                 call.updated_at = now.clone();
                 call.message = "service restarted while call was active".to_string();
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for leg in call.legs.values_mut() {
                     if !leg.phase.is_terminal() {
                         leg.phase = LegPhase::Offline;
@@ -349,6 +430,8 @@ impl SharedCalls {
             calls.insert(call.logical_call_id.clone(), call);
         }
         let mut restores = BTreeMap::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for mut operation in database.restores {
             if !operation.phase.is_terminal() {
                 operation.phase = RestorePhase::Failed;
@@ -385,6 +468,8 @@ impl SharedCalls {
         }))))
     }
 
+    // Was: Diese Funktion abonniert Audio- und Mediendaten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn subscribe_media(&self) -> mpsc::Receiver<MediaControlEvent> {
         let (tx, rx) = mpsc::channel();
         let mut state = self.0.lock().expect("call state poisoned");
@@ -396,6 +481,8 @@ impl SharedCalls {
             .filter(|call| !call.phase.is_terminal())
             .map(|call| call.logical_call_id.clone())
             .collect::<Vec<_>>();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for logical_call_id in active_calls {
             state
                 .media_required_revision
@@ -411,6 +498,8 @@ impl SharedCalls {
         rx
     }
 
+    // Was: Diese Funktion kennzeichnet Audio- und Mediendaten Weiterleitung ready.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn mark_media_route_ready(
         &self,
         input: MediaRouteReadyInput,
@@ -470,6 +559,8 @@ impl SharedCalls {
         }))
     }
 
+    // Was: Führt den Arbeitsschritt `status` für Status aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn status(&self) -> CallControlStatus {
         let state = self.0.lock().expect("call state poisoned");
         let calls_active = state.calls.values().filter(|call| !call.phase.is_terminal()).count();
@@ -512,6 +603,8 @@ impl SharedCalls {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `config_view` für Konfiguration view aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn config_view(&self) -> Value {
         let state = self.0.lock().expect("call state poisoned");
         json!({
@@ -530,6 +623,8 @@ impl SharedCalls {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `nodes` für nodes aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn nodes(&self) -> Vec<NodeRecord> {
         self.0
             .lock()
@@ -540,6 +635,8 @@ impl SharedCalls {
             .collect()
     }
 
+    // Was: Führt den Arbeitsschritt `participants` für participants aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn participants(&self) -> Vec<ParticipantRecord> {
         self.0
             .lock()
@@ -550,6 +647,8 @@ impl SharedCalls {
             .collect()
     }
 
+    // Was: Führt den Arbeitsschritt `calls` für calls aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn calls(&self) -> Vec<LogicalCall> {
         let state = self.0.lock().expect("call state poisoned");
         let mut calls: Vec<_> = state.calls.values().cloned().collect();
@@ -557,6 +656,8 @@ impl SharedCalls {
         calls
     }
 
+    // Was: Führt den Arbeitsschritt `call` für Ruf aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn call(&self, logical_call_id: &str) -> Option<LogicalCall> {
         self.0
             .lock()
@@ -566,6 +667,8 @@ impl SharedCalls {
             .cloned()
     }
 
+    // Was: Führt den Arbeitsschritt `restores` für restores aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn restores(&self) -> Vec<RestoreOperation> {
         let state = self.0.lock().expect("call state poisoned");
         let mut operations: Vec<_> = state.restores.values().cloned().collect();
@@ -573,6 +676,8 @@ impl SharedCalls {
         operations
     }
 
+    // Was: Führt den Arbeitsschritt `events` für events aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn events(&self, limit: usize) -> Vec<EventRecord> {
         self.0
             .lock()
@@ -585,6 +690,8 @@ impl SharedCalls {
             .collect()
     }
 
+    // Was: Führt den Arbeitsschritt `metrics` für Messwerte aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn metrics(&self) -> String {
         let status = self.status();
         format!(
@@ -613,6 +720,8 @@ impl SharedCalls {
         )
     }
 
+    // Was: Diese Funktion erstellt Gruppe Ruf.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     pub fn create_group_call(
         &self,
         input: GroupCallInput,
@@ -650,6 +759,8 @@ impl SharedCalls {
         };
 
         let mut requests = Vec::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for node_id in targets {
             let leg = CallLeg {
                 node_id: node_id.clone(),
@@ -697,6 +808,8 @@ impl SharedCalls {
         Ok((call, requests))
     }
 
+    // Was: Diese Funktion erstellt individual Ruf.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     pub fn create_individual_call(
         &self,
         input: IndividualCallInput,
@@ -779,6 +892,8 @@ impl SharedCalls {
         Ok((call, vec![request]))
     }
 
+    // Was: Diese Funktion gibt Ruf.
+    // Warum: Ressourcen werden dadurch rechtzeitig freigegeben und blockieren keine weiteren Vorgänge.
     pub fn release_call(
         &self,
         logical_call_id: &str,
@@ -793,6 +908,8 @@ impl SharedCalls {
             return Err("logical call is already terminal".to_string());
         }
         let mut requests = Vec::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for leg in call.legs.values().filter(|leg| !leg.phase.is_terminal()) {
             let Some(call_id) = leg.local_call_id else {
                 continue;
@@ -815,6 +932,8 @@ impl SharedCalls {
             call.phase = CallPhase::Releasing;
             call.updated_at = now();
             call.message = "release requested".to_string();
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for leg in call.legs.values_mut().filter(|leg| !leg.phase.is_terminal()) {
                 leg.phase = LegPhase::Releasing;
                 leg.updated_at = now();
@@ -831,6 +950,8 @@ impl SharedCalls {
         Ok(requests)
     }
 
+    // Was: Diese Funktion fordert floor.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn request_floor(
         &self,
         logical_call_id: &str,
@@ -883,6 +1004,8 @@ impl SharedCalls {
         }
 
         let mut requests = Vec::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for leg in call.legs.values().filter(|leg| leg.phase == LegPhase::Active) {
             let Some(call_id) = leg.local_call_id else {
                 continue;
@@ -916,6 +1039,8 @@ impl SharedCalls {
         Ok(requests)
     }
 
+    // Was: Diese Funktion gibt floor.
+    // Warum: Ressourcen werden dadurch rechtzeitig freigegeben und blockieren keine weiteren Vorgänge.
     pub fn release_floor(
         &self,
         logical_call_id: &str,
@@ -927,6 +1052,8 @@ impl SharedCalls {
             .cloned()
             .ok_or_else(|| "logical call not found".to_string())?;
         let mut requests = Vec::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for leg in call.legs.values().filter(|leg| leg.phase == LegPhase::Active) {
             let Some(call_id) = leg.local_call_id else {
                 continue;
@@ -955,6 +1082,8 @@ impl SharedCalls {
         Ok(requests)
     }
 
+    // Was: Diese Funktion erstellt Wiederherstellung.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     pub fn create_restore(
         &self,
         input: RestoreInput,
@@ -1058,6 +1187,8 @@ impl SharedCalls {
         Ok((operation, vec![request]))
     }
 
+    // Was: Diese Funktion bricht Wiederherstellung.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn cancel_restore(&self, restore_id: &str) -> Result<(), String> {
         let mut state = self.0.lock().expect("call state poisoned");
         let (logical_call_id, source_call_id, target_node) = {
@@ -1104,6 +1235,8 @@ impl SharedCalls {
         Ok(())
     }
 
+    // Was: Führt den Arbeitsschritt `gateway_connected` für Gateway connected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn gateway_connected(&self) {
         let mut state = self.0.lock().expect("call state poisoned");
         state.gateway_connected = true;
@@ -1111,6 +1244,8 @@ impl SharedCalls {
         state.push_event("gateway_connected", None, None, None, json!({}));
     }
 
+    // Was: Führt den Arbeitsschritt `gateway_disconnected` für Gateway disconnected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn gateway_disconnected(&self, error: String) {
         let mut state = self.0.lock().expect("call state poisoned");
         state.gateway_connected = false;
@@ -1124,8 +1259,12 @@ impl SharedCalls {
         );
     }
 
+    // Was: Diese Funktion verarbeitet Hintergrunddienst Ereignis.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     pub fn handle_backend_event(&self, event: BackendEvent) -> Vec<BackendRequest> {
         let mut state = self.0.lock().expect("call state poisoned");
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let requests = match event {
             BackendEvent::Snapshot { snapshot } => {
                 state.apply_snapshot(snapshot);
@@ -1156,6 +1295,8 @@ impl SharedCalls {
         requests
     }
 
+    // Was: Führt den Arbeitsschritt `expire_operations` für expire operations aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn expire_operations(&self) -> Vec<BackendRequest> {
         let mut state = self.0.lock().expect("call state poisoned");
         let now_instant = Instant::now();
@@ -1169,6 +1310,8 @@ impl SharedCalls {
             })
             .collect();
         let mut changed = !expired.is_empty();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for request_id in expired {
             if let Some(pending) = state.pending.remove(&request_id) {
                 state.fail_pending(pending, "command timed out".to_string(), true);
@@ -1188,6 +1331,8 @@ impl SharedCalls {
             })
             .collect();
         changed |= !timed_out.is_empty();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for restore_id in timed_out {
             state.remove_pending_for_restore(&restore_id);
             let snapshot = state.restores.get_mut(&restore_id).map(|operation| {
@@ -1227,7 +1372,11 @@ impl SharedCalls {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `CallState`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl CallState {
+    // Was: Diese Funktion prüft TETRA-Teilnehmerkennung (SSI).
+    // Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
     fn validate_ssi(&self, value: u32, label: &str) -> Result<(), String> {
         if value == 0 || value > 0x00ff_ffff {
             Err(format!("{label} must be in 1..=16777215"))
@@ -1236,6 +1385,8 @@ impl CallState {
         }
     }
 
+    // Was: Diese Funktion stellt Ruf capacity.
+    // Warum: So wird die notwendige Voraussetzung hergestellt, bevor abhängiger Code weiterläuft.
     fn ensure_call_capacity(&self) -> Result<(), String> {
         if self.calls.len() >= self.config.limits.max_calls {
             Err("call database limit reached".to_string())
@@ -1244,12 +1395,16 @@ impl CallState {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `next_handle` für next handle aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn next_handle(&mut self) -> u32 {
         let handle = self.next_handle.max(1);
         self.next_handle = self.next_handle.wrapping_add(1).max(1);
         handle
     }
 
+    // Was: Führt den Arbeitsschritt `require_node` für require Netzknoten aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn require_node(&self, node_id: &str, restore: bool) -> Result<(), String> {
         let node = self
             .nodes
@@ -1267,6 +1422,8 @@ impl CallState {
         Ok(())
     }
 
+    // Was: Diese Funktion wählt Gruppe targets.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn select_group_targets(
         &self,
         gssi: u32,
@@ -1274,6 +1431,8 @@ impl CallState {
     ) -> Result<BTreeSet<String>, String> {
         let mut targets = requested;
         if targets.is_empty() && self.config.calls.auto_target_affiliated_nodes {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for participant in self.participants.values() {
                 if participant.registered && participant.groups.contains(&gssi) {
                     targets.insert(participant.node_id.clone());
@@ -1294,12 +1453,16 @@ impl CallState {
         if targets.len() > self.config.limits.max_legs_per_call {
             return Err("requested call exceeds max_legs_per_call".to_string());
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for node_id in &targets {
             self.require_node(node_id, false)?;
         }
         Ok(targets)
     }
 
+    // Was: Diese Funktion wählt individual target.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn select_individual_target(
         &self,
         called_issi: u32,
@@ -1316,6 +1479,8 @@ impl CallState {
             .ok_or_else(|| format!("called ISSI {called_issi} is not observed on an online TBS"))
     }
 
+    // Was: Diese Funktion registriert command.
+    // Warum: Die Zuordnung bleibt dadurch eindeutig und kann später sauber wieder entfernt werden.
     fn register_command(
         &mut self,
         node_id: String,
@@ -1346,10 +1511,14 @@ impl CallState {
         })
     }
 
+    // Was: Diese Funktion wendet snapshot.
+    // Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
     fn apply_snapshot(&mut self, snapshot: GatewaySnapshot) {
         self.gateway_connected = true;
         self.gateway_last_error = None;
         let mut seen = BTreeSet::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for node in snapshot.nodes {
             seen.insert(node.node_id.clone());
             self.nodes.insert(
@@ -1370,6 +1539,8 @@ impl CallState {
                 },
             );
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (node_id, node) in &mut self.nodes {
             if !seen.contains(node_id) {
                 node.connected = false;
@@ -1378,11 +1549,15 @@ impl CallState {
         }
     }
 
+    // Was: Diese Funktion kennzeichnet Netzknoten disconnected.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn mark_node_disconnected(&mut self, node_id: &str, reason: &str) {
         if let Some(node) = self.nodes.get_mut(node_id) {
             node.connected = false;
             node.stale = true;
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for call in self.calls.values_mut() {
             if let Some(leg) = call.legs.get_mut(node_id) {
                 if !leg.phase.is_terminal() {
@@ -1395,6 +1570,8 @@ impl CallState {
         }
     }
 
+    // Was: Diese Funktion verarbeitet action result.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_action_result(
         &mut self,
         request_id: Option<String>,
@@ -1419,12 +1596,16 @@ impl CallState {
         }
     }
 
+    // Was: Diese Funktion wendet command Kennung to action.
+    // Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
     fn apply_command_id_to_action(
         &mut self,
         action: &PendingAction,
         node_id: &str,
         command_id: Option<String>,
     ) {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match action {
             PendingAction::StartLeg { logical_call_id }
             | PendingAction::ReleaseLeg { logical_call_id }
@@ -1458,11 +1639,15 @@ impl CallState {
         }
     }
 
+    // Was: Diese Funktion verarbeitet Netzknoten Nachricht.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_node_message(
         &mut self,
         node_id: String,
         message: NodeToControlRoomMessage,
     ) -> Vec<BackendRequest> {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match message {
             NodeToControlRoomMessage::Telemetry { envelope } => {
                 self.handle_telemetry(node_id, envelope.event)
@@ -1501,11 +1686,15 @@ impl CallState {
         }
     }
 
+    // Was: Diese Funktion verarbeitet Steuerung response.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_control_response(
         &mut self,
         node_id: String,
         response: ControlResponse,
     ) -> Vec<BackendRequest> {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match response {
             ControlResponse::CallControlLegStarted {
                 handle,
@@ -1582,6 +1771,8 @@ impl CallState {
                 message,
             } => {
                 if let Some(pending) = self.take_pending(&node_id, handle) {
+                    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                     let logical_call_id = match pending.action {
                         PendingAction::FloorRequest { logical_call_id }
                         | PendingAction::FloorRelease { logical_call_id } => logical_call_id,
@@ -1637,6 +1828,8 @@ impl CallState {
                 }
                 let handle = self.next_handle();
                 let target_node = operation_snapshot.target_node.clone();
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 let request = match self.register_command(
                     target_node,
                     handle,
@@ -1738,12 +1931,16 @@ impl CallState {
         }
     }
 
+    // Was: Diese Funktion verarbeitet Telemetrie.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_telemetry(
         &mut self,
         node_id: String,
         event: TelemetryEvent,
     ) -> Vec<BackendRequest> {
         let mut requests = Vec::new();
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match event {
             TelemetryEvent::MsRegistration { issi } => {
                 self.update_participant(&node_id, issi, true, None);
@@ -1765,6 +1962,8 @@ impl CallState {
                     groups: BTreeSet::new(),
                     last_seen: now(),
                 });
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for gssi in gssis {
                     participant.groups.remove(&gssi);
                 }
@@ -1831,6 +2030,8 @@ impl CallState {
         requests
     }
 
+    // Was: Diese Funktion aktualisiert participant.
+    // Warum: Bestehender Zustand wird dadurch kontrolliert und nach einheitlichen Regeln geändert.
     fn update_participant(
         &mut self,
         node_id: &str,
@@ -1856,6 +2057,8 @@ impl CallState {
     }
 
     #[allow(clippy::too_many_arguments)]
+    // Was: Führt den Arbeitsschritt `observe_group_start` für observe Gruppe start aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn observe_group_start(
         &mut self,
         node_id: String,
@@ -1914,6 +2117,8 @@ impl CallState {
     }
 
     #[allow(clippy::too_many_arguments)]
+    // Was: Führt den Arbeitsschritt `observe_individual_start` für observe individual start aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn observe_individual_start(
         &mut self,
         node_id: String,
@@ -1977,6 +2182,8 @@ impl CallState {
         cleanup.into_iter().collect()
     }
 
+    // Was: Führt den Arbeitsschritt `observe_speaker_change` für observe speaker change aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn observe_speaker_change(
         &mut self,
         node_id: String,
@@ -2006,6 +2213,8 @@ impl CallState {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `observe_call_end` für observe Ruf end aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn observe_call_end(&mut self, node_id: String, call_id: u16, kind: CallKind) {
         if let Some(logical_call_id) = self.find_call_by_leg(&node_id, call_id, kind) {
             if let Some(call) = self.calls.get_mut(&logical_call_id) {
@@ -2027,6 +2236,8 @@ impl CallState {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `complete_matching_restore` für complete matching Wiederherstellung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn complete_matching_restore(
         &mut self,
         logical_call_id: &str,
@@ -2067,6 +2278,8 @@ impl CallState {
         );
 
         let handle = self.next_handle();
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.register_command(
             node_id.to_string(),
             handle,
@@ -2092,6 +2305,8 @@ impl CallState {
         }
     }
 
+    // Was: Diese Funktion sucht Ruf by Rufzweig.
+    // Warum: Die Suchlogik bleibt damit wiederverwendbar und muss nicht an mehreren Stellen kopiert werden.
     fn find_call_by_leg(&self, node_id: &str, call_id: u16, kind: CallKind) -> Option<String> {
         self.calls.values().find_map(|call| {
             (call.kind == kind
@@ -2103,6 +2318,8 @@ impl CallState {
         })
     }
 
+    // Was: Diese Funktion sucht starting Gruppe Rufzweig.
+    // Warum: Die Suchlogik bleibt damit wiederverwendbar und muss nicht an mehreren Stellen kopiert werden.
     fn find_starting_group_leg(&self, node_id: &str, gssi: u32) -> Option<String> {
         self.calls.values().find_map(|call| {
             (call.kind == CallKind::Group
@@ -2115,6 +2332,8 @@ impl CallState {
         })
     }
 
+    // Was: Diese Funktion sucht starting individual Rufzweig.
+    // Warum: Die Suchlogik bleibt damit wiederverwendbar und muss nicht an mehreren Stellen kopiert werden.
     fn find_starting_individual_leg(
         &self,
         node_id: &str,
@@ -2133,6 +2352,8 @@ impl CallState {
         })
     }
 
+    // Was: Diese Funktion erstellt observed Gruppe Ruf.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     fn create_observed_group_call(
         &mut self,
         gssi: u32,
@@ -2170,6 +2391,8 @@ impl CallState {
         id
     }
 
+    // Was: Diese Funktion erstellt observed individual Ruf.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     fn create_observed_individual_call(
         &mut self,
         calling_issi: u32,
@@ -2208,6 +2431,8 @@ impl CallState {
         id
     }
 
+    // Was: Führt den Arbeitsschritt `take_pending` für take pending aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn take_pending(&mut self, node_id: &str, handle: u32) -> Option<PendingCommand> {
         let request_id = self
             .pending
@@ -2217,7 +2442,11 @@ impl CallState {
         self.pending.remove(&request_id)
     }
 
+    // Was: Führt den Arbeitsschritt `fail_pending` für fail pending aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fail_pending(&mut self, pending: PendingCommand, message: String, timeout: bool) {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match pending.action {
             PendingAction::StartLeg { logical_call_id }
             | PendingAction::ReleaseLeg { logical_call_id }
@@ -2270,6 +2499,8 @@ impl CallState {
         }
     }
 
+    // Was: Diese Funktion entfernt pending for Wiederherstellung.
+    // Warum: Das Entfernen bleibt damit vollständig und hinterlässt keinen widersprüchlichen Zustand.
     fn remove_pending_for_restore(&mut self, restore_id: &str) {
         self.pending.retain(|_, pending| match &pending.action {
             PendingAction::ExportRestore { restore_id: value }
@@ -2279,6 +2510,8 @@ impl CallState {
         });
     }
 
+    // Was: Führt den Arbeitsschritt `fail_restore` für fail Wiederherstellung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fail_restore(&mut self, restore_id: &str, message: String) {
         self.remove_pending_for_restore(restore_id);
         let snapshot = self.restores.get_mut(restore_id).map(|operation| {
@@ -2310,6 +2543,8 @@ impl CallState {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `recompute_call_phase` für recompute Ruf phase aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn recompute_call_phase(call: &mut LogicalCall) {
         let active = call.legs.values().filter(|leg| leg.phase == LegPhase::Active).count();
         let pending = call
@@ -2347,6 +2582,8 @@ impl CallState {
         }
     }
 
+    // Was: Diese Funktion legt Ereignis.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn push_event(
         &mut self,
         kind: &str,
@@ -2366,6 +2603,8 @@ impl CallState {
         };
         self.next_event_seq = self.next_event_seq.saturating_add(1);
         self.events.push_back(event);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while self.events.len() > self.config.server.history_limit {
             self.events.pop_front();
         }
@@ -2375,6 +2614,8 @@ impl CallState {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `media_event` für Audio- und Mediendaten Ereignis aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn media_event(
         &self,
         kind: &str,
@@ -2396,6 +2637,8 @@ impl CallState {
         }
     }
 
+    // Was: Diese Funktion veröffentlicht Audio- und Mediendaten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn publish_media(
         &mut self,
         kind: &str,
@@ -2425,6 +2668,8 @@ impl CallState {
             .retain(|subscriber| subscriber.send(event.clone()).is_ok());
     }
 
+    // Was: Führt den Arbeitsschritt `bump_and_persist` für bump and persist aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn bump_and_persist(&mut self) {
         self.database_revision = self.database_revision.saturating_add(1);
         if let Err(error) = self.persist() {
@@ -2432,12 +2677,16 @@ impl CallState {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `bump_and_persist_if_changed` für bump and persist if changed aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn bump_and_persist_if_changed(&mut self) {
         // Backend messages are authoritative state changes. Persisting the compact
         // logical-call database is cheap and keeps crash recovery deterministic.
         self.bump_and_persist();
     }
 
+    // Was: Diese Funktion speichert den vorgesehenen Arbeitsschritt.
+    // Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
     fn persist(&self) -> Result<(), String> {
         let database = PersistedDatabase {
             schema_version: DATABASE_SCHEMA_VERSION,
@@ -2470,7 +2719,11 @@ impl CallState {
     }
 }
 
+// Was: Führt den Arbeitsschritt `media_event_kind` für Audio- und Mediendaten Ereignis kind aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn media_event_kind(reason: &str) -> Option<&'static str> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match reason {
         "group_call_requested" | "individual_call_requested" => Some("call_created"),
         "group_call_started" | "individual_call_started" | "call_leg_started" => {
@@ -2490,6 +2743,8 @@ fn media_event_kind(reason: &str) -> Option<&'static str> {
     }
 }
 
+// Was: Diese Funktion lädt Datenbank.
+// Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
 fn load_database(config: &CallControlConfig) -> Result<PersistedDatabase, Box<dyn std::error::Error>> {
     if !config.storage.database_path.exists() {
         return Ok(PersistedDatabase::default());
@@ -2506,6 +2761,8 @@ fn load_database(config: &CallControlConfig) -> Result<PersistedDatabase, Box<dy
     Ok(database)
 }
 
+// Was: Führt den Arbeitsschritt `now` für now aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn now() -> String {
     Utc::now().to_rfc3339()
 }

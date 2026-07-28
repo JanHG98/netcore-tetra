@@ -1,9 +1,14 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use serde::Serialize;
 
 use crate::net_audio_player::AudioTargetType;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für tts Zustand auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum TtsState {
     Idle,
     Synthesizing,
@@ -14,6 +19,8 @@ pub enum TtsState {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für tts voice Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TtsVoiceStatus {
     pub id: String,
     pub name: String,
@@ -24,6 +31,8 @@ pub struct TtsVoiceStatus {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für tts Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TtsStatus {
     pub available: bool,
     pub provider_available: bool,

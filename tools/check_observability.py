@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für check observability.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 from pathlib import Path
 import json
 import re
@@ -42,14 +45,20 @@ MARKERS={
     "Cargo.toml":"system-backend/observability",
 }
 
+# Was: Führt den Arbeitsschritt `rust_balanced` für rust balanced aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def rust_balanced(path:Path):
     text=path.read_text(errors="replace"); stack=[]; pairs={')':'(',']':'[','}':'{'}; i=0; line=1
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     while i<len(text):
         if text[i]=='\n': line+=1; i+=1; continue
         if text.startswith('//',i):
             end=text.find('\n',i); i=len(text) if end<0 else end; continue
         if text.startswith('/*',i):
             depth=1;i+=2
+            # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+            # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
             while i<len(text) and depth:
                 if text.startswith('/*',i):depth+=1;i+=2
                 elif text.startswith('*/',i):depth-=1;i+=2
@@ -66,6 +75,8 @@ def rust_balanced(path:Path):
                 line+=text[i:end+len(end_marker)].count('\n');i=end+len(end_marker);continue
         if text[i]=='"':
             i+=1
+            # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+            # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
             while i<len(text):
                 if text[i]=='\\':i+=2;continue
                 if text[i]=='"':i+=1;break
@@ -74,6 +85,8 @@ def rust_balanced(path:Path):
             continue
         if text[i]=="'":
             end=i+1
+            # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+            # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
             while end<min(len(text),i+16):
                 if text[end]=="'" and text[end-1]!='\\':i=end+1;break
                 end+=1
@@ -88,16 +101,28 @@ def rust_balanced(path:Path):
     if stack:return f"unclosed delimiter {stack[-1][0]} from line {stack[-1][1]}"
     return None
 
+# Was: Startet das Programm, lädt die benötigten Einstellungen und übergibt an den eigentlichen Dienstablauf.
+# Warum: Ein klarer Einstiegspunkt hält Startreihenfolge, Fehlerausgabe und geordnetes Beenden zusammen.
 def main():
     errors=[]
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for rel in REQUIRED:
         if not (ROOT/rel).is_file():errors.append(f"missing {rel}")
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for synthetic,marker in MARKERS.items():
         rel=synthetic.split('#',1)[0]; p=ROOT/rel
         if not p.is_file() or marker not in p.read_text(errors='replace'):errors.append(f"missing marker {marker!r} in {rel}")
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for rel in ["Cargo.toml","system-backend/services.toml","system-backend/observability/Cargo.toml","system-backend/observability/config/observability.example.toml"]:
+        # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+        # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
         try:tomllib.loads((ROOT/rel).read_text())
         except Exception as e:errors.append(f"invalid TOML {rel}: {e}")
+    # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+    # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
     try:
         c=tomllib.loads((ROOT/'system-backend/observability/config/observability.example.toml').read_text())
         if c['security']['token_auth'] or c['security']['tls'] or c['security']['mode']!='open_lab':errors.append('example must remain open_lab without token/TLS')
@@ -105,20 +130,28 @@ def main():
         if len(c.get('targets',[]))<15:errors.append('example must contain all implemented service targets')
         if len(c.get('alert_rules',[]))<3:errors.append('example must contain baseline alert rules')
     except Exception:pass
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for rel in ["system-backend/observability/src/main.rs","system-backend/observability/src/config.rs","system-backend/observability/src/collector.rs","system-backend/observability/src/protocol.rs","system-backend/observability/src/state.rs","system-backend/observability/src/http.rs"]:
         err=rust_balanced(ROOT/rel)
         if err:errors.append(f"{rel}: {err}")
+    # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+    # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
     try:json.loads((ROOT/'system-backend/observability/stack/grafana/dashboards/netcore-overview.json').read_text())
     except Exception as e:errors.append(f"invalid Grafana JSON: {e}")
     web=(ROOT/'system-backend/observability/src/http.rs').read_text();m=re.search(r'<script>(.*)</script>',web,re.S)
     if not m:errors.append('embedded WebUI JavaScript not found')
     else:
         with tempfile.NamedTemporaryFile('w',suffix='.js',delete=False) as h:h.write(m.group(1));js=Path(h.name)
+        # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+        # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
         try:
             r=subprocess.run(['node','--check',str(js)],capture_output=True,text=True)
             if r.returncode:errors.append(f"WebUI JavaScript invalid: {r.stderr.strip()}")
         except FileNotFoundError:pass
         finally:js.unlink(missing_ok=True)
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for script in sorted((ROOT/'system-backend/observability/install').glob('*.sh')):
         r=subprocess.run(['bash','-n',str(script)],capture_output=True,text=True)
         if r.returncode:errors.append(f"shell syntax {script.relative_to(ROOT)}: {r.stderr.strip()}")
@@ -126,4 +159,6 @@ def main():
     if r.returncode:errors.append(f"reference test failed: {r.stderr.strip() or r.stdout.strip()}")
     if errors:print('\n'.join(errors),file=sys.stderr);return 1
     print('Observability static package check: OK');return 0
+# Was: Startet den Programmablauf nur dann, wenn diese Datei direkt ausgeführt wird.
+# Warum: Beim Import als Modul sollen nur Funktionen bereitstehen und keine Nebenwirkungen automatisch starten.
 if __name__=='__main__':raise SystemExit(main())

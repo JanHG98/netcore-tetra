@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use soapysdr;
 use tetra_config::bluestation::{SharedConfig, StackMode, sec_phy_soapy::CfgSoapySdr};
 
@@ -8,9 +11,15 @@ use super::soapy_settings;
 use super::soapy_settings::{SdrSettings, SupportedDevice};
 use super::soapy_time::{ticks_to_time_ns, time_ns_to_ticks};
 
+// Was: Vergibt für stream type einen fachlich verständlichen Typnamen.
+// Warum: Der Alias macht Signaturen lesbarer und hält technische Details aus dem aufrufenden Code heraus.
 type StreamType = ComplexSample;
+// Was: Legt den festen Wert `SOAPY_FREQ_OFFSET` für soapy freq offset fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const SOAPY_FREQ_OFFSET: f64 = 20000.0;
 
+// Was: Bündelt die zusammengehörigen Werte für rx result in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct RxResult {
     /// Number of samples read
     pub len: usize,
@@ -18,6 +27,8 @@ pub struct RxResult {
     pub count: SampleCount,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für soapy io in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SoapyIo {
     rx_ch: usize,
     tx_ch: usize,
@@ -44,12 +55,18 @@ pub struct SoapyIo {
 
 /// Soapy/Lime timestamps can occasionally jitter by a single sample.
 /// Treat tiny deltas as contiguous to avoid triggering large block realignments downstream.
+// Was: Legt den festen Wert `RX_TIMESTAMP_JITTER_TOLERANCE_SAMPLES` für rx timestamp Laufzeitschwankung tolerance samples fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const RX_TIMESTAMP_JITTER_TOLERANCE_SAMPLES: SampleCount = 1;
 
 /// It is annoying to repeat error handling so do that in a macro.
 /// ? could be used but then it could not print which SoapySDR call failed.
+// Was: Definiert das Makro `soapycheck`, das wiederkehrenden Rust-Code erzeugt.
+// Warum: Gleichartige Strukturen werden dadurch nur einmal beschrieben und können nicht unbemerkt auseinanderlaufen.
 macro_rules! soapycheck {
     ($text:literal, $soapysdr_call:expr) => {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match $soapysdr_call {
             Ok(ret) => ret,
             Err(err) => {
@@ -60,7 +77,11 @@ macro_rules! soapycheck {
     };
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SoapyIo`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SoapyIo {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(cfg: &SharedConfig) -> Result<Self, soapysdr::Error> {
         let binding = cfg.config();
         let soapy_cfg = binding
@@ -84,6 +105,8 @@ impl SoapyIo {
         let rx_center_corrected = soapy_cfg.rx_center_freq_corrected().map(|(freq, _)| freq);
         let tx_center_corrected = soapy_cfg.tx_center_freq_corrected().map(|(freq, _)| freq);
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let (rx_freq, tx_freq) = match mode {
             StackMode::Bs => (
                 Some(rx_center_corrected.unwrap_or(ul_corrected - SOAPY_FREQ_OFFSET)),
@@ -143,6 +166,8 @@ impl SoapyIo {
                 soapycheck!("set RX antenna", dev.set_antenna(soapysdr::Direction::Rx, rx_ch, ant.as_str()));
             }
 
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for (name, gain) in &sdr_settings.rx_gain {
                 soapycheck!(
                     "set RX gain",
@@ -161,6 +186,8 @@ impl SoapyIo {
                 soapycheck!("set TX antenna", dev.set_antenna(soapysdr::Direction::Tx, tx_ch, ant.as_str()));
             }
 
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for (name, gain) in &sdr_settings.tx_gain {
                 soapycheck!(
                     "set TX gain",
@@ -170,11 +197,15 @@ impl SoapyIo {
         }
 
         let mut rx_args = soapysdr::Args::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (key, value) in sdr_settings.rx_args {
             rx_args.set(key, value);
         }
 
         let mut tx_args = soapysdr::Args::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (key, value) in sdr_settings.tx_args {
             tx_args.set(key, value);
         }
@@ -210,9 +241,13 @@ impl SoapyIo {
         })
     }
 
+    // Was: Diese Funktion empfängt den vorgesehenen Arbeitsschritt.
+    // Warum: Eingehende Daten werden so geordnet geprüft, bevor sie weiterverteilt werden.
     pub fn receive(&mut self, buffer: &mut [StreamType]) -> Result<RxResult, RxTxDevError> {
         if let Some(rx) = &mut self.rx {
             // RX is enabled
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match rx.read(&mut [buffer], 1000000) {
                 Ok(len) => {
                     // Get timestamp, set initial time if not yet set
@@ -269,6 +304,8 @@ impl SoapyIo {
         }
     }
 
+    // Was: Diese Funktion überträgt den vorgesehenen Arbeitsschritt.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn transmit(&mut self, buffer: &[StreamType], count: Option<SampleCount>) -> Result<(), RxTxDevError> {
         if let Some(tx) = &mut self.tx {
             if let Some(initial_time) = self.initial_time {
@@ -289,11 +326,15 @@ impl SoapyIo {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `current_time` für current time aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn current_time(&self) -> Result<i64, RxTxDevError> {
         self.dev.get_hardware_time(None).map_err(|_| RxTxDevError::RxReadError)
     }
 
     /// Current hardware time as RX sample count
+    // Was: Führt den Arbeitsschritt `rx_current_count` für rx current count aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn rx_current_count(&self) -> Result<SampleCount, RxTxDevError> {
         if !self.rx_enabled() {
             return Ok(0);
@@ -306,6 +347,8 @@ impl SoapyIo {
     }
 
     /// Current hardware time as TX sample count
+    // Was: Führt den Arbeitsschritt `tx_current_count` für tx current count aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn tx_current_count(&self) -> Result<SampleCount, RxTxDevError> {
         if !self.tx_enabled() {
             return Ok(0);
@@ -320,32 +363,46 @@ impl SoapyIo {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `tx_possible` für tx possible aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn tx_possible(&self) -> bool {
         // initial_time is obtained from the first RX read (that includes a timestamp),
         // so prevent TX before it is available.
         self.tx_enabled() && self.initial_time.is_some()
     }
 
+    // Was: Führt den Arbeitsschritt `rx_sample_rate` für rx sample rate aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn rx_sample_rate(&self) -> f64 {
         self.rx_fs
     }
 
+    // Was: Führt den Arbeitsschritt `tx_sample_rate` für tx sample rate aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn tx_sample_rate(&self) -> f64 {
         self.tx_fs
     }
 
+    // Was: Führt den Arbeitsschritt `rx_center_frequency` für rx center frequency aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn rx_center_frequency(&self) -> Result<f64, soapysdr::Error> {
         self.dev.frequency(soapysdr::Direction::Rx, self.rx_ch)
     }
 
+    // Was: Führt den Arbeitsschritt `tx_center_frequency` für tx center frequency aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn tx_center_frequency(&self) -> Result<f64, soapysdr::Error> {
         self.dev.frequency(soapysdr::Direction::Tx, self.tx_ch)
     }
 
+    // Was: Führt den Arbeitsschritt `rx_enabled` für rx enabled aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn rx_enabled(&self) -> bool {
         self.rx.is_some()
     }
 
+    // Was: Führt den Arbeitsschritt `tx_enabled` für tx enabled aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn tx_enabled(&self) -> bool {
         self.tx.is_some()
     }
@@ -355,8 +412,12 @@ impl SoapyIo {
     /// SXceiver / µCell don't currently expose any sensor and this returns None.
     /// We probe sensor names rather than hard-coding per-driver, so any future radio
     /// that follows the Soapy convention works without code changes.
+    // Was: Diese Funktion liest temperature c.
+    // Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
     pub fn read_temperature_c(&self) -> Option<f32> {
         let sensors = self.dev.list_sensors().ok()?;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for name in sensors {
             let s = name.to_string();
             let lower = s.to_lowercase();
@@ -373,6 +434,8 @@ impl SoapyIo {
 
     /// Read back the currently-active TX gain per stage, in dB.
     /// Returns the same gain-element names the radio uses (e.g. "PAD","IAMP" on LimeSDR).
+    // Was: Diese Funktion liest tx gains.
+    // Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
     pub fn read_tx_gains(&self) -> Vec<(String, f32)> {
         if !self.tx_enabled() {
             return Vec::new();
@@ -392,6 +455,8 @@ impl SoapyIo {
     }
 
     /// Read back the currently-active RX gain per stage, in dB.
+    // Was: Diese Funktion liest rx gains.
+    // Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
     pub fn read_rx_gains(&self) -> Vec<(String, f32)> {
         if !self.rx_enabled() {
             return Vec::new();
@@ -414,6 +479,8 @@ impl SoapyIo {
 // Messy logic related to opening a device follows...
 
 /// Struct to temporarily hold stuff related to opening and detecting a device
+// Was: Bündelt die zusammengehörigen Werte für opened device in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct OpenedDevice {
     dev_args: soapysdr::Args,
     dev: soapysdr::Device,
@@ -423,7 +490,11 @@ struct OpenedDevice {
     soapyremote_used: bool,
 }
 
+// Was: Diese Funktion öffnet given device.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn open_given_device(dev_args: soapysdr::Args) -> Result<OpenedDevice, soapysdr::Error> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let soapyremote_used = match dev_args.get("driver") {
         Some("remote") => true,
         _ => false,
@@ -431,6 +502,8 @@ fn open_given_device(dev_args: soapysdr::Args) -> Result<OpenedDevice, soapysdr:
     tracing::info!("Trying to open a device with arguments: {}", dev_args);
 
     let dev_args_copy: soapysdr::Args = dev_args.iter().collect();
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let dev = match soapysdr::Device::new(dev_args_copy) {
         Ok(dev) => dev,
         Err(err) => {
@@ -470,9 +543,15 @@ fn open_given_device(dev_args: soapysdr::Args) -> Result<OpenedDevice, soapysdr:
 }
 
 /// Enumerate devices and find the first supported device
+// Was: Diese Funktion sucht supported device.
+// Warum: Die Suchlogik bleibt damit wiederverwendbar und muss nicht an mehreren Stellen kopiert werden.
 fn find_supported_device(filter_args: soapysdr::Args) -> Result<OpenedDevice, soapysdr::Error> {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for dev_args in soapycheck!("Enumerate SoapySDR devices", soapysdr::enumerate(filter_args)) {
         //tracing::info!("Trying to open a device with arguments: {}", args_formatted);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match open_given_device(dev_args) {
             Ok(opened_device) => return Ok(opened_device),
             Err(_) => {}
@@ -486,6 +565,8 @@ fn find_supported_device(filter_args: soapysdr::Args) -> Result<OpenedDevice, so
 
 /// Open a given device if argument string is given,
 /// automatically find the first supported device if not.
+// Was: Diese Funktion öffnet device.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn open_device(soapy_cfg: &CfgSoapySdr, mode: StackMode) -> Result<(soapysdr::Device, SdrSettings), soapysdr::Error> {
     let mut opened_device = if let Some(arg_string) = &soapy_cfg.device {
         open_given_device(arg_string.as_str().into())
@@ -493,6 +574,8 @@ fn open_device(soapy_cfg: &CfgSoapySdr, mode: StackMode) -> Result<(soapysdr::De
         find_supported_device(soapysdr::Args::new())
     }?;
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let mut sdr_settings = match SdrSettings::get_settings(&soapy_cfg, opened_device.detected_device, mode) {
         Ok(sdr_settings) => sdr_settings,
         Err(soapy_settings::Error::InvalidConfiguration) => {
@@ -514,6 +597,8 @@ fn open_device(soapy_cfg: &CfgSoapySdr, mode: StackMode) -> Result<(soapysdr::De
     // If additional driver arguments are needed, reopen the device with them
     if sdr_settings.dev_args.len() > 0 {
         // Append additional arguments from settings
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (key, value) in &sdr_settings.dev_args {
             opened_device.dev_args.set(key.as_str(), value.as_str());
         }

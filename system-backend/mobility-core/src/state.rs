@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Registrierung, Aufenthaltsbereiche und Teilnehmermobilität.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::{BTreeSet, HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -17,6 +20,8 @@ use crate::protocol::{
 };
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Mobilität Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MobilityStatus {
     pub service: &'static str,
     pub started_at: String,
@@ -34,6 +39,8 @@ pub struct MobilityStatus {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Netzknoten Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct NodeRecord {
     pub node_id: String,
     pub station_name: String,
@@ -50,6 +57,8 @@ pub struct NodeRecord {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Teilnehmer Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SubscriberRecord {
     pub issi: u32,
     pub serving_node: Option<String>,
@@ -63,6 +72,8 @@ pub struct SubscriberRecord {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für transfer phase auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum TransferPhase {
     ExportQueued,
     ExportRequested,
@@ -76,7 +87,11 @@ pub enum TransferPhase {
     TimedOut,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `TransferPhase`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl TransferPhase {
+    // Was: Führt den Arbeitsschritt `terminal` für terminal aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn terminal(&self) -> bool {
         matches!(
             self,
@@ -86,6 +101,8 @@ impl TransferPhase {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für transfer Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TransferRecord {
     pub transfer_id: String,
     pub handle: u32,
@@ -106,6 +123,8 @@ pub struct TransferRecord {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für create transfer request in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CreateTransferRequest {
     pub issi: u32,
     pub source_node: String,
@@ -114,6 +133,8 @@ pub struct CreateTransferRequest {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für core Ereignis Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CoreEventRecord {
     pub seq: u64,
     pub timestamp: String,
@@ -124,6 +145,8 @@ pub struct CoreEventRecord {
     pub detail: Value,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für Mobilität Zustand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct MobilityState {
     config: MobilityCoreConfig,
     started_at: String,
@@ -141,9 +164,15 @@ struct MobilityState {
 }
 
 #[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für shared Mobilität in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SharedMobility(Arc<Mutex<MobilityState>>);
 
+// Was: Implementiert das zugehörige Verhalten für `SharedMobility`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SharedMobility {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(config: MobilityCoreConfig) -> Self {
         Self(Arc::new(Mutex::new(MobilityState {
             config,
@@ -162,6 +191,8 @@ impl SharedMobility {
         })))
     }
 
+    // Was: Führt den Arbeitsschritt `status` für Status aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn status(&self) -> MobilityStatus {
         let state = self.0.lock().expect("mobility state poisoned");
         MobilityStatus {
@@ -181,6 +212,8 @@ impl SharedMobility {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `nodes` für nodes aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn nodes(&self) -> Vec<NodeRecord> {
         let state = self.0.lock().expect("mobility state poisoned");
         let mut nodes: Vec<_> = state.nodes.values().cloned().collect();
@@ -188,6 +221,8 @@ impl SharedMobility {
         nodes
     }
 
+    // Was: Führt den Arbeitsschritt `subscribers` für subscribers aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn subscribers(&self) -> Vec<SubscriberRecord> {
         let state = self.0.lock().expect("mobility state poisoned");
         let mut subscribers: Vec<_> = state.subscribers.values().cloned().collect();
@@ -195,6 +230,8 @@ impl SharedMobility {
         subscribers
     }
 
+    // Was: Führt den Arbeitsschritt `transfers` für transfers aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn transfers(&self) -> Vec<TransferRecord> {
         let state = self.0.lock().expect("mobility state poisoned");
         let mut transfers: Vec<_> = state.transfers.values().cloned().collect();
@@ -202,11 +239,15 @@ impl SharedMobility {
         transfers
     }
 
+    // Was: Führt den Arbeitsschritt `recent_events` für recent events aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn recent_events(&self, limit: usize) -> Vec<CoreEventRecord> {
         let state = self.0.lock().expect("mobility state poisoned");
         state.events.iter().rev().take(limit.min(state.events.len())).cloned().collect()
     }
 
+    // Was: Führt den Arbeitsschritt `gateway_connected` für Gateway connected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn gateway_connected(&self) {
         let mut state = self.0.lock().expect("mobility state poisoned");
         state.gateway_connected = true;
@@ -214,6 +255,8 @@ impl SharedMobility {
         push_event(&mut state, "gateway_connected", None, None, None, json!({}));
     }
 
+    // Was: Führt den Arbeitsschritt `gateway_disconnected` für Gateway disconnected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn gateway_disconnected(&self, error: impl Into<String>) {
         let mut state = self.0.lock().expect("mobility state poisoned");
         state.gateway_connected = false;
@@ -229,6 +272,8 @@ impl SharedMobility {
         );
     }
 
+    // Was: Diese Funktion erstellt transfer.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     pub fn create_transfer(
         &self,
         request: CreateTransferRequest,
@@ -240,6 +285,8 @@ impl SharedMobility {
         if request.source_node == request.target_node {
             return Err("source_node and target_node must differ".to_string());
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for node_id in [&request.source_node, &request.target_node] {
             let node = state.nodes.get(node_id)
                 .ok_or_else(|| format!("unknown node {node_id}"))?;
@@ -307,6 +354,8 @@ impl SharedMobility {
         Ok((transfer, backend))
     }
 
+    // Was: Diese Funktion bricht transfer.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn cancel_transfer(&self, transfer_id: &str) -> Result<TransferRecord, String> {
         let mut state = self.0.lock().expect("mobility state poisoned");
         let transfer = state.transfers.get_mut(transfer_id)
@@ -337,11 +386,15 @@ impl SharedMobility {
         Ok(snapshot)
     }
 
+    // Was: Diese Funktion verarbeitet Hintergrunddienst Ereignis.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     pub fn handle_backend_event(&self, event: BackendEvent) -> Vec<BackendRequest> {
         let mut state = self.0.lock().expect("mobility state poisoned");
         state.total_gateway_events = state.total_gateway_events.wrapping_add(1);
         let mut requests = Vec::new();
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match event {
             BackendEvent::Snapshot { snapshot } => apply_gateway_snapshot(&mut state, snapshot),
             BackendEvent::Event { event } => {
@@ -376,6 +429,8 @@ impl SharedMobility {
         requests
     }
 
+    // Was: Führt den Arbeitsschritt `expire_transfers` für expire transfers aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn expire_transfers(&self) {
         let mut state = self.0.lock().expect("mobility state poisoned");
         let now = Instant::now();
@@ -383,6 +438,8 @@ impl SharedMobility {
             .filter(|(_, transfer)| !transfer.phase.terminal() && transfer.deadline <= now)
             .map(|(id, _)| id.clone())
             .collect();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for id in expired {
             let issi = if let Some(transfer) = state.transfers.get_mut(&id) {
                 transfer.phase = TransferPhase::TimedOut;
@@ -404,6 +461,8 @@ impl SharedMobility {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `metrics` für Messwerte aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn metrics(&self) -> String {
         let status = self.status();
         format!(
@@ -434,6 +493,8 @@ impl SharedMobility {
     }
 }
 
+// Was: Führt den Arbeitsschritt `command_request` für command request aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn command_request(
     transfer_id: &str,
     step: &str,
@@ -448,14 +509,20 @@ fn command_request(
     }
 }
 
+// Was: Diese Funktion wendet Gateway snapshot.
+// Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
 fn apply_gateway_snapshot(state: &mut MobilityState, snapshot: GatewaySnapshot) {
     state.gateway_connected = true;
     state.gateway_last_error = None;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for node in snapshot.nodes {
         upsert_node(state, node);
     }
 }
 
+// Was: Führt den Arbeitsschritt `upsert_node` für upsert Netzknoten aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn upsert_node(state: &mut MobilityState, node: GatewayNodeSnapshot) {
     state.nodes.insert(node.node_id.clone(), NodeRecord {
         node_id: node.node_id,
@@ -473,6 +540,8 @@ fn upsert_node(state: &mut MobilityState, node: GatewayNodeSnapshot) {
     });
 }
 
+// Was: Diese Funktion wendet action result.
+// Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
 fn apply_action_result(
     state: &mut MobilityState,
     request_id: &str,
@@ -493,6 +562,8 @@ fn apply_action_result(
         }
         transfer.updated_at = now_iso();
         if !ok {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let still_waiting_for_this_step = match step {
                 "export" => matches!(
                     &transfer.phase,
@@ -515,6 +586,8 @@ fn apply_action_result(
                 failure = Some((transfer.issi, message));
             }
         } else {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match step {
                 "export" => {
                     transfer.export_command_id = command_id;
@@ -551,11 +624,15 @@ fn apply_action_result(
     }
 }
 
+// Was: Diese Funktion wendet Netzknoten Nachricht.
+// Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
 fn apply_node_message(
     state: &mut MobilityState,
     node_id: &str,
     message: NodeToControlRoomMessage,
 ) -> Vec<BackendRequest> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match message {
         NodeToControlRoomMessage::Telemetry { envelope } => {
             apply_telemetry(state, node_id, envelope.event);
@@ -576,8 +653,12 @@ fn apply_node_message(
     }
 }
 
+// Was: Diese Funktion wendet Telemetrie.
+// Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
 fn apply_telemetry(state: &mut MobilityState, node_id: &str, event: TelemetryEvent) {
     let now = now_iso();
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match event {
         TelemetryEvent::MsRegistration { issi } => {
             if state.subscribers.len() >= state.config.limits.max_subscribers
@@ -617,6 +698,8 @@ fn apply_telemetry(state: &mut MobilityState, node_id: &str, event: TelemetryEve
         }
         TelemetryEvent::MsGroupDetach { issi, gssis } => {
             let subscriber = ensure_subscriber(state, node_id, issi, &now);
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for gssi in gssis {
                 subscriber.groups.remove(&gssi);
             }
@@ -633,6 +716,8 @@ fn apply_telemetry(state: &mut MobilityState, node_id: &str, event: TelemetryEve
     }
 }
 
+// Was: Diese Funktion stellt Teilnehmer.
+// Warum: So wird die notwendige Voraussetzung hergestellt, bevor abhängiger Code weiterläuft.
 fn ensure_subscriber<'a>(
     state: &'a mut MobilityState,
     node_id: &str,
@@ -653,12 +738,16 @@ fn ensure_subscriber<'a>(
     subscriber
 }
 
+// Was: Diese Funktion wendet Steuerung response.
+// Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
 fn apply_control_response(
     state: &mut MobilityState,
     node_id: &str,
     command_id: Option<&str>,
     response: ControlResponse,
 ) -> Vec<BackendRequest> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let response_handle = match &response {
         ControlResponse::MobilityContextExported { handle, .. }
         | ControlResponse::MobilityContextImported { handle, .. }
@@ -693,6 +782,8 @@ fn apply_control_response(
             return Vec::new();
         }
         transfer.updated_at = now_iso();
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match response {
             ControlResponse::MobilityContextExported {
                 found,
@@ -822,6 +913,8 @@ fn apply_control_response(
     next_request.into_iter().collect()
 }
 
+// Was: Diese Funktion legt Ereignis.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn push_event(
     state: &mut MobilityState,
     kind: &str,
@@ -841,16 +934,22 @@ fn push_event(
     };
     state.next_event_seq = state.next_event_seq.wrapping_add(1);
     state.events.push_back(event);
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while state.events.len() > state.config.server.history_limit {
         state.events.pop_front();
     }
 }
 
+// Was: Führt den Arbeitsschritt `now_iso` für now iso aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn now_iso() -> String {
     chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
     use crate::protocol::{GatewayStatus, GatewaySnapshot};
@@ -858,6 +957,8 @@ mod tests {
         ControlRoomNodeCapabilities, ControlRoomNodeIdentity,
     };
 
+    // Was: Führt den Arbeitsschritt `node` für Netzknoten aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn node(id: &str, la: u16) -> GatewayNodeSnapshot {
         GatewayNodeSnapshot {
             node_id: id.to_string(),
@@ -915,6 +1016,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `creates_export_request_for_known_subscriber` für creates export request for known Teilnehmer aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn creates_export_request_for_known_subscriber() {
         let core = SharedMobility::new(MobilityCoreConfig::default());
         core.handle_backend_event(BackendEvent::Snapshot {
@@ -965,6 +1068,8 @@ mod tests {
         ));
     }
     #[test]
+    // Was: Führt den Arbeitsschritt `completes_three_step_context_transfer` für completes three step Kontext transfer aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn completes_three_step_context_transfer() {
         use tetra_entities::net_control::{
             MobilityClientState, MobilityContextPayload,

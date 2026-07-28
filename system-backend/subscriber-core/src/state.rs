@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Teilnehmerdaten, Berechtigungen und Registrierung.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 use std::fs;
 use std::io::Write;
@@ -14,9 +17,13 @@ use uuid::Uuid;
 use crate::config::{POLICY_OPEN_NETWORK, SubscriberCoreConfig};
 use crate::protocol::{BackendEvent, BackendRequest, GatewaySnapshot};
 
+// Was: Legt den festen Wert `DATABASE_SCHEMA_VERSION` für Datenbank schema version fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const DATABASE_SCHEMA_VERSION: u32 = 1;
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Teilnehmer Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SubscriberStatus {
     pub service: &'static str,
     pub started_at: String,
@@ -39,6 +46,8 @@ pub struct SubscriberStatus {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Netzknoten Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct NodeRecord {
     pub node_id: String,
     pub station_name: String,
@@ -54,6 +63,8 @@ pub struct NodeRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Teilnehmer profile in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SubscriberProfile {
     pub issi: u32,
     pub home_mcc: u16,
@@ -76,6 +87,8 @@ pub struct SubscriberProfile {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Teilnehmer input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SubscriberInput {
     pub issi: u32,
     #[serde(default)]
@@ -108,9 +121,13 @@ pub struct SubscriberInput {
     pub notes: String,
 }
 
+// Was: Führt den Arbeitsschritt `default_true` für default true aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_true() -> bool { true }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für observed Teilnehmer in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ObservedSubscriber {
     pub issi: u32,
     pub registered: bool,
@@ -126,6 +143,8 @@ pub struct ObservedSubscriber {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für sync phase auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum SyncPhase {
     Pending,
     Requested,
@@ -137,6 +156,8 @@ pub enum SyncPhase {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für sync Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SyncRecord {
     pub node_id: String,
     pub desired_revision: u64,
@@ -155,6 +176,8 @@ pub struct SyncRecord {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Teilnehmer Ereignis Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SubscriberEventRecord {
     pub seq: u64,
     pub timestamp: String,
@@ -165,6 +188,8 @@ pub struct SubscriberEventRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Teilnehmer Datenbank in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct SubscriberDatabase {
     schema_version: u32,
     revision: u64,
@@ -172,12 +197,16 @@ struct SubscriberDatabase {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für import request in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ImportRequest {
     #[serde(default)]
     pub replace: bool,
     pub subscribers: Vec<SubscriberInput>,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für Teilnehmer Zustand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct SubscriberState {
     config: SubscriberCoreConfig,
     started_at: String,
@@ -194,9 +223,15 @@ struct SubscriberState {
 }
 
 #[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für shared subscribers in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SharedSubscribers(Arc<Mutex<SubscriberState>>);
 
+// Was: Implementiert das zugehörige Verhalten für `SharedSubscribers`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SharedSubscribers {
+    // Was: Diese Funktion lädt den vorgesehenen Arbeitsschritt.
+    // Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
     pub fn load(config: SubscriberCoreConfig) -> Result<Self, Box<dyn std::error::Error>> {
         let (database_revision, subscribers) = load_database(&config)?;
         let this = Self(Arc::new(Mutex::new(SubscriberState {
@@ -217,6 +252,8 @@ impl SharedSubscribers {
         Ok(this)
     }
 
+    // Was: Führt den Arbeitsschritt `status` für Status aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn status(&self) -> SubscriberStatus {
         let state = self.0.lock().expect("subscriber state poisoned");
         let authorized = state.subscribers.values().filter(|p| profile_authorized(p)).count();
@@ -248,6 +285,8 @@ impl SharedSubscribers {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `nodes` für nodes aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn nodes(&self) -> Vec<NodeRecord> {
         let state = self.0.lock().expect("subscriber state poisoned");
         let mut values: Vec<_> = state.nodes.values().cloned().collect();
@@ -255,16 +294,22 @@ impl SharedSubscribers {
         values
     }
 
+    // Was: Führt den Arbeitsschritt `subscribers` für subscribers aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn subscribers(&self) -> Vec<SubscriberProfile> {
         self.0.lock().expect("subscriber state poisoned")
             .subscribers.values().cloned().collect()
     }
 
+    // Was: Führt den Arbeitsschritt `subscriber` für Teilnehmer aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn subscriber(&self, issi: u32) -> Option<SubscriberProfile> {
         self.0.lock().expect("subscriber state poisoned")
             .subscribers.get(&issi).cloned()
     }
 
+    // Was: Führt den Arbeitsschritt `observed` für observed aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn observed(&self) -> Vec<ObservedSubscriber> {
         let state = self.0.lock().expect("subscriber state poisoned");
         let mut values: Vec<_> = state.observed.values().cloned().collect();
@@ -272,6 +317,8 @@ impl SharedSubscribers {
         values
     }
 
+    // Was: Führt den Arbeitsschritt `syncs` für syncs aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn syncs(&self) -> Vec<SyncRecord> {
         let state = self.0.lock().expect("subscriber state poisoned");
         let mut values: Vec<_> = state.syncs.values().cloned().collect();
@@ -279,11 +326,15 @@ impl SharedSubscribers {
         values
     }
 
+    // Was: Führt den Arbeitsschritt `recent_events` für recent events aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn recent_events(&self, limit: usize) -> Vec<SubscriberEventRecord> {
         self.0.lock().expect("subscriber state poisoned")
             .events.iter().rev().take(limit).cloned().collect()
     }
 
+    // Was: Diese Funktion erstellt Teilnehmer.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     pub fn create_subscriber(&self, input: SubscriberInput) -> Result<(SubscriberProfile, Vec<BackendRequest>), String> {
         validate_input(&input, &self.0.lock().expect("subscriber state poisoned").config)?;
         let mut state = self.0.lock().expect("subscriber state poisoned");
@@ -305,6 +356,8 @@ impl SharedSubscribers {
         Ok((profile, requests))
     }
 
+    // Was: Diese Funktion aktualisiert Teilnehmer.
+    // Warum: Bestehender Zustand wird dadurch kontrolliert und nach einheitlichen Regeln geändert.
     pub fn update_subscriber(&self, issi: u32, mut input: SubscriberInput) -> Result<(SubscriberProfile, Vec<BackendRequest>), String> {
         input.issi = issi;
         validate_input(&input, &self.0.lock().expect("subscriber state poisoned").config)?;
@@ -323,6 +376,8 @@ impl SharedSubscribers {
         Ok((profile, requests))
     }
 
+    // Was: Diese Funktion löscht Teilnehmer.
+    // Warum: Das Entfernen wird dadurch kontrolliert durchgeführt und hinterlässt keine verwaisten Verweise.
     pub fn delete_subscriber(&self, issi: u32) -> Result<Vec<BackendRequest>, String> {
         let mut state = self.0.lock().expect("subscriber state poisoned");
         if state.subscribers.remove(&issi).is_none() {
@@ -336,11 +391,15 @@ impl SharedSubscribers {
         Ok(maybe_sync_all_locked(&mut state))
     }
 
+    // Was: Führt den Arbeitsschritt `import_subscribers` für import subscribers aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn import_subscribers(&self, request: ImportRequest) -> Result<(usize, Vec<BackendRequest>), String> {
         let config = self.0.lock().expect("subscriber state poisoned").config.clone();
         if request.subscribers.len() > config.limits.max_subscribers {
             return Err("import exceeds subscriber limit".to_string());
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for input in &request.subscribers {
             validate_input(input, &config)?;
         }
@@ -360,6 +419,8 @@ impl SharedSubscribers {
         let now = now_iso();
         let revision = state.database_revision.saturating_add(1);
         let mut imported = 0usize;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for input in request.subscribers {
             let created = next.get(&input.issi)
                 .map(|profile| profile.created_at.clone())
@@ -376,6 +437,8 @@ impl SharedSubscribers {
         state.database_revision = revision;
         persist_locked(&state)?;
         let keys: Vec<u32> = state.observed.keys().copied().collect();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for issi in keys {
             refresh_observed_authorization(&mut state, issi);
         }
@@ -390,11 +453,15 @@ impl SharedSubscribers {
         Ok((imported, requests))
     }
 
+    // Was: Diese Funktion gleicht all.
+    // Warum: Mehrere Zustandsquellen bleiben dadurch auf demselben Stand.
     pub fn sync_all(&self) -> Vec<BackendRequest> {
         let mut state = self.0.lock().expect("subscriber state poisoned");
         schedule_sync_all_locked(&mut state)
     }
 
+    // Was: Führt den Arbeitsschritt `export_database` für export Datenbank aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn export_database(&self) -> Value {
         let state = self.0.lock().expect("subscriber state poisoned");
         json!({
@@ -404,9 +471,13 @@ impl SharedSubscribers {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `export_csv` für export csv aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn export_csv(&self) -> String {
         let state = self.0.lock().expect("subscriber state poisoned");
         let mut out = String::from("issi,home_mcc,home_mnc,display_name,organization,device_label,enabled,registration_allowed,call_priority,emergency_allowed,sds_allowed,packet_data_allowed,default_groups,notes\n");
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for p in state.subscribers.values() {
             let groups = p.default_groups.iter().map(u32::to_string).collect::<Vec<_>>().join(";");
             let row = [
@@ -421,6 +492,8 @@ impl SharedSubscribers {
         out
     }
 
+    // Was: Führt den Arbeitsschritt `metrics` für Messwerte aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn metrics(&self) -> String {
         let status = self.status();
         format!(
@@ -430,6 +503,8 @@ impl SharedSubscribers {
         )
     }
 
+    // Was: Führt den Arbeitsschritt `gateway_connected` für Gateway connected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn gateway_connected(&self) {
         let mut state = self.0.lock().expect("subscriber state poisoned");
         state.gateway_connected = true;
@@ -437,10 +512,14 @@ impl SharedSubscribers {
         push_event_locked(&mut state, "gateway_connected", None, None, json!({}));
     }
 
+    // Was: Führt den Arbeitsschritt `gateway_disconnected` für Gateway disconnected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn gateway_disconnected(&self, error: String) {
         let mut state = self.0.lock().expect("subscriber state poisoned");
         state.gateway_connected = false;
         state.gateway_last_error = Some(error.clone());
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for sync in state.syncs.values_mut() {
             if matches!(sync.phase, SyncPhase::Pending | SyncPhase::Requested) {
                 sync.phase = SyncPhase::Offline;
@@ -452,8 +531,12 @@ impl SharedSubscribers {
         push_event_locked(&mut state, "gateway_disconnected", None, None, json!({"error": error}));
     }
 
+    // Was: Diese Funktion verarbeitet Hintergrunddienst Ereignis.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     pub fn handle_backend_event(&self, event: BackendEvent) -> Vec<BackendRequest> {
         let mut state = self.0.lock().expect("subscriber state poisoned");
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match event {
             BackendEvent::Snapshot { snapshot } => handle_snapshot_locked(&mut state, snapshot),
             BackendEvent::Event { event } => {
@@ -471,10 +554,14 @@ impl SharedSubscribers {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `expire_syncs` für expire syncs aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn expire_syncs(&self) -> Vec<BackendRequest> {
         let mut state = self.0.lock().expect("subscriber state poisoned");
         let now = Instant::now();
         let mut timed_out = Vec::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for sync in state.syncs.values_mut() {
             if matches!(sync.phase, SyncPhase::Pending | SyncPhase::Requested)
                 && sync.deadline.is_some_and(|deadline| deadline <= now)
@@ -486,18 +573,24 @@ impl SharedSubscribers {
                 timed_out.push(sync.node_id.clone());
             }
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for node in timed_out {
             push_event_locked(&mut state, "policy_sync_timeout", None, Some(node), json!({}));
         }
         Vec::new()
     }
 
+    // Was: Diese Funktion legt Ereignis.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn push_event(&self, kind: &str, issi: Option<u32>, node: Option<String>, detail: Value) {
         let mut state = self.0.lock().expect("subscriber state poisoned");
         push_event_locked(&mut state, kind, issi, node, detail);
     }
 }
 
+// Was: Diese Funktion lädt Datenbank.
+// Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
 fn load_database(config: &SubscriberCoreConfig) -> Result<(u64, BTreeMap<u32, SubscriberProfile>), Box<dyn std::error::Error>> {
     let path = &config.storage.database_path;
     if !path.exists() {
@@ -509,6 +602,8 @@ fn load_database(config: &SubscriberCoreConfig) -> Result<(u64, BTreeMap<u32, Su
         return Err(format!("unsupported subscriber database schema {}", database.schema_version).into());
     }
     let mut profiles = BTreeMap::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for profile in database.subscribers {
         if profile.issi == 0 || profile.issi > 0xFF_FFFF {
             return Err(format!("invalid ISSI {} in database", profile.issi).into());
@@ -518,6 +613,8 @@ fn load_database(config: &SubscriberCoreConfig) -> Result<(u64, BTreeMap<u32, Su
     Ok((database.revision, profiles))
 }
 
+// Was: Diese Funktion speichert locked.
+// Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
 fn persist_locked(state: &SubscriberState) -> Result<(), String> {
     let database = SubscriberDatabase {
         schema_version: DATABASE_SCHEMA_VERSION,
@@ -542,6 +639,8 @@ fn persist_locked(state: &SubscriberState) -> Result<(), String> {
     fs::rename(&tmp, path).map_err(|error| format!("database replace failed: {error}"))
 }
 
+// Was: Diese Funktion prüft input.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_input(input: &SubscriberInput, config: &SubscriberCoreConfig) -> Result<(), String> {
     if input.issi == 0 || input.issi > 0xFF_FFFF { return Err("ISSI must be in 1..=16777215".to_string()); }
     if input.call_priority > 15 { return Err("call_priority must be in 0..=15".to_string()); }
@@ -551,6 +650,8 @@ fn validate_input(input: &SubscriberInput, config: &SubscriberCoreConfig) -> Res
     Ok(())
 }
 
+// Was: Führt den Arbeitsschritt `profile_from_input` für profile from input aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn profile_from_input(input: SubscriberInput, created_at: String, updated_at: String, revision: u64) -> SubscriberProfile {
     SubscriberProfile {
         issi: input.issi,
@@ -574,10 +675,14 @@ fn profile_from_input(input: SubscriberInput, created_at: String, updated_at: St
     }
 }
 
+// Was: Führt den Arbeitsschritt `profile_authorized` für profile authorized aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn profile_authorized(profile: &SubscriberProfile) -> bool {
     profile.enabled && profile.registration_allowed
 }
 
+// Was: Führt den Arbeitsschritt `policy_values` für policy values aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn policy_values(state: &SubscriberState) -> (bool, Vec<u32>) {
     if state.config.access_policy.mode == POLICY_OPEN_NETWORK {
         (true, Vec::new())
@@ -586,10 +691,14 @@ fn policy_values(state: &SubscriberState) -> (bool, Vec<u32>) {
     }
 }
 
+// Was: Führt den Arbeitsschritt `maybe_sync_all_locked` für maybe sync all locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn maybe_sync_all_locked(state: &mut SubscriberState) -> Vec<BackendRequest> {
     if state.config.access_policy.auto_sync { schedule_sync_all_locked(state) } else { Vec::new() }
 }
 
+// Was: Diese Funktion plant sync all locked.
+// Warum: Zeitfenster und Ressourcen werden dadurch planbar statt zufällig vergeben.
 fn schedule_sync_all_locked(state: &mut SubscriberState) -> Vec<BackendRequest> {
     let nodes: Vec<String> = state.nodes.values()
         .filter(|node| node.connected && !node.stale)
@@ -597,6 +706,8 @@ fn schedule_sync_all_locked(state: &mut SubscriberState) -> Vec<BackendRequest> 
     nodes.into_iter().filter_map(|node| schedule_sync_locked(state, &node)).collect()
 }
 
+// Was: Diese Funktion plant sync locked.
+// Warum: Zeitfenster und Ressourcen werden dadurch planbar statt zufällig vergeben.
 fn schedule_sync_locked(state: &mut SubscriberState, node_id: &str) -> Option<BackendRequest> {
     let node = state.nodes.get(node_id)?;
     if !node.connected || node.stale { return None; }
@@ -634,8 +745,12 @@ fn schedule_sync_locked(state: &mut SubscriberState, node_id: &str) -> Option<Ba
     })
 }
 
+// Was: Diese Funktion verarbeitet snapshot locked.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 fn handle_snapshot_locked(state: &mut SubscriberState, snapshot: GatewaySnapshot) -> Vec<BackendRequest> {
     let mut newly_connected = Vec::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for node in snapshot.nodes {
         let was_connected = state.nodes.get(&node.node_id).is_some_and(|old| old.connected && !old.stale);
         let connected = node.connected && !node.stale;
@@ -648,6 +763,8 @@ fn handle_snapshot_locked(state: &mut SubscriberState, snapshot: GatewaySnapshot
         });
         if connected && !was_connected { newly_connected.push(node.node_id); }
     }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for sync in state.syncs.values_mut() {
         if !state.nodes.get(&sync.node_id).is_some_and(|n| n.connected && !n.stale) {
             sync.phase = SyncPhase::Offline;
@@ -660,7 +777,11 @@ fn handle_snapshot_locked(state: &mut SubscriberState, snapshot: GatewaySnapshot
     } else { Vec::new() }
 }
 
+// Was: Diese Funktion verarbeitet Netzknoten Nachricht locked.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 fn handle_node_message_locked(state: &mut SubscriberState, node_id: &str, message: NodeToControlRoomMessage) {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match message {
         NodeToControlRoomMessage::Telemetry { envelope } => handle_telemetry_locked(state, node_id, envelope.event),
         NodeToControlRoomMessage::ControlAck { ack } => {
@@ -675,6 +796,8 @@ fn handle_node_message_locked(state: &mut SubscriberState, node_id: &str, messag
         }
         NodeToControlRoomMessage::ControlResponse { envelope } => {
             if let ControlResponse::SubscriberAccessPolicyApplied { revision, success, allow_all, allowed_count, disconnected_count, message, .. } = envelope.response {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 let sync_node_id = match envelope.command_id.as_deref() {
                     Some(command_id) => state.syncs.values()
                         .find(|sync| sync.command_id.as_deref() == Some(command_id))
@@ -698,6 +821,8 @@ fn handle_node_message_locked(state: &mut SubscriberState, node_id: &str, messag
     }
 }
 
+// Was: Diese Funktion verarbeitet action result locked.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 fn handle_action_result_locked(state: &mut SubscriberState, request_id: Option<String>, command_id: Option<String>, ok: bool, message: String) {
     let Some(request_id) = request_id else { return; };
     if let Some(sync) = state.syncs.values_mut().find(|s| s.request_id.as_deref() == Some(&request_id)) {
@@ -711,8 +836,12 @@ fn handle_action_result_locked(state: &mut SubscriberState, request_id: Option<S
     }
 }
 
+// Was: Diese Funktion verarbeitet Telemetrie locked.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 fn handle_telemetry_locked(state: &mut SubscriberState, node_id: &str, event: TelemetryEvent) {
     let now = now_iso();
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match event {
         TelemetryEvent::MsRegistration { issi } => {
             ensure_observed(state, issi, &now);
@@ -748,6 +877,8 @@ fn handle_telemetry_locked(state: &mut SubscriberState, node_id: &str, event: Te
         TelemetryEvent::MsGroupDetach { issi, gssis } => {
             ensure_observed(state, issi, &now);
             if let Some(item) = state.observed.get_mut(&issi) {
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for gssi in gssis {
                     item.groups.remove(&gssi);
                 }
@@ -772,6 +903,8 @@ fn handle_telemetry_locked(state: &mut SubscriberState, node_id: &str, event: Te
     }
 }
 
+// Was: Diese Funktion stellt observed.
+// Warum: So wird die notwendige Voraussetzung hergestellt, bevor abhängiger Code weiterläuft.
 fn ensure_observed(state: &mut SubscriberState, issi: u32, now: &str) {
     if state.observed.contains_key(&issi) {
         return;
@@ -780,6 +913,8 @@ fn ensure_observed(state: &mut SubscriberState, issi: u32, now: &str) {
     state.observed.insert(issi, item);
 }
 
+// Was: Diese Funktion erstellt observed.
+// Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
 fn new_observed(state: &SubscriberState, issi: u32, now: &str) -> ObservedSubscriber {
     let known = state.subscribers.contains_key(&issi);
     let authorized = state.config.access_policy.mode == POLICY_OPEN_NETWORK
@@ -791,6 +926,8 @@ fn new_observed(state: &SubscriberState, issi: u32, now: &str) -> ObservedSubscr
     }
 }
 
+// Was: Führt den Arbeitsschritt `refresh_observed_authorization` für refresh observed authorization aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn refresh_observed_authorization(state: &mut SubscriberState, issi: u32) {
     let known = state.subscribers.contains_key(&issi);
     let authorized = state.config.access_policy.mode == POLICY_OPEN_NETWORK
@@ -800,26 +937,38 @@ fn refresh_observed_authorization(state: &mut SubscriberState, issi: u32) {
     }
 }
 
+// Was: Diese Funktion legt Ereignis locked.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn push_event_locked(state: &mut SubscriberState, kind: &str, issi: Option<u32>, node_id: Option<String>, detail: Value) {
     let event = SubscriberEventRecord {
         seq: state.next_event_seq, timestamp: now_iso(), kind: kind.to_string(), issi, node_id, detail,
     };
     state.next_event_seq = state.next_event_seq.saturating_add(1);
     state.events.push_back(event);
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while state.events.len() > state.config.server.history_limit { state.events.pop_front(); }
 }
 
+// Was: Führt den Arbeitsschritt `csv` für csv aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn csv(value: &str) -> String {
     format!("\"{}\"", value.replace('"', "\"\""))
 }
 
+// Was: Führt den Arbeitsschritt `now_iso` für now iso aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn now_iso() -> String {
     chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
+    // Was: Führt den Arbeitsschritt `config` für Konfiguration aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn config(name: &str) -> SubscriberCoreConfig {
         let mut config = SubscriberCoreConfig::default();
         let base = std::env::temp_dir().join(format!("netcore-subscriber-test-{name}-{}", Uuid::new_v4()));
@@ -829,6 +978,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Diese Funktion erstellt and reload profile.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     fn create_and_reload_profile() {
         let config = config("reload");
         let state = SharedSubscribers::load(config.clone()).unwrap();
@@ -845,6 +996,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `closed_empty_policy_is_not_open_network` für closed empty policy is not open network aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn closed_empty_policy_is_not_open_network() {
         let config = config("closed-empty");
         let state = SharedSubscribers::load(config.clone()).unwrap();

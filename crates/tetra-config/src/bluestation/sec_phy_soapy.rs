@@ -1,9 +1,14 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Einlesen und Prüfen der TETRA-Konfiguration.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use serde::Deserialize;
 use std::collections::HashMap;
 use toml::Value;
 
 /// SoapySDR configuration
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für cfg soapy sdr in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgSoapySdr {
     /// Uplink frequency in Hz
     pub ul_freq: f64,
@@ -43,8 +48,12 @@ pub struct CfgSoapySdr {
     pub tx_ch: Option<usize>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `CfgSoapySdr`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl CfgSoapySdr {
     /// Get corrected UL frequency with PPM error applied
+    // Was: Führt den Arbeitsschritt `ul_freq_corrected` für ul freq corrected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn ul_freq_corrected(&self) -> (f64, f64) {
         let ppm = self.ppm_err;
         let err = (self.ul_freq / 1_000_000.0) * ppm;
@@ -52,6 +61,8 @@ impl CfgSoapySdr {
     }
 
     /// Get corrected DL frequency with PPM error applied
+    // Was: Führt den Arbeitsschritt `dl_freq_corrected` für dl freq corrected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn dl_freq_corrected(&self) -> (f64, f64) {
         let ppm = self.ppm_err;
         let err = (self.dl_freq / 1_000_000.0) * ppm;
@@ -59,6 +70,8 @@ impl CfgSoapySdr {
     }
 
     /// Get corrected explicit RX center frequency with PPM error applied.
+    // Was: Führt den Arbeitsschritt `rx_center_freq_corrected` für rx center freq corrected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn rx_center_freq_corrected(&self) -> Option<(f64, f64)> {
         self.rx_center_freq.map(|center_freq| {
             let ppm = self.ppm_err;
@@ -68,6 +81,8 @@ impl CfgSoapySdr {
     }
 
     /// Get corrected explicit TX center frequency with PPM error applied.
+    // Was: Führt den Arbeitsschritt `tx_center_freq_corrected` für tx center freq corrected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn tx_center_freq_corrected(&self) -> Option<(f64, f64)> {
         self.tx_center_freq.map(|center_freq| {
             let ppm = self.ppm_err;
@@ -78,6 +93,8 @@ impl CfgSoapySdr {
 }
 
 #[derive(Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für soapy sdr dto in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SoapySdrDto {
     pub rx_freq: f64,
     pub tx_freq: f64,

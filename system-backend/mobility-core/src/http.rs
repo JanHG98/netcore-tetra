@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Registrierung, Aufenthaltsbereiche und Teilnehmermobilität.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
@@ -11,6 +14,8 @@ use crate::config::MobilityCoreConfig;
 use crate::protocol::BackendRequest;
 use crate::state::{CreateTransferRequest, SharedMobility};
 
+// Was: Diese Funktion startet HTTP server.
+// Warum: Länger laufende Arbeit blockiert dadurch nicht den aufrufenden Ablauf.
 pub fn spawn_http_server(
     config: MobilityCoreConfig,
     mobility: SharedMobility,
@@ -19,7 +24,11 @@ pub fn spawn_http_server(
     let listener = TcpListener::bind(config.server.bind)?;
     tracing::info!("Mobility Core WebUI/API listening on http://{}", config.server.bind);
     Ok(thread::spawn(move || {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for stream in listener.incoming() {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match stream {
                 Ok(stream) => {
                     let mobility = mobility.clone();
@@ -37,6 +46,8 @@ pub fn spawn_http_server(
     }))
 }
 
+// Was: Bündelt die zusammengehörigen Werte für HTTP request in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct HttpRequest {
     method: String,
     path: String,
@@ -44,12 +55,16 @@ struct HttpRequest {
     body: Vec<u8>,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für HTTP response in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct HttpResponse {
     status: u16,
     content_type: &'static str,
     body: Vec<u8>,
 }
 
+// Was: Diese Funktion verarbeitet connection.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 fn handle_connection(
     mut stream: TcpStream,
     mobility: SharedMobility,
@@ -61,6 +76,8 @@ fn handle_connection(
     write_response(&mut stream, response).map_err(|error| error.to_string())
 }
 
+// Was: Diese Funktion leitet den vorgesehenen Arbeitsschritt.
+// Warum: Nachrichten und Daten gelangen dadurch nachvollziehbar an das richtige Ziel.
 fn route(
     request: HttpRequest,
     mobility: SharedMobility,
@@ -70,6 +87,8 @@ fn route(
     if request.method == "OPTIONS" {
         return empty(204);
     }
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match (request.method.as_str(), request.path.as_str()) {
         ("GET", "/") => html(INDEX_HTML),
         ("GET", "/health/live") => json_response(200, &json!({ "status": "live" })),
@@ -99,6 +118,8 @@ fn route(
         ("POST", "/api/v1/transfers") => {
             let parsed = serde_json::from_slice::<CreateTransferRequest>(&request.body)
                 .map_err(|error| format!("invalid JSON: {error}"));
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parsed.and_then(|request| mobility.create_transfer(request)) {
                 Ok((transfer, command)) => {
                     if gateway_tx.send(command).is_err() {
@@ -113,6 +134,8 @@ fn route(
         _ if request.method == "POST" && request.path.starts_with("/api/v1/transfers/") => {
             let tail = request.path.trim_start_matches("/api/v1/transfers/");
             if let Some((id, action)) = tail.rsplit_once('/') {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match action {
                     "cancel" => match mobility.cancel_transfer(id) {
                         Ok(transfer) => json_response(200, &transfer),
@@ -128,6 +151,8 @@ fn route(
     }
 }
 
+// Was: Führt den Arbeitsschritt `openapi` für openapi aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn openapi() -> serde_json::Value {
     json!({
         "openapi": "3.0.3",
@@ -150,7 +175,11 @@ fn openapi() -> serde_json::Value {
     })
 }
 
+// Was: Führt den Arbeitsschritt `json_response` für JSON-Daten response aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn json_response<T: Serialize>(status: u16, value: &T) -> HttpResponse {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match serde_json::to_vec_pretty(value) {
         Ok(body) => HttpResponse {
             status,
@@ -165,6 +194,8 @@ fn json_response<T: Serialize>(status: u16, value: &T) -> HttpResponse {
     }
 }
 
+// Was: Führt den Arbeitsschritt `html` für html aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn html(value: &str) -> HttpResponse {
     HttpResponse {
         status: 200,
@@ -173,6 +204,8 @@ fn html(value: &str) -> HttpResponse {
     }
 }
 
+// Was: Führt den Arbeitsschritt `empty` für empty aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn empty(status: u16) -> HttpResponse {
     HttpResponse {
         status,
@@ -181,6 +214,8 @@ fn empty(status: u16) -> HttpResponse {
     }
 }
 
+// Was: Diese Funktion liest request.
+// Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
 fn read_request(stream: &mut TcpStream, max_body_bytes: usize) -> Result<HttpRequest, String> {
     let mut buffer = Vec::new();
     let mut chunk = [0u8; 4096];
@@ -208,6 +243,8 @@ fn read_request(stream: &mut TcpStream, max_body_bytes: usize) -> Result<HttpReq
     let (path, query) = parse_path_and_query(raw_path);
 
     let mut content_length = 0usize;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for line in lines {
         if let Some((name, value)) = line.split_once(':') {
             if name.eq_ignore_ascii_case("content-length") {
@@ -221,6 +258,8 @@ fn read_request(stream: &mut TcpStream, max_body_bytes: usize) -> Result<HttpReq
     }
 
     let mut body = buffer[header_end..].to_vec();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while body.len() < content_length {
         let read = stream.read(&mut chunk).map_err(|error| format!("body read failed: {error}"))?;
         if read == 0 {
@@ -235,6 +274,8 @@ fn read_request(stream: &mut TcpStream, max_body_bytes: usize) -> Result<HttpReq
     Ok(HttpRequest { method, path, query, body })
 }
 
+// Was: Diese Funktion schreibt response.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 fn write_response(stream: &mut TcpStream, response: HttpResponse) -> std::io::Result<()> {
     let header = format!(
         "HTTP/1.1 {} {}\r\nContent-Type: {}\r\nContent-Length: {}\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\nX-NetCore-Security-Mode: open-lab\r\nConnection: close\r\n\r\n",
@@ -248,10 +289,14 @@ fn write_response(stream: &mut TcpStream, response: HttpResponse) -> std::io::Re
     stream.flush()
 }
 
+// Was: Diese Funktion sucht subslice.
+// Warum: Die Suchlogik bleibt damit wiederverwendbar und muss nicht an mehreren Stellen kopiert werden.
 fn find_subslice(haystack: &[u8], needle: &[u8]) -> Option<usize> {
     haystack.windows(needle.len()).position(|window| window == needle)
 }
 
+// Was: Diese Funktion liest und prüft path and query.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_path_and_query(raw: &str) -> (String, HashMap<String, String>) {
     let mut parts = raw.splitn(2, '?');
     let path = parts.next().unwrap_or(raw).to_string();
@@ -270,7 +315,11 @@ fn parse_path_and_query(raw: &str) -> (String, HashMap<String, String>) {
     (path, query)
 }
 
+// Was: Führt den Arbeitsschritt `reason_phrase` für reason phrase aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn reason_phrase(status: u16) -> &'static str {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match status {
         200 => "OK",
         202 => "Accepted",
@@ -284,6 +333,8 @@ fn reason_phrase(status: u16) -> &'static str {
     }
 }
 
+// Was: Legt den festen Wert `INDEX_HTML` für index html fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const INDEX_HTML: &str = r#"<!doctype html>
 <html lang="de">
 <head>

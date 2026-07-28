@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! Dashboard-side persistence and helpers for DAPNET settings.
 //!
 //! Mirrors the Telegram/WX dashboard helpers: rewrite only the `[dapnet]` section while
@@ -6,6 +9,8 @@
 use tetra_config::bluestation::DapnetRuntimeOverride;
 
 /// Mask a secret for display. Returns an empty string for an empty value.
+// Was: Führt den Arbeitsschritt `mask_secret` für mask secret aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn mask_secret(secret: &str) -> String {
     let secret = secret.trim();
     if secret.is_empty() {
@@ -20,10 +25,14 @@ pub fn mask_secret(secret: &str) -> String {
     format!("{head}…{tail}")
 }
 
+// Was: Führt den Arbeitsschritt `toml_escape` für toml escape aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn toml_escape(s: &str) -> String {
     s.replace('\\', "\\\\").replace('"', "\\\"")
 }
 
+// Was: Führt den Arbeitsschritt `ric_set_toml` für ric set toml aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn ric_set_toml(rics: &std::collections::BTreeSet<u32>) -> String {
     rics.iter()
         .map(|ric| format!("\"{}\"", tetra_config::bluestation::format_ric_route_key(*ric)))
@@ -31,6 +40,8 @@ fn ric_set_toml(rics: &std::collections::BTreeSet<u32>) -> String {
         .join(", ")
 }
 
+// Was: Führt den Arbeitsschritt `ric_routes_toml` für ric routes toml aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn ric_routes_toml(routes: &std::collections::BTreeMap<u32, u32>) -> String {
     routes
         .iter()
@@ -39,6 +50,8 @@ fn ric_routes_toml(routes: &std::collections::BTreeMap<u32, u32>) -> String {
         .join(", ")
 }
 
+// Was: Führt den Arbeitsschritt `issi_priority_routes_toml` für Teilnehmerkennung (ISSI) Priorität routes toml aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn issi_priority_routes_toml(routes: &std::collections::BTreeMap<u32, u8>) -> String {
     routes
         .iter()
@@ -47,6 +60,8 @@ fn issi_priority_routes_toml(routes: &std::collections::BTreeMap<u32, u8>) -> St
         .join(", ")
 }
 
+// Was: Führt den Arbeitsschritt `tpg_ric_priority_routes_toml` für tpg ric Priorität routes toml aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn tpg_ric_priority_routes_toml(routes: &std::collections::BTreeMap<u32, u8>) -> String {
     routes
         .iter()
@@ -56,6 +71,8 @@ fn tpg_ric_priority_routes_toml(routes: &std::collections::BTreeMap<u32, u8>) ->
 }
 
 /// Rewrite (or insert) the `[dapnet]` section in the TOML file. A `.dapnet.bak` backup is made.
+// Was: Diese Funktion schreibt dapnet to toml.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 pub fn write_dapnet_to_toml(config_path: &str, ov: &DapnetRuntimeOverride) -> std::io::Result<()> {
     let original = std::fs::read_to_string(config_path)?;
     let ric_issi_routes = ric_routes_toml(&ov.ric_issi_routes);
@@ -140,12 +157,16 @@ pub fn write_dapnet_to_toml(config_path: &str, ov: &DapnetRuntimeOverride) -> st
     let mut i = 0;
     let mut replaced = false;
 
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while i < lines.len() {
         let trimmed = lines[i].trim_start();
         if trimmed.starts_with("[dapnet]") {
             out.push(section.clone());
             replaced = true;
             i += 1;
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             while i < lines.len() {
                 let t = lines[i].trim_start();
                 if t.starts_with('[') && t.contains(']') {

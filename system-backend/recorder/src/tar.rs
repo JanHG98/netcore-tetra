@@ -1,8 +1,13 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Aufzeichnung und Ereignisprotokollierung.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+// Was: Diese Funktion erstellt tar.
+// Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
 pub fn create_tar(output: &Path, files: &[(PathBuf, String)]) -> Result<(), String> {
     if let Some(parent) = output.parent() {
         fs::create_dir_all(parent)
@@ -11,6 +16,8 @@ pub fn create_tar(output: &Path, files: &[(PathBuf, String)]) -> Result<(), Stri
     let part = output.with_extension(format!("tar.{}.part", uuid::Uuid::new_v4()));
     let mut writer = File::create(&part)
         .map_err(|error| format!("cannot create {}: {error}", part.display()))?;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (source, archive_name) in files {
         append_file(&mut writer, source, archive_name)?;
     }
@@ -29,6 +36,8 @@ pub fn create_tar(output: &Path, files: &[(PathBuf, String)]) -> Result<(), Stri
     })
 }
 
+// Was: Führt den Arbeitsschritt `append_file` für append file aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn append_file(writer: &mut File, source: &Path, archive_name: &str) -> Result<(), String> {
     if archive_name.as_bytes().len() > 100 {
         return Err(format!("TAR path is too long: {archive_name}"));
@@ -66,6 +75,8 @@ fn append_file(writer: &mut File, source: &Path, archive_name: &str) -> Result<(
         .map_err(|error| format!("cannot open {}: {error}", source.display()))?;
     let mut buffer = [0u8; 64 * 1024];
     let mut written = 0u64;
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
     loop {
         let read = input
             .read(&mut buffer)
@@ -87,6 +98,8 @@ fn append_file(writer: &mut File, source: &Path, archive_name: &str) -> Result<(
     Ok(())
 }
 
+// Was: Diese Funktion schreibt octal.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 fn write_octal(field: &mut [u8], value: u64) -> Result<(), String> {
     if field.len() < 2 {
         return Err("TAR octal field is too short".to_string());
@@ -102,6 +115,8 @@ fn write_octal(field: &mut [u8], value: u64) -> Result<(), String> {
     Ok(())
 }
 
+// Was: Diese Funktion schreibt checksum.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 fn write_checksum(field: &mut [u8], value: u64) -> Result<(), String> {
     if field.len() != 8 {
         return Err("TAR checksum field must be 8 bytes".to_string());
@@ -115,11 +130,15 @@ fn write_checksum(field: &mut [u8], value: u64) -> Result<(), String> {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
     use uuid::Uuid;
 
     #[test]
+    // Was: Führt den Arbeitsschritt `creates_uncompressed_tar_archive` für creates uncompressed tar archive aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn creates_uncompressed_tar_archive() {
         let root = std::env::temp_dir().join(format!("netcore-tar-test-{}", Uuid::new_v4()));
         fs::create_dir_all(&root).expect("root");

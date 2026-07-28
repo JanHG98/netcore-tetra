@@ -1,3 +1,7 @@
+/* NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für netcore.
+ * NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+ */
+
 :root {
   color-scheme: dark;
   --nc-bg: #0d1117;

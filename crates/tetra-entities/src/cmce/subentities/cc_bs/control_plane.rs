@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! Adapter between the central Call Control service and the local CMCE state machine.
 //!
 //! The central service owns logical calls. This module deliberately keeps radio
@@ -7,6 +10,8 @@ use super::*;
 use crate::net_control::{ManagedCallKind, ManagedCallRestoreContextPayload};
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für managed Rufzweig result in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub(in crate::cmce) struct ManagedLegResult {
     pub success: bool,
     pub kind: ManagedCallKind,
@@ -18,7 +23,11 @@ pub(in crate::cmce) struct ManagedLegResult {
     pub message: String,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `ManagedLegResult`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl ManagedLegResult {
+    // Was: Führt den Arbeitsschritt `failure` für failure aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn failure(kind: ManagedCallKind, message: impl Into<String>) -> Self {
         Self {
             success: false,
@@ -33,7 +42,11 @@ impl ManagedLegResult {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `CcBsSubentity`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl CcBsSubentity {
+    // Was: Führt den Arbeitsschritt `control_start_group_call` für Steuerung start Gruppe Ruf aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce) fn control_start_group_call(
         &mut self,
         queue: &mut MessageQueue,
@@ -42,6 +55,8 @@ impl CcBsSubentity {
         gssi: u32,
         priority: u8,
     ) -> ManagedLegResult {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let operation_uuid = match uuid::Uuid::parse_str(operation_id) {
             Ok(value) => value,
             Err(error) => {
@@ -100,6 +115,8 @@ impl CcBsSubentity {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `control_start_individual_call` für Steuerung start individual Ruf aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce) fn control_start_individual_call(
         &mut self,
         queue: &mut MessageQueue,
@@ -109,6 +126,8 @@ impl CcBsSubentity {
         simplex: bool,
         priority: u8,
     ) -> ManagedLegResult {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let operation_uuid = match uuid::Uuid::parse_str(operation_id) {
             Ok(value) => value,
             Err(error) => {
@@ -174,6 +193,8 @@ impl CcBsSubentity {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `control_release_call` für Steuerung release Ruf aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce) fn control_release_call(
         &mut self,
         queue: &mut MessageQueue,
@@ -214,6 +235,8 @@ impl CcBsSubentity {
         )
     }
 
+    // Was: Führt den Arbeitsschritt `control_request_floor` für Steuerung request floor aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce) fn control_request_floor(
         &mut self,
         queue: &mut MessageQueue,
@@ -287,6 +310,8 @@ impl CcBsSubentity {
         result
     }
 
+    // Was: Führt den Arbeitsschritt `control_release_floor` für Steuerung release floor aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce) fn control_release_floor(
         &mut self,
         queue: &mut MessageQueue,
@@ -336,6 +361,8 @@ impl CcBsSubentity {
         result
     }
 
+    // Was: Führt den Arbeitsschritt `control_export_restore_context` für Steuerung export Wiederherstellung Kontext aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce) fn control_export_restore_context(
         &self,
         call_id: u16,
@@ -344,6 +371,8 @@ impl CcBsSubentity {
             .map(|context| context.to_managed_payload())
     }
 
+    // Was: Führt den Arbeitsschritt `control_import_restore_context` für Steuerung import Wiederherstellung Kontext aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce) fn control_import_restore_context(
         &mut self,
         payload: ManagedCallRestoreContextPayload,
@@ -354,10 +383,14 @@ impl CcBsSubentity {
         Ok(call_id)
     }
 
+    // Was: Führt den Arbeitsschritt `control_remove_restore_context` für Steuerung remove Wiederherstellung Kontext aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce) fn control_remove_restore_context(&mut self, call_id: u16) -> bool {
         self.remove_call_restore_context(call_id).is_some()
     }
 
+    // Was: Führt den Arbeitsschritt `control_leg_result` für Steuerung Rufzweig result aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn control_leg_result(&self, call_id: u16) -> Option<ManagedLegResult> {
         if let Some(call) = self.active_calls.get(&call_id) {
             return Some(ManagedLegResult {

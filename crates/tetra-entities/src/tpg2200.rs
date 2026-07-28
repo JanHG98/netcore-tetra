@@ -1,10 +1,17 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 /// Format a byte slice as uppercase comma-separated hex for diagnostics.
+// Was: Führt den Arbeitsschritt `format_hex_bytes` für format hex bytes aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn format_hex_bytes(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(", ")
 }
 
 /// Parse a dashboard/operator-entered hex string. Accepts whitespace and common separators,
 /// with or without `0x` prefixes.
+// Was: Diese Funktion liest und prüft hex payload.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 pub fn parse_hex_payload(raw: &str) -> Result<Vec<u8>, String> {
     let normalized: String = raw
         .chars()
@@ -17,6 +24,8 @@ pub fn parse_hex_payload(raw: &str) -> Result<Vec<u8>, String> {
         })
         .collect();
     let mut bytes = Vec::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for token in normalized.split_whitespace() {
         let hex = token.strip_prefix("0x").or_else(|| token.strip_prefix("0X")).unwrap_or(token);
         if hex.is_empty() {
@@ -25,6 +34,8 @@ pub fn parse_hex_payload(raw: &str) -> Result<Vec<u8>, String> {
         if hex.len() % 2 != 0 {
             return Err(format!("hex token '{}' has an odd number of digits", token));
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for pos in (0..hex.len()).step_by(2) {
             let pair = &hex[pos..pos + 2];
             let byte = u8::from_str_radix(pair, 16).map_err(|_| format!("invalid hex byte '{}'", pair))?;
@@ -36,6 +47,8 @@ pub fn parse_hex_payload(raw: &str) -> Result<Vec<u8>, String> {
 
 /// TPG2200 text payload bytes. Characters outside ISO-8859-1 are represented as '?' because
 /// the tested Motorola payload is byte-oriented.
+// Was: Führt den Arbeitsschritt `iso_8859_1_or_ascii_bytes` für iso 8859 1 or ascii bytes aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn iso_8859_1_or_ascii_bytes(text: &str) -> Vec<u8> {
     text.chars()
         .map(|c| {
@@ -45,14 +58,20 @@ pub fn iso_8859_1_or_ascii_bytes(text: &str) -> Vec<u8> {
         .collect()
 }
 
+// Was: Führt den Arbeitsschritt `tpg2200_callout_id_byte` für tpg2200 callout Kennung byte aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn tpg2200_callout_id_byte(callout_id: u16) -> u8 {
     callout_id.min(255) as u8
 }
 
+// Was: Führt den Arbeitsschritt `tpg2200_priority_byte` für tpg2200 Priorität byte aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn tpg2200_priority_byte(priority: u8) -> u8 {
     priority.min(15)
 }
 
+// Was: Führt den Arbeitsschritt `tpg2200_incident_byte` für tpg2200 incident byte aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn tpg2200_incident_byte(incident: u16) -> u8 {
     let incident = incident.clamp(1, 256);
     let zero_based = incident - 1;
@@ -61,6 +80,8 @@ pub fn tpg2200_incident_byte(incident: u16) -> u8 {
     (major << 4) | minor
 }
 
+// Was: Führt den Arbeitsschritt `tpg2200_incident_from_byte` für tpg2200 incident from byte aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn tpg2200_incident_from_byte(selector: u8) -> u16 {
     let major = (selector >> 4) as u16;
     let minor = (selector & 0x0F) as u16;
@@ -69,14 +90,20 @@ pub fn tpg2200_incident_from_byte(selector: u8) -> u16 {
     ((block - 1) * 16) + slot
 }
 
+// Was: Führt den Arbeitsschritt `default_tpg2200_ric` für default tpg2200 ric aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn default_tpg2200_ric() -> u32 {
     0x0009_0D10
 }
 
+// Was: Führt den Arbeitsschritt `tpg2200_ric_bytes` für tpg2200 ric bytes aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn tpg2200_ric_bytes(ric: u32) -> [u8; 4] {
     ric.to_be_bytes()
 }
 
+// Was: Diese Funktion erstellt tpg2200 callout payload.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
 pub fn build_tpg2200_callout_payload(tpg_ric: u32, callout_id: u16, priority: u8, message: &str) -> Vec<u8> {
     let mut payload = Vec::with_capacity(11 + message.len());
     payload.push(0xC3);
@@ -95,6 +122,8 @@ pub fn build_tpg2200_callout_payload(tpg_ric: u32, callout_id: u16, priority: u8
 
 /// Build the bare text payload expected by `ControlCommand::SendSds`. CMCE wraps this in the
 /// SDS-TL header and message reference before sending it over RF.
+// Was: Diese Funktion erstellt TETRA-Kurznachricht (SDS) text payload.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
 pub fn build_sds_text_payload(text: &str) -> (u16, Vec<u8>) {
     let all_latin = text.chars().all(|c| c as u32 <= 0xFF);
     let (coding_scheme, text_bytes): (u8, Vec<u8>) = if all_latin {
@@ -110,6 +139,8 @@ pub fn build_sds_text_payload(text: &str) -> (u16, Vec<u8>) {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::{
         build_sds_text_payload, build_tpg2200_callout_payload, default_tpg2200_ric, parse_hex_payload, tpg2200_callout_id_byte,
@@ -117,6 +148,8 @@ mod tests {
     };
 
     #[test]
+    // Was: Führt den Arbeitsschritt `tpg2200_callout_id_and_priority_bytes_are_direct_fields` für tpg2200 callout Kennung and Priorität bytes are und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn tpg2200_callout_id_and_priority_bytes_are_direct_fields() {
         assert_eq!(tpg2200_callout_id_byte(0), 0x00);
         assert_eq!(tpg2200_callout_id_byte(1), 0x01);
@@ -140,6 +173,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `tpg2200_incident_selector_preserves_known_values` für tpg2200 incident selector preserves known values aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn tpg2200_incident_selector_preserves_known_values() {
         assert_eq!(tpg2200_incident_byte(1), 0x11);
         assert_eq!(tpg2200_incident_byte(2), 0x21);
@@ -159,6 +194,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Diese Funktion liest und prüft hex payload accepts common separators and prefixes.
+    // Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     fn parse_hex_payload_accepts_common_separators_and_prefixes() {
         assert_eq!(
             parse_hex_payload("C3 00,0x09;0D:10-21").unwrap(),
@@ -170,6 +207,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Diese Funktion erstellt tpg2200 callout payload matches known alarm shape.
+    // Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
     fn build_tpg2200_callout_payload_matches_known_alarm_shape() {
         assert_eq!(
             build_tpg2200_callout_payload(default_tpg2200_ric(), 0x11, 0x0F, "ALARM"),
@@ -190,6 +229,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `sds_text_payload_selects_latin_or_utf16` für TETRA-Kurznachricht (SDS) text payload selects latin or utf16 aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn sds_text_payload_selects_latin_or_utf16() {
         assert_eq!(build_sds_text_payload("abc"), (32, vec![0x01, b'a', b'b', b'c']));
         assert_eq!(build_sds_text_payload("日"), (24, vec![0x02, 0x65, 0xE5]));

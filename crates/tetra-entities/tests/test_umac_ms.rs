@@ -1,3 +1,8 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+// Was: Bindet das Untermodul common in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod common;
 
 use tetra_config::bluestation::StackMode;
@@ -10,6 +15,8 @@ use crate::common::ComponentTest;
 
 #[test]
 /// A test containing a single Lmac frame, containing a MAC-RESOURCE with no SDU, and a NULL pdu
+// Was: Prüft automatisch den Fall UMAC-Funkzugriffssteuerung ms.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_umac_ms() {
     debug::setup_logging_verbose();
     let mut test = ComponentTest::new(StackMode::Ms, None);
@@ -48,6 +55,8 @@ fn test_umac_ms() {
 /// A test containing a 3-fragment message, which is reassembled by the UMAC
 /// The message ultimately contains an SDS message, which is reconstructed in the CMCE.
 /// Also tests the in-between LLC and MLE.  
+// Was: Prüft automatisch den Fall UMAC-Funkzugriffssteuerung frag.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_umac_frag() {
     debug::setup_logging_verbose();
     let mut test = ComponentTest::new(StackMode::Ms, None);
@@ -96,6 +105,8 @@ fn test_umac_frag() {
     test.submit_message(m);
     test.deliver_all_messages();
     let msgs = test.dump_sinks();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for msg in msgs.iter() {
         tracing::info!("\nSink message: {:?}", msg);
     }
@@ -105,6 +116,8 @@ fn test_umac_frag() {
 
 #[test]
 /// A test containing a SYSINFO frame, parsed by UMAC and MLE
+// Was: Prüft automatisch den Fall sysinfo.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_sysinfo() {
     debug::setup_logging_verbose();
     let mut test = ComponentTest::new(StackMode::Ms, None);
@@ -135,6 +148,8 @@ fn test_sysinfo() {
     test.submit_message(m);
     test.deliver_all_messages();
     let msgs = test.dump_sinks();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for msg in msgs.iter() {
         tracing::info!("\nSink message: {:?}", msg);
     }
@@ -144,6 +159,8 @@ fn test_sysinfo() {
 
 #[test]
 /// A test containing a SYNC frame, parsed by UMAC and MLE
+// Was: Prüft automatisch den Fall sync.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_sync() {
     debug::setup_logging_verbose();
     let mut test = ComponentTest::new(StackMode::Ms, None);
@@ -171,6 +188,8 @@ fn test_sync() {
     test.submit_message(m);
     test.deliver_all_messages();
     let msgs = test.dump_sinks();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for msg in msgs.iter() {
         tracing::info!("\nSink message: {:?}", msg);
     }
@@ -179,6 +198,8 @@ fn test_sync() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall resource.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_resource() {
     debug::setup_logging_verbose();
     let mut test = ComponentTest::new(StackMode::Ms, None);
@@ -205,6 +226,8 @@ fn test_resource() {
     test.submit_message(m);
     test.deliver_all_messages();
     let msgs = test.dump_sinks();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for msg in msgs.iter() {
         tracing::info!("\nSink message: {:?}", msg);
     }

@@ -1,7 +1,24 @@
+# NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Leitstellenfunktionen und Bedienoberflächen.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+# Was: Beginnt den Abschnitt `Desktop Entry`.
+# Warum: Zusammengehörige Start-, Laufzeit- oder Installationswerte bleiben dadurch geordnet.
 [Desktop Entry]
+# Was: Legt fest, wie systemd den Startzustand des Prozesses bewertet.
+# Warum: Systemd kann dadurch korrekt erkennen, wann die Einheit als gestartet gilt.
 Type=Application
+# Was: Setzt `Name` im Abschnitt `Desktop Entry`.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit der Dienst auf jedem System gleich und nachvollziehbar arbeitet.
 Name=NetCore Control Room
+# Was: Setzt `Comment` im Abschnitt `Desktop Entry`.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit der Dienst auf jedem System gleich und nachvollziehbar arbeitet.
 Comment=Native NetCore Control Room Operator UI
+# Was: Setzt `Exec` im Abschnitt `Desktop Entry`.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit der Dienst auf jedem System gleich und nachvollziehbar arbeitet.
 Exec=netcore-control-room-ui
+# Was: Setzt `Terminal` im Abschnitt `Desktop Entry`.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit der Dienst auf jedem System gleich und nachvollziehbar arbeitet.
 Terminal=false
+# Was: Setzt `Categories` im Abschnitt `Desktop Entry`.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit der Dienst auf jedem System gleich und nachvollziehbar arbeitet.
 Categories=Network;Utility;

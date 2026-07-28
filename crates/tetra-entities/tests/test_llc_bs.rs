@@ -1,3 +1,8 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+// Was: Bindet das Untermodul common in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod common;
 
 use common::ComponentTest;
@@ -12,6 +17,8 @@ use tetra_saps::tla::{TlaTlDataIndBl, TlaTlDataReqBl};
 use tetra_saps::tma::{TmaUnitdataInd, TmaUnitdataReq};
 
 #[test]
+// Was: Prüft automatisch den Fall udata with broken Mobilitätsverwaltung payload.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_udata_with_broken_mm_payload() {
     // INCOMPLETE VECTOR replace with something more meaningful
     debug::setup_logging_verbose();
@@ -59,6 +66,8 @@ fn test_udata_with_broken_mm_payload() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall bl ack with piggyback CMCE-Rufsteuerung payload is und weitere Angaben.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_bl_ack_with_piggyback_cmce_payload_is_forwarded() {
     debug::setup_logging_verbose();
 
@@ -122,6 +131,8 @@ fn test_bl_ack_with_piggyback_cmce_payload_is_forwarded() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall stealing bl udata fallback uses unlinked LLC-Verbindungsschicht und weitere Angaben.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_stealing_bl_udata_fallback_uses_unlinked_llc_context() {
     debug::setup_logging_verbose();
 

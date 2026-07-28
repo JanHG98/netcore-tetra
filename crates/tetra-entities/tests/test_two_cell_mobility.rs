@@ -1,3 +1,8 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+// Was: Bindet das Untermodul common in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod common;
 
 use common::{TestCell, TwoCellHarness};
@@ -12,10 +17,14 @@ use tetra_saps::common::{CellIdentity, CellType, MleChannelCommandValid};
 use tetra_saps::control::mle_cell_change::MleCellChangeControl;
 use tetra_saps::{SapMsg, SapMsgInner};
 
+// Was: Führt den Arbeitsschritt `address` für address aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn address(issi: u32) -> TetraAddress {
     TetraAddress::new(issi, SsiType::Issi)
 }
 
+// Was: Führt den Arbeitsschritt `target_cell_b` für target cell b aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn target_cell_b() -> CellIdentity {
     CellIdentity {
         mcc: 262,
@@ -27,7 +36,11 @@ fn target_cell_b() -> CellIdentity {
     }
 }
 
+// Was: Führt den Arbeitsschritt `take_mle_downlink` für take MLE-Verbindungssteuerung Downlink (Netz zum Funkgerät) aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn take_mle_downlink(messages: Vec<SapMsg>) -> BitBuffer {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for message in messages {
         if let SapMsgInner::TlaTlDataReqBl(primitive) = message.msg {
             let mut sdu = primitive.tl_sdu;
@@ -43,6 +56,8 @@ fn take_mle_downlink(messages: Vec<SapMsg>) -> BitBuffer {
 }
 
 #[test]
+// Was: Diese Funktion bereitet on old cell and Wiederherstellung on target und weitere Angaben.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn prepare_on_old_cell_and_restore_on_target_cell_are_isolated() {
     let mut harness = TwoCellHarness::new();
     let subscriber = address(4101);

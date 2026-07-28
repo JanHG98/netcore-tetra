@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für check Mobilität core.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 from pathlib import Path
 import sys
 import tomllib
@@ -24,6 +27,8 @@ required = {
 }
 
 errors = []
+# Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+# Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
 for label, (path, marker) in required.items():
     if not path.is_file():
         errors.append(f"{label}: missing {path.relative_to(ROOT)}")
@@ -48,13 +53,19 @@ expected = {
 if service is None:
     errors.append("services.toml: mobility-core missing")
 else:
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for key, value in expected.items():
         if service.get(key) != value:
             errors.append(
                 f"services.toml: mobility-core {key}={service.get(key)!r}, expected {value!r}"
             )
 
+# Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+# Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
 for forbidden in ("node_token", "api_token", "bearer_token", "bootstrap_password"):
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for path in (ROOT / "system-backend/mobility-core").rglob("*"):
         if path.is_file() and path.suffix in {".rs", ".toml"}:
             if forbidden in path.read_text(encoding="utf-8").lower():
@@ -64,6 +75,8 @@ for forbidden in ("node_token", "api_token", "bearer_token", "bootstrap_password
 
 if errors:
     print("Mobility Core checks failed:")
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for error in errors:
         print(f"  - {error}")
     sys.exit(1)

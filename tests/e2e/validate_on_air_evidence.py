@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# NETCORE-KOMMENTAR – Was: Enthält automatische Prüfungen für Prüfung on air evidence.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 from __future__ import annotations
 
 import argparse
@@ -21,24 +24,34 @@ REQUIRED_TEST_IDS = {
 VALID_RESULTS = {"passed", "failed", "blocked", "not_run"}
 
 
+# Was: Diese Funktion liest und prüft time.
+# Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 def parse_time(value: Any, label: str, errors: list[str]) -> None:
     if not isinstance(value, str):
         errors.append(f"{label} must be a string")
         return
+    # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+    # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
     try:
         datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError:
         errors.append(f"{label} is not an ISO-8601 timestamp: {value!r}")
 
 
+# Was: Diese Funktion prüft den vorgesehenen Arbeitsschritt.
+# Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 def validate(path: Path, *, require_complete: bool, verify_artifacts: bool) -> list[str]:
     errors: list[str] = []
+    # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+    # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
     except Exception as error:
         return [f"invalid JSON: {error}"]
     if value.get("schema_version") != 1:
         errors.append("schema_version must be 1")
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for field in ("run_id", "started_at", "finished_at", "site", "network", "devices", "tests"):
         if field not in value:
             errors.append(f"missing top-level field {field}")
@@ -50,10 +63,14 @@ def validate(path: Path, *, require_complete: bool, verify_artifacts: bool) -> l
         devices = []
     known_issis: set[int] = set()
     vendors: set[str] = set()
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for index, device in enumerate(devices):
         if not isinstance(device, dict):
             errors.append(f"devices[{index}] must be an object")
             continue
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for field in ("vendor", "model", "firmware", "issi"):
             if field not in device or device[field] in {"", None}:
                 errors.append(f"devices[{index}] missing {field}")
@@ -74,6 +91,8 @@ def validate(path: Path, *, require_complete: bool, verify_artifacts: bool) -> l
         errors.append("tests must be a non-empty list")
         tests = []
     ids: set[str] = set()
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for index, test in enumerate(tests):
         if not isinstance(test, dict):
             errors.append(f"tests[{index}] must be an object")
@@ -91,6 +110,8 @@ def validate(path: Path, *, require_complete: bool, verify_artifacts: bool) -> l
         if require_complete and result != "passed":
             errors.append(f"{test_id}: complete evidence requires result=passed, got {result!r}")
         parse_time(test.get("observed_at"), f"{test_id}.observed_at", errors)
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for issi in test.get("devices", []):
             if issi not in known_issis:
                 errors.append(f"{test_id}: references unknown device ISSI {issi}")
@@ -98,6 +119,8 @@ def validate(path: Path, *, require_complete: bool, verify_artifacts: bool) -> l
         if not isinstance(artifacts, list):
             errors.append(f"{test_id}.artifacts must be a list")
             continue
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for artifact in artifacts:
             if not isinstance(artifact, dict):
                 errors.append(f"{test_id}: artifact must be an object")
@@ -118,6 +141,8 @@ def validate(path: Path, *, require_complete: bool, verify_artifacts: bool) -> l
     return errors
 
 
+# Was: Startet das Programm, lädt die benötigten Einstellungen und übergibt an den eigentlichen Dienstablauf.
+# Warum: Ein klarer Einstiegspunkt hält Startreihenfolge, Fehlerausgabe und geordnetes Beenden zusammen.
 def main() -> int:
     parser = argparse.ArgumentParser(description="Validate NetCore-Tetra manual on-air evidence JSON")
     parser.add_argument("path", type=Path, nargs="?", default=Path(__file__).with_name("on_air_template.json"))
@@ -126,6 +151,8 @@ def main() -> int:
     args = parser.parse_args()
     errors = validate(args.path, require_complete=args.require_complete, verify_artifacts=args.verify_artifacts)
     if errors:
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for error in errors:
             print(f"ERROR: {error}", file=sys.stderr)
         return 1
@@ -133,5 +160,7 @@ def main() -> int:
     return 0
 
 
+# Was: Startet den Programmablauf nur dann, wenn diese Datei direkt ausgeführt wird.
+# Warum: Beim Import als Modul sollen nur Funktionen bereitstehen und keine Nebenwirkungen automatisch starten.
 if __name__ == "__main__":
     raise SystemExit(main())

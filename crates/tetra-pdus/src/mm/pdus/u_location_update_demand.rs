@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 
 use tetra_core::expect_pdu_type;
@@ -19,6 +22,8 @@ use crate::mm::fields::group_identity_location_demand::GroupIdentityLocationDema
 // note 1: Information element "Ciphering parameters" is not present if "Cipher control" is set to "0" (ciphering off); present if set to "1" (ciphering on).
 // note 2: If the "class of MS" or the "extended capabilities" element is not included and the SwMI needs either, it may accept the request and then send a D-LOCATION UPDATE COMMAND PDU.
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für ulocation update demand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ULocationUpdateDemand {
     /// Type1, 3 bits, Location update type
     pub location_update_type: LocationUpdateType,
@@ -51,8 +56,12 @@ pub struct ULocationUpdateDemand {
 }
 
 #[allow(unreachable_code)] // TODO FIXME review, finalize and remove this
+// Was: Implementiert das zugehörige Verhalten für `ULocationUpdateDemand`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl ULocationUpdateDemand {
     /// Parse from BitBuffer
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buffer: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let pdu_type = buffer.read_field(4, "pdu_type")?;
         expect_pdu_type!(pdu_type, MmPduTypeUl::ULocationUpdateDemand)?;
@@ -60,6 +69,8 @@ impl ULocationUpdateDemand {
         // Type1
         let val: u64 = buffer.read_field(3, "location_update_type")?;
         let result = LocationUpdateType::try_from(val);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let location_update_type = match result {
             Ok(x) => x,
             Err(_) => {
@@ -91,6 +102,8 @@ impl ULocationUpdateDemand {
         let energy_saving_mode = val.map(|v| EnergySavingMode::try_from(v).unwrap());
         // Type2
         let la_information = typed::parse_type2_generic(obit, buffer, 15, "la_information")?;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let la_information = match la_information {
             Some(v) => {
                 // Most likely, this is 14-bits for the LA, then one zero-bit
@@ -150,6 +163,8 @@ impl ULocationUpdateDemand {
     }
 
     /// Serialize this PDU into the given BitBuffer.
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buffer: &mut BitBuffer) -> Result<(), PduParseErr> {
         // PDU Type
         buffer.write_bits(MmPduTypeUl::ULocationUpdateDemand.into_raw(), 4);
@@ -231,7 +246,11 @@ impl ULocationUpdateDemand {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for ULocationUpdateDemand`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for ULocationUpdateDemand {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -255,6 +274,8 @@ impl fmt::Display for ULocationUpdateDemand {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
 
     use tetra_core::debug;
@@ -262,6 +283,8 @@ mod tests {
     use super::*;
 
     #[test]
+    // Was: Prüft automatisch den Fall u location update demand with gild.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_u_location_update_demand_with_gild() {
         // Example of nested type3 struct that embeds another type4
         // Parsing group_identity_location_demand: 001000000110001001001010000001000000000^1001100000111000001110000000010010000000101000000000000000000000001101000
@@ -301,6 +324,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall u location update demand with gild and und weitere Angaben.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_u_location_update_demand_with_gild_and_esm() {
         // Vec from moto upon registration
         // Contains optional energy_saving_mode and group_identity_location_demand

@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use crossbeam_channel::Sender;
 
 use tetra_config::bluestation::SharedConfig;
@@ -15,6 +18,8 @@ use crate::{MessageQueue, TetraEntityTrait};
 
 use super::components::phy_io_file::PhyIoFile;
 
+// Was: Bündelt die zusammengehörigen Werte für phy Basisstation in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PhyBs<D: RxTxDev> {
     config: SharedConfig,
     dltime: TdmaTime,
@@ -35,7 +40,11 @@ pub struct PhyBs<D: RxTxDev> {
     tick: u64,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `PhyBs<D>`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl<D: RxTxDev> PhyBs<D> {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(config: SharedConfig, rxtxdev: D) -> Self {
         let c = &config.config().phy_io;
 
@@ -73,6 +82,8 @@ impl<D: RxTxDev> PhyBs<D> {
         }
     }
 
+    // Was: Diese Funktion sendet rxblock to lmac.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_rxblock_to_lmac(
         queue: &mut MessageQueue,
         carrier_num: u16,
@@ -101,8 +112,12 @@ impl<D: RxTxDev> PhyBs<D> {
         queue.push_back(sapmsg);
     }
 
+    // Was: Führt den Arbeitsschritt `split_rxslot_and_send_to_lmac` für split rxslot and send to lmac aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn split_rxslot_and_send_to_lmac(queue: &mut MessageQueue, carrier_num: u16, burst: &RxBurstBits<'_>) {
         let train_seq = burst.train_type;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match train_seq {
             TrainingSequence::NormalTrainSeq1 => {
                 // burst.bits is a variable-length slice from the demodulator. A length
@@ -194,6 +209,8 @@ impl<D: RxTxDev> PhyBs<D> {
     }
 
 
+    // Was: Diese Funktion erstellt dl burst.
+    // Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
     fn build_dl_burst(&mut self, prim: tetra_saps::tp::TpUnitdataReqSlot) -> Option<[u8; TIMESLOT_TYPE4_BITS]> {
         let mut dl_burst = [0u8; TIMESLOT_TYPE4_BITS];
         if let Some(dl_input_file) = &mut self.dl_input_file {
@@ -225,6 +242,8 @@ impl<D: RxTxDev> PhyBs<D> {
                 let mut blk1 = [0u8; 216];
                 let mut blk2 = [0u8; 216];
 
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match prim.train_type {
                     TrainingSequence::NormalTrainSeq1 => {
                         let Some(mut blk1_src) = prim.blk1 else {
@@ -264,9 +283,13 @@ impl<D: RxTxDev> PhyBs<D> {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `rx_tpsap_prim` für rx tpsap prim aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_tpsap_prim(&mut self, queue: &mut MessageQueue, message: SapMsg) {
         self.tick += 1;
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let prims = match message.msg {
             SapMsgInner::TpUnitdataReq(prim) => vec![prim],
             SapMsgInner::TpUnitdataReqSlots(batch) => batch.slots,
@@ -278,6 +301,8 @@ impl<D: RxTxDev> PhyBs<D> {
 
         let mut dl_bursts = Vec::with_capacity(prims.len());
         let mut carrier_nums = Vec::with_capacity(prims.len());
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for prim in prims {
             let carrier_num = prim.carrier_num;
             if let Some(burst) = self.build_dl_burst(prim) {
@@ -299,6 +324,8 @@ impl<D: RxTxDev> PhyBs<D> {
             .collect::<Vec<_>>();
 
         if let Some(dl_tx_sender) = &self.dl_tx_sender {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for burst in &dl_bursts {
                 let _ = dl_tx_sender.try_send(FileWriteMsg::WriteBlock(burst.to_vec()));
             }
@@ -321,6 +348,8 @@ impl<D: RxTxDev> PhyBs<D> {
         // Unrelated simultaneous bursts are still forwarded because their bitstreams
         // differ by roughly half the burst length.
         #[derive(Debug)]
+        // Was: Bündelt die zusammengehörigen Werte für rx burst candidate in einem Datentyp.
+        // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
         struct RxBurstCandidate {
             carrier_num: u16,
             subslot_id: u8, // 3 = fullslot/file header id, 1/2 = subslot
@@ -329,14 +358,20 @@ impl<D: RxTxDev> PhyBs<D> {
             bits: Vec<u8>,
         }
 
+        // Was: Führt den Arbeitsschritt `hamming_distance` für hamming distance aus.
+        // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
         fn hamming_distance(a: &[u8], b: &[u8]) -> usize {
             a.iter().zip(b).filter(|(x, y)| x != y).count()
         }
 
+        // Was: Führt den Arbeitsschritt `duplicate_threshold` für duplicate threshold aus.
+        // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
         fn duplicate_threshold(train_type: TrainingSequence, bit_len: usize) -> usize {
             // Keep this intentionally conservative. For unrelated TETRA bursts the
             // expected distance is about bit_len / 2. Adjacent-channel ghost copies
             // observed on SXceiver are much closer, but not always bit-identical.
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match train_type {
                 TrainingSequence::ExtendedTrainSeq => (bit_len / 8).max(24),
                 TrainingSequence::NormalTrainSeq1 | TrainingSequence::NormalTrainSeq2 => (bit_len / 8).max(40),
@@ -344,6 +379,8 @@ impl<D: RxTxDev> PhyBs<D> {
             }
         }
 
+        // Was: Führt den Arbeitsschritt `looks_like_adjacent_duplicate` für looks like adjacent duplicate aus.
+        // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
         fn looks_like_adjacent_duplicate(existing: &RxBurstCandidate, subslot_id: u8, train_type: TrainingSequence, bits: &[u8]) -> Option<usize> {
             if existing.subslot_id != subslot_id || existing.train_type != train_type || existing.bits.len() != bits.len() {
                 return None;
@@ -357,6 +394,8 @@ impl<D: RxTxDev> PhyBs<D> {
         }
 
         let mut candidates: Vec<RxBurstCandidate> = Vec::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for rx_slot in rx {
             let Some(rx_slot) = rx_slot else {
                 continue;
@@ -423,7 +462,11 @@ impl<D: RxTxDev> PhyBs<D> {
             push_candidate(2, "subslot2", &rx_slot.subslot2);
         }
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for candidate in candidates {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let label = match candidate.subslot_id {
                 1 => "subslot1",
                 2 => "subslot2",
@@ -456,21 +499,31 @@ impl<D: RxTxDev> PhyBs<D> {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `rx_tpc_prim` für rx tpc prim aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_tpc_prim(&mut self, _queue: &mut MessageQueue, _message: SapMsg) {
         // TPC SAP not implemented yet. Log instead of crashing the PHY worker.
         unimplemented_log!("rx_tpc_prim: TPC SAP not implemented");
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `TetraEntityTrait for PhyBs<D>`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl<D: RxTxDev + Send + 'static> TetraEntityTrait for PhyBs<D> {
+    // Was: Führt den Arbeitsschritt `entity` für entity aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn entity(&self) -> TetraEntity {
         TetraEntity::Phy
     }
 
+    // Was: Führt den Arbeitsschritt `rx_prim` für rx prim aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_prim(&mut self, queue: &mut MessageQueue, message: SapMsg) {
         tracing::debug!("rx_prim: {:?}", message);
         // tracing::debug!(ts=%message.dltime, "rx_prim: {:?}", message);
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match message.sap {
             Sap::TpSap => {
                 self.rx_tpsap_prim(queue, message);
@@ -485,6 +538,8 @@ impl<D: RxTxDev + Send + 'static> TetraEntityTrait for PhyBs<D> {
         }
     }
 
+    // Was: Diese Funktion bearbeitet start.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn tick_start(&mut self, _queue: &mut MessageQueue, ts: TdmaTime) {
         self.dltime = ts;
     }

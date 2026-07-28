@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use crate::net_control::{ControlCommand, ControlEndpoint, ControlResponse};
 use crate::net_telemetry::TelemetrySink;
 use crate::{MessageQueue, TetraEntityTrait};
@@ -13,6 +16,8 @@ use super::subentities::cc_bs::CcBsSubentity;
 use super::subentities::sds_bs::{SdsBsSubentity, SdsPendingAction};
 use super::subentities::ss_bs::SsBsSubentity;
 
+// Was: Bündelt die zusammengehörigen Werte für CMCE-Rufsteuerung Basisstation in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CmceBs {
     config: SharedConfig,
     telemetry: Option<TelemetrySink>,
@@ -25,7 +30,11 @@ pub struct CmceBs {
     ss: SsBsSubentity,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `CmceBs`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl CmceBs {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(config: SharedConfig, telemetry: Option<TelemetrySink>, control: Option<ControlEndpoint>) -> Self {
         let mut sds = SdsBsSubentity::new(config.clone());
         if let Some(ref sink) = telemetry {
@@ -49,10 +58,14 @@ impl CmceBs {
         }
     }
 
+    // Was: Diese Funktion setzt dashboard Steuerung.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_dashboard_control(&mut self, endpoint: ControlEndpoint) {
         self.dashboard_control = Some(endpoint);
     }
 
+    // Was: Diese Funktion setzt wx cmd sender.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_wx_cmd_sender(&mut self, tx: crossbeam_channel::Sender<ControlCommand>) {
         self.sds.set_wx_cmd_sender(tx);
     }
@@ -61,6 +74,8 @@ impl CmceBs {
     /// `responder` is supplied so request/response commands can reply) and the dashboard
     /// control link (where `responder` is `None`). Unknown commands are logged, never panic —
     /// a control-plane peer must not be able to crash the base station.
+    // Was: Führt den Arbeitsschritt `do_control_command` für do Steuerung command aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn do_control_command(
         sds: &mut SdsBsSubentity,
         cc: &mut CcBsSubentity,
@@ -68,6 +83,8 @@ impl CmceBs {
         cmd: ControlCommand,
         responder: Option<&ControlEndpoint>,
     ) {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match cmd {
             ControlCommand::SendSds { handle, .. } => {
                 let success = sds.rx_sds_from_control(queue, cmd);
@@ -273,6 +290,8 @@ impl CmceBs {
                 }
             }
             ControlCommand::CallControlImportRestoreContext { handle, context } => {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 let call_id = match &context {
                     crate::net_control::ManagedCallRestoreContextPayload::Group { call_id, .. }
                     | crate::net_control::ManagedCallRestoreContextPayload::Individual { call_id, .. } => *call_id,
@@ -376,6 +395,8 @@ impl CmceBs {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `rx_lcmc_mle_unitdata_ind` für rx lcmc MLE-Verbindungssteuerung unitdata ind aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn rx_lcmc_mle_unitdata_ind(&mut self, _queue: &mut MessageQueue, mut message: SapMsg) {
         tracing::trace!("rx_lcmc_mle_unitdata_ind");
 
@@ -383,6 +404,8 @@ impl CmceBs {
             return;
         };
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match route {
             LcmcRoute::CcRd => {
                 self.cc.route_rd_deliver(_queue, message);
@@ -405,12 +428,16 @@ impl CmceBs {
     /// Handle an MLE U-RESTORE indication and return the embedded CMCE response
     /// through D-RESTORE-ACK, or a standards-defined D-RESTORE-FAIL when no call
     /// context can be restored on this cell.
+    // Was: Führt den Arbeitsschritt `rx_lcmc_mle_restore_ind` für rx lcmc MLE-Verbindungssteuerung Wiederherstellung ind aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn rx_lcmc_mle_restore_ind(&mut self, queue: &mut MessageQueue, message: SapMsg) {
         let SapMsgInner::LcmcMleRestoreInd(indication) = message.msg else {
             tracing::error!("CMCE: invalid primitive routed to restore indication handler");
             return;
         };
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.cc.handle_mle_call_restore(
             queue,
             indication.subscriber,
@@ -451,30 +478,44 @@ impl CmceBs {
     }
 
     /// Read-only restore diagnostics for the TBS WebUI and Node Gateway.
+    // Was: Führt den Arbeitsschritt `call_restore_snapshot` für Ruf Wiederherstellung snapshot aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn call_restore_snapshot(&self) -> CallRestoreRuntimeSnapshot {
         self.cc.call_restore_snapshot()
     }
 
     /// Install a call context received from the source TBS or future call core.
+    // Was: Führt den Arbeitsschritt `install_call_restore_context` für install Ruf Wiederherstellung Kontext aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn install_call_restore_context(&mut self, context: CallRestoreContext) {
         self.cc.install_call_restore_context(context);
     }
 
     /// Export an active local call as a transferable restore context.
+    // Was: Führt den Arbeitsschritt `export_call_restore_context` für export Ruf Wiederherstellung Kontext aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn export_call_restore_context(&self, call_id: u16) -> Option<CallRestoreContext> {
         self.cc.export_call_restore_context(call_id)
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `TetraEntityTrait for CmceBs`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl TetraEntityTrait for CmceBs {
+    // Was: Führt den Arbeitsschritt `entity` für entity aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn entity(&self) -> TetraEntity {
         TetraEntity::Cmce
     }
 
+    // Was: Diese Funktion setzt Konfiguration.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     fn set_config(&mut self, config: SharedConfig) {
         self.config = config;
     }
 
+    // Was: Diese Funktion bearbeitet start.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn tick_start(&mut self, queue: &mut MessageQueue, ts: TdmaTime) {
         // Propagate tick to subentities
         self.cc.tick_start(queue, ts);
@@ -486,12 +527,16 @@ impl TetraEntityTrait for CmceBs {
 
         // Process incoming control commands, if the main control link is enabled (request/response).
         if let Some(cep) = &self.control {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             while let Some(cmd) = cep.try_recv() {
                 CmceBs::do_control_command(&mut self.sds, &mut self.cc, queue, cmd, Some(cep));
             }
         }
         // Process commands from the dashboard control link (fire-and-forget, no responder).
         if let Some(cep) = &self.dashboard_control {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             while let Some(cmd) = cep.try_recv() {
                 CmceBs::do_control_command(&mut self.sds, &mut self.cc, queue, cmd, None);
             }
@@ -499,11 +544,17 @@ impl TetraEntityTrait for CmceBs {
 
         // Drain SDS-triggered actions that require access to CcBsSubentity.
         let pending = std::mem::take(&mut self.sds.pending_actions);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for action in pending {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match action {
                 SdsPendingAction::KickAll => {
                     let issis: Vec<u32> = self.cc.subscriber_issis();
                     tracing::info!("SDS-CMD: kick_all — deregistering {} subscribers", issis.len());
+                    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                     for issi in issis {
                         self.cc.kick_ms(queue, issi);
                     }
@@ -512,10 +563,14 @@ impl TetraEntityTrait for CmceBs {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `rx_prim` für rx prim aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_prim(&mut self, queue: &mut MessageQueue, message: SapMsg) {
         tracing::debug!("rx_prim: {:?}", message);
         // tracing::debug!(ts=%message.dltime, "rx_prim: {:?}", message);
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match message.sap {
             Sap::LcmcSap => match message.msg {
                 SapMsgInner::LcmcMleUnitdataInd(_) => {

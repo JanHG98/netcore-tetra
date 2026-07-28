@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! GitHub release update-check for the dashboard.
 //!
 //! Compares the locally built version (`tetra_core::STACK_VERSION`, e.g. "v0.2.5-gabc123")
@@ -11,23 +14,33 @@
 
 use std::time::Duration;
 
+// Was: Legt den festen Wert `GITHUB_API_LATEST` für github API-Schnittstelle latest fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const GITHUB_API_LATEST: &str = "https://api.github.com/repos/JanHG98/flowstation/releases/latest";
 // GitHub requires a User-Agent on all API requests.
+// Was: Legt den festen Wert `USER_AGENT` für Benutzer agent fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const USER_AGENT: &str = "BaseStation-Dashboard";
 
 /// A parsed semantic version (major.minor.patch). Pre-release/build metadata is ignored
 /// for comparison purposes — we only care about the release triple.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+// Was: Bündelt die zusammengehörigen Werte für sem ver in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct SemVer {
     major: u32,
     minor: u32,
     patch: u32,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SemVer`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SemVer {
     /// Parse a version from a string like "v0.2.5", "0.2.5", or "v0.2.5-gabc123".
     /// Leading 'v'/'V' is optional; anything after the patch (a '-' or '+' suffix) is
     /// ignored. Returns None if the major.minor.patch core can't be parsed.
+    // Was: Diese Funktion liest und prüft den vorgesehenen Arbeitsschritt.
+    // Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     fn parse(s: &str) -> Option<Self> {
         let s = s.trim();
         let s = s.strip_prefix('v').or_else(|| s.strip_prefix('V')).unwrap_or(s);
@@ -43,6 +56,8 @@ impl SemVer {
 
 /// Result of an update check, serialised to JSON for the dashboard.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für update check in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct UpdateCheck {
     /// Locally built version string (as-is, e.g. "v0.2.5-gabc123").
     pub current: String,
@@ -56,7 +71,11 @@ pub struct UpdateCheck {
     pub check_failed: bool,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `UpdateCheck`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl UpdateCheck {
+    // Was: Führt den Arbeitsschritt `unknown` für unknown aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn unknown(current: &str) -> Self {
         UpdateCheck {
             current: current.to_string(),
@@ -68,6 +87,8 @@ impl UpdateCheck {
     }
 
     /// Render as a JSON object for `GET /api/update/check`.
+    // Was: Wandelt den vorhandenen Wert in JSON-Daten um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_json(&self) -> String {
         let latest = self
             .latest
@@ -90,13 +111,19 @@ impl UpdateCheck {
     }
 }
 
+// Was: Führt den Arbeitsschritt `json_escape` für JSON-Daten escape aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn json_escape(s: &str) -> String {
     s.replace('\\', "\\\\").replace('"', "\\\"")
 }
 
 /// Query GitHub for the latest release and compare against `current_version`
 /// (typically `tetra_core::STACK_VERSION`). Blocking; call from a worker thread.
+// Was: Diese Funktion prüft for update.
+// Warum: Fehler oder unzulässige Zustände werden dadurch früh erkannt.
 pub fn check_for_update(current_version: &str) -> UpdateCheck {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let client = match reqwest::blocking::Client::builder()
         .timeout(Duration::from_secs(10))
         .user_agent(USER_AGENT)
@@ -106,6 +133,8 @@ pub fn check_for_update(current_version: &str) -> UpdateCheck {
         Err(_) => return UpdateCheck::unknown(current_version),
     };
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let resp = match client
         .get(GITHUB_API_LATEST)
         .header("Accept", "application/vnd.github+json")
@@ -116,6 +145,8 @@ pub fn check_for_update(current_version: &str) -> UpdateCheck {
         Err(_) => return UpdateCheck::unknown(current_version),
     };
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let json: serde_json::Value = match resp.json() {
         Ok(j) => j,
         Err(_) => return UpdateCheck::unknown(current_version),
@@ -128,6 +159,8 @@ pub fn check_for_update(current_version: &str) -> UpdateCheck {
         return UpdateCheck::unknown(current_version);
     };
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let update_available = match (SemVer::parse(current_version), SemVer::parse(tag)) {
         (Some(cur), Some(latest)) => latest > cur,
         // If we can't parse one side, don't claim an update is available.
@@ -144,10 +177,14 @@ pub fn check_for_update(current_version: &str) -> UpdateCheck {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
     #[test]
+    // Was: Diese Funktion liest und prüft plain.
+    // Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     fn parse_plain() {
         assert_eq!(
             SemVer::parse("0.2.5"),
@@ -160,6 +197,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Diese Funktion liest und prüft v prefix.
+    // Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     fn parse_v_prefix() {
         assert_eq!(
             SemVer::parse("v1.4.0"),
@@ -172,6 +211,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Diese Funktion liest und prüft git suffix.
+    // Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     fn parse_git_suffix() {
         assert_eq!(
             SemVer::parse("v0.2.5-gabc123"),
@@ -184,6 +225,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Diese Funktion liest und prüft partial.
+    // Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     fn parse_partial() {
         assert_eq!(
             SemVer::parse("v2.1"),
@@ -204,6 +247,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `compare_versions` für compare versions aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn compare_versions() {
         let a = SemVer::parse("v0.2.5").unwrap();
         let b = SemVer::parse("v0.2.6").unwrap();
@@ -216,6 +261,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `newer_release_detected` für newer release detected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn newer_release_detected() {
         // Simulate the comparison check_for_update does.
         let cur = SemVer::parse("v0.2.5-gabc").unwrap();
@@ -224,6 +271,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `same_version_no_update` für same version no update aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn same_version_no_update() {
         let cur = SemVer::parse("v0.2.5-gabc").unwrap();
         let latest = SemVer::parse("v0.2.5").unwrap();
@@ -231,11 +280,15 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `unparseable_tag_no_update` für unparseable tag no update aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn unparseable_tag_no_update() {
         assert_eq!(SemVer::parse("nightly"), None);
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `json_output` für JSON-Daten output aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn json_output() {
         let uc = UpdateCheck {
             current: "v0.2.5-gabc".to_string(),

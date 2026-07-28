@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Anwendungsdienste wie TTS und externe Integrationen.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::io::Write;
@@ -21,17 +24,25 @@ use crate::model::{
 };
 
 #[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für shared Gateway in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SharedGateway {
     inner: Arc<Mutex<GatewayInner>>,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für Gateway inner in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct GatewayInner {
     config: ApplicationGatewayConfig,
     state: PersistedGateway,
     secrets: SecretVault,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SharedGateway`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SharedGateway {
+    // Was: Diese Funktion lädt den vorgesehenen Arbeitsschritt.
+    // Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
     pub fn load(config: ApplicationGatewayConfig) -> Result<Self, Box<dyn std::error::Error>> {
         ensure_parent(&config.storage.state_path)?;
         ensure_parent(&config.storage.secrets_path)?;
@@ -63,11 +74,15 @@ impl SharedGateway {
         Ok(gateway)
     }
 
+    // Was: Führt den Arbeitsschritt `status` für Status aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn status(&self) -> GatewayStatus {
         let inner = lock(&self.inner);
         status_locked(&inner)
     }
 
+    // Was: Führt den Arbeitsschritt `redacted_config` für redacted Konfiguration aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn redacted_config(&self) -> Value {
         let inner = lock(&self.inner);
         json!({
@@ -85,6 +100,8 @@ impl SharedGateway {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `connectors` für connectors aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn connectors(&self) -> Vec<Value> {
         let inner = lock(&self.inner);
         inner
@@ -95,6 +112,8 @@ impl SharedGateway {
             .collect()
     }
 
+    // Was: Führt den Arbeitsschritt `connector` für connector aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn connector(&self, connector_id: &str) -> Option<Value> {
         let inner = lock(&self.inner);
         inner
@@ -104,6 +123,8 @@ impl SharedGateway {
             .map(|connector| connector_view(&inner, connector))
     }
 
+    // Was: Diese Funktion erstellt connector.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     pub fn create_connector(&self, input: ConnectorInput) -> Result<Value, String> {
         let mut inner = lock(&self.inner);
         let id = slug(&input.connector_id);
@@ -160,6 +181,8 @@ impl SharedGateway {
         Ok(connector_view(&inner, inner.state.connectors.get(&id).expect("inserted connector")))
     }
 
+    // Was: Diese Funktion aktualisiert connector.
+    // Warum: Bestehender Zustand wird dadurch kontrolliert und nach einheitlichen Regeln geändert.
     pub fn update_connector(&self, connector_id: &str, input: ConnectorInput) -> Result<Value, String> {
         let mut inner = lock(&self.inner);
         let id = slug(connector_id);
@@ -207,6 +230,8 @@ impl SharedGateway {
         Ok(connector_view(&inner, inner.state.connectors.get(&id).expect("updated connector")))
     }
 
+    // Was: Führt den Arbeitsschritt `connector_action` für connector action aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn connector_action(&self, connector_id: &str, action: &str, input: ActionInput) -> Result<Value, String> {
         let mut inner = lock(&self.inner);
         let id = slug(connector_id);
@@ -216,6 +241,8 @@ impl SharedGateway {
             .connectors
             .get_mut(&id)
             .ok_or_else(|| format!("connector {id} not found"))?;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match action {
             "enable" => {
                 record.enabled = true;
@@ -248,6 +275,8 @@ impl SharedGateway {
         Ok(connector_view(&inner, inner.state.connectors.get(&id).expect("connector exists")))
     }
 
+    // Was: Diese Funktion löscht connector.
+    // Warum: Das Entfernen wird dadurch kontrolliert durchgeführt und hinterlässt keine verwaisten Verweise.
     pub fn delete_connector(&self, connector_id: &str, input: ActionInput) -> Result<(), String> {
         let mut inner = lock(&self.inner);
         let id = slug(connector_id);
@@ -280,11 +309,15 @@ impl SharedGateway {
         Ok(())
     }
 
+    // Was: Führt den Arbeitsschritt `secret_statuses` für secret statuses aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn secret_statuses(&self, connector_id: Option<&str>) -> Vec<SecretStatus> {
         let inner = lock(&self.inner);
         secret_statuses_locked(&inner, connector_id)
     }
 
+    // Was: Diese Funktion setzt secret.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_secret(&self, connector_id: &str, input: SecretSetInput) -> Result<SecretStatus, String> {
         let mut inner = lock(&self.inner);
         if !inner.config.security.connector_secrets_allowed {
@@ -336,6 +369,8 @@ impl SharedGateway {
         Ok(status)
     }
 
+    // Was: Diese Funktion löscht secret.
+    // Warum: Das Entfernen wird dadurch kontrolliert durchgeführt und hinterlässt keine verwaisten Verweise.
     pub fn delete_secret(&self, connector_id: &str, name: &str, input: ActionInput) -> Result<(), String> {
         let mut inner = lock(&self.inner);
         let id = slug(connector_id);
@@ -363,6 +398,8 @@ impl SharedGateway {
         Ok(())
     }
 
+    // Was: Führt den Arbeitsschritt `rules` für rules aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn rules(&self) -> Vec<RouteRuleRecord> {
         let inner = lock(&self.inner);
         let mut rows: Vec<_> = inner.state.rules.values().cloned().collect();
@@ -370,6 +407,8 @@ impl SharedGateway {
         rows
     }
 
+    // Was: Diese Funktion erstellt rule.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     pub fn create_rule(&self, input: RouteRuleInput) -> Result<RouteRuleRecord, String> {
         let mut inner = lock(&self.inner);
         let id = slug(&input.rule_id);
@@ -394,6 +433,8 @@ impl SharedGateway {
         Ok(record)
     }
 
+    // Was: Diese Funktion aktualisiert rule.
+    // Warum: Bestehender Zustand wird dadurch kontrolliert und nach einheitlichen Regeln geändert.
     pub fn update_rule(&self, rule_id: &str, input: RouteRuleInput) -> Result<RouteRuleRecord, String> {
         let mut inner = lock(&self.inner);
         let id = slug(rule_id);
@@ -419,6 +460,8 @@ impl SharedGateway {
         Ok(record)
     }
 
+    // Was: Führt den Arbeitsschritt `rule_action` für rule action aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn rule_action(&self, rule_id: &str, action: &str, input: ActionInput) -> Result<RouteRuleRecord, String> {
         let mut inner = lock(&self.inner);
         let id = slug(rule_id);
@@ -427,6 +470,8 @@ impl SharedGateway {
             .rules
             .get_mut(&id)
             .ok_or_else(|| format!("rule {id} not found"))?;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match action {
             "enable" => record.enabled = true,
             "disable" => record.enabled = false,
@@ -448,6 +493,8 @@ impl SharedGateway {
         Ok(result)
     }
 
+    // Was: Diese Funktion löscht rule.
+    // Warum: Das Entfernen wird dadurch kontrolliert durchgeführt und hinterlässt keine verwaisten Verweise.
     pub fn delete_rule(&self, rule_id: &str, input: ActionInput) -> Result<(), String> {
         let mut inner = lock(&self.inner);
         let id = slug(rule_id);
@@ -470,11 +517,15 @@ impl SharedGateway {
         Ok(())
     }
 
+    // Was: Führt den Arbeitsschritt `templates` für templates aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn templates(&self) -> Vec<TemplateRecord> {
         let inner = lock(&self.inner);
         inner.state.templates.values().cloned().collect()
     }
 
+    // Was: Diese Funktion erstellt template.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     pub fn create_template(&self, input: TemplateInput) -> Result<TemplateRecord, String> {
         let mut inner = lock(&self.inner);
         let id = slug(&input.template_id);
@@ -499,6 +550,8 @@ impl SharedGateway {
         Ok(record)
     }
 
+    // Was: Diese Funktion aktualisiert template.
+    // Warum: Bestehender Zustand wird dadurch kontrolliert und nach einheitlichen Regeln geändert.
     pub fn update_template(&self, template_id: &str, input: TemplateInput) -> Result<TemplateRecord, String> {
         let mut inner = lock(&self.inner);
         let id = slug(template_id);
@@ -524,6 +577,8 @@ impl SharedGateway {
         Ok(record)
     }
 
+    // Was: Diese Funktion löscht template.
+    // Warum: Das Entfernen wird dadurch kontrolliert durchgeführt und hinterlässt keine verwaisten Verweise.
     pub fn delete_template(&self, template_id: &str, input: ActionInput) -> Result<(), String> {
         let mut inner = lock(&self.inner);
         let id = slug(template_id);
@@ -554,6 +609,8 @@ impl SharedGateway {
         Ok(())
     }
 
+    // Was: Diese Funktion erzeugt template.
+    // Warum: Darstellung und Fachdaten bleiben dadurch voneinander getrennt.
     pub fn render_template(&self, template_id: &str, input: TemplateRenderInput) -> Result<Value, String> {
         let mut inner = lock(&self.inner);
         let id = slug(template_id);
@@ -576,6 +633,8 @@ impl SharedGateway {
         Ok(value)
     }
 
+    // Was: Diese Funktion verteilt den vorgesehenen Arbeitsschritt.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn dispatch(&self, input: DispatchInput) -> Result<EventRecord, String> {
         let mut inner = lock(&self.inner);
         let event = dispatch_locked(&mut inner, input)?;
@@ -583,6 +642,8 @@ impl SharedGateway {
         Ok(event)
     }
 
+    // Was: Führt den Arbeitsschritt `ingest_webhook` für ingest webhook aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn ingest_webhook(&self, connector_id: &str, mut input: DispatchInput) -> Result<EventRecord, String> {
         let mut inner = lock(&self.inner);
         let id = slug(connector_id);
@@ -605,6 +666,8 @@ impl SharedGateway {
         Ok(event)
     }
 
+    // Was: Führt den Arbeitsschritt `events` für events aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn events(&self, state: Option<&str>, source: Option<&str>, limit: usize) -> Vec<EventRecord> {
         let inner = lock(&self.inner);
         inner
@@ -619,6 +682,8 @@ impl SharedGateway {
             .collect()
     }
 
+    // Was: Führt den Arbeitsschritt `deliveries` für deliveries aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn deliveries(&self, state: Option<&str>, connector: Option<&str>, limit: usize) -> Vec<DeliveryRecord> {
         let inner = lock(&self.inner);
         inner
@@ -633,6 +698,8 @@ impl SharedGateway {
             .collect()
     }
 
+    // Was: Führt den Arbeitsschritt `delivery` für delivery aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn delivery(&self, delivery_id: &str) -> Option<DeliveryRecord> {
         let inner = lock(&self.inner);
         inner
@@ -643,6 +710,8 @@ impl SharedGateway {
             .cloned()
     }
 
+    // Was: Führt den Arbeitsschritt `delivery_action` für delivery action aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn delivery_action(&self, delivery_id: &str, action: &str, input: ActionInput) -> Result<DeliveryRecord, String> {
         let mut inner = lock(&self.inner);
         let now = Utc::now();
@@ -652,6 +721,8 @@ impl SharedGateway {
             .iter_mut()
             .find(|delivery| delivery.delivery_id == delivery_id)
             .ok_or_else(|| format!("delivery {delivery_id} not found"))?;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match action {
             "retry" | "requeue" => {
                 delivery.state = "queued".to_string();
@@ -685,6 +756,8 @@ impl SharedGateway {
         Ok(result)
     }
 
+    // Was: Führt den Arbeitsschritt `tts_jobs` für tts jobs aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn tts_jobs(&self, state: Option<&str>, limit: usize) -> Vec<TtsJobRecord> {
         let inner = lock(&self.inner);
         inner
@@ -698,6 +771,8 @@ impl SharedGateway {
             .collect()
     }
 
+    // Was: Diese Funktion erstellt tts job.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     pub fn create_tts_job(&self, input: TtsJobInput) -> Result<TtsJobRecord, String> {
         let mut inner = lock(&self.inner);
         if input.text.trim().is_empty() {
@@ -826,6 +901,8 @@ impl SharedGateway {
         Ok(job)
     }
 
+    // Was: Diese Funktion veröffentlicht tts job.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn publish_tts_job(&self, job_id: &str, input: TtsPublishInput) -> Result<TtsJobRecord, String> {
         let mut inner = lock(&self.inner);
         if !inner.state.connectors.contains_key("media-library") {
@@ -941,6 +1018,8 @@ impl SharedGateway {
         Ok(result)
     }
 
+    // Was: Führt den Arbeitsschritt `tts_artifact` für tts artifact aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn tts_artifact(&self, job_id: &str) -> Result<(String, Vec<u8>), String> {
         let inner = lock(&self.inner);
         let job = inner
@@ -957,6 +1036,8 @@ impl SharedGateway {
         Ok((format!("{}.wav", safe_filename(&job.name)), bytes))
     }
 
+    // Was: Führt den Arbeitsschritt `claim_due_delivery` für claim due delivery aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn claim_due_delivery(&self) -> Result<Option<ClaimedDelivery>, String> {
         let mut inner = lock(&self.inner);
         let now = Utc::now();
@@ -964,6 +1045,8 @@ impl SharedGateway {
 
         if inner.config.runtime.operating_mode != AUTHORITATIVE_MODE {
             let mut shadowed_delivery_ids = Vec::new();
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for delivery in inner
                 .state
                 .deliveries
@@ -979,6 +1062,8 @@ impl SharedGateway {
             }
             if !shadowed_delivery_ids.is_empty() {
                 let shadowed: HashSet<&str> = shadowed_delivery_ids.iter().map(String::as_str).collect();
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for job in &mut inner.state.tts_jobs {
                     if shadowed.contains(job.synthesis_delivery_id.as_str()) {
                         job.state = "shadowed".to_string();
@@ -1091,6 +1176,8 @@ impl SharedGateway {
         }))
     }
 
+    // Was: Führt den Arbeitsschritt `finish_delivery` für finish delivery aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn finish_delivery(&self, delivery_id: &str, outcome: DeliveryOutcome) -> Result<DeliveryRecord, String> {
         let mut inner = lock(&self.inner);
         let now = Utc::now();
@@ -1154,6 +1241,8 @@ impl SharedGateway {
 
         let delivery = inner.state.deliveries[index].clone();
         let public_base_url = inner.config.server.public_base_url.clone();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for job in &mut inner.state.tts_jobs {
             if job.synthesis_delivery_id == delivery_id {
                 if outcome.success {
@@ -1206,6 +1295,8 @@ impl SharedGateway {
         Ok(delivery)
     }
 
+    // Was: Führt den Arbeitsschritt `connectors_due_probe` für connectors due probe aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn connectors_due_probe(&self) -> Vec<ConnectorRecord> {
         let inner = lock(&self.inner);
         let now = Utc::now();
@@ -1220,11 +1311,15 @@ impl SharedGateway {
             .collect()
     }
 
+    // Was: Führt den Arbeitsschritt `connector_for_probe` für connector for probe aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn connector_for_probe(&self, connector_id: &str) -> Option<ConnectorRecord> {
         let inner = lock(&self.inner);
         inner.state.connectors.get(&slug(connector_id)).cloned()
     }
 
+    // Was: Führt den Arbeitsschritt `record_probe` für Datensatz probe aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn record_probe(&self, outcome: ConnectorProbeOutcome) -> Result<Value, String> {
         let mut inner = lock(&self.inner);
         let now = Utc::now();
@@ -1260,6 +1355,8 @@ impl SharedGateway {
         }))
     }
 
+    // Was: Führt den Arbeitsschritt `maintenance` für maintenance aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn maintenance(&self, actor_name: Option<String>) -> Result<Value, String> {
         let mut inner = lock(&self.inner);
         let now = Utc::now();
@@ -1286,6 +1383,8 @@ impl SharedGateway {
         }))
     }
 
+    // Was: Führt den Arbeitsschritt `backup` für backup aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn backup(&self, input: BackupInput) -> Result<BackupRecord, String> {
         let mut inner = lock(&self.inner);
         let now = Utc::now();
@@ -1334,16 +1433,22 @@ impl SharedGateway {
         Ok(record)
     }
 
+    // Was: Führt den Arbeitsschritt `backups` für backups aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn backups(&self) -> Vec<BackupRecord> {
         let inner = lock(&self.inner);
         inner.state.backups.iter().rev().cloned().collect()
     }
 
+    // Was: Führt den Arbeitsschritt `audit` für audit aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn audit(&self, limit: usize) -> Vec<AuditRecord> {
         let inner = lock(&self.inner);
         inner.state.audit.iter().rev().take(limit).cloned().collect()
     }
 
+    // Was: Führt den Arbeitsschritt `export` für export aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn export(&self) -> Value {
         let inner = lock(&self.inner);
         json!({
@@ -1363,6 +1468,8 @@ impl SharedGateway {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `metrics` für Messwerte aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn metrics(&self) -> String {
         let inner = lock(&self.inner);
         let status = status_locked(&inner);
@@ -1382,6 +1489,8 @@ impl SharedGateway {
         metric(&mut out, "netcore_application_gateway_tts_jobs_total", status.tts_jobs_total as u64);
         metric(&mut out, "netcore_application_gateway_tts_jobs_ready", status.tts_jobs_ready as u64);
         metric(&mut out, "netcore_application_gateway_missing_required_secrets", status.missing_required_secrets as u64);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for connector in inner.state.connectors.values() {
             let labels = format!(
                 "connector=\"{}\",kind=\"{}\"",
@@ -1397,6 +1506,8 @@ impl SharedGateway {
         out
     }
 
+    // Was: Diese Funktion speichert all.
+    // Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
     fn persist_all(&self) -> Result<(), Box<dyn std::error::Error>> {
         let mut inner = lock(&self.inner);
         persist_locked(&mut inner)?;
@@ -1405,6 +1516,8 @@ impl SharedGateway {
     }
 }
 
+// Was: Führt den Arbeitsschritt `empty_state` für empty Zustand aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn empty_state(now: DateTime<Utc>) -> PersistedGateway {
     PersistedGateway {
         schema_version: 1,
@@ -1422,25 +1535,35 @@ fn empty_state(now: DateTime<Utc>) -> PersistedGateway {
     }
 }
 
+// Was: Führt den Arbeitsschritt `seed_state` für seed Zustand aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn seed_state(config: &ApplicationGatewayConfig, state: &mut PersistedGateway, now: DateTime<Utc>) -> Result<(), String> {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for seed in &config.connectors {
         state
             .connectors
             .entry(seed.connector_id.clone())
             .or_insert_with(|| connector_from_seed(seed, now));
     }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for seed in &config.rules {
         state
             .rules
             .entry(seed.rule_id.clone())
             .or_insert_with(|| rule_from_seed(seed, now));
     }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for seed in &config.templates {
         state
             .templates
             .entry(seed.template_id.clone())
             .or_insert_with(|| template_from_seed(seed, now));
     }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for rule in state.rules.values() {
         if !state.connectors.contains_key(&rule.target_connector) {
             return Err(format!("persisted rule {} references missing connector {}", rule.rule_id, rule.target_connector));
@@ -1450,6 +1573,8 @@ fn seed_state(config: &ApplicationGatewayConfig, state: &mut PersistedGateway, n
     Ok(())
 }
 
+// Was: Führt den Arbeitsschritt `connector_from_seed` für connector from seed aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn connector_from_seed(seed: &ConnectorSeed, now: DateTime<Utc>) -> ConnectorRecord {
     ConnectorRecord {
         connector_id: seed.connector_id.clone(),
@@ -1483,6 +1608,8 @@ fn connector_from_seed(seed: &ConnectorSeed, now: DateTime<Utc>) -> ConnectorRec
     }
 }
 
+// Was: Führt den Arbeitsschritt `rule_from_seed` für rule from seed aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn rule_from_seed(seed: &RouteRuleSeed, now: DateTime<Utc>) -> RouteRuleRecord {
     RouteRuleRecord {
         rule_id: seed.rule_id.clone(),
@@ -1502,6 +1629,8 @@ fn rule_from_seed(seed: &RouteRuleSeed, now: DateTime<Utc>) -> RouteRuleRecord {
     }
 }
 
+// Was: Führt den Arbeitsschritt `template_from_seed` für template from seed aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn template_from_seed(seed: &TemplateSeed, now: DateTime<Utc>) -> TemplateRecord {
     TemplateRecord {
         template_id: seed.template_id.clone(),
@@ -1519,7 +1648,11 @@ fn template_from_seed(seed: &TemplateSeed, now: DateTime<Utc>) -> TemplateRecord
     }
 }
 
+// Was: Diese Funktion stellt inflight.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn recover_inflight(state: &mut PersistedGateway, now: DateTime<Utc>) {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for delivery in &mut state.deliveries {
         if delivery.state == "in_flight" {
             delivery.state = "retry".to_string();
@@ -1528,6 +1661,8 @@ fn recover_inflight(state: &mut PersistedGateway, now: DateTime<Utc>) {
             delivery.updated_at = now;
         }
     }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for job in &mut state.tts_jobs {
         if job.state == "synthesizing" {
             job.state = "retry".to_string();
@@ -1537,6 +1672,8 @@ fn recover_inflight(state: &mut PersistedGateway, now: DateTime<Utc>) {
     }
 }
 
+// Was: Diese Funktion verteilt locked.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn dispatch_locked(inner: &mut GatewayInner, input: DispatchInput) -> Result<EventRecord, String> {
     if input.event_type.trim().is_empty() {
         return Err("event_type is required".into());
@@ -1575,6 +1712,8 @@ fn dispatch_locked(inner: &mut GatewayInner, input: DispatchInput) -> Result<Eve
     };
 
     if !input.target_connectors.is_empty() {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for connector_id in input.target_connectors.iter().map(|value| slug(value)) {
             let destination = event.destination.clone();
             create_delivery_locked(
@@ -1594,6 +1733,8 @@ fn dispatch_locked(inner: &mut GatewayInner, input: DispatchInput) -> Result<Eve
                 .cmp(&inner.state.rules[left].priority)
                 .then(left.cmp(right))
         });
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for rule_id in rule_ids {
             let Some(rule) = inner.state.rules.get(&rule_id).cloned() else {
                 continue;
@@ -1637,6 +1778,8 @@ fn dispatch_locked(inner: &mut GatewayInner, input: DispatchInput) -> Result<Eve
     Ok(event)
 }
 
+// Was: Diese Funktion erstellt delivery locked.
+// Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
 fn create_delivery_locked(
     inner: &mut GatewayInner,
     event: &mut EventRecord,
@@ -1712,6 +1855,8 @@ fn create_delivery_locked(
     Ok(())
 }
 
+// Was: Führt den Arbeitsschritt `rule_matches` für rule matches aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn rule_matches(rule: &RouteRuleRecord, event: &EventRecord) -> bool {
     let source_match = rule.source_connector == "*" || rule.source_connector == event.source_connector;
     let type_match = rule.event_type == "*" || rule.event_type == event.event_type;
@@ -1725,6 +1870,8 @@ fn rule_matches(rule: &RouteRuleRecord, event: &EventRecord) -> bool {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für render Kontext in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct RenderContext {
     source: String,
     event_type: String,
@@ -1733,6 +1880,8 @@ struct RenderContext {
     payload: Value,
 }
 
+// Was: Diese Funktion erzeugt template value.
+// Warum: Darstellung und Fachdaten bleiben dadurch voneinander getrennt.
 fn render_template_value(template: &TemplateRecord, context: &RenderContext) -> Result<Value, String> {
     let rendered = render_string(&template.body, context, template.kind == "json");
     if template.kind == "json" {
@@ -1742,6 +1891,8 @@ fn render_template_value(template: &TemplateRecord, context: &RenderContext) -> 
     }
 }
 
+// Was: Diese Funktion erzeugt string.
+// Warum: Darstellung und Fachdaten bleiben dadurch voneinander getrennt.
 fn render_string(body: &str, context: &RenderContext, json_mode: bool) -> String {
     let value = |raw: &str| {
         if json_mode {
@@ -1756,7 +1907,11 @@ fn render_string(body: &str, context: &RenderContext, json_mode: bool) -> String
         .replace("{{destination}}", &value(context.destination.as_deref().unwrap_or("")))
         .replace("{{text}}", &value(context.text.as_deref().unwrap_or("")));
     if let Some(object) = context.payload.as_object() {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (key, item) in object {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let raw = match item {
                 Value::String(value) => value.clone(),
                 Value::Null => String::new(),
@@ -1768,6 +1923,8 @@ fn render_string(body: &str, context: &RenderContext, json_mode: bool) -> String
     rendered
 }
 
+// Was: Führt den Arbeitsschritt `json_fragment` für JSON-Daten fragment aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn json_fragment(value: &str) -> String {
     serde_json::to_string(value)
         .unwrap_or_else(|_| "\"\"".to_string())
@@ -1775,6 +1932,8 @@ fn json_fragment(value: &str) -> String {
         .to_string()
 }
 
+// Was: Führt den Arbeitsschritt `value_text` für value text aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn value_text(value: Value) -> String {
     value
         .get("text")
@@ -1783,6 +1942,8 @@ fn value_text(value: Value) -> String {
         .unwrap_or_else(|| value.to_string())
 }
 
+// Was: Diese Funktion prüft connector input.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_connector_input(input: &ConnectorInput) -> Result<(), String> {
     if input.kind.trim().is_empty() {
         return Err("connector kind is required".into());
@@ -1801,6 +1962,8 @@ fn validate_connector_input(input: &ConnectorInput) -> Result<(), String> {
     Ok(())
 }
 
+// Was: Diese Funktion prüft rule input.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_rule_input(inner: &GatewayInner, input: &RouteRuleInput) -> Result<(), String> {
     let connector_id = slug(&input.target_connector);
     if !inner.state.connectors.contains_key(&connector_id) {
@@ -1817,6 +1980,8 @@ fn validate_rule_input(inner: &GatewayInner, input: &RouteRuleInput) -> Result<(
     Ok(())
 }
 
+// Was: Führt den Arbeitsschritt `rule_from_input` für rule from input aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn rule_from_input(id: String, input: RouteRuleInput, created_at: DateTime<Utc>, matched_total: u64) -> RouteRuleRecord {
     RouteRuleRecord {
         rule_id: id,
@@ -1836,6 +2001,8 @@ fn rule_from_input(id: String, input: RouteRuleInput, created_at: DateTime<Utc>,
     }
 }
 
+// Was: Diese Funktion prüft template input.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_template_input(inner: &GatewayInner, input: &TemplateInput) -> Result<(), String> {
     if !matches!(input.kind.trim(), "text" | "json" | "tts") {
         return Err("template kind must be text, json or tts".into());
@@ -1851,6 +2018,8 @@ fn validate_template_input(inner: &GatewayInner, input: &TemplateInput) -> Resul
     Ok(())
 }
 
+// Was: Führt den Arbeitsschritt `template_from_input` für template from input aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn template_from_input(id: String, input: TemplateInput, created_at: DateTime<Utc>, render_total: u64) -> TemplateRecord {
     let kind = input.kind.trim().to_ascii_lowercase();
     TemplateRecord {
@@ -1875,6 +2044,8 @@ fn template_from_input(id: String, input: TemplateInput, created_at: DateTime<Ut
     }
 }
 
+// Was: Führt den Arbeitsschritt `status_locked` für Status locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn status_locked(inner: &GatewayInner) -> GatewayStatus {
     let connectors_total = inner.state.connectors.len();
     let connectors_enabled = inner.state.connectors.values().filter(|connector| connector.enabled).count();
@@ -1936,6 +2107,8 @@ fn status_locked(inner: &GatewayInner) -> GatewayStatus {
     }
 }
 
+// Was: Führt den Arbeitsschritt `connector_view` für connector view aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn connector_view(inner: &GatewayInner, connector: &ConnectorRecord) -> Value {
     let statuses: Vec<_> = connector
         .required_secrets
@@ -1984,9 +2157,13 @@ fn connector_view(inner: &GatewayInner, connector: &ConnectorRecord) -> Value {
     })
 }
 
+// Was: Führt den Arbeitsschritt `secret_statuses_locked` für secret statuses locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn secret_statuses_locked(inner: &GatewayInner, connector_id: Option<&str>) -> Vec<SecretStatus> {
     let requested = connector_id.map(slug);
     let mut rows = Vec::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for connector in inner.state.connectors.values() {
         if requested.as_ref().is_some_and(|value| value != &connector.connector_id) {
             continue;
@@ -1997,6 +2174,8 @@ fn secret_statuses_locked(inner: &GatewayInner, connector_id: Option<&str>) -> V
         if let Some(stored) = stored {
             names.extend(stored.keys().cloned());
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for name in names {
             let entry = stored.and_then(|values| values.get(&name));
             rows.push(SecretStatus {
@@ -2017,6 +2196,8 @@ fn secret_statuses_locked(inner: &GatewayInner, connector_id: Option<&str>) -> V
     rows
 }
 
+// Was: Führt den Arbeitsschritt `required_secrets_present` für required secrets present aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn required_secrets_present(inner: &GatewayInner, connector: &ConnectorRecord) -> bool {
     connector.required_secrets.iter().all(|name| {
         inner
@@ -2028,7 +2209,11 @@ fn required_secrets_present(inner: &GatewayInner, connector: &ConnectorRecord) -
     })
 }
 
+// Was: Führt den Arbeitsschritt `maintenance_locked` für maintenance locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn maintenance_locked(inner: &mut GatewayInner, now: DateTime<Utc>) {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for connector in inner.state.connectors.values_mut() {
         if connector.circuit_state == "open"
             && connector.circuit_open_until.is_some_and(|until| until <= now)
@@ -2038,6 +2223,8 @@ fn maintenance_locked(inner: &mut GatewayInner, now: DateTime<Utc>) {
             connector.updated_at = now;
         }
     }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for delivery in &mut inner.state.deliveries {
         if matches!(delivery.state.as_str(), "queued" | "retry" | "in_flight") && delivery.expires_at <= now {
             delivery.state = "dead_letter".to_string();
@@ -2058,6 +2245,8 @@ fn maintenance_locked(inner: &mut GatewayInner, now: DateTime<Utc>) {
     inner.state.updated_at = now;
 }
 
+// Was: Führt den Arbeitsschritt `trim_locked` für trim locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn trim_locked(inner: &mut GatewayInner) {
     trim_front(&mut inner.state.events, inner.config.runtime.max_events);
     trim_front(&mut inner.state.deliveries, inner.config.runtime.max_deliveries);
@@ -2066,12 +2255,16 @@ fn trim_locked(inner: &mut GatewayInner) {
     inner.state.updated_at = Utc::now();
 }
 
+// Was: Führt den Arbeitsschritt `trim_front` für trim front aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn trim_front<T>(rows: &mut Vec<T>, limit: usize) {
     if rows.len() > limit {
         rows.drain(0..rows.len().saturating_sub(limit));
     }
 }
 
+// Was: Führt den Arbeitsschritt `audit_locked` für audit locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn audit_locked(
     inner: &mut GatewayInner,
     actor_name: &str,
@@ -2096,6 +2289,8 @@ fn audit_locked(
     });
 }
 
+// Was: Diese Funktion speichert locked.
+// Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
 fn persist_locked(inner: &mut GatewayInner) -> Result<(), Box<dyn std::error::Error>> {
     inner.state.updated_at = Utc::now();
     let bytes = serde_json::to_vec_pretty(&inner.state)?;
@@ -2106,6 +2301,8 @@ fn persist_locked(inner: &mut GatewayInner) -> Result<(), Box<dyn std::error::Er
     Ok(())
 }
 
+// Was: Diese Funktion speichert secrets locked.
+// Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
 fn persist_secrets_locked(inner: &GatewayInner) -> Result<(), Box<dyn std::error::Error>> {
     let bytes = serde_json::to_vec_pretty(&inner.secrets)?;
     atomic_write(&inner.config.storage.secrets_path, &bytes)?;
@@ -2117,6 +2314,8 @@ fn persist_secrets_locked(inner: &GatewayInner) -> Result<(), Box<dyn std::error
     Ok(())
 }
 
+// Was: Führt den Arbeitsschritt `atomic_write` für atomic write aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn atomic_write(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     ensure_parent(path)?;
     let temp = path.with_extension(format!("tmp-{}", Uuid::new_v4()));
@@ -2127,6 +2326,8 @@ fn atomic_write(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     Ok(())
 }
 
+// Was: Diese Funktion stellt parent.
+// Warum: So wird die notwendige Voraussetzung hergestellt, bevor abhängiger Code weiterläuft.
 fn ensure_parent(path: &Path) -> std::io::Result<()> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
@@ -2134,11 +2335,15 @@ fn ensure_parent(path: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
+// Was: Führt den Arbeitsschritt `sha256_hex` für sha256 hex aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn sha256_hex(bytes: &[u8]) -> String {
     let digest = Sha256::digest(bytes);
     digest.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
+// Was: Führt den Arbeitsschritt `metric` für metric aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn metric(out: &mut String, name: &str, value: impl std::fmt::Display) {
     out.push_str(name);
     out.push(' ');
@@ -2146,6 +2351,8 @@ fn metric(out: &mut String, name: &str, value: impl std::fmt::Display) {
     out.push('\n');
 }
 
+// Was: Führt den Arbeitsschritt `labelled_metric` für labelled metric aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn labelled_metric(out: &mut String, name: &str, labels: &str, value: impl std::fmt::Display) {
     out.push_str(name);
     out.push('{');
@@ -2155,23 +2362,33 @@ fn labelled_metric(out: &mut String, name: &str, labels: &str, value: impl std::
     out.push('\n');
 }
 
+// Was: Führt den Arbeitsschritt `prom_escape` für prom escape aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn prom_escape(value: &str) -> String {
     value.replace('\\', "\\\\").replace('"', "\\\"").replace('\n', "\\n")
 }
 
+// Was: Führt den Arbeitsschritt `actor` für actor aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn actor(value: Option<&str>) -> &str {
     value.filter(|value| !value.trim().is_empty()).unwrap_or("webui")
 }
 
+// Was: Führt den Arbeitsschritt `non_empty` für non empty aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn non_empty(value: &str, fallback: &str) -> String {
     let value = value.trim();
     if value.is_empty() { fallback.to_string() } else { value.to_string() }
 }
 
+// Was: Führt den Arbeitsschritt `clean_optional` für clean optional aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn clean_optional(value: Option<String>) -> Option<String> {
     value.map(|value| value.trim().to_string()).filter(|value| !value.is_empty())
 }
 
+// Was: Führt den Arbeitsschritt `safe_filename` für safe filename aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn safe_filename(value: &str) -> String {
     let value = value
         .chars()
@@ -2180,6 +2397,8 @@ fn safe_filename(value: &str) -> String {
     if value.is_empty() { "tts".to_string() } else { value }
 }
 
+// Was: Führt den Arbeitsschritt `lock` für lock aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
     mutex.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
 }

@@ -1,6 +1,11 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Aufzeichnung und Ereignisprotokollierung.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Aufzeichnung tap batch in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct RecorderTapBatch {
     pub requested_after: u64,
     #[serde(default)]
@@ -14,6 +19,8 @@ pub struct RecorderTapBatch {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Aufzeichnung tap Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct RecorderTapRecord {
     pub seq: u64,
     pub timestamp: String,
@@ -46,6 +53,8 @@ pub struct RecorderTapRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Audio- und Mediendaten switch Sitzung in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MediaSwitchSession {
     pub logical_call_id: String,
     pub kind: String,

@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Nachrichten an den Schnittstellen zwischen TETRA-Protokollschichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! LTPD-SAP primitives between MLE and SNDCP.
 //!
 //! This module defines the typed local service interface used by the Package D
@@ -18,30 +21,42 @@ use crate::common::{
 
 /// SNDCP informs MLE whether the MS must remain awake.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Paketdatentransport MLE-Verbindungssteuerung activity req in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LtpdMleActivityReq {
     pub sleep_mode: SleepMode,
 }
 
 /// Communication resources are temporarily unavailable.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Paketdatentransport MLE-Verbindungssteuerung break ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LtpdMleBreakInd;
 
 /// MM is using the signalling resources.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Paketdatentransport MLE-Verbindungssteuerung busy ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LtpdMleBusyInd;
 
 /// Cancel a request that has not yet been transmitted.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Paketdatentransport MLE-Verbindungssteuerung cancel req in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LtpdMleCancelReq {
     pub handle: RequestHandle,
 }
 
 /// Network access has been removed from SNDCP.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Paketdatentransport MLE-Verbindungssteuerung close ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LtpdMleCloseInd;
 
 /// Inter-layer packet-data configuration supplied by SNDCP.
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Paketdatentransport MLE-Verbindungssteuerung configure req in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LtpdMleConfigureReq {
     pub channel_change_accepted: Option<ChannelChangeDecision>,
     pub channel_change_handle: Option<ChannelChangeHandle>,
@@ -59,6 +74,8 @@ pub struct LtpdMleConfigureReq {
 
 /// Packet-data/circuit-resource conflict reported by MLE.
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Paketdatentransport MLE-Verbindungssteuerung configure ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LtpdMleConfigureInd {
     pub endpoint_id: EndpointId,
     pub channel_change_response_required: bool,
@@ -69,6 +86,8 @@ pub struct LtpdMleConfigureInd {
 
 /// Request setup or reset of an advanced link.
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Paketdatentransport MLE-Verbindungssteuerung connect req in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LtpdMleConnectReq {
     pub address: TetraAddress,
     pub endpoint_id: EndpointId,
@@ -82,6 +101,8 @@ pub struct LtpdMleConnectReq {
 
 /// Peer requested setup or reset of an advanced link.
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Paketdatentransport MLE-Verbindungssteuerung connect ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LtpdMleConnectInd {
     pub address: TetraAddress,
     pub endpoint_id: EndpointId,
@@ -96,6 +117,8 @@ pub struct LtpdMleConnectInd {
 
 /// Accept or modify an incoming advanced-link setup.
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Paketdatentransport MLE-Verbindungssteuerung connect resp in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LtpdMleConnectResp {
     pub address: TetraAddress,
     pub endpoint_id: EndpointId,
@@ -109,6 +132,8 @@ pub struct LtpdMleConnectResp {
 
 /// Completion of an advanced-link setup or reset.
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Paketdatentransport MLE-Verbindungssteuerung connect confirm in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LtpdMleConnectConfirm {
     pub address: TetraAddress,
     pub endpoint_id: EndpointId,
@@ -122,12 +147,16 @@ pub struct LtpdMleConnectConfirm {
 
 /// Enter the temporarily disabled state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Paketdatentransport MLE-Verbindungssteuerung disable ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LtpdMleDisableInd {
     pub permitted_services: PermittedTemporaryServices,
 }
 
 /// Request disconnection of an advanced link.
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Paketdatentransport MLE-Verbindungssteuerung disconnect req in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LtpdMleDisconnectReq {
     pub endpoint_id: EndpointId,
     pub link_id: LinkId,
@@ -138,6 +167,8 @@ pub struct LtpdMleDisconnectReq {
 
 /// Advanced link was disconnected.
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Paketdatentransport MLE-Verbindungssteuerung disconnect ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LtpdMleDisconnectInd {
     pub endpoint_id: EndpointId,
     pub new_endpoint_id: Option<EndpointId>,
@@ -150,10 +181,14 @@ pub struct LtpdMleDisconnectInd {
 
 /// Recover from the temporarily disabled state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Paketdatentransport MLE-Verbindungssteuerung enable ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LtpdMleEnableInd;
 
 /// Broadcast and serving-cell information relevant to SNDCP.
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Paketdatentransport MLE-Verbindungssteuerung info ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LtpdMleInfoInd {
     pub broadcast_parameters: MleBroadcastParameters,
     pub subscriber_class_match: bool,
@@ -163,10 +198,14 @@ pub struct LtpdMleInfoInd {
 
 /// MM signalling exchange has completed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Paketdatentransport MLE-Verbindungssteuerung idle ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LtpdMleIdleInd;
 
 /// SNDCP may use network communication resources.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Paketdatentransport MLE-Verbindungssteuerung open ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LtpdMleOpenInd {
     pub mcc: u16,
     pub mnc: u16,
@@ -174,6 +213,8 @@ pub struct LtpdMleOpenInd {
 
 /// SwMI-only indication that LLC reception is active.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Paketdatentransport MLE-Verbindungssteuerung receive ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LtpdMleReceiveInd {
     pub endpoint_id: EndpointId,
     pub received_tetra_address: TetraAddress,
@@ -182,6 +223,8 @@ pub struct LtpdMleReceiveInd {
 
 /// Request advanced-link reconnection after cell reselection.
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Paketdatentransport MLE-Verbindungssteuerung reconnect req in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LtpdMleReconnectReq {
     pub endpoint_id: EndpointId,
     pub link_id: LinkId,
@@ -193,6 +236,8 @@ pub struct LtpdMleReconnectReq {
 
 /// Completion of an MS-originated reconnection attempt.
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Paketdatentransport MLE-Verbindungssteuerung reconnect confirm in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LtpdMleReconnectConfirm {
     pub endpoint_id: EndpointId,
     pub new_endpoint_id: Option<EndpointId>,
@@ -204,6 +249,8 @@ pub struct LtpdMleReconnectConfirm {
 
 /// SwMI indication of an MS reconnection attempt.
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Paketdatentransport MLE-Verbindungssteuerung reconnect ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LtpdMleReconnectInd {
     pub endpoint_id: EndpointId,
     pub new_endpoint_id: Option<EndpointId>,
@@ -215,12 +262,16 @@ pub struct LtpdMleReconnectInd {
 
 /// Locally release an advanced link.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Paketdatentransport MLE-Verbindungssteuerung release req in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LtpdMleReleaseReq {
     pub link_id: LinkId,
 }
 
 /// Completion report for an MLE-UNITDATA request.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Paketdatentransport MLE-Verbindungssteuerung report ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LtpdMleReportInd {
     pub handle: RequestHandle,
     pub transfer_result: TransferResult,
@@ -228,6 +279,8 @@ pub struct LtpdMleReportInd {
 
 /// Communication resources and previous MLE associations are available again.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Paketdatentransport MLE-Verbindungssteuerung resume ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LtpdMleResumeInd {
     pub mcc: u16,
     pub mnc: u16,
@@ -235,6 +288,8 @@ pub struct LtpdMleResumeInd {
 
 /// SNDCP data transfer request to MLE.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Paketdatentransport MLE-Verbindungssteuerung unitdata req in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LtpdMleUnitdataReq {
     pub sdu: BitBuffer,
     pub handle: RequestHandle,
@@ -261,6 +316,8 @@ pub struct LtpdMleUnitdataReq {
 
 /// SNDCP data received from a peer entity.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Paketdatentransport MLE-Verbindungssteuerung unitdata ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LtpdMleUnitdataInd {
     pub sdu: BitBuffer,
     pub endpoint_id: EndpointId,
@@ -272,12 +329,16 @@ pub struct LtpdMleUnitdataInd {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
     use crate::common::{AdvancedLinkFormat, ThroughputInformation};
     use tetra_core::SsiType;
 
     #[test]
+    // Was: Führt den Arbeitsschritt `context_primitives_keep_endpoint_and_link_separate` für Kontext primitives keep endpoint and link separate aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn context_primitives_keep_endpoint_and_link_separate() {
         let qos = Layer2Qos {
             throughput: ThroughputInformation {
@@ -306,6 +367,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `unitdata_indication_contains_explicit_address_type` für unitdata indication contains explicit address type aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn unitdata_indication_contains_explicit_address_type() {
         let address = TetraAddress::new(4711, SsiType::Gssi);
         let indication = LtpdMleUnitdataInd {

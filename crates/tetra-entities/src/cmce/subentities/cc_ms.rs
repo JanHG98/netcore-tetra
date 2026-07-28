@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use tetra_core::unimplemented_log;
 use tetra_pdus::cmce::enums::cmce_pdu_type_dl::CmcePduTypeDl;
 use tetra_saps::{SapMsg, SapMsgInner};
@@ -5,13 +8,21 @@ use tetra_saps::{SapMsg, SapMsgInner};
 use crate::MessageQueue;
 
 /// Clause 11 Call Control CMCE sub-entity
+// Was: Bündelt die zusammengehörigen Werte für cc ms subentity in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CcMsSubentity {}
 
+// Was: Implementiert das zugehörige Verhalten für `CcMsSubentity`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl CcMsSubentity {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new() -> Self {
         CcMsSubentity {}
     }
 
+    // Was: Diese Funktion leitet rd deliver.
+    // Warum: Nachrichten und Daten gelangen dadurch nachvollziehbar an das richtige Ziel.
     pub fn route_rd_deliver(&mut self, _queue: &mut MessageQueue, mut message: SapMsg) {
         tracing::trace!("route_rd_deliver");
 
@@ -30,6 +41,8 @@ impl CcMsSubentity {
         };
 
         // TODO FIXME: Besides these PDUs, we can also receive several signals (BUSY ind, CLOSE ind, etc)
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match pdu_type {
             CmcePduTypeDl::DAlert => {
                 unimplemented_log!("{}", pdu_type);

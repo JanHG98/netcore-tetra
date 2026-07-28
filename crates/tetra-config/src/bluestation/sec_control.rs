@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Einlesen und Prüfen der TETRA-Konfiguration.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::HashMap;
 
 use serde::Deserialize;
@@ -5,6 +8,8 @@ use toml::Value;
 
 /// Control endpoint configuration
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für cfg Steuerung in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgControl {
     /// Control server hostname or IP
     pub host: String,
@@ -19,6 +24,8 @@ pub struct CfgControl {
 }
 
 #[derive(Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für cfg Steuerung dto in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgControlDto {
     /// Control server hostname or IP
     pub host: String,
@@ -41,6 +48,8 @@ pub struct CfgControlDto {
 /// Convert a [`CfgControlDto`] (from TOML) into a [`CfgControl`].
 ///
 /// Returns an error string if `ca_cert` is set but `use_tls` is `false`.
+// Was: Diese Funktion wendet Steuerung patch.
+// Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
 pub fn apply_control_patch(src: CfgControlDto) -> Result<CfgControl, String> {
     if src.ca_cert.is_some() && !src.use_tls {
         return Err("control: ca_cert requires use_tls = true".to_string());

@@ -1,9 +1,14 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Metriken, Protokolle und Betriebsüberwachung.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für target create input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TargetCreateInput {
     pub target_id: String,
     pub display_name: String,
@@ -19,12 +24,16 @@ pub struct TargetCreateInput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+// Was: Bündelt die zusammengehörigen Werte für action input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ActionInput {
     pub actor: Option<String>,
     pub reason: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für rule input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct RuleInput {
     pub rule_id: String,
     pub name: String,
@@ -44,6 +53,8 @@ pub struct RuleInput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für silence input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SilenceInput {
     pub comment: String,
     pub created_by: Option<String>,
@@ -57,12 +68,16 @@ pub struct SilenceInput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für log ingest input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LogIngestInput {
     #[serde(default)]
     pub records: Vec<LogInput>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für log input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LogInput {
     pub timestamp: Option<String>,
     pub service: String,
@@ -76,12 +91,16 @@ pub struct LogInput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für trace ingest input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TraceIngestInput {
     #[serde(default)]
     pub spans: Vec<TraceSpanInput>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für trace span input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TraceSpanInput {
     pub trace_id: String,
     pub span_id: String,
@@ -96,11 +115,15 @@ pub struct TraceSpanInput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+// Was: Bündelt die zusammengehörigen Werte für maintenance input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MaintenanceInput {
     pub actor: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+// Was: Bündelt die zusammengehörigen Werte für diagnostic input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DiagnosticInput {
     pub actor: Option<String>,
     pub reason: Option<String>,

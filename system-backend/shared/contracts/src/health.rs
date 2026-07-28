@@ -1,8 +1,13 @@
+// NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für health.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für health Status auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum HealthStatus {
     Up,
     Degraded,
@@ -11,6 +16,8 @@ pub enum HealthStatus {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für dependency health in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DependencyHealth {
     pub name: String,
     pub status: HealthStatus,
@@ -23,6 +30,8 @@ pub struct DependencyHealth {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für build info in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct BuildInfo {
     pub service: String,
     pub version: String,
@@ -34,6 +43,8 @@ pub struct BuildInfo {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für health document in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct HealthDocument {
     pub status: HealthStatus,
     pub service: String,

@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! Bidirectional base-station worker for the NetCore Control Room.
 //!
 //! One WebSocket carries node state, telemetry, control commands and media.
@@ -28,10 +31,16 @@ use crate::{
     network::transports::NetworkTransport,
 };
 
+// Was: Legt den festen Wert `POLL_TIMEOUT` für poll timeout fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const POLL_TIMEOUT: Duration = Duration::from_millis(10);
+// Was: Legt den festen Wert `RECONNECT_DELAY` für reconnect delay fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const RECONNECT_DELAY: Duration = Duration::from_secs(10);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+// Was: Listet die möglichen Varianten für command correlation key auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 enum CommandCorrelationKey {
     Handle(u32),
     KickMs(u32),
@@ -49,6 +58,8 @@ enum CommandCorrelationKey {
     ClearEmergency(u32),
 }
 
+// Was: Bündelt die zusammengehörigen Werte für Steuerung room Hintergrundverarbeitung in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ControlRoomWorker<T: NetworkTransport> {
     identity: ControlRoomNodeIdentity,
     capabilities: ControlRoomNodeCapabilities,
@@ -70,7 +81,11 @@ pub struct ControlRoomWorker<T: NetworkTransport> {
     last_service_snapshot_at: Option<Instant>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `ControlRoomWorker<T>`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl<T: NetworkTransport> ControlRoomWorker<T> {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(
         identity: ControlRoomNodeIdentity,
         capabilities: ControlRoomNodeCapabilities,
@@ -106,11 +121,17 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
         }
     }
 
+    // Was: Diese Funktion führt den vorgesehenen Arbeitsschritt.
+    // Warum: Der Lebenszyklus des Dienstes bleibt so an einer zentralen Stelle steuerbar.
     pub fn run(&mut self) {
         tracing::debug!("ControlRoom worker started for node_id={}", self.identity.node_id);
         self.try_connect();
 
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match self.telemetry_source.recv_timeout(POLL_TIMEOUT) {
                 RecvEvent::Event(event) => self.forward_telemetry(event),
                 RecvEvent::Timeout => {}
@@ -149,15 +170,21 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
         tracing::info!("ControlRoom worker exiting");
     }
 
+    // Was: Diese Funktion verbindet due.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn reconnect_due(&self) -> bool {
         self.last_connect_attempt
             .map(|last| last.elapsed() >= RECONNECT_DELAY)
             .unwrap_or(true)
     }
 
+    // Was: Diese Funktion verbindet den vorgesehenen Arbeitsschritt.
+    // Warum: Der Verbindungsaufbau wird dadurch zentral überwacht und kann sauber fehlschlagen.
     fn try_connect(&mut self) {
         self.last_connect_attempt = Some(Instant::now());
         self.transport.disconnect();
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.transport.connect() {
             Ok(()) => {
                 tracing::info!("ControlRoom transport connected");
@@ -181,6 +208,8 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
         }
     }
 
+    // Was: Diese Funktion sendet hello.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_hello(&mut self) -> bool {
         let hello = ControlRoomNodeHello {
             protocol_version: CONTROL_ROOM_PROTOCOL_VERSION.to_string(),
@@ -191,6 +220,8 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
         self.send_uplink(&NodeToControlRoomMessage::Hello { hello })
     }
 
+    // Was: Diese Funktion sendet periodic heartbeat.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_periodic_heartbeat(&mut self) {
         if !self.connected || self.last_heartbeat_at.elapsed() < CONTROL_ROOM_HEARTBEAT_INTERVAL {
             return;
@@ -207,6 +238,8 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
         }
     }
 
+    // Was: Diese Funktion leitet Telemetrie.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn forward_telemetry(&mut self, event: TelemetryEvent) {
         if !self.ensure_connected() {
             self.spool_event(event);
@@ -224,6 +257,8 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `spool_event` für spool Ereignis aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn spool_event(&mut self, event: TelemetryEvent) {
         if let Err(error) = self.event_spool.append(event) {
             tracing::error!("failed to persist edge fallback event: {}", error);
@@ -231,11 +266,15 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
         update_spool_stats(&self.config, &self.event_spool);
     }
 
+    // Was: Führt den Arbeitsschritt `replay_spool` für replay spool aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn replay_spool(&mut self) {
         if !self.connected || !self.config.edge_fallback_snapshot().gateway_connected {
             return;
         }
         let batch_size = self.config.config().edge_fallback.replay_batch_size;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let records = match self.event_spool.peek_batch(batch_size) {
             Ok(records) => records,
             Err(error) => {
@@ -244,6 +283,8 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
             }
         };
         let mut acknowledged = None;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for record in records {
             self.seq = self.seq.wrapping_add(1);
             let envelope = NodeTelemetryEnvelope {
@@ -265,10 +306,16 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
         }
     }
 
+    // Was: Diese Funktion arbeitet Audio- und Mediendaten Uplink (Funkgerät zum Netz).
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn drain_media_uplink(&mut self) {
         let mut frames = Vec::new();
         if let Some(source) = self.media_uplink_source.as_ref() {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for _ in 0..64 {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match source.try_recv() {
                     Ok(frame) => frames.push(frame),
                     Err(MediaTryRecvError::Empty) => break,
@@ -280,6 +327,8 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
             }
         }
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for frame in frames {
             let frame = MediaUplinkFrame {
                 node_id: self.identity.node_id.clone(),
@@ -298,9 +347,15 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
         }
     }
 
+    // Was: Diese Funktion fragt Downlink (Netz zum Funkgerät).
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn poll_downlink(&mut self) {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for msg in self.transport.receive_reliable() {
             let codec = ControlRoomCodecJson;
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match codec.decode_downlink(&msg.payload) {
                 Ok(ControlRoomToNodeMessage::HelloAck { accepted, message }) => {
                     if accepted {
@@ -359,6 +414,8 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
         }
     }
 
+    // Was: Diese Funktion wendet core services.
+    // Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
     fn apply_core_services(&mut self, snapshot: CoreServicesSnapshot) {
         let mut state = self.config.state_write();
         if snapshot.revision < state.edge_service_revision {
@@ -373,7 +430,11 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
         state.edge_service_matrix_fresh = true;
         state.edge_service_matrix_received_at = Some(now_iso());
         state.edge_services.clear();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for service in snapshot.services {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let level = match service.level {
                 CoreServiceHealthLevel::Unknown => EdgeServiceLevel::Unknown,
                 CoreServiceHealthLevel::Available => EdgeServiceLevel::Available,
@@ -400,6 +461,8 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
         self.tick_edge_fallback();
     }
 
+    // Was: Diese Funktion verarbeitet command.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_command(&mut self, envelope: ControlCommandEnvelope) {
         if envelope.target_node_id != self.identity.node_id && envelope.target_node_id != "*" {
             self.send_ack(
@@ -433,12 +496,20 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
         self.send_ack(envelope.command_id, true, Some(target), format!("dispatched to {:?}", target));
     }
 
+    // Was: Diese Funktion sammelt responses.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn collect_responses(&mut self) {
         let mut outgoing: Vec<(ControlResponse, Option<String>, Option<TetraEntity>)> = Vec::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (entity, dispatcher) in &self.dispatchers {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for response in dispatcher.try_recv_responses() {
                 let key = correlation_key_for_response(&response);
                 let correlated = key.and_then(|key| self.pending_commands.remove(&key));
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 let (command_id, target_entity) = match correlated {
                     Some((id, entity)) => (Some(id), Some(entity)),
                     None => (None, Some(*entity)),
@@ -447,6 +518,8 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
             }
         }
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (response, command_id, target_entity) in outgoing {
             let envelope = ControlResponseEnvelope {
                 command_id,
@@ -459,6 +532,8 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
         }
     }
 
+    // Was: Diese Funktion sendet ack.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_ack(
         &mut self,
         command_id: String,
@@ -477,6 +552,8 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
         self.send_uplink(&NodeToControlRoomMessage::ControlAck { ack });
     }
 
+    // Was: Diese Funktion sendet error.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_error(&mut self, message: String) {
         let msg = NodeToControlRoomMessage::Error {
             node_id: self.identity.node_id.clone(),
@@ -486,6 +563,8 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
         self.send_uplink(&msg);
     }
 
+    // Was: Diese Funktion stellt connected.
+    // Warum: So wird die notwendige Voraussetzung hergestellt, bevor abhängiger Code weiterläuft.
     fn ensure_connected(&mut self) -> bool {
         if self.connected && self.transport.is_connected() {
             return true;
@@ -503,12 +582,16 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
         self.connected
     }
 
+    // Was: Diese Funktion sendet Uplink (Funkgerät zum Netz).
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_uplink(&mut self, message: &NodeToControlRoomMessage) -> bool {
         if !self.connected {
             return false;
         }
         let codec = ControlRoomCodecJson;
         let payload = codec.encode_uplink(message);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.transport.send_reliable(&payload) {
             Ok(()) => true,
             Err(error) => {
@@ -525,6 +608,8 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
         }
     }
 
+    // Was: Diese Funktion kennzeichnet Gateway connected.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn mark_gateway_connected(&mut self, connected: bool, reason: &str) {
         {
             let mut state = self.config.state_write();
@@ -548,6 +633,8 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
         self.tick_edge_fallback();
     }
 
+    // Was: Diese Funktion bearbeitet edge fallback.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn tick_edge_fallback(&mut self) {
         let cfg = self.config.config();
         if !cfg.edge_fallback.enabled {
@@ -625,6 +712,8 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
         }
     }
 
+    // Was: Diese Funktion setzt edge mode.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     fn set_edge_mode(&self, mode: EdgeFallbackMode, reason: &str) {
         let mut state = self.config.state_write();
         if state.edge_fallback_mode != mode || state.edge_fallback_reason != reason {
@@ -636,7 +725,11 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
     }
 }
 
+// Was: Diese Funktion leitet Steuerung command.
+// Warum: Nachrichten und Daten gelangen dadurch nachvollziehbar an das richtige Ziel.
 pub fn route_control_command(command: &ControlCommand) -> TetraEntity {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match command {
         ControlCommand::SendSds { .. } => TetraEntity::Cmce,
         ControlCommand::SendRawSdsType4 { .. }
@@ -673,7 +766,11 @@ pub fn route_control_command(command: &ControlCommand) -> TetraEntity {
     }
 }
 
+// Was: Führt den Arbeitsschritt `correlation_key_for_command` für correlation key for command aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn correlation_key_for_command(command: &ControlCommand) -> Option<CommandCorrelationKey> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match command {
         ControlCommand::SendSds { handle, .. }
         | ControlCommand::SendRawSdsType4 { handle, .. }
@@ -733,7 +830,11 @@ fn correlation_key_for_command(command: &ControlCommand) -> Option<CommandCorrel
     }
 }
 
+// Was: Führt den Arbeitsschritt `correlation_key_for_response` für correlation key for response aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn correlation_key_for_response(response: &ControlResponse) -> Option<CommandCorrelationKey> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match response {
         ControlResponse::CommandAResponse { handle, .. }
         | ControlResponse::SendSdsResponse { handle, .. }
@@ -767,15 +868,21 @@ fn correlation_key_for_response(response: &ControlResponse) -> Option<CommandCor
     }
 }
 
+// Was: Führt den Arbeitsschritt `now_iso` für now iso aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn now_iso() -> String {
     chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
     #[test]
+    // Was: Führt den Arbeitsschritt `routes_dgna_to_mm` für routes dgna to Mobilitätsverwaltung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn routes_dgna_to_mm() {
         assert_eq!(
             route_control_command(&ControlCommand::Dgna {
@@ -788,6 +895,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `routes_central_group_commands_to_mm` für routes central Gruppe commands to Mobilitätsverwaltung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn routes_central_group_commands_to_mm() {
         assert_eq!(
             route_control_command(&ControlCommand::GroupAccessPolicyApply {
@@ -814,6 +923,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `correlates_group_policy_and_dgna_responses` für correlates Gruppe policy and dgna responses aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn correlates_group_policy_and_dgna_responses() {
         let policy_command = ControlCommand::GroupAccessPolicyApply {
             handle: 77,
@@ -861,6 +972,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `correlates_handle_based_sds` für correlates handle based TETRA-Kurznachricht (SDS) aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn correlates_handle_based_sds() {
         let cmd = ControlCommand::SendSds {
             handle: 42,

@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 // use tetra_core::Todo;
 // use tetra_saps::{lcmc::{CallId, control::Circuit, enums::circuit_mode_type::CircuitModeType}, tmv::enums::logical_chans::LogicalChannel};
 

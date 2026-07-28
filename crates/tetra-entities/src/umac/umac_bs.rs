@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use tetra_config::bluestation::SharedConfig;
 use tetra_core::freqs::FreqInfo;
 use tetra_core::tetra_entities::TetraEntity;
@@ -46,6 +49,8 @@ use crate::{MessagePrio, MessageQueue, TetraEntityTrait};
 
 use super::subcomp::bs_defrag::BsDefrag;
 
+// Was: Bündelt die zusammengehörigen Werte für UMAC-Funkzugriffssteuerung Basisstation in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct UmacBs {
     self_component: TetraEntity,
     config: SharedConfig,
@@ -89,11 +94,15 @@ pub struct UmacBs {
 }
 
 #[derive(Clone, Copy, Debug, Default)]
+// Was: Bündelt die zusammengehörigen Werte für pending circuit close in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct PendingCircuitClose {
     dl: bool,
     ul: bool,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für pending stch in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct PendingStch {
     addr: TetraAddress,
     scrambling_code: u32,
@@ -102,7 +111,11 @@ struct PendingStch {
     sdu_part: BitBuffer,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `UmacBs`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl UmacBs {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(config: SharedConfig) -> Self {
         let c = config.config();
         let scrambling_code = scrambler::tetra_scramb_get_init(c.net.mcc, c.net.mnc, c.cell.colour_code);
@@ -145,6 +158,8 @@ impl UmacBs {
     /// Connect the RF scheduler to the central Media Switch transport. The
     /// queues are bounded and all operations are non-blocking so a slow LXC or
     /// management network cannot stall TDMA processing.
+    // Was: Diese Funktion setzt Audio- und Mediendaten bridge.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_media_bridge(
         &mut self,
         uplink_sink: MediaUplinkSink,
@@ -154,6 +169,8 @@ impl UmacBs {
         self.media_downlink_source = Some(downlink_source);
     }
 
+    // Was: Diese Funktion leitet Audio- und Mediendaten Uplink (Funkgerät zum Netz).
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn forward_media_uplink(
         &mut self,
         carrier_num: u16,
@@ -184,11 +201,17 @@ impl UmacBs {
         }
     }
 
+    // Was: Diese Funktion arbeitet Audio- und Mediendaten Downlink (Netz zum Funkgerät).
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn drain_media_downlink(&mut self) {
         let mut frames = Vec::new();
         let mut disconnected = false;
         if let Some(source) = self.media_downlink_source.as_ref() {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for _ in 0..64 {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match source.try_recv() {
                     Ok(frame) => frames.push(frame),
                     Err(MediaTryRecvError::Empty) => break,
@@ -203,6 +226,8 @@ impl UmacBs {
             self.media_downlink_source = None;
         }
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for frame in frames {
             if frame.codec != MediaCodec::TetraAcelp0
                 || frame.payload.len() != TETRA_ACELP_FRAME_BYTES
@@ -229,14 +254,20 @@ impl UmacBs {
     }
 
     /// Read-only TLMC state for diagnostics, tests and the future TBS WebUI.
+    // Was: Führt den Arbeitsschritt `tlmc_snapshot` für tlmc snapshot aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn tlmc_snapshot(&self) -> TlmcRuntimeSnapshot {
         self.tlmc.snapshot()
     }
 
+    // Was: Führt den Arbeitsschritt `main_carrier` für main carrier aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn main_carrier(&self) -> u16 {
         self.config.config().cell.main_carrier
     }
 
+    // Was: Führt den Arbeitsschritt `scheduler_for_mut` für Zeit- und Kanalplanung for mut aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn scheduler_for_mut(&mut self, carrier_num: u16) -> &mut BsChannelScheduler {
         if carrier_num == self.main_carrier() {
             return &mut self.channel_scheduler;
@@ -252,10 +283,14 @@ impl UmacBs {
         &mut self.channel_scheduler
     }
 
+    // Was: Führt den Arbeitsschritt `scheduler_for` für Zeit- und Kanalplanung for aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn scheduler_for(&self, carrier_num: u16) -> &BsChannelScheduler {
         if carrier_num == self.main_carrier() {
             return &self.channel_scheduler;
         }
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self
             .secondary_channel_schedulers
             .iter()
@@ -269,21 +304,31 @@ impl UmacBs {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `secondary_carrier` für secondary carrier aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn secondary_carrier(&self) -> Option<u16> {
         self.config.config().cell.secondary_carrier
     }
 
+    // Was: Führt den Arbeitsschritt `air_ts_for_logical` für air ts for logical aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn air_ts_for_logical(logical_ts: u8) -> u8 {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match logical_ts {
             5..=7 => logical_ts - 3,
             _ => logical_ts,
         }
     }
 
+    // Was: Prüft, ob secondary logical ts zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     fn is_secondary_logical_ts(logical_ts: u8) -> bool {
         (5..=7).contains(&logical_ts)
     }
 
+    // Was: Führt den Arbeitsschritt `carrier_for_logical_ts` für carrier for logical ts aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn carrier_for_logical_ts(&self, logical_ts: u8) -> u16 {
         if Self::is_secondary_logical_ts(logical_ts) {
             self.secondary_carrier().unwrap_or(self.main_carrier())
@@ -292,6 +337,8 @@ impl UmacBs {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `logical_ts_for_carrier_air_ts` für logical ts for carrier air ts aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn logical_ts_for_carrier_air_ts(&self, carrier_num: u16, air_ts: u8) -> u8 {
         if self.secondary_carrier() == Some(carrier_num) && (2..=4).contains(&air_ts) {
             air_ts + 3
@@ -301,7 +348,11 @@ impl UmacBs {
         }
     }
 
+    // Was: Diese Funktion ermittelt CMCE-Rufsteuerung carrier hint.
+    // Warum: Unklare oder indirekte Angaben werden so vor der weiteren Verarbeitung eindeutig gemacht.
     fn resolve_cmce_carrier_hint(&self, carrier_hint: Option<Todo>, logical_ts: Option<u8>) -> u16 {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match carrier_hint {
             Some(c) if c >= 0 => c as u16,
             Some(-2) => self.secondary_carrier().unwrap_or_else(|| {
@@ -316,6 +367,8 @@ impl UmacBs {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `first_logical_ts_in_chan_alloc` für first logical ts in chan alloc aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn first_logical_ts_in_chan_alloc(&self, chan_alloc: &CmceChanAllocReq) -> Option<u8> {
         let air_ts = chan_alloc
             .timeslots
@@ -327,11 +380,15 @@ impl UmacBs {
         Some(self.logical_ts_for_carrier_air_ts(carrier_num, air_ts))
     }
 
+    // Was: Führt den Arbeitsschritt `scheduler_for_logical_mut` für Zeit- und Kanalplanung for logical mut aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn scheduler_for_logical_mut(&mut self, logical_ts: u8) -> &mut BsChannelScheduler {
         let carrier_num = self.carrier_for_logical_ts(logical_ts);
         self.scheduler_for_mut(carrier_num)
     }
 
+    // Was: Führt den Arbeitsschritt `scheduler_for_logical` für Zeit- und Kanalplanung for logical aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn scheduler_for_logical(&self, logical_ts: u8) -> &BsChannelScheduler {
         let carrier_num = self.carrier_for_logical_ts(logical_ts);
         self.scheduler_for(carrier_num)
@@ -340,6 +397,8 @@ impl UmacBs {
     /// Precomputes SYNC, SYSINFO messages (and subfield variants) for faster TX msg building
     /// Precomputed PDUs are passed to scheduler
     /// Needs to be re-invoked if any network parameter changes
+    // Was: Diese Funktion erzeugt precomps.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn generate_precomps(config: &SharedConfig) -> PrecomputedUmacPdus {
         let c = config.config();
 
@@ -482,10 +541,14 @@ impl UmacBs {
 
     /// Retrieve currently set value of system-wide services. If SwMI is active, this governs connection state
     /// Otherwise, value from config is used.
+    // Was: Diese Funktion liest system wide services Zustand.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     fn get_system_wide_services_state(config: &SharedConfig) -> bool {
         config.system_wide_services_available()
     }
 
+    // Was: Führt den Arbeitsschritt `refresh_system_wide_services` für refresh system wide services aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn refresh_system_wide_services(&mut self) {
         let is_effective = Self::get_system_wide_services_state(&self.config);
         if is_effective != self.system_wide_services {
@@ -501,6 +564,8 @@ impl UmacBs {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `cmce_to_mac_chanalloc` für CMCE-Rufsteuerung to MAC-Funkzugriffssteuerung chanalloc aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn cmce_to_mac_chanalloc(chan_alloc: &CmceChanAllocReq, carrier_num: u16) -> ChanAllocElement {
         // We grant clch permission for Replace and Additional allocations on the uplink
         let clch_permission = (chan_alloc.alloc_type == ChanAllocType::Replace || chan_alloc.alloc_type == ChanAllocType::Additional)
@@ -519,6 +584,8 @@ impl UmacBs {
     }
 
     /// Convenience function to send a TMA-REPORT.ind
+    // Was: Diese Funktion sendet tma report ind.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_tma_report_ind(queue: &mut MessageQueue, handle: Todo, report: TmaReport) {
         let tma_report_ind = TmaReportInd {
             req_handle: handle,
@@ -533,8 +600,12 @@ impl UmacBs {
         queue.push_back(msg);
     }
 
+    // Was: Führt den Arbeitsschritt `rx_tmv_prim` für rx tmv prim aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_tmv_prim(&mut self, queue: &mut MessageQueue, message: SapMsg) {
         tracing::trace!("rx_tmv_prim");
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match message.msg {
             SapMsgInner::TmvUnitdataInd(_) => {
                 self.rx_tmv_unitdata_ind(queue, message);
@@ -546,6 +617,8 @@ impl UmacBs {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `rx_tmv_unitdata_ind` für rx tmv unitdata ind aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn rx_tmv_unitdata_ind(&mut self, queue: &mut MessageQueue, mut message: SapMsg) {
         let SapMsgInner::TmvUnitdataInd(prim) = &mut message.msg else {
             tracing::error!("BUG: unexpected message or state -- routing error");
@@ -553,6 +626,8 @@ impl UmacBs {
         };
         tracing::trace!("rx_tmv_unitdata_ind: {:?}", prim.logical_channel);
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match prim.logical_channel {
             LogicalChannel::SchF => {
                 // Full slot signalling — must be a full block. A mismatched block_num
@@ -589,10 +664,14 @@ impl UmacBs {
     }
 
     /// Receive signalling (SCH, or STCH / BNCH)
+    // Was: Führt den Arbeitsschritt `rx_tmv_sch` für rx tmv sch aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn rx_tmv_sch(&mut self, queue: &mut MessageQueue, mut message: SapMsg) {
         tracing::trace!("rx_tmv_sch");
 
         // Iterate until no more messages left in mac block
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             // let (lchan, block_num) = match &message.msg {
             //     SapMsgInner::TmvUnitdataInd(prim) => (prim.logical_channel, prim.block_num),
@@ -629,6 +708,8 @@ impl UmacBs {
             let lchan = prim.logical_channel;
 
             // Clause 21.4.1; handling differs between SCH_HU and others
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match lchan {
                 LogicalChannel::SchF | LogicalChannel::Stch => {
                     // First two bits are MAC PDU type
@@ -637,6 +718,8 @@ impl UmacBs {
                         return;
                     };
 
+                    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                     match pdu_type {
                         MacPduType::MacResourceMacData => {
                             self.rx_mac_data(queue, &mut message);
@@ -670,6 +753,8 @@ impl UmacBs {
                 LogicalChannel::SchHu => {
                     // Need only 1 bit for a single subtype distinction
                     let pdu_type = (bits >> 2) & 1;
+                    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                     match pdu_type {
                         0 => self.rx_mac_access(queue, &mut message),
                         1 => self.rx_mac_end_hu(queue, &mut message),
@@ -703,6 +788,8 @@ impl UmacBs {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `rx_mac_data` für rx MAC-Funkzugriffssteuerung data aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_mac_data(&mut self, queue: &mut MessageQueue, message: &mut SapMsg) {
         tracing::trace!("rx_mac_data");
         let SapMsgInner::TmvUnitdataInd(prim) = &mut message.msg else {
@@ -711,6 +798,8 @@ impl UmacBs {
         };
         assert!(prim.pdu.get_pos() == 0); // We should be at the start of the MAC PDU
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let pdu = match MacData::from_bitbuf(&mut prim.pdu) {
             Ok(pdu) => {
                 tracing::debug!("<- {:?}", pdu);
@@ -738,6 +827,8 @@ impl UmacBs {
         let (mut pdu_len_bits, is_frag_start, second_half_stolen, is_null_pdu) = {
             if let Some(len_ind) = pdu.length_ind {
                 // We have a length ind, either clear length or a fragmentation start
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match len_ind {
                     0b000000 => {
                         // Null PDU
@@ -881,6 +972,8 @@ impl UmacBs {
         prim.pdu.set_raw_start(prim.pdu.get_raw_pos());
     }
 
+    // Was: Führt den Arbeitsschritt `rx_mac_access` für rx MAC-Funkzugriffssteuerung access aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_mac_access(&mut self, queue: &mut MessageQueue, message: &mut SapMsg) {
         tracing::trace!("rx_mac_access");
         let SapMsgInner::TmvUnitdataInd(prim) = &mut message.msg else {
@@ -889,6 +982,8 @@ impl UmacBs {
         };
         assert!(prim.pdu.get_pos() == 0); // We should be at the start of the MAC PDU
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let pdu = match MacAccess::from_bitbuf(&mut prim.pdu) {
             Ok(pdu) => {
                 tracing::debug!("<- {:?}", pdu);
@@ -1071,6 +1166,8 @@ impl UmacBs {
         prim.pdu.set_raw_start(prim.pdu.get_raw_pos());
     }
 
+    // Was: Führt den Arbeitsschritt `rx_mac_frag_ul` für rx MAC-Funkzugriffssteuerung frag ul aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_mac_frag_ul(&mut self, _queue: &mut MessageQueue, message: &mut SapMsg) {
         tracing::trace!("rx_mac_frag_ul");
         let SapMsgInner::TmvUnitdataInd(prim) = &mut message.msg else {
@@ -1080,6 +1177,8 @@ impl UmacBs {
         assert!(prim.pdu.get_pos() == 0); // We should be at the start of the MAC PDU
 
         // Parse header and optional ChanAlloc
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let pdu = match MacFragUl::from_bitbuf(&mut prim.pdu) {
             Ok(pdu) => {
                 tracing::debug!("<- {:?}", pdu);
@@ -1130,6 +1229,8 @@ impl UmacBs {
         self.defrag.insert_next(&mut prim.pdu, slot_owner, logical_dltime);
     }
 
+    // Was: Führt den Arbeitsschritt `rx_mac_end_ul` für rx MAC-Funkzugriffssteuerung end ul aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_mac_end_ul(&mut self, queue: &mut MessageQueue, message: &mut SapMsg) {
         tracing::trace!("rx_mac_end_ul");
         let SapMsgInner::TmvUnitdataInd(prim) = &mut message.msg else {
@@ -1139,6 +1240,8 @@ impl UmacBs {
         assert!(prim.pdu.get_pos() == 0); // We should be at the start of the MAC PDU
 
         // Parse header and optional ChanAlloc
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let pdu = match MacEndUl::from_bitbuf(&mut prim.pdu) {
             Ok(pdu) => {
                 tracing::debug!("<- {:?}", pdu);
@@ -1251,6 +1354,8 @@ impl UmacBs {
         prim.pdu.set_raw_start(prim.pdu.get_raw_pos());
     }
 
+    // Was: Führt den Arbeitsschritt `rx_mac_end_hu` für rx MAC-Funkzugriffssteuerung end hu aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_mac_end_hu(&mut self, queue: &mut MessageQueue, message: &mut SapMsg) {
         tracing::trace!("rx_mac_end_hu");
         let SapMsgInner::TmvUnitdataInd(prim) = &mut message.msg else {
@@ -1260,6 +1365,8 @@ impl UmacBs {
         assert!(prim.pdu.get_pos() == 0); // We should be at the start of the MAC PDU
 
         // Parse header and optional ChanAlloc
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let pdu = match MacEndHu::from_bitbuf(&mut prim.pdu) {
             Ok(pdu) => {
                 tracing::debug!("<- {:?}", pdu);
@@ -1383,6 +1490,8 @@ impl UmacBs {
 
     /// UL MAC-U-SIGNAL on STCH: extract TM-SDU and forward to LLC → MLE → CMCE.
     /// This carries signaling like U-TX CEASED / U-TX DEMAND on the traffic channel.
+    // Was: Führt den Arbeitsschritt `rx_ul_mac_u_signal` für rx ul MAC-Funkzugriffssteuerung u signal aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_ul_mac_u_signal(&self, queue: &mut MessageQueue, message: &mut SapMsg) {
         tracing::trace!("rx_ul_mac_u_signal");
 
@@ -1392,6 +1501,8 @@ impl UmacBs {
             return;
         };
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let pdu = match MacUSignal::from_bitbuf(&mut prim.pdu) {
             Ok(pdu) => {
                 tracing::debug!("<- {:?}", pdu);
@@ -1450,6 +1561,8 @@ impl UmacBs {
     }
 
     /// TMA-SAP MAC-U-BLCK
+    // Was: Führt den Arbeitsschritt `rx_ul_mac_u_blck` für rx ul MAC-Funkzugriffssteuerung u blck aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_ul_mac_u_blck(&self, _queue: &mut MessageQueue, message: &mut SapMsg) {
         tracing::trace!("rx_ul_mac_u_blck");
 
@@ -1459,6 +1572,8 @@ impl UmacBs {
             return;
         };
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let _pdu = match MacUBlck::from_bitbuf(&mut prim.pdu) {
             Ok(pdu) => {
                 tracing::debug!("<- {:?}", pdu);
@@ -1475,6 +1590,8 @@ impl UmacBs {
         unimplemented!();
     }
 
+    // Was: Führt den Arbeitsschritt `rx_ul_tma_unitdata_req` für rx ul tma unitdata req aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_ul_tma_unitdata_req(&mut self, _queue: &mut MessageQueue, message: SapMsg) {
         tracing::trace!("rx_ul_tma_unitdata_req");
 
@@ -1524,6 +1641,8 @@ impl UmacBs {
                     // Fall through to MCCH path so the PDU still gets delivered.
                 } else {
                     // Build MAC-RESOURCE PDU for the STCH half-slot (124 type1 bits).
+                    // Was: Legt den festen Wert `STCH_CAP` für stch cap fest.
+                    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
                     const STCH_CAP: usize = 124;
 
                     let has_pending_ra = self.scheduler_for_mut(carrier_num).take_pending_ra_ack(air_ts, prim.main_address.ssi);
@@ -1579,6 +1698,8 @@ impl UmacBs {
                         // crash the stack).
                         let mut fragger = BsFragger::new(mac_pdu, sdu, prim.tx_reporter);
                         let mut produced = 0usize;
+                        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+                        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
                         loop {
                             let mut stch_block = BitBuffer::new(STCH_CAP);
                             let done = fragger.get_next_chunk(&mut stch_block);
@@ -1654,8 +1775,12 @@ impl UmacBs {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `rx_tma_prim` für rx tma prim aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_tma_prim(&mut self, queue: &mut MessageQueue, message: SapMsg) {
         tracing::trace!("rx_tma_prim");
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match message.msg {
             SapMsgInner::TmaUnitdataReq(_) => {
                 self.rx_ul_tma_unitdata_req(queue, message);
@@ -1666,16 +1791,22 @@ impl UmacBs {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `rx_tlmb_prim` für rx tlmb prim aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_tlmb_prim(&mut self, _queue: &mut MessageQueue, _message: SapMsg) {
         tracing::trace!("rx_tlmb_prim");
         tracing::error!("BUG: unexpected message or state -- routing error");
         return;
     }
 
+    // Was: Führt den Arbeitsschritt `rx_tmd_prim` für rx tmd prim aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_tmd_prim(&mut self, queue: &mut MessageQueue, message: SapMsg) {
         tracing::trace!("rx_tmd_prim");
 
         let src = message.src;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match message.msg {
             // DL voice from Brew/upper layer → schedule for DL transmission.
             // Upper layers keep using the CMCE logical timeslot. This lets Asterisk/Brew/
@@ -1742,6 +1873,8 @@ impl UmacBs {
                 // frames for timeslots it explicitly claimed from CMCE.
                 if self.config.config().brew.is_some() || self.config.config().brew2.is_some() {
                     if ul_active {
+                        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                         for dest in crate::net_brew::BREW_ENTITIES {
                             if crate::net_brew::is_active_for_entity(&self.config, dest) {
                                 queue.push_back(SapMsg {
@@ -1820,6 +1953,8 @@ impl UmacBs {
                 //   - Full-duplex P2P (local): UL on `logical_ts` cross-routed to peer MS's DL.
                 //   - Group / simplex (LocalLoopback, no peer_ts): same-bearer loopback so all members hear.
                 //   - Circuit call via Brew/TetraPack (SwMI, no peer_ts): suppress local loopback.
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 let dl_target_logical_ts = match self.scheduler_for(carrier_num).ul_circuit_peer_ts(air_ts) {
                     Some(peer_logical_ts) => {
                         let peer_carrier = self.carrier_for_logical_ts(peer_logical_ts);
@@ -1886,6 +2021,8 @@ impl UmacBs {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `signal_lmac_second_half_stolen` für signal lmac second half stolen aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn signal_lmac_second_half_stolen(&mut self, queue: &mut MessageQueue, carrier_num: u16) {
         // Signal LMAC that Block2 is also stolen (STCH, not TCH).
         // Must be Immediate priority so LMAC sees it before processing Block2.
@@ -1956,6 +2093,8 @@ impl UmacBs {
     //     queue.push_back(m);
     // }
 
+    // Was: Führt den Arbeitsschritt `rx_control_circuit_open` für rx Steuerung circuit open aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_control_circuit_open(&mut self, _queue: &mut MessageQueue, prim: CallControl) {
         let CallControl::Open(circuit) = prim else {
             tracing::error!("BUG: unexpected message or state -- routing error");
@@ -1968,6 +2107,8 @@ impl UmacBs {
 
         // Direction::Both needs to be split into separate DL and UL operations
         // because the UMAC circuit manager tracks them independently.
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let dirs: Vec<Direction> = match dir {
             Direction::Both => vec![Direction::Dl, Direction::Ul],
             d @ (Direction::Dl | Direction::Ul) => vec![d],
@@ -1977,6 +2118,8 @@ impl UmacBs {
             }
         };
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for d in dirs {
             // See if pre-existing circuit somehow needs to be closed.
             if self.scheduler_for(carrier_num).circuit_is_active(d, air_ts) {
@@ -2021,6 +2164,8 @@ impl UmacBs {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `rx_control_circuit_close` für rx Steuerung circuit close aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_control_circuit_close(&mut self, _queue: &mut MessageQueue, prim: CallControl) {
         let CallControl::Close(dir, ts) = prim else {
             tracing::error!("BUG: unexpected message or state -- routing error");
@@ -2030,6 +2175,8 @@ impl UmacBs {
         // Traffic bearers use logical TS 2..7. Defer close until pending FACCH/STCH
         // release signalling on the matching physical carrier/slot has drained.
         if (2..=7).contains(&ts) {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match dir {
                 Direction::Both => {
                     self.pending_circuit_closes[ts as usize - 1].dl = true;
@@ -2049,7 +2196,11 @@ impl UmacBs {
         self.close_circuit_now(dir, ts);
     }
 
+    // Was: Diese Funktion schließt circuit now.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn close_circuit_now(&mut self, dir: Direction, logical_ts: u8) {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let dirs: Vec<Direction> = match dir {
             Direction::Both => vec![Direction::Dl, Direction::Ul],
             d @ (Direction::Dl | Direction::Ul) => vec![d],
@@ -2062,7 +2213,11 @@ impl UmacBs {
         let carrier_num = self.carrier_for_logical_ts(logical_ts);
         let air_ts = Self::air_ts_for_logical(logical_ts);
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for d in dirs {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match self.scheduler_for_mut(carrier_num).close_circuit(d, air_ts) {
                 Some(_) => {
                     if d == Direction::Ul && (1..=7).contains(&logical_ts) {
@@ -2090,7 +2245,11 @@ impl UmacBs {
         }
     }
 
+    // Was: Diese Funktion verarbeitet pending circuit closes.
+    // Warum: Die einzelnen Verarbeitungsschritte bleiben damit gebündelt und leichter testbar.
     fn process_pending_circuit_closes(&mut self) {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for logical_ts in 2..=7u8 {
             if Self::is_secondary_logical_ts(logical_ts) && self.secondary_carrier().is_none() {
                 continue;
@@ -2124,11 +2283,15 @@ impl UmacBs {
     /// Check for UL inactivity on traffic timeslots. If no voice frames have arrived
     /// for UL_INACTIVITY_TIMESLOTS on a timeslot with an active UL circuit (and not in
     /// hangtime), send UlInactivityTimeout to CMCE.
+    // Was: Diese Funktion prüft ul inactivity.
+    // Warum: Fehler oder unzulässige Zustände werden dadurch früh erkannt.
     fn check_ul_inactivity(&mut self, queue: &mut MessageQueue) {
         // Read from config: ul_inactivity_secs * timeslots_per_second (72 = 18 frames * 4 slots)
         // Must be above T.213 (1s) to tolerate DTX and brief RF fading.
         let ul_inactivity_timeslots: i32 = self.config.config().cell.ul_inactivity_secs as i32 * 18 * 4;
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for logical_ts in 2..=7u8 {
             if Self::is_secondary_logical_ts(logical_ts) && self.secondary_carrier().is_none() {
                 continue;
@@ -2151,6 +2314,8 @@ impl UmacBs {
             }
 
             // Check if we've exceeded the inactivity threshold.
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let timed_out = match self.last_ul_voice[idx] {
                 Some(t) => t.age(self.dltime) > ul_inactivity_timeslots,
                 None => false, // Initialized by floor grant or refreshed by UL voice.
@@ -2174,6 +2339,8 @@ impl UmacBs {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `queue_tlmc_to_mle` für Warteschlange tlmc to MLE-Verbindungssteuerung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn queue_tlmc_to_mle(queue: &mut MessageQueue, msg: SapMsgInner) {
         queue.push_back(SapMsg {
             sap: Sap::TlmcSap,
@@ -2183,7 +2350,11 @@ impl UmacBs {
         });
     }
 
+    // Was: Führt den Arbeitsschritt `rx_tlmc_prim` für rx tlmc prim aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_tlmc_prim(&mut self, queue: &mut MessageQueue, message: SapMsg) {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match message.msg {
             SapMsgInner::TlmcConfigureReq(request) => match self.tlmc.apply_configure(request) {
                 Ok(confirm) => Self::queue_tlmc_to_mle(queue, SapMsgInner::TlmcConfigureConf(confirm)),
@@ -2215,6 +2386,8 @@ impl UmacBs {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `rx_control` für rx Steuerung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_control(&mut self, queue: &mut MessageQueue, message: SapMsg) {
         tracing::trace!("rx_control");
         let SapMsgInner::CmceCallControl(prim) = message.msg else {
@@ -2222,6 +2395,8 @@ impl UmacBs {
             return;
         };
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match prim {
             CallControl::Open(_) => {
                 self.rx_control_circuit_open(queue, prim);
@@ -2292,19 +2467,29 @@ impl UmacBs {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `TetraEntityTrait for UmacBs`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl TetraEntityTrait for UmacBs {
+    // Was: Führt den Arbeitsschritt `entity` für entity aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn entity(&self) -> TetraEntity {
         TetraEntity::Umac
     }
 
+    // Was: Diese Funktion setzt Konfiguration.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     fn set_config(&mut self, config: SharedConfig) {
         self.config = config;
     }
 
+    // Was: Führt den Arbeitsschritt `rx_prim` für rx prim aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_prim(&mut self, queue: &mut MessageQueue, message: SapMsg) {
         // tracing::debug!("rx_prim: {:?}", message);
         // tracing::debug!(ts=%message.dltime, "rx_prim: {:?}", message);
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match message.sap {
             Sap::TmvSap => {
                 self.rx_tmv_prim(queue, message);
@@ -2331,6 +2516,8 @@ impl TetraEntityTrait for UmacBs {
         }
     }
 
+    // Was: Diese Funktion bearbeitet start.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn tick_start(&mut self, queue: &mut MessageQueue, ts: TdmaTime) {
         self.dltime = ts;
         self.drain_media_downlink();
@@ -2339,12 +2526,16 @@ impl TetraEntityTrait for UmacBs {
         if self.channel_scheduler.cur_dltime != ts && self.channel_scheduler.cur_dltime == (TdmaTime { t: 0, f: 0, m: 0, h: 0 }) {
             // Upon start of the system, we need to set the dl time for the channel scheduler
             self.channel_scheduler.set_dl_time(ts);
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for scheduler in &mut self.secondary_channel_schedulers {
                 scheduler.set_dl_time(ts);
             }
         } else {
             // When running, we adopt the new time and check for desync
             self.channel_scheduler.tick_start(ts);
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for scheduler in &mut self.secondary_channel_schedulers {
                 scheduler.tick_start(ts);
             }
@@ -2368,6 +2559,8 @@ impl TetraEntityTrait for UmacBs {
         // so PHY can synthesize all carriers in the same SDR timeslot.
         let mut slots = Vec::with_capacity(1 + self.secondary_channel_schedulers.len());
         slots.push(self.channel_scheduler.finalize_ts_for_tick());
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for scheduler in &mut self.secondary_channel_schedulers {
             slots.push(scheduler.finalize_ts_for_tick());
         }
@@ -2395,7 +2588,11 @@ impl TetraEntityTrait for UmacBs {
 
 /// Pack UL ACELP voice bits (274 bits, one-bit-per-byte) into packed byte array for DL transmission.
 /// Handles both already-packed (35 bytes) and unpacked (274 bytes) formats.
+// Was: Führt den Arbeitsschritt `pack_ul_acelp_bits` für pack ul acelp bits aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn pack_ul_acelp_bits(bits: &[u8]) -> Option<Vec<u8>> {
+    // Was: Legt den festen Wert `PACKED_TCH_S_BYTES` für packed tch s bytes fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const PACKED_TCH_S_BYTES: usize = (TCH_S_CAP + 7) / 8;
 
     // Already packed format — pass through
@@ -2409,8 +2606,12 @@ fn pack_ul_acelp_bits(bits: &[u8]) -> Option<Vec<u8>> {
 
     // Pack 274 one-bit-per-byte into 35 bytes (last byte has 2 padding bits)
     let mut out = Vec::with_capacity(PACKED_TCH_S_BYTES);
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for chunk_idx in 0..PACKED_TCH_S_BYTES {
         let mut byte = 0u8;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for bit in 0..8 {
             let bit_idx = chunk_idx * 8 + bit;
             if bit_idx < TCH_S_CAP {

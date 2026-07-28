@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 // Clause 21.5.2
 
 use core::fmt;
@@ -6,6 +9,8 @@ use tetra_core::{BitBuffer, Todo, pdu_parse_error::PduParseErr};
 use tetra_saps::lcmc::enums::{alloc_type::ChanAllocType, ul_dl_assignment::UlDlAssignment};
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für chan alloc element in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ChanAllocElement {
     // 2
     pub alloc_type: ChanAllocType,
@@ -69,7 +74,11 @@ pub struct ChanAllocElement {
     // pub further_aug_flag: bool,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `ChanAllocElement`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl ChanAllocElement {
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buf: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let val = buf.read_field(2, "alloc_type")?;
         // 2-bit field, ChanAllocType covers all 4 values, so this cannot fail today.
@@ -116,6 +125,8 @@ impl ChanAllocElement {
         };
 
         let mon_pattern = buf.read_field(2, "mon_pattern")? as u8;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let frame18_mon_pattern = match mon_pattern {
             0 => Some(buf.read_field(2, "frame18_mon_pattern")? as u8),
             _ => None,
@@ -142,8 +153,12 @@ impl ChanAllocElement {
         })
     }
 
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buf: &mut BitBuffer) {
         buf.write_bits(self.alloc_type as u64, 2);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for &bit in &self.ts_assigned {
             buf.write_bits(bit as u8 as u64, 1);
         }
@@ -204,6 +219,8 @@ impl ChanAllocElement {
         // buf.write_bits(self.further_aug_flag as u8 as u64, 1);
     }
 
+    // Was: Führt den Arbeitsschritt `compute_len` für compute len aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn compute_len(&self) -> usize {
         // Until and including ext carrier numbering flag
         let mut len = 2 + 4 + 2 + 1 + 1 + 12 + 1;
@@ -225,7 +242,11 @@ impl ChanAllocElement {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for ChanAllocElement`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for ChanAllocElement {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -245,11 +266,15 @@ impl fmt::Display for ChanAllocElement {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
     use tetra_core::debug;
 
     #[test]
+    // Was: Prüft automatisch den Fall parse chanalloc replace lab.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_parse_chanalloc_replace_lab() {
         debug::setup_logging_verbose();
         let bitstr = "0001001110001111101001011";
@@ -269,6 +294,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall parse chanalloc additional.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_parse_chanalloc_additional() {
         debug::setup_logging_verbose();
         let bitstr = "0100101100010111111000011";
@@ -289,6 +316,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall parse chanalloc replace.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_parse_chanalloc_replace() {
         debug::setup_logging_verbose();
         let bitstr = "0000101100010111111000011";
@@ -309,6 +338,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall parse chanalloc quitandgo.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_parse_chanalloc_quitandgo() {
         debug::setup_logging_verbose();
         let bitstr = "1000001100010111111000011";

@@ -1,209 +1,592 @@
+# NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für services.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+# Was: Legt die Versionsnummer fest.
+# Warum: Änderungsstände und kompatible Abhängigkeiten bleiben dadurch nachvollziehbar.
 version = 1
+# Was: Setzt die Einstellung `contract_version` für diesen abschnitt.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 contract_version = "netcore.v1"
+# Was: Setzt die Einstellung `deployment_inventory` für diesen abschnitt.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 deployment_inventory = "deploy/open-lab/inventory.example.toml"
 
+# Was: Öffnet den Konfigurationsabschnitt `webui_defaults`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [webui_defaults]
+# Was: Setzt die Einstellung `required` für Weboberfläche defaults.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 required = true
+# Was: Setzt die Einstellung `scheme` für Weboberfläche defaults.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 scheme = "https"
+# Was: Setzt die Einstellung `management_port` für Weboberfläche defaults.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 management_port = 8443
+# Was: Setzt die Einstellung `api_base` für Weboberfläche defaults.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 api_base = "/api/v1"
+# Was: Setzt die Einstellung `health_live` für Weboberfläche defaults.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 health_live = "/health/live"
+# Was: Setzt die Einstellung `health_ready` für Weboberfläche defaults.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 health_ready = "/health/ready"
+# Was: Setzt die Einstellung `metrics` für Weboberfläche defaults.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 metrics = "/metrics"
+# Was: Setzt die Einstellung `openapi` für Weboberfläche defaults.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 openapi = "/openapi.json"
+# Was: Setzt die Einstellung `independent_from_control_room` für Weboberfläche defaults.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 independent_from_control_room = true
+# Was: Setzt die Einstellung `same_process_or_package` für Weboberfläche defaults.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 same_process_or_package = true
 
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "node-gateway"
+# Was: Setzt die Einstellung `webui` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 webui = true
+# Was: Setzt die Einstellung `scheme` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 scheme = "http"
+# Was: Setzt die Einstellung `management_port` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 management_port = 8080
+# Was: Setzt die Einstellung `security_mode` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 security_mode = "open_lab"
+# Was: Setzt die Einstellung `token_auth` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 token_auth = false
+# Was: Setzt die Einstellung `tls` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 tls = false
+# Was: Setzt die Einstellung `warning` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 warning = "Isolated test network only; every reachable client has management access"
 
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "subscriber-core"
+# Was: Setzt die Einstellung `webui` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 webui = true
+# Was: Setzt die Einstellung `scheme` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 scheme = "http"
+# Was: Setzt die Einstellung `management_port` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 management_port = 8100
+# Was: Setzt die Einstellung `security_mode` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 security_mode = "open_lab"
+# Was: Setzt die Einstellung `token_auth` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 token_auth = false
+# Was: Setzt die Einstellung `tls` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 tls = false
+# Was: Setzt die Einstellung `warning` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 warning = "Isolated test network only; every reachable client may change subscriber admission policy"
 
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "group-core"
+# Was: Setzt die Einstellung `webui` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 webui = true
+# Was: Setzt die Einstellung `scheme` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 scheme = "http"
+# Was: Setzt die Einstellung `management_port` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 management_port = 8110
+# Was: Setzt die Einstellung `security_mode` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 security_mode = "open_lab"
+# Was: Setzt die Einstellung `token_auth` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 token_auth = false
+# Was: Setzt die Einstellung `tls` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 tls = false
+# Was: Setzt die Einstellung `warning` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 warning = "Isolated test network only; every reachable client may change group policy and DGNA"
 
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "mobility-core"
+# Was: Setzt die Einstellung `webui` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 webui = true
+# Was: Setzt die Einstellung `scheme` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 scheme = "http"
+# Was: Setzt die Einstellung `management_port` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 management_port = 8090
+# Was: Setzt die Einstellung `security_mode` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 security_mode = "open_lab"
+# Was: Setzt die Einstellung `token_auth` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 token_auth = false
+# Was: Setzt die Einstellung `tls` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 tls = false
+# Was: Setzt die Einstellung `warning` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 warning = "Isolated test network only; every reachable client may start context transfers"
 
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "call-control"
+# Was: Setzt die Einstellung `webui` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 webui = true
+# Was: Setzt die Einstellung `scheme` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 scheme = "http"
+# Was: Setzt die Einstellung `management_port` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 management_port = 8120
+# Was: Setzt die Einstellung `security_mode` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 security_mode = "open_lab"
+# Was: Setzt die Einstellung `token_auth` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 token_auth = false
+# Was: Setzt die Einstellung `tls` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 tls = false
+# Was: Setzt die Einstellung `warning` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 warning = "OPEN LAB: no authentication, no tokens and no TLS; isolated test network only"
 
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "media-switch"
+# Was: Setzt die Einstellung `webui` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 webui = true
+# Was: Setzt die Einstellung `scheme` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 scheme = "http"
+# Was: Setzt die Einstellung `management_port` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 management_port = 8130
+# Was: Setzt die Einstellung `security_mode` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 security_mode = "open_lab"
+# Was: Setzt die Einstellung `token_auth` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 token_auth = false
+# Was: Setzt die Einstellung `tls` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 tls = false
+# Was: Setzt die Einstellung `warning` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 warning = "OPEN LAB: no authentication, no tokens and no TLS; every reachable client may route, mute or inject media"
 
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "sds-router"
+# Was: Setzt die Einstellung `webui` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 webui = true
+# Was: Setzt die Einstellung `scheme` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 scheme = "http"
+# Was: Setzt die Einstellung `management_port` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 management_port = 8150
+# Was: Setzt die Einstellung `security_mode` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 security_mode = "open_lab"
+# Was: Setzt die Einstellung `token_auth` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 token_auth = false
+# Was: Setzt die Einstellung `tls` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 tls = false
+# Was: Setzt die Einstellung `depends_on` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 depends_on = ["node-gateway"]
+# Was: Setzt die Einstellung `warning` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 warning = "OPEN LAB: no authentication, no tokens and no TLS; every reachable client may read payloads, send SDS/status and alter routes"
 
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "packet-core"
+# Was: Setzt die Einstellung `webui` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 webui = true
+# Was: Setzt die Einstellung `scheme` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 scheme = "http"
+# Was: Setzt die Einstellung `management_port` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 management_port = 8160
+# Was: Setzt die Einstellung `security_mode` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 security_mode = "open_lab"
+# Was: Setzt die Einstellung `token_auth` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 token_auth = false
+# Was: Setzt die Einstellung `tls` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 tls = false
+# Was: Setzt die Einstellung `depends_on` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 depends_on = ["node-gateway"]
+# Was: Setzt die Einstellung `warning` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 warning = "OPEN LAB: no authentication, no tokens and no TLS; every reachable client may inspect payloads, alter PDP contexts and page or deactivate subscribers"
 
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "ip-gateway"
+# Was: Setzt die Einstellung `webui` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 webui = true
+# Was: Setzt die Einstellung `scheme` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 scheme = "http"
+# Was: Setzt die Einstellung `management_port` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 management_port = 8170
+# Was: Setzt die Einstellung `security_mode` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 security_mode = "open_lab"
+# Was: Setzt die Einstellung `token_auth` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 token_auth = false
+# Was: Setzt die Einstellung `tls` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 tls = false
+# Was: Setzt die Einstellung `depends_on` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 depends_on = ["packet-core"]
+# Was: Setzt die Einstellung `warning` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 warning = "OPEN LAB: no authentication, no tokens and no TLS; every reachable client may alter routing, NAT, firewall, DNS and packet captures"
 
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "security-core"
+# Was: Setzt die Einstellung `webui` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 webui = true
+# Was: Setzt die Einstellung `scheme` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 scheme = "http"
+# Was: Setzt die Einstellung `management_port` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 management_port = 8180
+# Was: Setzt die Einstellung `security_mode` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 security_mode = "open_lab"
+# Was: Setzt die Einstellung `token_auth` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 token_auth = false
+# Was: Setzt die Einstellung `tls` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 tls = false
+# Was: Setzt die Einstellung `restricted_management_network` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 restricted_management_network = true
+# Was: Setzt die Einstellung `raw_secret_display` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 raw_secret_display = false
+# Was: Setzt die Einstellung `depends_on` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 depends_on = ["node-gateway"]
+# Was: Setzt die Einstellung `warning` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 warning = "OPEN LAB: no authentication, no tokens and no TLS; every reachable client may alter security policy, disable subscribers and claim ephemeral edge material"
 
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "kmf"
+# Was: Setzt die Einstellung `webui` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 webui = true
+# Was: Setzt die Einstellung `scheme` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 scheme = "http"
+# Was: Setzt die Einstellung `management_port` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 management_port = 8190
+# Was: Setzt die Einstellung `security_mode` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 security_mode = "open_lab"
+# Was: Setzt die Einstellung `token_auth` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 token_auth = false
+# Was: Setzt die Einstellung `tls` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 tls = false
+# Was: Setzt die Einstellung `restricted_management_network` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 restricted_management_network = true
+# Was: Setzt die Einstellung `raw_secret_display` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 raw_secret_display = false
+# Was: Setzt die Einstellung `depends_on` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 depends_on = ["security-core"]
+# Was: Setzt die Einstellung `warning` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 warning = "OPEN LAB: no authentication, no tokens and no TLS; every reachable client may generate, rotate, revoke or destroy keys and release sealed OTAR actions"
 
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "transit"
+# Was: Setzt die Einstellung `webui` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 webui = true
+# Was: Setzt die Einstellung `scheme` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 scheme = "http"
+# Was: Setzt die Einstellung `management_port` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 management_port = 8200
+# Was: Setzt die Einstellung `security_mode` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 security_mode = "open_lab"
+# Was: Setzt die Einstellung `token_auth` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 token_auth = false
+# Was: Setzt die Einstellung `tls` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 tls = false
+# Was: Setzt die Einstellung `restricted_management_network` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 restricted_management_network = true
+# Was: Setzt die Einstellung `depends_on` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 depends_on = ["mobility-core", "call-control", "media-switch", "sds-router"]
+# Was: Setzt die Einstellung `warning` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 warning = "OPEN LAB: no authentication, no tokens and no TLS; every reachable client may alter regional peers/routes, inject transit envelopes and trigger failover"
 
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "control-room"
+# Was: Setzt die Einstellung `webui` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 webui = true
+# Was: Setzt die Einstellung `scheme` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 scheme = "http"
+# Was: Setzt die Einstellung `management_port` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 management_port = 9010
+# Was: Setzt die Einstellung `security_mode` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 security_mode = "open_lab"
+# Was: Setzt die Einstellung `token_auth` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 token_auth = false
+# Was: Setzt die Einstellung `tls` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 tls = false
+# Was: Setzt die Einstellung `depends_on` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 depends_on = ["node-gateway", "subscriber-core", "group-core", "mobility-core", "call-control", "media-switch", "sds-router"]
+# Was: Setzt die Einstellung `warning` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 warning = "OPEN LAB: no authentication, no tokens and no TLS; every reachable client may use operator commands and alter the incident or shift journal"
 
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "application-gateway"
+# Was: Setzt die Einstellung `webui` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 webui = true
+# Was: Setzt die Einstellung `scheme` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 scheme = "http"
+# Was: Setzt die Einstellung `management_port` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 management_port = 8220
+# Was: Setzt die Einstellung `security_mode` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 security_mode = "open_lab"
+# Was: Setzt die Einstellung `token_auth` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 token_auth = false
+# Was: Setzt die Einstellung `tls` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 tls = false
+# Was: Setzt die Einstellung `depends_on` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 depends_on = ["sds-router"]
+# Was: Setzt die Einstellung `warning` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 warning = "OPEN LAB: no authentication, no management tokens and no TLS; every reachable client may alter connectors, secrets, routing, templates, webhooks and external dispatches"
 
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "media-library"
+# Was: Setzt die Einstellung `webui` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 webui = true
+# Was: Setzt die Einstellung `scheme` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 scheme = "http"
+# Was: Setzt die Einstellung `management_port` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 management_port = 8230
+# Was: Setzt die Einstellung `security_mode` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 security_mode = "open_lab"
+# Was: Setzt die Einstellung `token_auth` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 token_auth = false
+# Was: Setzt die Einstellung `tls` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 tls = false
+# Was: Setzt die Einstellung `depends_on` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 depends_on = ["media-switch", "recorder", "application-gateway"]
+# Was: Setzt die Einstellung `warning` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 warning = "OPEN LAB: no authentication, no tokens and no TLS; every reachable client may upload, approve, archive, delete and inject media into existing sessions"
 
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "recorder"
+# Was: Setzt die Einstellung `webui` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 webui = true
+# Was: Setzt die Einstellung `scheme` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 scheme = "http"
+# Was: Setzt die Einstellung `management_port` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 management_port = 8140
+# Was: Setzt die Einstellung `security_mode` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 security_mode = "open_lab"
+# Was: Setzt die Einstellung `token_auth` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 token_auth = false
+# Was: Setzt die Einstellung `tls` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 tls = false
+# Was: Setzt die Einstellung `depends_on` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 depends_on = ["media-switch"]
+# Was: Setzt die Einstellung `warning` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 warning = "OPEN LAB: no authentication, no tokens and no TLS; every reachable client may export or manage recordings"
 
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "observability"
+# Was: Setzt die Einstellung `webui` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 webui = true
+# Was: Setzt die Einstellung `scheme` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 scheme = "http"
+# Was: Setzt die Einstellung `management_port` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 management_port = 8210
+# Was: Setzt die Einstellung `security_mode` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 security_mode = "open_lab"
+# Was: Setzt die Einstellung `token_auth` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 token_auth = false
+# Was: Setzt die Einstellung `tls` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 tls = false
+# Was: Setzt die Einstellung `depends_on` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 depends_on = ["node-gateway", "subscriber-core", "group-core", "mobility-core", "call-control", "media-switch", "recorder", "sds-router", "packet-core", "ip-gateway", "security-core", "kmf", "transit", "control-room", "application-gateway", "media-library"]
+# Was: Setzt die Einstellung `warning` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 warning = "OPEN LAB: no authentication, no tokens and no TLS; every reachable client may ingest telemetry, alter targets/rules/silences and download diagnostics"
 
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "shared"
+# Was: Setzt die Einstellung `webui` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 webui = false
+# Was: Setzt die Einstellung `runtime` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 runtime = false
+# Was: Setzt die Einstellung `contract_version` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 contract_version = "netcore.v1"
+# Was: Setzt die Einstellung `modules` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 modules = ["contracts", "service-common", "database-common", "telemetry-common", "web-ui"]
+# Was: Setzt die Einstellung `reason` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 reason = "Library directory, not a deployable container"

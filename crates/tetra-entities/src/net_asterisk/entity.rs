@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::HashMap;
 use std::io;
 use std::net::{IpAddr, SocketAddr, ToSocketAddrs, UdpSocket};
@@ -17,9 +20,13 @@ use crate::{MessageQueue, TetraEntityTrait};
 
 use super::audio::{AsteriskAudioTranscoder, PCMU_PAYLOAD_TYPE, rtp_payload};
 
+// Was: Legt den festen Wert `SIP_MAX_DATAGRAM` für sip max datagram fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const SIP_MAX_DATAGRAM: usize = 8192;
 
 #[derive(Clone, Debug)]
+// Was: Bündelt die zusammengehörigen Werte für digest challenge in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct DigestChallenge {
     realm: String,
     nonce: String,
@@ -30,6 +37,8 @@ struct DigestChallenge {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für dialog Zustand auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 enum DialogState {
     Inviting,
     Ringing,
@@ -37,6 +46,8 @@ enum DialogState {
     Released,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für rtp Sitzung in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct RtpSession {
     socket: UdpSocket,
     local_port: u16,
@@ -46,6 +57,8 @@ struct RtpSession {
     ssrc: u32,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für sip dialog in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct SipDialog {
     uuid: Uuid,
     call: NetworkCircuitCall,
@@ -67,19 +80,27 @@ struct SipDialog {
 }
 
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für sip Nachricht in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct SipMessage {
     start_line: String,
     headers: Vec<(String, String)>,
     body: String,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SipMessage`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SipMessage {
+    // Was: Diese Funktion liest und prüft den vorgesehenen Arbeitsschritt.
+    // Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     fn parse(bytes: &[u8]) -> Option<Self> {
         let text = String::from_utf8_lossy(bytes).replace("\r\n", "\n");
         let (head, body) = text.split_once("\n\n").unwrap_or((&text, ""));
         let mut lines = head.lines();
         let start_line = lines.next()?.trim().to_string();
         let mut headers = Vec::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for line in lines {
             let Some((name, value)) = line.split_once(':') else {
                 continue;
@@ -93,6 +114,8 @@ impl SipMessage {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `header` für header aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn header(&self, name: &str) -> Option<&str> {
         self.headers
             .iter()
@@ -100,6 +123,8 @@ impl SipMessage {
             .map(|(_, v)| v.as_str())
     }
 
+    // Was: Führt den Arbeitsschritt `status_code` für Status code aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn status_code(&self) -> Option<u16> {
         if !self.start_line.starts_with("SIP/2.0 ") {
             return None;
@@ -107,6 +132,8 @@ impl SipMessage {
         self.start_line.split_whitespace().nth(1).and_then(|code| code.parse().ok())
     }
 
+    // Was: Führt den Arbeitsschritt `method` für method aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn method(&self) -> Option<&str> {
         if self.start_line.starts_with("SIP/2.0 ") {
             None
@@ -115,6 +142,8 @@ impl SipMessage {
         }
     }
 
+    // Was: Diese Funktion fordert uri.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn request_uri(&self) -> Option<&str> {
         if self.start_line.starts_with("SIP/2.0 ") {
             None
@@ -123,16 +152,22 @@ impl SipMessage {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `cseq_method` für cseq method aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn cseq_method(&self) -> Option<&str> {
         self.header("CSeq")?.split_whitespace().nth(1)
     }
 
+    // Was: Führt den Arbeitsschritt `call_id` für Ruf Kennung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn call_id(&self) -> Option<&str> {
         self.header("Call-ID")
     }
 }
 
 #[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für sip request Kontext in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct SipRequestContext {
     via: String,
     from: String,
@@ -142,6 +177,8 @@ struct SipRequestContext {
     addr: SocketAddr,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für asterisk entity in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct AsteriskEntity {
     config: SharedConfig,
     asterisk_config: CfgAsterisk,
@@ -162,7 +199,11 @@ pub struct AsteriskEntity {
     last_error: Option<String>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `AsteriskEntity`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl AsteriskEntity {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(config: SharedConfig) -> io::Result<Self> {
         let asterisk_config = config.config().asterisk.clone();
         let bind = format!("{}:{}", asterisk_config.bind_addr, asterisk_config.bind_port);
@@ -197,18 +238,26 @@ impl AsteriskEntity {
         Ok(entity)
     }
 
+    // Was: Führt den Arbeitsschritt `sip_listen` für sip listen aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn sip_listen(&self) -> String {
         format!("{}:{}", self.asterisk_config.bind_addr, self.asterisk_config.bind_port)
     }
 
+    // Was: Führt den Arbeitsschritt `remote_display` für remote display aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn remote_display(&self) -> String {
         format!("{}:{}", self.asterisk_config.remote_host, self.asterisk_config.remote_port)
     }
 
+    // Was: Führt den Arbeitsschritt `rtp_range` für rtp range aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rtp_range(&self) -> String {
         format!("{}-{}", self.asterisk_config.rtp_port_min, self.asterisk_config.rtp_port_max)
     }
 
+    // Was: Führt den Arbeitsschritt `refresh_status` für refresh Status aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn refresh_status(&self) {
         let mut state = self.config.state_write();
         state.asterisk_status = AsteriskRuntimeStatus {
@@ -226,26 +275,36 @@ impl AsteriskEntity {
         };
     }
 
+    // Was: Diese Funktion setzt error.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     fn set_error(&mut self, msg: impl Into<String>) {
         let msg = msg.into();
         tracing::warn!("AsteriskEntity: {}", msg);
         self.last_error = Some(msg);
     }
 
+    // Was: Führt den Arbeitsschritt `next_branch` für next branch aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn next_branch(&mut self) -> String {
         let branch = format!("z9hG4bKflow{:08x}", self.branch_counter);
         self.branch_counter = self.branch_counter.wrapping_add(1);
         branch
     }
 
+    // Was: Führt den Arbeitsschritt `local_uri` für local uri aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn local_uri(&self) -> String {
         format!("sip:{}@{}", self.asterisk_config.local_user, self.asterisk_config.from_domain)
     }
 
+    // Was: Führt den Arbeitsschritt `uri_for_user` für uri for Benutzer aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn uri_for_user(&self, user: &str) -> String {
         format!("sip:{}@{}", user, self.asterisk_config.from_domain)
     }
 
+    // Was: Führt den Arbeitsschritt `asserted_identity_headers` für asserted identity headers aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn asserted_identity_headers(&self, uri: &str, display: &str) -> String {
         if display.is_empty() {
             return String::new();
@@ -256,6 +315,8 @@ impl AsteriskEntity {
         )
     }
 
+    // Was: Führt den Arbeitsschritt `contact_uri` für contact uri aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn contact_uri(&self) -> String {
         format!(
             "sip:{}@{}:{}",
@@ -263,12 +324,18 @@ impl AsteriskEntity {
         )
     }
 
+    // Was: Diese Funktion fordert uri.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn request_uri(&self, number: &str) -> String {
         format!("sip:{}@{}", number, self.asterisk_config.remote_host)
     }
 
+    // Was: Diese Funktion sendet sip.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_sip(&mut self, payload: String, summary: impl Into<String>) {
         let summary = summary.into();
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.sip_socket.send_to(payload.as_bytes(), self.remote) {
             Ok(_) => {
                 self.last_tx = Some(summary);
@@ -279,8 +346,12 @@ impl AsteriskEntity {
         }
     }
 
+    // Was: Diese Funktion sendet sip to.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_sip_to(&mut self, payload: String, addr: SocketAddr, summary: impl Into<String>) {
         let summary = summary.into();
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.sip_socket.send_to(payload.as_bytes(), addr) {
             Ok(_) => {
                 self.last_tx = Some(summary);
@@ -291,6 +362,8 @@ impl AsteriskEntity {
         }
     }
 
+    // Was: Diese Funktion sendet register.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_register(&mut self) {
         if !self.asterisk_config.register {
             self.register_status = "disabled".to_string();
@@ -335,6 +408,8 @@ impl AsteriskEntity {
         self.send_sip(request, "REGISTER");
     }
 
+    // Was: Diese Funktion sendet options.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_options(&mut self) {
         let uri = format!("sip:{}", self.asterisk_config.remote_host);
         let branch = self.next_branch();
@@ -363,6 +438,8 @@ impl AsteriskEntity {
         self.send_sip(request, "OPTIONS");
     }
 
+    // Was: Diese Funktion erstellt sdp.
+    // Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
     fn build_sdp(&self, rtp_port: u16) -> String {
         format!(
             "v=0\r\n\
@@ -379,6 +456,8 @@ impl AsteriskEntity {
         )
     }
 
+    // Was: Diese Funktion erstellt invite.
+    // Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
     fn build_invite(&mut self, uuid: Uuid) -> Option<String> {
         let snapshot = self.dialogs.get(&uuid).map(SipDialogSnapshot::from_dialog)?;
         let (rtp_port, auth) = self.dialogs.get(&uuid).map(|dialog| (dialog.rtp.local_port, dialog.auth.clone()))?;
@@ -438,12 +517,16 @@ impl AsteriskEntity {
         ))
     }
 
+    // Was: Diese Funktion sendet invite.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_invite(&mut self, uuid: Uuid) {
         if let Some(request) = self.build_invite(uuid) {
             self.send_sip(request, format!("INVITE {}", uuid));
         }
     }
 
+    // Was: Diese Funktion sendet bye or cancel.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_bye_or_cancel(&mut self, uuid: Uuid, cancel: bool) {
         let Some(dialog) = self.dialogs.get(&uuid).map(SipDialogSnapshot::from_dialog) else {
             return;
@@ -506,6 +589,8 @@ impl AsteriskEntity {
         self.send_sip(request, format!("{} {}", method, uuid));
     }
 
+    // Was: Führt den Arbeitsschritt `tagged_to` für tagged to aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn tagged_to(to: &str, tag: Option<&str>) -> String {
         let mut to = to.to_string();
         if let Some(tag) = tag
@@ -517,6 +602,8 @@ impl AsteriskEntity {
         to
     }
 
+    // Was: Diese Funktion erstellt response.
+    // Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
     fn build_response(&self, ctx: &SipRequestContext, code: u16, reason: &str, to_tag: Option<&str>, body: Option<(&str, &str)>) -> String {
         let to = Self::tagged_to(&ctx.to, to_tag);
         let (content_type, body_text) = body.unwrap_or(("", ""));
@@ -557,6 +644,8 @@ impl AsteriskEntity {
         )
     }
 
+    // Was: Diese Funktion fordert Kontext.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn request_context(msg: &SipMessage, addr: SocketAddr) -> Option<SipRequestContext> {
         Some(SipRequestContext {
             via: msg.header("Via")?.to_string(),
@@ -568,6 +657,8 @@ impl AsteriskEntity {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `answer_request` für answer request aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn answer_request(&mut self, msg: &SipMessage, addr: SocketAddr, code: u16, reason: &str) {
         let Some(ctx) = Self::request_context(msg, addr) else {
             return;
@@ -577,6 +668,8 @@ impl AsteriskEntity {
         self.send_sip_to(response, addr, format!("{} {}", code, reason));
     }
 
+    // Was: Diese Funktion sendet invite response.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_invite_response(&mut self, uuid: Uuid, code: u16, reason: &str, body: Option<String>) {
         let Some((ctx, tag)) = self
             .dialogs
@@ -590,6 +683,8 @@ impl AsteriskEntity {
         self.send_sip_to(response, ctx.addr, format!("{} {} {}", code, reason, uuid));
     }
 
+    // Was: Führt den Arbeitsschritt `authorization_header` für authorization header aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn authorization_header(&self, method: &str, uri: &str, challenge: &DigestChallenge) -> String {
         let username = &self.asterisk_config.auth_user;
         let password = self.asterisk_config.password.as_ref();
@@ -629,6 +724,8 @@ impl AsteriskEntity {
         line
     }
 
+    // Was: Diese Funktion liest und prüft challenge.
+    // Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     fn parse_challenge(msg: &SipMessage) -> Option<DigestChallenge> {
         let (header, proxy) = msg
             .header("WWW-Authenticate")
@@ -639,6 +736,8 @@ impl AsteriskEntity {
             value = value[6..].trim();
         }
         let mut params = HashMap::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for part in value.split(',') {
             let Some((key, val)) = part.trim().split_once('=') else {
                 continue;
@@ -655,6 +754,8 @@ impl AsteriskEntity {
         })
     }
 
+    // Was: Diese Funktion liest und prüft to tag.
+    // Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     fn parse_to_tag(header: Option<&str>) -> Option<String> {
         header?.split(';').find_map(|part| {
             let part = part.trim();
@@ -662,6 +763,8 @@ impl AsteriskEntity {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `sip_uri_user` für sip uri Benutzer aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn sip_uri_user(value: &str) -> Option<String> {
         let trimmed = value.trim();
         let after_scheme = if let Some(idx) = trimmed.to_ascii_lowercase().find("sip:") {
@@ -677,6 +780,8 @@ impl AsteriskEntity {
         (!user.is_empty()).then(|| user.to_string())
     }
 
+    // Was: Führt den Arbeitsschritt `inbound_destination_issi` für inbound destination Teilnehmerkennung (ISSI) aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn inbound_destination_issi(&self, msg: &SipMessage) -> Option<u32> {
         let prefix = self.asterisk_config.inbound_prefix.trim();
         [msg.request_uri(), msg.header("To")]
@@ -697,6 +802,8 @@ impl AsteriskEntity {
             })
     }
 
+    // Was: Führt den Arbeitsschritt `inbound_caller_number` für inbound caller number aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn inbound_caller_number(msg: &SipMessage) -> String {
         ["P-Asserted-Identity", "Remote-Party-ID", "From"]
             .into_iter()
@@ -706,9 +813,13 @@ impl AsteriskEntity {
             .unwrap_or_else(|| "0".to_string())
     }
 
+    // Was: Diese Funktion liest und prüft sdp remote.
+    // Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     fn parse_sdp_remote(&self, body: &str) -> Option<SocketAddr> {
         let mut ip: Option<IpAddr> = None;
         let mut port: Option<u16> = None;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for line in body.lines().map(str::trim) {
             if let Some(rest) = line.strip_prefix("c=IN IP4 ") {
                 ip = rest.split_whitespace().next().and_then(|s| s.parse().ok());
@@ -720,16 +831,22 @@ impl AsteriskEntity {
         Some(SocketAddr::new(ip.unwrap_or_else(|| self.remote.ip()), port?))
     }
 
+    // Was: Diese Funktion weist rtp.
+    // Warum: Knapp vorhandene Ressourcen werden dadurch nachvollziehbar und konfliktfrei vergeben.
     fn allocate_rtp(&mut self) -> io::Result<RtpSession> {
         let min = self.asterisk_config.rtp_port_min;
         let max = self.asterisk_config.rtp_port_max;
         let mut port = self.next_rtp_port.max(min);
         let attempts = max.saturating_sub(min).saturating_add(1);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for _ in 0..attempts {
             if port > max {
                 port = min;
             }
             let bind = format!("{}:{}", self.asterisk_config.bind_addr, port);
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match UdpSocket::bind(&bind) {
                 Ok(socket) => {
                     socket.set_nonblocking(true)?;
@@ -753,6 +870,8 @@ impl AsteriskEntity {
         Err(io::Error::new(io::ErrorKind::AddrNotAvailable, "no RTP port available"))
     }
 
+    // Was: Diese Funktion startet inbound Ruf.
+    // Warum: Der Dienst oder Teilprozess wird so in einer festen und überprüfbaren Reihenfolge gestartet.
     fn start_inbound_call(&mut self, queue: &mut MessageQueue, msg: &SipMessage, addr: SocketAddr) {
         let Some(ctx) = Self::request_context(msg, addr) else {
             return;
@@ -780,6 +899,8 @@ impl AsteriskEntity {
             return;
         };
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let mut rtp = match self.allocate_rtp() {
             Ok(rtp) => rtp,
             Err(err) => {
@@ -854,12 +975,16 @@ impl AsteriskEntity {
         });
     }
 
+    // Was: Diese Funktion verarbeitet inbound setup accept.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_inbound_setup_accept(&mut self, uuid: Uuid) {
         if self.dialogs.get(&uuid).is_some_and(|dialog| dialog.inbound) {
             tracing::info!("AsteriskEntity: inbound setup accepted by CMCE uuid={}", uuid);
         }
     }
 
+    // Was: Diese Funktion verarbeitet inbound setup reject.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_inbound_setup_reject(&mut self, uuid: Uuid, cause: u8) {
         let Some(inbound) = self.dialogs.get(&uuid).map(|dialog| dialog.inbound) else {
             return;
@@ -867,6 +992,8 @@ impl AsteriskEntity {
         if !inbound {
             return;
         }
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let (code, reason) = match cause {
             2 => (486, "Busy Here"),
             3 => (404, "Not Found"),
@@ -884,6 +1011,8 @@ impl AsteriskEntity {
         self.release_dialog(uuid, false, None);
     }
 
+    // Was: Diese Funktion verarbeitet inbound alert.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_inbound_alert(&mut self, uuid: Uuid) {
         let Some(dialog) = self.dialogs.get_mut(&uuid) else {
             return;
@@ -896,6 +1025,8 @@ impl AsteriskEntity {
         self.send_invite_response(uuid, 180, "Ringing", None);
     }
 
+    // Was: Diese Funktion verarbeitet inbound connect request.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_inbound_connect_request(&mut self, queue: &mut MessageQueue, uuid: Uuid, call: NetworkCircuitCall) {
         let Some((inbound, rtp_port)) = self.dialogs.get(&uuid).map(|dialog| (dialog.inbound, dialog.rtp.local_port)) else {
             return;
@@ -923,6 +1054,8 @@ impl AsteriskEntity {
         });
     }
 
+    // Was: Diese Funktion startet outbound Ruf.
+    // Warum: Der Dienst oder Teilprozess wird so in einer festen und überprüfbaren Reihenfolge gestartet.
     fn start_outbound_call(&mut self, queue: &mut MessageQueue, brew_uuid: Uuid, call: NetworkCircuitCall) {
         let number = call.number.trim().to_string();
         if number.is_empty() {
@@ -930,6 +1063,8 @@ impl AsteriskEntity {
             self.reject_setup(queue, brew_uuid, 34);
             return;
         }
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let rtp = match self.allocate_rtp() {
             Ok(rtp) => rtp,
             Err(err) => {
@@ -968,6 +1103,8 @@ impl AsteriskEntity {
         self.send_invite(brew_uuid);
     }
 
+    // Was: Führt den Arbeitsschritt `reject_setup` für reject setup aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn reject_setup(&self, queue: &mut MessageQueue, brew_uuid: Uuid, cause: u8) {
         queue.push_back(SapMsg {
             sap: Sap::Control,
@@ -977,6 +1114,8 @@ impl AsteriskEntity {
         });
     }
 
+    // Was: Diese Funktion sendet setup accept.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_setup_accept(&self, queue: &mut MessageQueue, brew_uuid: Uuid) {
         queue.push_back(SapMsg {
             sap: Sap::Control,
@@ -986,6 +1125,8 @@ impl AsteriskEntity {
         });
     }
 
+    // Was: Diese Funktion sendet alert.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_alert(&self, queue: &mut MessageQueue, brew_uuid: Uuid) {
         queue.push_back(SapMsg {
             sap: Sap::Control,
@@ -995,6 +1136,8 @@ impl AsteriskEntity {
         });
     }
 
+    // Was: Diese Funktion sendet release to CMCE-Rufsteuerung.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_release_to_cmce(&self, queue: &mut MessageQueue, brew_uuid: Uuid, cause: u8) {
         queue.push_back(SapMsg {
             sap: Sap::Control,
@@ -1004,6 +1147,8 @@ impl AsteriskEntity {
         });
     }
 
+    // Was: Diese Funktion kennzeichnet Audio- und Mediendaten ready.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn mark_media_ready(&mut self, brew_uuid: Uuid, call_id: u16, ts: u8) {
         if let Some(dialog) = self.dialogs.get_mut(&brew_uuid) {
             dialog.media_ready = Some((call_id, ts));
@@ -1012,6 +1157,8 @@ impl AsteriskEntity {
         }
     }
 
+    // Was: Diese Funktion gibt dialog.
+    // Warum: Ressourcen werden dadurch rechtzeitig freigegeben und blockieren keine weiteren Vorgänge.
     fn release_dialog(&mut self, brew_uuid: Uuid, from_cmce: bool, cause: Option<u8>) {
         let Some((state, cancel, media_ready, inbound)) = self.dialogs.get(&brew_uuid).map(|dialog| {
             (
@@ -1048,6 +1195,8 @@ impl AsteriskEntity {
         self.dialogs.remove(&brew_uuid);
     }
 
+    // Was: Diese Funktion verarbeitet ul voice.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_ul_voice(&mut self, prim: TmdCircuitDataInd) {
         let Some(uuid) = self.rtp_by_ts.get(&prim.ts).copied() else {
             return;
@@ -1094,15 +1243,23 @@ impl AsteriskEntity {
         };
     }
 
+    // Was: Diese Funktion fragt rtp.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn poll_rtp(&mut self, queue: &mut MessageQueue) {
         let mut downlink = Vec::new();
         let mut last_error = None;
         let mut buf = [0u8; 1720];
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for dialog in self.dialogs.values_mut() {
             let Some((_, ts)) = dialog.media_ready else {
                 continue;
             };
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for _ in 0..32 {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match dialog.rtp.socket.recv_from(&mut buf) {
                     Ok((len, addr)) => {
                         let Some((payload_type, payload)) = rtp_payload(&buf[..len]) else {
@@ -1117,6 +1274,8 @@ impl AsteriskEntity {
                             continue;
                         }
                         dialog.rtp.remote = Some(addr);
+                        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                         for frame in dialog.audio.encode_pcmu_to_tmd(payload) {
                             downlink.push((ts, frame));
                         }
@@ -1133,6 +1292,8 @@ impl AsteriskEntity {
             self.last_error = last_error;
         }
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (ts, data) in downlink {
             queue.push_back(SapMsg {
                 sap: Sap::TmdSap,
@@ -1143,9 +1304,15 @@ impl AsteriskEntity {
         }
     }
 
+    // Was: Diese Funktion fragt sip.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn poll_sip(&mut self, queue: &mut MessageQueue) {
         let mut buf = [0u8; SIP_MAX_DATAGRAM];
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for _ in 0..32 {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match self.sip_socket.recv_from(&mut buf) {
                 Ok((len, addr)) => {
                     if let Some(msg) = SipMessage::parse(&buf[..len]) {
@@ -1162,8 +1329,12 @@ impl AsteriskEntity {
         }
     }
 
+    // Was: Diese Funktion verarbeitet sip Nachricht.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_sip_message(&mut self, queue: &mut MessageQueue, msg: SipMessage, addr: SocketAddr) {
         if let Some(method) = msg.method() {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match method {
                 "INVITE" => self.start_inbound_call(queue, &msg, addr),
                 "OPTIONS" => self.answer_request(&msg, addr, 200, "OK"),
@@ -1190,6 +1361,8 @@ impl AsteriskEntity {
         let Some(code) = msg.status_code() else {
             return;
         };
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match msg.cseq_method() {
             Some("REGISTER") => self.handle_register_response(&msg, code),
             Some("OPTIONS") => {
@@ -1203,7 +1376,11 @@ impl AsteriskEntity {
         }
     }
 
+    // Was: Diese Funktion verarbeitet register response.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_register_response(&mut self, msg: &SipMessage, code: u16) {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match code {
             200..=299 => {
                 self.register_status = "registered".to_string();
@@ -1222,11 +1399,15 @@ impl AsteriskEntity {
         }
     }
 
+    // Was: Diese Funktion verarbeitet invite response.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_invite_response(&mut self, queue: &mut MessageQueue, msg: &SipMessage, code: u16) {
         let Some(uuid) = self.find_dialog_by_call_id(msg.call_id()) else {
             return;
         };
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match code {
             100 => {}
             180 | 183 => {
@@ -1305,6 +1486,8 @@ impl AsteriskEntity {
         }
     }
 
+    // Was: Diese Funktion sucht dialog by Ruf Kennung.
+    // Warum: Die Suchlogik bleibt damit wiederverwendbar und muss nicht an mehreren Stellen kopiert werden.
     fn find_dialog_by_call_id(&self, call_id: Option<&str>) -> Option<Uuid> {
         let call_id = call_id?;
         self.dialogs
@@ -1313,6 +1496,8 @@ impl AsteriskEntity {
             .map(|(uuid, _)| *uuid)
     }
 
+    // Was: Führt den Arbeitsschritt `maybe_periodic_sip` für maybe periodic sip aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn maybe_periodic_sip(&mut self) {
         let now = Instant::now();
         if self.asterisk_config.register
@@ -1332,6 +1517,8 @@ impl AsteriskEntity {
 }
 
 #[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für sip dialog snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct SipDialogSnapshot {
     uuid: Uuid,
     number: String,
@@ -1344,7 +1531,11 @@ struct SipDialogSnapshot {
     cseq: u32,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SipDialogSnapshot`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SipDialogSnapshot {
+    // Was: Wandelt Eingangsdaten in dialog um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn from_dialog(dialog: &SipDialog) -> Self {
         Self {
             uuid: dialog.uuid,
@@ -1360,7 +1551,11 @@ impl SipDialogSnapshot {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `AsteriskEntity`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl AsteriskEntity {
+    // Was: Diese Funktion erstellt ack from snapshot.
+    // Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
     fn build_ack_from_snapshot(&mut self, dialog: &SipDialogSnapshot) -> String {
         let request_uri = self.request_uri(&dialog.number);
         let branch = self.next_branch();
@@ -1393,12 +1588,20 @@ impl AsteriskEntity {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `TetraEntityTrait for AsteriskEntity`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl TetraEntityTrait for AsteriskEntity {
+    // Was: Führt den Arbeitsschritt `entity` für entity aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn entity(&self) -> TetraEntity {
         TetraEntity::Asterisk
     }
 
+    // Was: Führt den Arbeitsschritt `rx_prim` für rx prim aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_prim(&mut self, queue: &mut MessageQueue, message: SapMsg) {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match message.msg {
             SapMsgInner::CmceCallControl(CallControl::NetworkCircuitSetupRequest { brew_uuid, call }) => {
                 self.start_outbound_call(queue, brew_uuid, call);
@@ -1433,6 +1636,8 @@ impl TetraEntityTrait for AsteriskEntity {
         self.refresh_status();
     }
 
+    // Was: Diese Funktion bearbeitet start.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn tick_start(&mut self, queue: &mut MessageQueue, _ts: TdmaTime) {
         self.maybe_periodic_sip();
         self.poll_sip(queue);

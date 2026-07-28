@@ -1,8 +1,13 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Nachrichten an den Schnittstellen zwischen TETRA-Protokollschichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use tetra_core::Direction;
 
 use crate::control::enums::circuit_mode_type::CircuitModeType;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für circuit dl Audio- und Mediendaten source auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum CircuitDlMediaSource {
     /// Downlink media comes from local UL loopback (classic BS behavior).
     LocalLoopback,
@@ -11,6 +16,8 @@ pub enum CircuitDlMediaSource {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für circuit in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct Circuit {
     /// Direction
     pub direction: Direction,
@@ -41,6 +48,8 @@ pub struct Circuit {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für network circuit Ruf in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct NetworkCircuitCall {
     /// Calling party ISSI
     pub source_issi: u32,
@@ -73,6 +82,8 @@ pub struct NetworkCircuitCall {
 }
 
 #[derive(Debug, Clone)]
+// Was: Listet die möglichen Varianten für Ruf Steuerung auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum CallControl {
     /// Signals to set up a circuit
     /// Created by CMCE, sent to Umac

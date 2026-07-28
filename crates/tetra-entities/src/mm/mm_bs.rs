@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
 
@@ -46,6 +49,8 @@ use tetra_pdus::mm::pdus::u_location_update_demand::ULocationUpdateDemand;
 use tetra_pdus::mm::pdus::u_mm_status::UMmStatus;
 use tetra_pdus::mm::pdus::u_tei_provide::UTeiProvide;
 
+// Was: Bündelt die zusammengehörigen Werte für Mobilitätsverwaltung Basisstation in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MmBs {
     config: SharedConfig,
     telemetry: Option<TelemetrySink>,
@@ -78,9 +83,15 @@ pub struct MmBs {
 
 /// Safety cap on `reactive_recovery_cooldown` so a churn of distinct unknown ISSIs can't grow it
 /// without bound; lapsed entries are pruned once this many are held.
+// Was: Legt den festen Wert `REACTIVE_RECOVERY_COOLDOWN_CAP` für reactive recovery cooldown cap fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const REACTIVE_RECOVERY_COOLDOWN_CAP: usize = 4096;
 
+// Was: Implementiert das zugehörige Verhalten für `MmBs`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl MmBs {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(config: SharedConfig, telemetry: Option<TelemetrySink>, control: Option<ControlEndpoint>) -> Self {
         let client_mgr = MmClientMgr::new(telemetry.clone());
         Self {
@@ -98,23 +109,33 @@ impl MmBs {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `mobility_snapshot` für Mobilität snapshot aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn mobility_snapshot(&self) -> MmMobilityRuntimeSnapshot {
         self.mobility.snapshot(self.current_time)
     }
 
+    // Was: Führt den Arbeitsschritt `export_mobility_context` für export Mobilität Kontext aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn export_mobility_context(&self, issi: u32) -> Option<MmClientMobilityContext> {
         self.client_mgr.export_mobility_context(issi)
     }
 
+    // Was: Führt den Arbeitsschritt `import_mobility_context` für import Mobilität Kontext aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn import_mobility_context(&mut self, local_issi: u32, context: &MmClientMobilityContext) {
         self.mobility.register_local_identity(local_issi, context.issi);
         self.client_mgr.import_mobility_context(local_issi, context);
         self.config.state_write().subscribers.register(local_issi);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for &gssi in &context.groups {
             self.config.state_write().subscribers.affiliate(local_issi, gssi);
         }
     }
 
+    // Was: Führt den Arbeitsschritt `mobility_context_to_payload` für Mobilität Kontext to payload aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn mobility_context_to_payload(context: MmClientMobilityContext) -> MobilityContextPayload {
         MobilityContextPayload {
             home_issi: context.issi,
@@ -156,6 +177,8 @@ impl MmBs {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `mobility_payload_to_context` für Mobilität payload to Kontext aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn mobility_payload_to_context(payload: &MobilityContextPayload) -> Result<MmClientMobilityContext, String> {
         let energy_saving_mode = EnergySavingMode::try_from(payload.energy_saving_mode as u64)
             .map_err(|_| format!("invalid energy_saving_mode={}", payload.energy_saving_mode))?;
@@ -199,6 +222,8 @@ impl MmBs {
         })
     }
 
+    // Was: Diese Funktion entfernt Mobilität Kontext.
+    // Warum: Das Entfernen bleibt damit vollständig und hinterlässt keinen widersprüchlichen Zustand.
     fn remove_mobility_context(&mut self, issi: u32) -> Option<MmClientMobilityContext> {
         let context = self.client_mgr.export_mobility_context(issi)?;
         self.client_mgr.remove_client(issi);
@@ -208,6 +233,8 @@ impl MmBs {
         Some(context)
     }
 
+    // Was: Führt den Arbeitsschritt `announce_imported_mobility_context` für announce imported Mobilität Kontext aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn announce_imported_mobility_context(
         &self,
         queue: &mut MessageQueue,
@@ -256,6 +283,8 @@ impl MmBs {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `provide_migration_context` für provide migration Kontext aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn provide_migration_context(
         &mut self,
         vassi: u32,
@@ -265,6 +294,8 @@ impl MmBs {
             .provide_migration_context(vassi, context, self.current_time)
     }
 
+    // Was: Führt den Arbeitsschritt `take_forward_context` für take forward Kontext aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn take_forward_context(&mut self, issi: u32) -> Option<MmClientMobilityContext> {
         self.mobility.take_forward_context(issi)
     }
@@ -275,6 +306,8 @@ impl MmBs {
     /// fire when they answer), and seeds the replay queue. Emits no SAP messages — terminals are
     /// re-affiliated to CMCE/Brew only when they actually re-register. Honours the current ISSI
     /// whitelist and the optional `[recovery] issi_allowlist`.
+    // Was: Diese Funktion initialisiert recovery.
+    // Warum: Alle benötigten Startwerte werden so in einer festen Reihenfolge eingerichtet.
     pub fn init_recovery(&mut self, cache_path: PathBuf) {
         let rec_cfg = self.config.config().recovery.clone();
         let debounce = std::time::Duration::from_secs(rec_cfg.debounce_secs);
@@ -283,6 +316,8 @@ impl MmBs {
 
         let mut restored = 0usize;
         let mut skipped = 0usize;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for rec in records.into_iter().take(rec_cfg.max_cached_issis as usize) {
             // Honour both the access-control whitelist and the optional recovery allowlist.
             let whitelisted = self.config.config().security.is_issi_allowed(rec.issi);
@@ -308,6 +343,8 @@ impl MmBs {
 
     /// Mark the recovery cache dirty (a flush is debounced from tick_start). No-op when recovery
     /// is disabled.
+    // Was: Führt den Arbeitsschritt `recovery_mark_dirty` für recovery mark dirty aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn recovery_mark_dirty(&mut self) {
         if let Some(cache) = &mut self.recovery {
             cache.mark_dirty();
@@ -315,6 +352,8 @@ impl MmBs {
     }
 
     /// Stop replaying to an ISSI that has (re-)registered. Called from the location-update path.
+    // Was: Führt den Arbeitsschritt `recovery_confirm` für recovery confirm aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn recovery_confirm(&mut self, issi: u32) {
         // Clear any reactive-recovery cooldown first: the radio answered, so a future re-drop of
         // this ISSI should be re-keyable immediately. Done before the proactive early-return so it
@@ -334,6 +373,8 @@ impl MmBs {
     /// frame to terminals still awaiting re-registration, round-robin, giving up on a terminal
     /// after `max_replay_attempts` (e.g. one powered off mid-outage). Goes inert when the queue
     /// drains.
+    // Was: Führt den Arbeitsschritt `drive_recovery_replay` für drive recovery replay aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn drive_recovery_replay(&mut self, queue: &mut MessageQueue, ts: TdmaTime) {
         if self.recovery.is_none() || self.recovery_pending.is_empty() {
             return;
@@ -352,6 +393,8 @@ impl MmBs {
         // ISSI's attempt budget faster than configured).
         let budget = (rec_cfg.replay_per_frame as usize).min(self.recovery_pending.len());
         let mut processed = 0usize;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while processed < budget {
             let Some(issi) = self.recovery_pending.pop_front() else {
                 break;
@@ -379,6 +422,8 @@ impl MmBs {
 
     /// Debounced flush of the recovery cache. Takes the cache out of `self` so the snapshot
     /// closure can borrow `self.client_mgr` without a borrow conflict, then restores it.
+    // Was: Führt den Arbeitsschritt `recovery_maybe_flush` für recovery maybe flush aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn recovery_maybe_flush(&mut self) {
         let Some(mut cache) = self.recovery.take() else {
             return;
@@ -410,6 +455,8 @@ impl MmBs {
     /// and so covers the cases the cache misses (radio absent from the cache, or the sweep already
     /// gave up on it). Rate-limited per ISSI; gated by the access whitelist and the optional
     /// `[recovery] issi_allowlist`; on by default (`[recovery] reactive_enabled`).
+    // Was: Führt den Arbeitsschritt `maybe_reactive_recovery` für maybe reactive recovery aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn maybe_reactive_recovery(&mut self, queue: &mut MessageQueue, issi: u32) {
         // Fast path, the overwhelming common case: a radio MM already knows needs no recovery.
         // Checked before touching config so healthy traffic stays cheap.
@@ -463,6 +510,8 @@ impl MmBs {
     /// Implementation: sends Deregister to CMCE only (not Brew), then re-sends
     /// Register + Affiliate so subscriber_groups and group_listener counts are
     /// restored. Brew is not informed because the MS is still considered registered.
+    // Was: Diese Funktion gibt individual Ruf release for Teilnehmerkennung (ISSI).
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn emit_individual_call_release_for_issi(&mut self, queue: &mut MessageQueue, issi: u32) {
         let groups: Vec<u32> = self
             .client_mgr
@@ -514,6 +563,8 @@ impl MmBs {
         tracing::info!("MM: forced individual call release for ISSI {} (soft re-attach)", issi);
     }
 
+    // Was: Diese Funktion gibt Teilnehmer update.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn emit_subscriber_update(&self, queue: &mut MessageQueue, issi: u32, groups: Vec<u32>, action: BrewSubscriberAction) {
         // If brew is active, forward subscriber updates to the Brew entity.
         // Register/Deregister must always be sent for brew-routable ISSIs,
@@ -521,6 +572,8 @@ impl MmBs {
         // decides whether to send REGISTER or REREGISTER based on its own state.
         // Affiliate/Deaffiliate only sent when there are brew-routable groups.
         if net_brew::is_active(&self.config) {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for dest in net_brew::BREW_ENTITIES {
                 if !net_brew::is_brew_local_issi_allowed_for_entity(&self.config, dest, issi)
                     || !net_brew::is_brew_issi_routable_for_entity(&self.config, dest, issi)
@@ -532,6 +585,8 @@ impl MmBs {
                     .filter(|gssi| net_brew::is_brew_gssi_routable_for_entity(&self.config, dest, **gssi))
                     .copied()
                     .collect::<Vec<u32>>();
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 let should_send = match action {
                     BrewSubscriberAction::Register | BrewSubscriberAction::Deregister => true,
                     BrewSubscriberAction::Affiliate | BrewSubscriberAction::Deaffiliate => !brew_groups.is_empty(),
@@ -576,6 +631,8 @@ impl MmBs {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `rx_u_itsi_detach` für rx u itsi detach aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_u_itsi_detach(&mut self, _queue: &mut MessageQueue, mut message: SapMsg) {
         tracing::trace!("rx_u_itsi_detach");
         let SapMsgInner::LmmMleUnitdataInd(prim) = &mut message.msg else {
@@ -583,6 +640,8 @@ impl MmBs {
             return;
         };
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let pdu = match UItsiDetach::from_bitbuf(&mut prim.sdu) {
             Ok(pdu) => {
                 tracing::debug!("<- {:?}", pdu);
@@ -617,6 +676,8 @@ impl MmBs {
         self.recovery_mark_dirty();
     }
 
+    // Was: Führt den Arbeitsschritt `rx_u_location_update_demand` für rx u location update demand aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_u_location_update_demand(&mut self, queue: &mut MessageQueue, mut message: SapMsg) {
         tracing::trace!("rx_location_update_demand");
         let SapMsgInner::LmmMleUnitdataInd(prim) = &mut message.msg else {
@@ -624,6 +685,8 @@ impl MmBs {
             return;
         };
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let pdu = match ULocationUpdateDemand::from_bitbuf(&mut prim.sdu) {
             Ok(pdu) => {
                 tracing::debug!("<- {:?}", pdu);
@@ -660,6 +723,8 @@ impl MmBs {
                 self.current_time,
                 |candidate| client_mgr.client_is_known(candidate),
             );
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match allocation {
                 Ok((vassi, home_mni)) => {
                     tracing::info!(
@@ -684,6 +749,8 @@ impl MmBs {
                         handle,
                         pdu.location_update_type,
                         pdu.address_extension,
+                        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                         match error {
                             crate::mm::mobility_runtime::MmMobilityError::MissingHomeMni => {
                                 RejectCause::MandatoryElementError
@@ -706,6 +773,8 @@ impl MmBs {
         let migration_completion = if pdu.location_update_type == LocationUpdateType::DemandLocationUpdating
             && self.mobility.has_pending_vassi(prim.received_address.ssi)
         {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match self
                 .mobility
                 .complete_migration(prim.received_address.ssi, &pdu, self.current_time)
@@ -782,6 +851,8 @@ impl MmBs {
             .unwrap_or(issi);
         let issi_allowed = {
             let state = self.config.state_read();
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match &state.issi_whitelist_override {
                 Some(list) => {
                     !state.issi_whitelist_deny_all
@@ -892,6 +963,8 @@ impl MmBs {
                 if !old_groups.is_empty() {
                     {
                         let mut state = self.config.state_write();
+                        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                         for &gssi in &old_groups {
                             state.subscribers.affiliate(issi, gssi);
                         }
@@ -933,6 +1006,8 @@ impl MmBs {
         }
 
         if is_new {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match self.client_mgr.try_register_client(issi, true) {
                 Ok(_) => {
                     self.config.state_write().subscribers.register(issi);
@@ -999,6 +1074,8 @@ impl MmBs {
                 } else if !prior_groups.is_empty() {
                     {
                         let mut state = self.config.state_write();
+                        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                         for &gssi in &prior_groups {
                             state.subscribers.deaffiliate(issi, gssi);
                         }
@@ -1057,6 +1134,8 @@ impl MmBs {
                 );
                 {
                     let mut state = self.config.state_write();
+                    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                     for &gssi in &stored_groups {
                         state.subscribers.affiliate(issi, gssi);
                     }
@@ -1229,7 +1308,11 @@ impl MmBs {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `rx_lmm_mle_prepare_ind` für rx lmm MLE-Verbindungssteuerung prepare ind aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_lmm_mle_prepare_ind(&mut self, queue: &mut MessageQueue, mut indication: LmmMlePrepareInd) {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let pdu = match ULocationUpdateDemand::from_bitbuf(&mut indication.sdu) {
             Ok(pdu) => pdu,
             Err(error) => {
@@ -1275,6 +1358,8 @@ impl MmBs {
             return;
         };
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let completion = match self.mobility.begin_forward_registration(
             indication.subscriber,
             indication.cell_identifier_ca,
@@ -1311,6 +1396,8 @@ impl MmBs {
             }
         };
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let energy_saving_information = match context.energy_saving_mode {
             EnergySavingMode::StayAlive => None,
             mode => Some(Self::grant_energy_saving(indication.subscriber.ssi, mode)),
@@ -1360,6 +1447,8 @@ impl MmBs {
 
     /// Rebuild StackState.ee_monitoring_windows from the live client registry. See the field doc
     /// in tetra_config StackState and `MmClientMgr::ee_monitoring_windows`.
+    // Was: Diese Funktion veröffentlicht monitoring windows.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn publish_monitoring_windows(&self) {
         let map: std::collections::HashMap<u32, (u8, u8, u8)> = self
             .client_mgr
@@ -1378,7 +1467,11 @@ impl MmBs {
     /// Used both by the initial location update (U-LOCATION-UPDATING-DEMAND) and by mid-session
     /// energy saving toggles (U-MM-STATUS / ChangeOfEnergySavingModeRequest) so the two paths
     /// behave identically.
+    // Was: Führt den Arbeitsschritt `grant_energy_saving` für grant energy saving aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn grant_energy_saving(issi: u32, requested: EnergySavingMode) -> EnergySavingInformation {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let granted_esm = match requested {
             EnergySavingMode::StayAlive => EnergySavingMode::StayAlive,
             EnergySavingMode::Eg1 => EnergySavingMode::Eg1,
@@ -1392,6 +1485,8 @@ impl MmBs {
             tracing::debug!("MS {} requested {:?}, capping to {:?}", issi, requested, granted_esm);
         }
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let (frame_number, multiframe_number) = match crate::mm::components::client_state::ee_cycle_frames(granted_esm) {
             None => (None, None), // StayAlive — no monitoring window
             Some(cycle) => {
@@ -1423,6 +1518,8 @@ impl MmBs {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `rx_u_mm_status` für rx u Mobilitätsverwaltung Status aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_u_mm_status(&mut self, queue: &mut MessageQueue, mut message: SapMsg) {
         tracing::trace!("rx_u_mm_status");
         let SapMsgInner::LmmMleUnitdataInd(prim) = &mut message.msg else {
@@ -1430,6 +1527,8 @@ impl MmBs {
             return;
         };
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let pdu = match UMmStatus::from_bitbuf(&mut prim.sdu) {
             Ok(pdu) => {
                 tracing::debug!("<- {:?}", pdu);
@@ -1445,6 +1544,8 @@ impl MmBs {
         let handle = prim.handle;
 
         let mut handled = false;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match pdu.status_uplink {
             StatusUplink::ChangeOfEnergySavingModeRequest => {
                 // Parse energy saving mode from the sub-PDU payload
@@ -1558,6 +1659,8 @@ impl MmBs {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `rx_u_attach_detach_group_identity` für rx u attach detach Gruppe identity aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_u_attach_detach_group_identity(&mut self, queue: &mut MessageQueue, mut message: SapMsg) {
         tracing::trace!("rx_u_attach_detach_group_identity");
         let SapMsgInner::LmmMleUnitdataInd(prim) = &mut message.msg else {
@@ -1567,6 +1670,8 @@ impl MmBs {
 
         let issi = prim.received_address.ssi;
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let pdu = match UAttachDetachGroupIdentity::from_bitbuf(&mut prim.sdu) {
             Ok(pdu) => {
                 tracing::debug!("<- {:?}", pdu);
@@ -1592,6 +1697,8 @@ impl MmBs {
             .unwrap_or(issi);
         let issi_allowed = {
             let state = self.config.state_read();
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match &state.issi_whitelist_override {
                 Some(list) => {
                     !state.issi_whitelist_deny_all
@@ -1633,6 +1740,8 @@ impl MmBs {
             if !self.client_mgr.client_is_known(issi) {
                 // Client unknown (e.g. never registered via location update).
                 // Re-register so group attachment can proceed.
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match self.client_mgr.try_register_client(issi, true) {
                     Ok(_) => {
                         self.config.state_write().subscribers.register(issi);
@@ -1653,11 +1762,15 @@ impl MmBs {
                     .get_client_by_issi(issi)
                     .map(|client| client.groups.iter().copied().collect())
                     .unwrap_or_default();
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match self.client_mgr.client_detach_all_groups(issi) {
                     Ok(_) => {
                         if !prior_groups.is_empty() {
                             {
                                 let mut state = self.config.state_write();
+                                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                                 for &gssi in &prior_groups {
                                     state.subscribers.deaffiliate(issi, gssi);
                                 }
@@ -1687,6 +1800,8 @@ impl MmBs {
         // (FH-BUG-022 reopened, FH-BUG-025). Now the BS only affiliates what it can
         // confirm; the MS will keep re-requesting the remaining groups in subsequent
         // attach cycles per ETSI clause 16.4.3.
+        // Was: Legt den festen Wert `MAX_GROUPS_PER_ATTACH` für max groups per attach fest.
+        // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
         const MAX_GROUPS_PER_ATTACH: usize = 12;
         // feature_check_u_attach_detach_group_identity above guarantees this is Some,
         // but use let-else instead of .unwrap() so a future refactor that loosens that
@@ -1749,6 +1864,8 @@ impl MmBs {
         queue.push_back(msg);
     }
 
+    // Was: Führt den Arbeitsschritt `rx_lmm_mle_unitdata_ind` für rx lmm MLE-Verbindungssteuerung unitdata ind aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_lmm_mle_unitdata_ind(&mut self, queue: &mut MessageQueue, mut message: SapMsg) {
         // unimplemented_log!("rx_lmm_mle_unitdata_ind for MM component");
         let SapMsgInner::LmmMleUnitdataInd(prim) = &mut message.msg else {
@@ -1766,6 +1883,8 @@ impl MmBs {
             return;
         };
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match pdu_type {
             MmPduTypeUl::UAuthentication => unimplemented_log!("UAuthentication"),
             MmPduTypeUl::UItsiDetach => self.rx_u_itsi_detach(queue, message),
@@ -1783,6 +1902,8 @@ impl MmBs {
     }
 
 
+    // Was: Führt den Arbeitsschritt `group_policy_allows_attach` für Gruppe policy allows attach aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn group_policy_allows_attach(&self, local_issi: u32, gssi: u32) -> bool {
         let policy_issi = self.mobility.home_issi_for_local(local_issi).unwrap_or(local_issi);
         let state = self.config.state_read();
@@ -1793,6 +1914,8 @@ impl MmBs {
             .unwrap_or(true)
     }
 
+    // Was: Führt den Arbeitsschritt `group_policy_allows_dgna` für Gruppe policy allows dgna aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn group_policy_allows_dgna(&self, local_issi: u32, gssi: u32) -> bool {
         let policy_issi = self.mobility.home_issi_for_local(local_issi).unwrap_or(local_issi);
         let state = self.config.state_read();
@@ -1803,6 +1926,8 @@ impl MmBs {
             .unwrap_or(true)
     }
 
+    // Was: Führt den Arbeitsschritt `group_policy_class_of_usage` für Gruppe policy class of usage aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn group_policy_class_of_usage(&self, gssi: u32) -> u8 {
         let state = self.config.state_read();
         state
@@ -1812,6 +1937,8 @@ impl MmBs {
             .unwrap_or(Self::DGNA_CLASS_OF_USAGE)
     }
 
+    // Was: Diese Funktion wendet Gruppe policy.
+    // Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
     fn apply_group_policy(
         &mut self,
         queue: &mut MessageQueue,
@@ -1835,6 +1962,8 @@ impl MmBs {
         }
 
         let mut definitions = HashMap::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for group in groups {
             if group.gssi == 0 || group.gssi > 0xFF_FFFF {
                 return Err(format!("invalid GSSI {}", group.gssi));
@@ -1858,6 +1987,8 @@ impl MmBs {
         let mut allowed = HashMap::<u32, std::collections::HashSet<u32>>::new();
         let mut automatic = HashMap::<u32, std::collections::HashSet<u32>>::new();
         let mut membership_count = 0u32;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for membership in memberships {
             if membership.issi == 0 || membership.issi > 0xFF_FFFF {
                 return Err(format!("invalid membership ISSI {}", membership.issi));
@@ -1892,6 +2023,8 @@ impl MmBs {
         let mut detached_count = 0u32;
         if reconcile_registered {
             let local_issis = self.client_mgr.all_known_issis();
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for local_issi in local_issis {
                 let policy_issi = self.mobility.home_issi_for_local(local_issi).unwrap_or(local_issi);
                 let current: Vec<u32> = self
@@ -1899,6 +2032,8 @@ impl MmBs {
                     .get_client_by_issi(local_issi)
                     .map(|client| client.groups.iter().copied().collect())
                     .unwrap_or_default();
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for gssi in current {
                     if !policy.allows_affiliation(policy_issi, gssi)
                         && self.do_dgna(queue, local_issi, gssi, false, true)
@@ -1906,6 +2041,8 @@ impl MmBs {
                         detached_count += 1;
                     }
                 }
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for gssi in policy.automatic_groups_for(policy_issi) {
                     let already_attached = self
                         .client_mgr
@@ -1920,6 +2057,8 @@ impl MmBs {
         Ok((group_count, membership_count, attached_count, detached_count))
     }
 
+    // Was: Diese Funktion bindet detach groups.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn try_attach_detach_groups(
         &mut self,
         queue: &mut MessageQueue,
@@ -1930,6 +2069,8 @@ impl MmBs {
         let mut aff_groups = Vec::new();
         let mut deaff_groups = Vec::new();
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for giu in giu_vec.iter() {
             // Currently only address_type=0 (plain GSSI) is implemented. Anything else
             // (vgssi, address extension, missing gssi) is unsupported — log and skip.
@@ -1945,6 +2086,8 @@ impl MmBs {
             let is_detach = giu.group_identity_detachment_uplink.is_some();
 
             if is_detach {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match self.client_mgr.client_group_attach(issi, gssi, false) {
                     Ok(changed) => {
                         if changed {
@@ -1976,6 +2119,8 @@ impl MmBs {
                     );
                     continue;
                 }
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match self.client_mgr.client_group_attach(issi, gssi, true) {
                     Ok(changed) => {
                         if changed {
@@ -2052,6 +2197,8 @@ impl MmBs {
     /// with full group identity report
     /// Send D-ATTACH-DETACH-GROUP-IDENTITY-ACKNOWLEDGEMENT with reject.
     /// ETSI EN 300 392-2 §16.3.4: used when MS is not registered.
+    // Was: Diese Funktion sendet d attach detach ack reject.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_d_attach_detach_ack_reject(&self, queue: &mut MessageQueue, issi: u32, handle: u32) {
         let pdu = DAttachDetachGroupIdentityAcknowledgement {
             group_identity_accept_reject: 1, // 1 = reject per ETSI §14.8.7
@@ -2083,6 +2230,8 @@ impl MmBs {
         queue.push_back(msg);
     }
 
+    // Was: Diese Funktion sendet d attach detach ack.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_d_attach_detach_ack(&self, queue: &mut MessageQueue, issi: u32, handle: u32, groups: &[u32]) {
         use tetra_pdus::mm::fields::group_identity_attachment::GroupIdentityAttachment;
         use tetra_pdus::mm::fields::group_identity_downlink::GroupIdentityDownlink;
@@ -2136,6 +2285,8 @@ impl MmBs {
     /// Class of usage advertised in DGNA group attachments. 4 mirrors the value the normal
     /// affiliation ACK path (`send_d_attach_detach_ack`) already sends, so DGNA-assigned groups
     /// behave identically to ones the radio affiliated itself.
+    // Was: Legt den festen Wert `DGNA_CLASS_OF_USAGE` für dgna class of usage fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const DGNA_CLASS_OF_USAGE: u8 = 4;
 
     /// DGNA (Dynamic Group Number Assignment) — BS-initiated group attach/detach for one terminal,
@@ -2146,6 +2297,8 @@ impl MmBs {
     /// removes the group in its own list. Brew is intentionally not involved.
     ///
     /// Returns `true` if the command was accepted and a PDU was sent to the terminal.
+    // Was: Führt den Arbeitsschritt `do_dgna` für do dgna aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn do_dgna(&mut self, queue: &mut MessageQueue, issi: u32, gssi: u32, attach: bool, force: bool) -> bool {
         let verb = if attach { "assign" } else { "deassign" };
 
@@ -2171,6 +2324,8 @@ impl MmBs {
 
         // Apply to the MM client registry. client_group_attach also validates the GSSI is a legal
         // group address (range + is_group + may_attach); an invalid GSSI returns an error here.
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.client_mgr.client_group_attach(issi, gssi, attach) {
             Ok(_changed) => {
                 // Mirror into the shared subscriber state used for local call/SDS routing and notify
@@ -2220,6 +2375,8 @@ impl MmBs {
     /// Build and queue an unsolicited D-ATTACH/DETACH GROUP IDENTITY for a single GSSI, addressed to
     /// `issi`, requesting an acknowledgement. `attach == true` carries a (persistent) group identity
     /// attachment; `false` carries a detachment. Used by [`Self::do_dgna`].
+    // Was: Diese Funktion sendet d attach detach Gruppe identity.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_d_attach_detach_group_identity(
         &self,
         queue: &mut MessageQueue,
@@ -2290,12 +2447,16 @@ impl MmBs {
     /// Handle U-ATTACH/DETACH GROUP IDENTITY ACKNOWLEDGEMENT — the terminal's reply to a BS-initiated
     /// D-ATTACH/DETACH GROUP IDENTITY (DGNA). BS-side group state is committed optimistically when the
     /// DGNA is issued, so this is confirmation/telemetry only: log the outcome.
+    // Was: Führt den Arbeitsschritt `rx_u_attach_detach_group_identity_ack` für rx u attach detach Gruppe identity ack aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_u_attach_detach_group_identity_ack(&mut self, _queue: &mut MessageQueue, mut message: SapMsg) {
         let SapMsgInner::LmmMleUnitdataInd(prim) = &mut message.msg else {
             tracing::error!("BUG: unexpected message or state -- routing error");
             return;
         };
         let issi = prim.received_address.ssi;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match UAttachDetachGroupIdentityAcknowledgement::from_bitbuf(&mut prim.sdu) {
             Ok(pdu) => tracing::info!("DGNA: ISSI {} acknowledged group identity change: {:?}", issi, pdu),
             Err(e) => tracing::warn!(
@@ -2307,6 +2468,8 @@ impl MmBs {
         }
     }
 
+    // Was: Diese Funktion sendet d location update command.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_d_location_update_command(queue: &mut MessageQueue, issi: u32, handle: u32) {
         let pdu = DLocationUpdateCommand {
             group_identity_report: true,
@@ -2341,6 +2504,8 @@ impl MmBs {
         queue.push_back(msg);
     }
 
+    // Was: Diese Funktion sendet d location update proceeding.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_d_location_update_proceeding(
         queue: &mut MessageQueue,
         address: TetraAddress,
@@ -2378,6 +2543,8 @@ impl MmBs {
     }
 
     /// Sends a D-LOCATION UPDATE REJECT PDU (ETSI clause 16.9.2.9)
+    // Was: Diese Funktion sendet d location update reject.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_d_location_update_reject(
         queue: &mut MessageQueue,
         issi: u32,
@@ -2395,6 +2562,8 @@ impl MmBs {
         )
     }
 
+    // Was: Diese Funktion sendet d location update reject cause.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_d_location_update_reject_cause(
         queue: &mut MessageQueue,
         issi: u32,
@@ -2438,6 +2607,8 @@ impl MmBs {
     }
 
     /// Sends a D-MM-STATUS with ChangeOfEnergySavingModeResponse
+    // Was: Diese Funktion sendet d Mobilitätsverwaltung Status energy saving.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_d_mm_status_energy_saving(queue: &mut MessageQueue, issi: u32, handle: u32, esi: EnergySavingInformation) {
         let pdu = DMmStatus {
             status_downlink: StatusDownlink::ChangeOfEnergySavingModeResponse,
@@ -2468,6 +2639,8 @@ impl MmBs {
         queue.push_back(msg);
     }
 
+    // Was: Führt den Arbeitsschritt `feature_check_u_itsi_detach` für feature check u itsi detach aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn feature_check_u_itsi_detach(pdu: &UItsiDetach) -> bool {
         let supported = true;
         if pdu.address_extension.is_some() {
@@ -2479,6 +2652,8 @@ impl MmBs {
         supported
     }
 
+    // Was: Führt den Arbeitsschritt `rx_u_tei_provide` für rx u tei provide aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_u_tei_provide(&mut self, _queue: &mut MessageQueue, mut message: SapMsg) {
         tracing::trace!("rx_u_tei_provide");
         let SapMsgInner::LmmMleUnitdataInd(prim) = &mut message.msg else {
@@ -2486,6 +2661,8 @@ impl MmBs {
             return;
         };
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let pdu = match UTeiProvide::from_bitbuf(&mut prim.sdu) {
             Ok(pdu) => {
                 tracing::debug!("<- {:?}", pdu);
@@ -2506,6 +2683,8 @@ impl MmBs {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `feature_check_u_location_update_demand` für feature check u location update demand aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn feature_check_u_location_update_demand(pdu: &ULocationUpdateDemand) -> bool {
         let mut supported = true;
         if pdu.location_update_type == LocationUpdateType::DisabledMsUpdating {
@@ -2551,6 +2730,8 @@ impl MmBs {
 
     /// Check for unsupported features in U-ATTACH/DETACH GROUP IDENTITY
     /// Returns false if a critical feature is missing
+    // Was: Führt den Arbeitsschritt `feature_check_u_attach_detach_group_identity` für feature check u attach detach Gruppe identity aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn feature_check_u_attach_detach_group_identity(pdu: &UAttachDetachGroupIdentity) -> bool {
         let mut supported = true;
         if pdu.group_identity_report == true {
@@ -2571,18 +2752,30 @@ impl MmBs {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `TetraEntityTrait for MmBs`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl TetraEntityTrait for MmBs {
+    // Was: Führt den Arbeitsschritt `entity` für entity aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn entity(&self) -> TetraEntity {
         TetraEntity::Mm
     }
 
+    // Was: Diese Funktion setzt Konfiguration.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     fn set_config(&mut self, config: SharedConfig) {
         self.config = config;
     }
 
+    // Was: Diese Funktion bearbeitet start.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn tick_start(&mut self, queue: &mut MessageQueue, ts: TdmaTime) {
         self.current_time = ts;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for timeout in self.mobility.tick(ts) {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match timeout {
                 MmMobilityTimeout::Migration {
                     subscriber,
@@ -2630,11 +2823,17 @@ impl TetraEntityTrait for MmBs {
             let responder = self.control.clone();
             let mut cmds = Vec::new();
             if let Some(cep) = &self.control {
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 while let Some(cmd) = cep.try_recv() {
                     cmds.push(cmd);
                 }
             }
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for cmd in cmds {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match cmd {
                     ControlCommand::Dgna { issi, gssi, attach } => {
                         self.do_dgna(queue, issi, gssi, attach, false);
@@ -2658,6 +2857,8 @@ impl TetraEntityTrait for MmBs {
                             memberships,
                         );
                         if let Some(cep) = responder.as_ref() {
+                            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                             match result {
                                 Ok((group_count, membership_count, attached_count, detached_count)) => {
                                     cep.respond(ControlResponse::GroupAccessPolicyApplied {
@@ -2769,6 +2970,8 @@ impl TetraEntityTrait for MmBs {
                             tracing::warn!("MM: failed to persist central subscriber policy for edge fallback: {}", error);
                         }
 
+                        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                         for issi in &to_disconnect {
                             queue.push_back(SapMsg {
                                 sap: Sap::Control,
@@ -2862,6 +3065,8 @@ impl TetraEntityTrait for MmBs {
         // Uses wall-clock time — no TDMA precision needed.
         let interval_secs = self.config.config().cell.periodic_registration_secs;
         let expired = self.client_mgr.collect_expired_registrations(interval_secs);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for issi in expired {
             // Restart-recovery interlock: never expire/remove a client the recovery sweep is
             // still replaying to. The sweep owns its lifecycle until it confirms (re-register →
@@ -2993,6 +3198,8 @@ impl TetraEntityTrait for MmBs {
             // stale/incorrect window can never suppress the probe forever. The grace clock only
             // starts once the COMMAND is actually sent, so a deferred wake-window send still gets
             // the full grace to answer.
+            // Was: Legt den festen Wert `T351_EE_WINDOW_WAIT_SECS` für t351 ee window wait secs fest.
+            // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
             const T351_EE_WINDOW_WAIT_SECS: u64 = 6;
             if self
                 .client_mgr
@@ -3016,10 +3223,14 @@ impl TetraEntityTrait for MmBs {
         self.publish_monitoring_windows();
     }
 
+    // Was: Führt den Arbeitsschritt `rx_prim` für rx prim aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_prim(&mut self, queue: &mut MessageQueue, message: SapMsg) {
         tracing::debug!("rx_prim: {:?}", message);
         // tracing::debug!(ts=%message.dltime, "rx_prim: {:?}", message);
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match message.sap {
             Sap::LmmSap => match message.msg {
                 SapMsgInner::LmmMlePrepareInd(indication) => {
@@ -3034,6 +3245,8 @@ impl TetraEntityTrait for MmBs {
                 }
             },
             Sap::Control => {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match message.msg {
                     SapMsgInner::BrewReconnected => {
                         self.rx_brew_reconnected(queue);
@@ -3051,6 +3264,8 @@ impl TetraEntityTrait for MmBs {
                         }
                         // Forward to Brew entity for optional export to Brew server.
                         // BrewEntity applies its own rate limiting and checks feature_rssi_export.
+                        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                         for dest in net_brew::BREW_ENTITIES {
                             if net_brew::is_active_for_entity(&self.config, dest) {
                                 queue.push_back(SapMsg {
@@ -3114,10 +3329,14 @@ impl TetraEntityTrait for MmBs {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `MmBs`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl MmBs {
     /// Called when Brew backhaul reconnects. Sends D-LOCATION-UPDATE-COMMAND to all
     /// locally registered MS to force them to re-affiliate. This fixes the PTT-denied
     /// symptom where MS units registered before a Brew disconnect never re-register.
+    // Was: Führt den Arbeitsschritt `rx_brew_reconnected` für rx Brew-Verbindung reconnected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_brew_reconnected(&mut self, queue: &mut MessageQueue) {
         let issis = self.client_mgr.all_known_issis();
         if issis.is_empty() {
@@ -3128,6 +3347,8 @@ impl MmBs {
             "mm_bs: BrewReconnected — sending D-LOCATION-UPDATE-COMMAND to {} MS unit(s)",
             issis.len()
         );
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for issi in issis {
             // handle = 0: addressed by ISSI on the MCCH (the handle is inert — see
             // all_known_issis). This path was previously dead because it filtered on
@@ -3140,16 +3361,22 @@ impl MmBs {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul ee tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod ee_tests {
     use super::*;
     use tetra_core::TdmaTime;
 
     #[test]
+    // Was: Führt den Arbeitsschritt `grant_energy_saving_produces_spec_valid_start_point` für grant energy saving produces spec valid start und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn grant_energy_saving_produces_spec_valid_start_point() {
         // ETSI Table 16.40: Frame Number ∈ 1..=18, Multiframe Number ∈ 1..=60 (MN=0 is reserved
         // ONLY for StayAlive). The old (issi/18)%cycle formula produced MN=0 for half the radios —
         // an invalid anchor a conformant radio rejects (FH-BUG-034). Every active grant must now be
         // valid AND its start point must itself be a wake frame in the matching gating window.
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for mode in [
             EnergySavingMode::Eg1,
             EnergySavingMode::Eg2,
@@ -3157,6 +3384,8 @@ mod ee_tests {
             EnergySavingMode::Eg5,
             EnergySavingMode::Eg7,
         ] {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for issi in [1u32, 2, 17, 18, 19, 2260596, 2269000, 9_999_999] {
                 let esi = MmBs::grant_energy_saving(issi, mode);
                 let frame = esi.frame_number.expect("active EE carries a frame number");
@@ -3179,12 +3408,16 @@ mod ee_tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `grant_energy_saving_stay_alive_and_eg4_7_capping` für grant energy saving stay alive and eg4 und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn grant_energy_saving_stay_alive_and_eg4_7_capping() {
         // StayAlive → no monitoring window.
         let esi = MmBs::grant_energy_saving(42, EnergySavingMode::StayAlive);
         assert_eq!(esi.energy_saving_mode, EnergySavingMode::StayAlive);
         assert!(esi.frame_number.is_none() && esi.multiframe_number.is_none());
         // Eg4..Eg7 capped to Eg3 to bound call-setup latency.
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for mode in [
             EnergySavingMode::Eg4,
             EnergySavingMode::Eg5,
@@ -3194,6 +3427,8 @@ mod ee_tests {
             assert_eq!(MmBs::grant_energy_saving(42, mode).energy_saving_mode, EnergySavingMode::Eg3);
         }
         // Eg1..Eg3 granted as requested.
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for mode in [EnergySavingMode::Eg1, EnergySavingMode::Eg2, EnergySavingMode::Eg3] {
             assert_eq!(MmBs::grant_energy_saving(42, mode).energy_saving_mode, mode);
         }

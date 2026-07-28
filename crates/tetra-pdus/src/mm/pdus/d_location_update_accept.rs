@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 
 use tetra_core::expect_pdu_type;
@@ -17,6 +20,8 @@ use crate::mm::fields::group_identity_location_accept::GroupIdentityLocationAcce
 
 // Note: The MS shall accept the type 3/4 information elements both in the numerical order as described in annex E and in the order shown in this table.
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für dlocation update accept in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DLocationUpdateAccept {
     /// Type1, 3 bits, Location update accept type
     pub location_update_accept_type: LocationUpdateType,
@@ -49,8 +54,12 @@ pub struct DLocationUpdateAccept {
 }
 
 #[allow(unreachable_code)] // TODO FIXME review, finalize and remove this
+// Was: Implementiert das zugehörige Verhalten für `DLocationUpdateAccept`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl DLocationUpdateAccept {
     /// Parse from BitBuffer
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buffer: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let pdu_type = buffer.read_field(4, "pdu_type")?;
         expect_pdu_type!(pdu_type, MmPduTypeDl::DLocationUpdateAccept)?;
@@ -58,6 +67,8 @@ impl DLocationUpdateAccept {
         // Type1
         let val: u64 = buffer.read_field(3, "location_update_accept_type")?;
         let result = LocationUpdateType::try_from(val);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let location_update_accept_type = match result {
             Ok(x) => x,
             Err(_) => {
@@ -138,6 +149,8 @@ impl DLocationUpdateAccept {
     }
 
     /// Serialize this PDU into the given BitBuffer.
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buffer: &mut BitBuffer) -> Result<(), PduParseErr> {
         // PDU Type
         buffer.write_bits(MmPduTypeDl::DLocationUpdateAccept.into_raw(), 4);
@@ -230,7 +243,11 @@ impl DLocationUpdateAccept {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for DLocationUpdateAccept`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for DLocationUpdateAccept {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -254,12 +271,16 @@ impl fmt::Display for DLocationUpdateAccept {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use tetra_core::debug;
 
     use super::*;
 
     #[test]
+    // Was: Prüft automatisch den Fall d location update accept with Gruppe identity und weitere Angaben.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_d_location_update_accept_with_group_identity_attachment() {
         // Self-generated vector, seems to be properly accepted
         debug::setup_logging_verbose();

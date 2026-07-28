@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 
 use crate::cmce::enums::cmce_pdu_type_dl::CmcePduTypeDl;
@@ -16,6 +19,8 @@ use tetra_core::{BitBuffer, expect_pdu_type, pdu_parse_error::PduParseErr};
 // note 5: Shall be conditional on the value of Function-not-supported pointer: if Function-not-supported pointer is non-zero, this element shall be present; if Function-not-supported pointer is zero, this element shall not be present.
 // note 6: The total length of this element should be not less than the value of Function-not-supported pointer plus enough bits to identify the element in the received PDU which indicates the function that cannot be supported. This element shall not contain the PDU Type element of the received PDU because this is already specified by the "Not-supported PDU type" element (see note 2).
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für CMCE-Rufsteuerung function not supported in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CmceFunctionNotSupported {
     /// Type1, 5 bits, See note 2,
     pub not_supported_pdu_type: u8,
@@ -32,8 +37,12 @@ pub struct CmceFunctionNotSupported {
 }
 
 #[allow(unreachable_code)] // TODO FIXME review, finalize and remove this
+// Was: Implementiert das zugehörige Verhalten für `CmceFunctionNotSupported`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl CmceFunctionNotSupported {
     /// Parse from BitBuffer
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buffer: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let pdu_type = buffer.read_field(5, "pdu_type")?;
         expect_pdu_type!(pdu_type, CmcePduTypeDl::CmceFunctionNotSupported)?;
@@ -84,6 +93,8 @@ impl CmceFunctionNotSupported {
     }
 
     /// Serialize this PDU into the given BitBuffer.
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buffer: &mut BitBuffer) -> Result<(), PduParseErr> {
         // PDU Type
         buffer.write_bits(CmcePduTypeDl::CmceFunctionNotSupported.into_raw(), 5);
@@ -112,7 +123,11 @@ impl CmceFunctionNotSupported {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for CmceFunctionNotSupported`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for CmceFunctionNotSupported {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,

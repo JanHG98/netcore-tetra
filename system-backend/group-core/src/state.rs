@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Gruppen, Mitgliedschaften und Gruppenrichtlinien.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fs;
 use std::io::Write;
@@ -16,9 +19,13 @@ use uuid::Uuid;
 use crate::config::GroupCoreConfig;
 use crate::protocol::{BackendEvent, BackendRequest, GatewaySnapshot};
 
+// Was: Legt den festen Wert `DATABASE_SCHEMA_VERSION` für Datenbank schema version fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const DATABASE_SCHEMA_VERSION: u32 = 1;
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Gruppe core Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GroupCoreStatus {
     pub service: &'static str,
     pub started_at: String,
@@ -40,6 +47,8 @@ pub struct GroupCoreStatus {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Netzknoten Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct NodeRecord {
     pub node_id: String,
     pub station_name: String,
@@ -56,6 +65,8 @@ pub struct NodeRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Gruppe profile in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GroupProfile {
     pub gssi: u32,
     pub name: String,
@@ -76,6 +87,8 @@ pub struct GroupProfile {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Gruppe input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GroupInput {
     pub gssi: u32,
     #[serde(default)]
@@ -105,6 +118,8 @@ pub struct GroupInput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für membership Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MembershipRecord {
     pub issi: u32,
     pub gssi: u32,
@@ -118,6 +133,8 @@ pub struct MembershipRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für membership input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MembershipInput {
     pub issi: u32,
     pub gssi: u32,
@@ -132,6 +149,8 @@ pub struct MembershipInput {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für observed affiliation in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ObservedAffiliation {
     pub node_id: String,
     pub issi: u32,
@@ -142,6 +161,8 @@ pub struct ObservedAffiliation {
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für sync phase auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum SyncPhase {
     Pending,
     Requested,
@@ -153,6 +174,8 @@ pub enum SyncPhase {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für sync Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SyncRecord {
     pub node_id: String,
     pub desired_revision: u64,
@@ -171,6 +194,8 @@ pub struct SyncRecord {
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für dgna phase auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum DgnaPhase {
     Pending,
     Requested,
@@ -181,6 +206,8 @@ pub enum DgnaPhase {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für dgna Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DgnaRecord {
     pub id: String,
     pub node_id: String,
@@ -199,6 +226,8 @@ pub struct DgnaRecord {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für dgna input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DgnaInput {
     pub node_id: String,
     pub issi: u32,
@@ -213,6 +242,8 @@ pub struct DgnaInput {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Gruppe Ereignis Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GroupEventRecord {
     pub seq: u64,
     pub timestamp: String,
@@ -224,6 +255,8 @@ pub struct GroupEventRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Gruppe Datenbank in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GroupDatabase {
     pub schema_version: u32,
     pub revision: u64,
@@ -232,6 +265,8 @@ pub struct GroupDatabase {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für import request in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ImportRequest {
     #[serde(default)]
     pub replace: bool,
@@ -242,8 +277,12 @@ pub struct ImportRequest {
 }
 
 #[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für shared groups in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SharedGroups(Arc<Mutex<GroupState>>);
 
+// Was: Bündelt die zusammengehörigen Werte für Gruppe Zustand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct GroupState {
     config: GroupCoreConfig,
     started_at: String,
@@ -261,7 +300,11 @@ struct GroupState {
     next_handle: u32,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SharedGroups`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SharedGroups {
+    // Was: Diese Funktion lädt den vorgesehenen Arbeitsschritt.
+    // Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
     pub fn load(config: GroupCoreConfig) -> Result<Self, Box<dyn std::error::Error>> {
         let (revision, groups, memberships) = load_database(&config)?;
         Ok(Self(Arc::new(Mutex::new(GroupState {
@@ -282,6 +325,8 @@ impl SharedGroups {
         }))))
     }
 
+    // Was: Führt den Arbeitsschritt `status` für Status aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn status(&self) -> GroupCoreStatus {
         let state = self.0.lock().expect("group state poisoned");
         GroupCoreStatus {
@@ -305,37 +350,57 @@ impl SharedGroups {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `nodes` für nodes aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn nodes(&self) -> Vec<NodeRecord> {
         self.0.lock().expect("group state poisoned").nodes.values().cloned().collect()
     }
+    // Was: Führt den Arbeitsschritt `groups` für groups aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn groups(&self) -> Vec<GroupProfile> {
         self.0.lock().expect("group state poisoned").groups.values().cloned().collect()
     }
+    // Was: Führt den Arbeitsschritt `group` für Gruppe aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn group(&self, gssi: u32) -> Option<GroupProfile> {
         self.0.lock().expect("group state poisoned").groups.get(&gssi).cloned()
     }
+    // Was: Führt den Arbeitsschritt `memberships` für memberships aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn memberships(&self) -> Vec<MembershipRecord> {
         self.0.lock().expect("group state poisoned").memberships.values().cloned().collect()
     }
+    // Was: Führt den Arbeitsschritt `affiliations` für affiliations aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn affiliations(&self) -> Vec<ObservedAffiliation> {
         self.0.lock().expect("group state poisoned").affiliations.values().cloned().collect()
     }
+    // Was: Führt den Arbeitsschritt `syncs` für syncs aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn syncs(&self) -> Vec<SyncRecord> {
         self.0.lock().expect("group state poisoned").syncs.values().cloned().collect()
     }
+    // Was: Führt den Arbeitsschritt `dgna_operations` für dgna operations aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn dgna_operations(&self) -> Vec<DgnaRecord> {
         let mut values: Vec<_> = self.0.lock().expect("group state poisoned").dgna.values().cloned().collect();
         values.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
         values
     }
+    // Was: Führt den Arbeitsschritt `recent_events` für recent events aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn recent_events(&self, limit: usize) -> Vec<GroupEventRecord> {
         self.0.lock().expect("group state poisoned").events.iter().rev().take(limit).cloned().collect()
     }
+    // Was: Führt den Arbeitsschritt `export_database` für export Datenbank aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn export_database(&self) -> GroupDatabase {
         let state = self.0.lock().expect("group state poisoned");
         database_snapshot(&state)
     }
 
+    // Was: Diese Funktion erstellt Gruppe.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     pub fn create_group(&self, input: GroupInput) -> Result<(GroupProfile, Vec<BackendRequest>), String> {
         let mut state = self.0.lock().expect("group state poisoned");
         validate_group_input(&state, &input, false)?;
@@ -352,6 +417,8 @@ impl SharedGroups {
         Ok((profile, commands))
     }
 
+    // Was: Diese Funktion aktualisiert Gruppe.
+    // Warum: Bestehender Zustand wird dadurch kontrolliert und nach einheitlichen Regeln geändert.
     pub fn update_group(&self, gssi: u32, mut input: GroupInput) -> Result<(GroupProfile, Vec<BackendRequest>), String> {
         let mut state = self.0.lock().expect("group state poisoned");
         let old = state.groups.get(&gssi).cloned().ok_or_else(|| "group not found".to_string())?;
@@ -366,6 +433,8 @@ impl SharedGroups {
         Ok((profile, commands))
     }
 
+    // Was: Diese Funktion löscht Gruppe.
+    // Warum: Das Entfernen wird dadurch kontrolliert durchgeführt und hinterlässt keine verwaisten Verweise.
     pub fn delete_group(&self, gssi: u32) -> Result<Vec<BackendRequest>, String> {
         let mut state = self.0.lock().expect("group state poisoned");
         if state.groups.remove(&gssi).is_none() {
@@ -378,6 +447,8 @@ impl SharedGroups {
         Ok(maybe_sync_all_locked(&mut state))
     }
 
+    // Was: Führt den Arbeitsschritt `upsert_membership` für upsert membership aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn upsert_membership(&self, input: MembershipInput) -> Result<(MembershipRecord, Vec<BackendRequest>), String> {
         let mut state = self.0.lock().expect("group state poisoned");
         validate_membership_input(&state, &input)?;
@@ -402,6 +473,8 @@ impl SharedGroups {
         Ok((record, commands))
     }
 
+    // Was: Diese Funktion löscht membership.
+    // Warum: Das Entfernen wird dadurch kontrolliert durchgeführt und hinterlässt keine verwaisten Verweise.
     pub fn delete_membership(&self, issi: u32, gssi: u32) -> Result<Vec<BackendRequest>, String> {
         let mut state = self.0.lock().expect("group state poisoned");
         if state.memberships.remove(&(issi, gssi)).is_none() {
@@ -413,6 +486,8 @@ impl SharedGroups {
         Ok(maybe_sync_all_locked(&mut state))
     }
 
+    // Was: Führt den Arbeitsschritt `import_database` für import Datenbank aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn import_database(&self, request: ImportRequest) -> Result<(usize, Vec<BackendRequest>), String> {
         let mut state = self.0.lock().expect("group state poisoned");
         if request.groups.len() > state.config.limits.max_groups || request.memberships.len() > state.config.limits.max_memberships {
@@ -422,6 +497,8 @@ impl SharedGroups {
             state.groups.clear();
             state.memberships.clear();
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for input in request.groups {
             validate_group_input(&state, &input, state.groups.contains_key(&input.gssi))?;
             state.database_revision = state.database_revision.saturating_add(1);
@@ -430,6 +507,8 @@ impl SharedGroups {
             let profile = profile_from_input(input, created, now, state.database_revision);
             state.groups.insert(profile.gssi, profile);
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for input in request.memberships {
             validate_membership_input(&state, &input)?;
             state.database_revision = state.database_revision.saturating_add(1);
@@ -455,10 +534,14 @@ impl SharedGroups {
         Ok((count, maybe_sync_all_locked(&mut state)))
     }
 
+    // Was: Diese Funktion gleicht all.
+    // Warum: Mehrere Zustandsquellen bleiben dadurch auf demselben Stand.
     pub fn sync_all(&self) -> Vec<BackendRequest> {
         schedule_sync_all_locked(&mut self.0.lock().expect("group state poisoned"))
     }
 
+    // Was: Diese Funktion fordert dgna.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn request_dgna(&self, input: DgnaInput) -> Result<(DgnaRecord, Vec<BackendRequest>), String> {
         let mut state = self.0.lock().expect("group state poisoned");
         validate_identity(input.issi, "ISSI")?;
@@ -518,6 +601,8 @@ impl SharedGroups {
         Ok((record, commands))
     }
 
+    // Was: Diese Funktion bricht dgna.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn cancel_dgna(&self, id: &str) -> Result<(), String> {
         let mut state = self.0.lock().expect("group state poisoned");
         let item = state.dgna.get_mut(id).ok_or_else(|| "DGNA operation not found".to_string())?;
@@ -531,6 +616,8 @@ impl SharedGroups {
         Ok(())
     }
 
+    // Was: Führt den Arbeitsschritt `metrics` für Messwerte aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn metrics(&self) -> String {
         let status = self.status();
         format!(
@@ -540,6 +627,8 @@ impl SharedGroups {
         )
     }
 
+    // Was: Führt den Arbeitsschritt `gateway_connected` für Gateway connected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn gateway_connected(&self) {
         let mut state = self.0.lock().expect("group state poisoned");
         state.gateway_connected = true;
@@ -547,10 +636,14 @@ impl SharedGroups {
         push_event_locked(&mut state, "gateway_connected", None, None, None, json!({}));
     }
 
+    // Was: Führt den Arbeitsschritt `gateway_disconnected` für Gateway disconnected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn gateway_disconnected(&self, error: String) {
         let mut state = self.0.lock().expect("group state poisoned");
         state.gateway_connected = false;
         state.gateway_last_error = Some(error.clone());
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for sync in state.syncs.values_mut() {
             if matches!(sync.phase, SyncPhase::Pending | SyncPhase::Requested) {
                 sync.phase = SyncPhase::Offline;
@@ -562,8 +655,12 @@ impl SharedGroups {
         push_event_locked(&mut state, "gateway_disconnected", None, None, None, json!({"error": error}));
     }
 
+    // Was: Diese Funktion verarbeitet Hintergrunddienst Ereignis.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     pub fn handle_backend_event(&self, event: BackendEvent) -> Vec<BackendRequest> {
         let mut state = self.0.lock().expect("group state poisoned");
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match event {
             BackendEvent::Snapshot { snapshot } => handle_snapshot_locked(&mut state, snapshot),
             BackendEvent::Event { event } => {
@@ -581,10 +678,14 @@ impl SharedGroups {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `expire_operations` für expire operations aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn expire_operations(&self) -> Vec<BackendRequest> {
         let mut state = self.0.lock().expect("group state poisoned");
         let now = Instant::now();
         let mut sync_timeouts = Vec::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for sync in state.syncs.values_mut() {
             if matches!(sync.phase, SyncPhase::Pending | SyncPhase::Requested)
                 && sync.deadline.is_some_and(|deadline| deadline <= now)
@@ -597,6 +698,8 @@ impl SharedGroups {
             }
         }
         let mut dgna_timeouts = Vec::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for item in state.dgna.values_mut() {
             if matches!(item.phase, DgnaPhase::Pending | DgnaPhase::Requested)
                 && item.deadline.is_some_and(|deadline| deadline <= now)
@@ -608,12 +711,18 @@ impl SharedGroups {
                 dgna_timeouts.push((item.node_id.clone(), item.issi, item.gssi));
             }
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for node in sync_timeouts { push_event_locked(&mut state, "policy_sync_timeout", None, None, Some(node), json!({})); }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (node, issi, gssi) in dgna_timeouts { push_event_locked(&mut state, "dgna_timeout", Some(gssi), Some(issi), Some(node), json!({})); }
         Vec::new()
     }
 }
 
+// Was: Diese Funktion lädt Datenbank.
+// Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
 fn load_database(config: &GroupCoreConfig) -> Result<(u64, BTreeMap<u32, GroupProfile>, BTreeMap<(u32, u32), MembershipRecord>), Box<dyn std::error::Error>> {
     let path = &config.storage.database_path;
     if !path.exists() {
@@ -629,6 +738,8 @@ fn load_database(config: &GroupCoreConfig) -> Result<(u64, BTreeMap<u32, GroupPr
     Ok((database.revision, groups, memberships))
 }
 
+// Was: Führt den Arbeitsschritt `database_snapshot` für Datenbank snapshot aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn database_snapshot(state: &GroupState) -> GroupDatabase {
     GroupDatabase {
         schema_version: DATABASE_SCHEMA_VERSION,
@@ -638,6 +749,8 @@ fn database_snapshot(state: &GroupState) -> GroupDatabase {
     }
 }
 
+// Was: Diese Funktion speichert locked.
+// Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
 fn persist_locked(state: &GroupState) -> Result<(), String> {
     let database = database_snapshot(state);
     let payload = serde_json::to_vec_pretty(&database).map_err(|error| error.to_string())?;
@@ -654,6 +767,8 @@ fn persist_locked(state: &GroupState) -> Result<(), String> {
     fs::rename(temp, &state.config.storage.database_path).map_err(|error| error.to_string())
 }
 
+// Was: Diese Funktion prüft Gruppe input.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_group_input(state: &GroupState, input: &GroupInput, updating: bool) -> Result<(), String> {
     validate_identity(input.gssi, "GSSI")?;
     if !updating && state.groups.len() >= state.config.limits.max_groups { return Err("group limit reached".to_string()); }
@@ -663,6 +778,8 @@ fn validate_group_input(state: &GroupState, input: &GroupInput, updating: bool) 
     Ok(())
 }
 
+// Was: Diese Funktion prüft membership input.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_membership_input(state: &GroupState, input: &MembershipInput) -> Result<(), String> {
     validate_identity(input.issi, "ISSI")?;
     validate_identity(input.gssi, "GSSI")?;
@@ -672,10 +789,14 @@ fn validate_membership_input(state: &GroupState, input: &MembershipInput) -> Res
     Ok(())
 }
 
+// Was: Diese Funktion prüft identity.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_identity(value: u32, name: &str) -> Result<(), String> {
     if value == 0 || value > 0xFF_FFFF { Err(format!("{name} must be in 1..=16777215")) } else { Ok(()) }
 }
 
+// Was: Führt den Arbeitsschritt `profile_from_input` für profile from input aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn profile_from_input(input: GroupInput, created_at: String, updated_at: String, revision: u64) -> GroupProfile {
     GroupProfile {
         gssi: input.gssi,
@@ -697,15 +818,21 @@ fn profile_from_input(input: GroupInput, created_at: String, updated_at: String,
     }
 }
 
+// Was: Führt den Arbeitsschritt `maybe_sync_all_locked` für maybe sync all locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn maybe_sync_all_locked(state: &mut GroupState) -> Vec<BackendRequest> {
     if state.config.policy.auto_sync { schedule_sync_all_locked(state) } else { Vec::new() }
 }
 
+// Was: Diese Funktion plant sync all locked.
+// Warum: Zeitfenster und Ressourcen werden dadurch planbar statt zufällig vergeben.
 fn schedule_sync_all_locked(state: &mut GroupState) -> Vec<BackendRequest> {
     let nodes: Vec<String> = state.nodes.values().filter(|node| node.connected && !node.stale).map(|node| node.node_id.clone()).collect();
     nodes.into_iter().filter_map(|node| schedule_sync_locked(state, &node)).collect()
 }
 
+// Was: Diese Funktion plant sync locked.
+// Warum: Zeitfenster und Ressourcen werden dadurch planbar statt zufällig vergeben.
 fn schedule_sync_locked(state: &mut GroupState, node_id: &str) -> Option<BackendRequest> {
     let revision = state.database_revision;
     let node = state.nodes.get(node_id)?.clone();
@@ -761,8 +888,12 @@ fn schedule_sync_locked(state: &mut GroupState, node_id: &str) -> Option<Backend
     })
 }
 
+// Was: Diese Funktion verarbeitet snapshot locked.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 fn handle_snapshot_locked(state: &mut GroupState, snapshot: GatewaySnapshot) -> Vec<BackendRequest> {
     let mut newly_connected = Vec::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for node in snapshot.nodes {
         let was_connected = state.nodes.get(&node.node_id).is_some_and(|old| old.connected && !old.stale);
         let connected = node.connected && !node.stale;
@@ -775,6 +906,8 @@ fn handle_snapshot_locked(state: &mut GroupState, snapshot: GatewaySnapshot) -> 
         });
         if connected && !was_connected { newly_connected.push(node.node_id); }
     }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for sync in state.syncs.values_mut() {
         if !state.nodes.get(&sync.node_id).is_some_and(|node| node.connected && !node.stale) {
             sync.phase = SyncPhase::Offline;
@@ -787,7 +920,11 @@ fn handle_snapshot_locked(state: &mut GroupState, snapshot: GatewaySnapshot) -> 
     } else { Vec::new() }
 }
 
+// Was: Diese Funktion verarbeitet Netzknoten Nachricht locked.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 fn handle_node_message_locked(state: &mut GroupState, node_id: &str, message: NodeToControlRoomMessage) {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match message {
         NodeToControlRoomMessage::Telemetry { envelope } => handle_telemetry_locked(state, node_id, envelope.event),
         NodeToControlRoomMessage::ControlAck { ack } => {
@@ -802,6 +939,8 @@ fn handle_node_message_locked(state: &mut GroupState, node_id: &str, message: No
         }
         NodeToControlRoomMessage::ControlResponse { envelope } => match envelope.response {
             ControlResponse::GroupAccessPolicyApplied { revision, success, group_count, membership_count, attached_count, detached_count, message, .. } => {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 let sync_id = match envelope.command_id.as_deref() {
                     Some(command_id) => state
                         .syncs
@@ -857,6 +996,8 @@ fn handle_node_message_locked(state: &mut GroupState, node_id: &str, message: No
     }
 }
 
+// Was: Diese Funktion verarbeitet action result locked.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 fn handle_action_result_locked(state: &mut GroupState, request_id: Option<String>, command_id: Option<String>, ok: bool, message: String) {
     let Some(request_id) = request_id else { return; };
     if let Some(sync) = state.syncs.values_mut().find(|sync| sync.request_id.as_deref() == Some(&request_id)) {
@@ -872,8 +1013,12 @@ fn handle_action_result_locked(state: &mut GroupState, request_id: Option<String
     }
 }
 
+// Was: Diese Funktion verarbeitet Telemetrie locked.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 fn handle_telemetry_locked(state: &mut GroupState, node_id: &str, event: TelemetryEvent) {
     let now = now_iso();
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match event {
         TelemetryEvent::MsRegistration { issi } => {
             let key = affiliation_key(node_id, issi);
@@ -894,6 +1039,8 @@ fn handle_telemetry_locked(state: &mut GroupState, node_id: &str, event: Telemet
         TelemetryEvent::MsGroupDetach { issi, gssis } => {
             let key = affiliation_key(node_id, issi);
             let item = state.affiliations.entry(key).or_insert_with(|| ObservedAffiliation { node_id: node_id.to_string(), issi, registered: true, groups: BTreeSet::new(), last_seen: now.clone() });
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for gssi in &gssis { item.groups.remove(gssi); } item.last_seen = now;
             push_event_locked(state, "group_detach_observed", None, Some(issi), Some(node_id.to_string()), json!({"gssis": gssis}));
         }
@@ -907,21 +1054,37 @@ fn handle_telemetry_locked(state: &mut GroupState, node_id: &str, event: Telemet
     }
 }
 
+// Was: Diese Funktion legt Ereignis locked.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn push_event_locked(state: &mut GroupState, kind: &str, gssi: Option<u32>, issi: Option<u32>, node_id: Option<String>, detail: Value) {
     state.next_event_seq = state.next_event_seq.saturating_add(1);
     state.events.push_back(GroupEventRecord { seq: state.next_event_seq, timestamp: now_iso(), kind: kind.to_string(), gssi, issi, node_id, detail });
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while state.events.len() > state.config.server.history_limit { state.events.pop_front(); }
 }
 
+// Was: Führt den Arbeitsschritt `affiliation_key` für affiliation key aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn affiliation_key(node_id: &str, issi: u32) -> String { format!("{node_id}:{issi}") }
+// Was: Führt den Arbeitsschritt `now_iso` für now iso aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn now_iso() -> String { chrono::Utc::now().to_rfc3339() }
+// Was: Führt den Arbeitsschritt `default_true` für default true aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_true() -> bool { true }
+// Was: Führt den Arbeitsschritt `default_class_of_usage` für default class of usage aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_class_of_usage() -> u8 { 4 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
+    // Was: Prüft automatisch den Fall Zustand.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_state() -> GroupState {
         GroupState {
             config: GroupCoreConfig::default(),
@@ -942,6 +1105,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Diese Funktion plant sync filters groups by TETRA-Basisstation area.
+    // Warum: Zeitfenster und Ressourcen werden dadurch planbar statt zufällig vergeben.
     fn schedule_sync_filters_groups_by_tbs_area() {
         let mut state = test_state();
         state.nodes.insert(
@@ -1039,6 +1204,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `profile_validation_rejects_invalid_gssi` für profile validation rejects invalid Gruppenkennung (GSSI) aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn profile_validation_rejects_invalid_gssi() {
         let state = test_state();
         let input = GroupInput { gssi: 0, name: String::new(), description: String::new(), enabled: true, attach_allowed: true, dgna_allowed: true, call_allowed: true, sds_allowed: true, emergency_allowed: false, call_priority: 0, class_of_usage: 4, area_nodes: BTreeSet::new(), notes: String::new() };

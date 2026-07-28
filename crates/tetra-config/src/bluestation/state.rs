@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Einlesen und Prüfen der TETRA-Konfiguration.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
 use serde::{Deserialize, Serialize};
 use tetra_core::TimeslotAllocator;
@@ -13,6 +16,8 @@ use tetra_core::tetra_entities::TetraEntity;
 /// - `repeat_count = 0` → repeats indefinitely until explicitly deleted.
 /// - `repeat_count > 0` → auto-removed after that many transmissions.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für live TETRA-Kurznachricht (SDS) Nachricht in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LiveSdsMessage {
     /// Unique ID (monotonically incrementing, assigned by the stack).
     pub id: u32,
@@ -29,6 +34,8 @@ pub struct LiveSdsMessage {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für Teilnehmer in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct Subscriber {
     pub issi: u32,
     // Set of attached GSSIs
@@ -39,6 +46,8 @@ pub struct Subscriber {
 
 /// Centralized subscriber registry tracking locally registered ISSIs and their group affiliations.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für Teilnehmer registry in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SubscriberRegistry {
     /// Registered ISSIs → Subscriber information
     subscribers: HashMap<u32, Subscriber>,
@@ -46,13 +55,21 @@ pub struct SubscriberRegistry {
     all_attached_groups: HashSet<u32>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for SubscriberRegistry`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for SubscriberRegistry {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self::new()
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SubscriberRegistry`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SubscriberRegistry {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new() -> Self {
         Self {
             subscribers: HashMap::new(),
@@ -60,11 +77,15 @@ impl SubscriberRegistry {
         }
     }
 
+    // Was: Prüft, ob registered zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     pub fn is_registered(&self, issi: u32) -> bool {
         self.subscribers.contains_key(&issi)
     }
 
     /// Tolerant registration; if ISSI already registered, we overwrite it with a fresh Subscriber struct
+    // Was: Diese Funktion registriert den vorgesehenen Arbeitsschritt.
+    // Warum: Die Zuordnung bleibt dadurch eindeutig und kann später sauber wieder entfernt werden.
     pub fn register(&mut self, issi: u32) {
         self.deregister(issi); // Clean up any existing registration to prevent stale affiliations
         self.subscribers.insert(
@@ -78,6 +99,8 @@ impl SubscriberRegistry {
     }
 
     /// Gets mutable ref to subscriber. If not registered, a default Subscriber is inserted.
+    // Was: Diese Funktion liest Teilnehmer mut.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     pub fn get_subscriber_mut(&mut self, issi: u32) -> &mut Subscriber {
         self.subscribers.entry(issi).or_insert_with(|| Subscriber {
             issi,
@@ -87,6 +110,8 @@ impl SubscriberRegistry {
     }
 
     /// Update the last reported MS class duplex capability.
+    // Was: Diese Funktion setzt duplex capable.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_duplex_capable(&mut self, issi: u32, duplex_capable: Option<bool>) {
         if let Some(subscriber) = self.subscribers.get_mut(&issi) {
             subscriber.duplex_capable = duplex_capable;
@@ -94,14 +119,20 @@ impl SubscriberRegistry {
     }
 
     /// Return the last reported MS class duplex capability, if known.
+    // Was: Führt den Arbeitsschritt `duplex_capable` für duplex capable aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn duplex_capable(&self, issi: u32) -> Option<bool> {
         self.subscribers.get(&issi).and_then(|s| s.duplex_capable)
     }
 
     /// Deregister an ISSI, removing it from the registry and cleaning up any group affiliations
+    // Was: Führt den Arbeitsschritt `deregister` für deregister aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn deregister(&mut self, issi: u32) {
         if let Some(subscriber) = self.subscribers.remove(&issi) {
             // Clean up global group affiliations for this subscriber
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for gssi in &subscriber.attached_groups {
                 // Check if any other subscriber is still affiliated with this group
                 let still_has_members = self.subscribers.values().any(|s| s.attached_groups.contains(gssi));
@@ -113,6 +144,8 @@ impl SubscriberRegistry {
     }
 
     /// Add GSSI to subscriber's attached groups and global set
+    // Was: Führt den Arbeitsschritt `affiliate` für affiliate aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn affiliate(&mut self, issi: u32, gssi: u32) {
         let subscriber = self.get_subscriber_mut(issi);
         subscriber.attached_groups.insert(gssi);
@@ -120,6 +153,8 @@ impl SubscriberRegistry {
     }
 
     /// Remove GSSI from subscriber's attached groups. Update global set if no more subscribers are affiliated with this GSSI.
+    // Was: Führt den Arbeitsschritt `deaffiliate` für deaffiliate aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn deaffiliate(&mut self, issi: u32, gssi: u32) {
         let subscriber = self.get_subscriber_mut(issi);
         if subscriber.attached_groups.remove(&gssi) {
@@ -132,6 +167,8 @@ impl SubscriberRegistry {
     }
 
     /// Check if any subscriber is affiliated with the given GSSI
+    // Was: Prüft, ob Gruppe members zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     pub fn has_group_members(&self, gssi: u32) -> bool {
         self.all_attached_groups.contains(&gssi)
     }
@@ -143,14 +180,20 @@ impl SubscriberRegistry {
     /// Without this, MS units that were registered before a Brew disconnect believe
     /// they are still affiliated and do not re-register, causing PTT denial until
     /// they are manually power-cycled or the BS service is restarted.
+    // Was: Führt den Arbeitsschritt `all_registered_issis` für all registered issis aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn all_registered_issis(&self) -> impl Iterator<Item = u32> + '_ {
         self.subscribers.keys().copied()
     }
 
+    // Was: Führt den Arbeitsschritt `registered_count` für registered count aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn registered_count(&self) -> usize {
         self.subscribers.len()
     }
 
+    // Was: Führt den Arbeitsschritt `attached_group_count` für attached Gruppe count aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn attached_group_count(&self) -> usize {
         self.all_attached_groups.len()
     }
@@ -158,6 +201,8 @@ impl SubscriberRegistry {
     /// Groups the given ISSI is currently affiliated to (empty if not registered).
     /// Used by the SDS path to reach a member of an active group call on the group's
     /// traffic timeslot.
+    // Was: Führt den Arbeitsschritt `attached_groups_of` für attached groups of aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn attached_groups_of(&self, issi: u32) -> Vec<u32> {
         self.subscribers
             .get(&issi)
@@ -173,6 +218,8 @@ impl SubscriberRegistry {
 /// also writes the new values back to the TOML so they persist. `None` means "no override
 /// — use the config value".
 #[derive(Debug, Clone, Default)]
+// Was: Bündelt die zusammengehörigen Werte für wx Laufzeit override in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct WxRuntimeOverride {
     pub enabled: bool,
     pub service_issi: u32,
@@ -191,6 +238,8 @@ pub struct WxRuntimeOverride {
 /// means "no override — use the config value". The token is kept as a plain `String` here (the
 /// state is in-memory only); the config-side `CfgTelegram` wraps it in `SecretField`.
 #[derive(Debug, Clone, Default)]
+// Was: Bündelt die zusammengehörigen Werte für telegram Laufzeit override in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TelegramRuntimeOverride {
     pub enabled: bool,
     pub bot_token: String,
@@ -212,6 +261,8 @@ pub struct TelegramRuntimeOverride {
 /// Mirrors `[dapnet]`. When present, it takes precedence over the config file so routing edits
 /// apply immediately; the dashboard also writes the values back to TOML for persistence.
 #[derive(Debug, Clone, Default)]
+// Was: Bündelt die zusammengehörigen Werte für dapnet Laufzeit override in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DapnetRuntimeOverride {
     pub enabled: bool,
     pub api_url: String,
@@ -253,6 +304,8 @@ pub struct DapnetRuntimeOverride {
 /// Mirrors `[echolink]`. When present, it takes precedence over the config file so routing edits
 /// apply immediately; the dashboard also writes the values back to TOML for persistence.
 #[derive(Debug, Clone, Default)]
+// Was: Bündelt die zusammengehörigen Werte für echolink Laufzeit override in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct EcholinkRuntimeOverride {
     pub enabled: bool,
     pub callsign: String,
@@ -285,6 +338,8 @@ pub struct EcholinkRuntimeOverride {
 /// Mirrors `[meshcom]`. When present, it takes precedence over the config file so UDP routing
 /// edits apply immediately; the dashboard also writes the values back to TOML for persistence.
 #[derive(Debug, Clone, Default)]
+// Was: Bündelt die zusammengehörigen Werte für meshcom Laufzeit override in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MeshcomRuntimeOverride {
     pub enabled: bool,
     pub bind_addr: String,
@@ -313,6 +368,8 @@ pub struct MeshcomRuntimeOverride {
 /// filters and forwarding edits apply immediately; the dashboard also writes the values back to
 /// TOML for persistence.
 #[derive(Debug, Clone, Default)]
+// Was: Bündelt die zusammengehörigen Werte für geoalarm Laufzeit override in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GeoalarmRuntimeOverride {
     pub enabled: bool,
     pub flowstation_lat: f64,
@@ -355,6 +412,8 @@ pub struct GeoalarmRuntimeOverride {
 /// notification routing edits apply immediately; the dashboard also writes the values
 /// back to TOML for persistence.
 #[derive(Debug, Clone, Default)]
+// Was: Bündelt die zusammengehörigen Werte für snom notify Laufzeit override in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SnomNotifyRuntimeOverride {
     pub enabled: bool,
     pub ami_host: String,
@@ -377,6 +436,8 @@ pub struct SnomNotifyRuntimeOverride {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für asterisk Laufzeit Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct AsteriskRuntimeStatus {
     pub configured: bool,
     pub enabled: bool,
@@ -391,7 +452,11 @@ pub struct AsteriskRuntimeStatus {
     pub last_error: Option<String>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for AsteriskRuntimeStatus`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for AsteriskRuntimeStatus {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             configured: false,
@@ -410,6 +475,8 @@ impl Default for AsteriskRuntimeStatus {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für dapnet Laufzeit Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DapnetRuntimeStatus {
     pub configured: bool,
     pub enabled: bool,
@@ -425,7 +492,11 @@ pub struct DapnetRuntimeStatus {
     pub last_error: Option<String>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for DapnetRuntimeStatus`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for DapnetRuntimeStatus {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             configured: false,
@@ -445,6 +516,8 @@ impl Default for DapnetRuntimeStatus {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für echolink directory station Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct EcholinkDirectoryStationStatus {
     pub callsign: String,
     pub id: u32,
@@ -452,6 +525,8 @@ pub struct EcholinkDirectoryStationStatus {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für echolink Laufzeit Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct EcholinkRuntimeStatus {
     pub configured: bool,
     pub enabled: bool,
@@ -467,7 +542,11 @@ pub struct EcholinkRuntimeStatus {
     pub directory_stations: Vec<EcholinkDirectoryStationStatus>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for EcholinkRuntimeStatus`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for EcholinkRuntimeStatus {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             configured: false,
@@ -487,6 +566,8 @@ impl Default for EcholinkRuntimeStatus {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für meshcom Netzknoten Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MeshcomNodeStatus {
     pub src: String,
     pub via: Vec<String>,
@@ -504,6 +585,8 @@ pub struct MeshcomNodeStatus {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für meshcom Nachricht Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MeshcomMessageStatus {
     pub ts: String,
     pub direction: String,
@@ -524,6 +607,8 @@ pub struct MeshcomMessageStatus {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für meshcom Laufzeit Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MeshcomRuntimeStatus {
     pub configured: bool,
     pub enabled: bool,
@@ -541,7 +626,11 @@ pub struct MeshcomRuntimeStatus {
     pub messages: Vec<MeshcomMessageStatus>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for MeshcomRuntimeStatus`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for MeshcomRuntimeStatus {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             configured: false,
@@ -563,6 +652,8 @@ impl Default for MeshcomRuntimeStatus {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für geoalarm Ereignis Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GeoalarmEventStatus {
     pub ts: String,
     pub source: String,
@@ -577,6 +668,8 @@ pub struct GeoalarmEventStatus {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für geoalarm Laufzeit Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GeoalarmRuntimeStatus {
     pub configured: bool,
     pub enabled: bool,
@@ -596,7 +689,11 @@ pub struct GeoalarmRuntimeStatus {
     pub events: Vec<GeoalarmEventStatus>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for GeoalarmRuntimeStatus`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for GeoalarmRuntimeStatus {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             configured: false,
@@ -624,6 +721,8 @@ impl Default for GeoalarmRuntimeStatus {
 /// Runtime state of the central service plane as observed by the TBS.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für edge fallback mode auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum EdgeFallbackMode {
     Online,
     Degraded,
@@ -631,7 +730,11 @@ pub enum EdgeFallbackMode {
     Recovering,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for EdgeFallbackMode`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for EdgeFallbackMode {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self::Isolated
     }
@@ -639,6 +742,8 @@ impl Default for EdgeFallbackMode {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für edge Dienst level auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum EdgeServiceLevel {
     Unknown,
     Available,
@@ -646,13 +751,19 @@ pub enum EdgeServiceLevel {
     Unavailable,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for EdgeServiceLevel`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for EdgeServiceLevel {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self::Unknown
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für edge Dienst Laufzeit in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct EdgeServiceRuntime {
     pub service: String,
     pub level: EdgeServiceLevel,
@@ -664,6 +775,8 @@ pub struct EdgeServiceRuntime {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für edge fallback snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct EdgeFallbackSnapshot {
     pub enabled: bool,
     pub gateway_connected: bool,
@@ -683,6 +796,8 @@ pub struct EdgeFallbackSnapshot {
 
 /// One centrally managed group definition distributed by the Group Core.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für central Gruppe definition in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CentralGroupDefinition {
     pub gssi: u32,
     pub enabled: bool,
@@ -697,6 +812,8 @@ pub struct CentralGroupDefinition {
 
 /// Runtime group policy installed by the central Group Core.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für central Gruppe policy in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CentralGroupPolicy {
     pub revision: u64,
     pub allow_unlisted_groups: bool,
@@ -706,7 +823,11 @@ pub struct CentralGroupPolicy {
     pub automatic_memberships: HashMap<u32, HashSet<u32>>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `CentralGroupPolicy`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl CentralGroupPolicy {
+    // Was: Führt den Arbeitsschritt `allows_affiliation` für allows affiliation aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn allows_affiliation(&self, issi: u32, gssi: u32) -> bool {
         let definition_allowed = self
             .groups
@@ -723,6 +844,8 @@ impl CentralGroupPolicy {
                 .is_some_and(|groups| groups.contains(&gssi))
     }
 
+    // Was: Führt den Arbeitsschritt `allows_dgna` für allows dgna aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn allows_dgna(&self, issi: u32, gssi: u32) -> bool {
         let definition_allowed = self
             .groups
@@ -739,6 +862,8 @@ impl CentralGroupPolicy {
                 .is_some_and(|groups| groups.contains(&gssi))
     }
 
+    // Was: Führt den Arbeitsschritt `allows_group_call` für allows Gruppe Ruf aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn allows_group_call(&self, gssi: u32) -> bool {
         self.groups
             .get(&gssi)
@@ -746,6 +871,8 @@ impl CentralGroupPolicy {
             .unwrap_or(self.allow_unlisted_groups)
     }
 
+    // Was: Führt den Arbeitsschritt `allows_emergency_call` für allows emergency Ruf aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn allows_emergency_call(&self, gssi: u32) -> bool {
         self.groups
             .get(&gssi)
@@ -753,6 +880,8 @@ impl CentralGroupPolicy {
             .unwrap_or(self.allow_unlisted_groups)
     }
 
+    // Was: Führt den Arbeitsschritt `class_of_usage` für class of usage aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn class_of_usage(&self, gssi: u32, fallback: u8) -> u8 {
         self.groups
             .get(&gssi)
@@ -760,6 +889,8 @@ impl CentralGroupPolicy {
             .unwrap_or(fallback.min(15))
     }
 
+    // Was: Führt den Arbeitsschritt `call_priority` für Ruf Priorität aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn call_priority(&self, gssi: u32, requested: u8) -> u8 {
         self.groups
             .get(&gssi)
@@ -767,6 +898,8 @@ impl CentralGroupPolicy {
             .unwrap_or(requested.min(15))
     }
 
+    // Was: Führt den Arbeitsschritt `automatic_groups_for` für automatic groups for aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn automatic_groups_for(&self, issi: u32) -> Vec<u32> {
         let mut groups: Vec<u32> = self
             .automatic_memberships
@@ -783,6 +916,8 @@ impl CentralGroupPolicy {
 
 /// Mutable, stack-editable state (mutex-protected).
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für stack Zustand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct StackState {
     pub timeslot_alloc: TimeslotAllocator,
     /// Backhaul/network connection to SwMI (e.g., Brew/TetraPack). False -> fallback mode.
@@ -875,9 +1010,13 @@ pub struct StackState {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
+    // Was: Führt den Arbeitsschritt `sample_group_policy` für sample Gruppe policy aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn sample_group_policy() -> CentralGroupPolicy {
         let mut groups = HashMap::new();
         groups.insert(15501, CentralGroupDefinition {
@@ -917,6 +1056,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `central_group_policy_enforces_definition_and_membership` für central Gruppe policy enforces definition and membership aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn central_group_policy_enforces_definition_and_membership() {
         let policy = sample_group_policy();
         assert!(policy.allows_affiliation(1001, 15501));
@@ -927,6 +1068,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `central_group_policy_controls_calls_priority_and_auto_attach` für central Gruppe policy controls calls Priorität and und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn central_group_policy_controls_calls_priority_and_auto_attach() {
         let policy = sample_group_policy();
         assert!(!policy.allows_group_call(15501));
@@ -938,6 +1081,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `central_group_policy_can_allow_unlisted_groups_without_membership_enforcement` für central Gruppe policy can allow unlisted groups und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn central_group_policy_can_allow_unlisted_groups_without_membership_enforcement() {
         let mut policy = sample_group_policy();
         policy.allow_unlisted_groups = true;
@@ -950,6 +1095,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall register deregister.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_register_deregister() {
         let mut reg = SubscriberRegistry::new();
         assert!(!reg.is_registered(1001));
@@ -960,6 +1107,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall affiliate deaffiliate.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_affiliate_deaffiliate() {
         let mut reg = SubscriberRegistry::new();
         reg.register(1001);
@@ -970,6 +1119,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall has Gruppe members.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_has_group_members() {
         let mut reg = SubscriberRegistry::new();
         reg.register(1001);
@@ -994,12 +1145,16 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall has Gruppe members empty.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_has_group_members_empty() {
         let reg = SubscriberRegistry::new();
         assert!(!reg.has_group_members(999));
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall register overwrites existing Teilnehmer.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_register_overwrites_existing_subscriber() {
         let mut reg = SubscriberRegistry::new();
         reg.register(1001);
@@ -1017,6 +1172,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall duplex capability is per Teilnehmer.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_duplex_capability_is_per_subscriber() {
         let mut reg = SubscriberRegistry::new();
         reg.register(1001);
@@ -1031,6 +1188,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall all registered issis.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_all_registered_issis() {
         let mut reg = SubscriberRegistry::new();
         reg.register(1001);
@@ -1047,7 +1206,11 @@ mod tests {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for StackState`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for StackState {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             timeslot_alloc: TimeslotAllocator::default(),

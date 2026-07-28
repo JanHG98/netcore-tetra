@@ -1,3 +1,8 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+// Was: Bindet das Untermodul common in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod common;
 
 use common::ComponentTest;
@@ -24,10 +29,14 @@ use tetra_saps::lcmc::fields::chan_alloc_req::CmceChanAllocReq;
 use tetra_saps::tla::TlaTlDataIndBl;
 use tetra_saps::{SapMsg, SapMsgInner};
 
+// Was: Führt den Arbeitsschritt `issi` für Teilnehmerkennung (ISSI) aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn issi(value: u32) -> TetraAddress {
     TetraAddress::new(value, SsiType::Issi)
 }
 
+// Was: Führt den Arbeitsschritt `make_cell` für make cell aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn make_cell(main_carrier: u16, location_area: u8, colour_code: u8) -> ComponentTest {
     let mut config = ComponentTest::get_default_test_config(StackMode::Bs);
     config.cell.main_carrier = main_carrier;
@@ -41,6 +50,8 @@ fn make_cell(main_carrier: u16, location_area: u8, colour_code: u8) -> Component
     cell
 }
 
+// Was: Führt den Arbeitsschritt `with_cmce` für with CMCE-Rufsteuerung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn with_cmce<R>(cell: &mut ComponentTest, f: impl FnOnce(&mut CmceBs) -> R) -> R {
     let entity = cell
         .router
@@ -53,6 +64,8 @@ fn with_cmce<R>(cell: &mut ComponentTest, f: impl FnOnce(&mut CmceBs) -> R) -> R
     f(cmce)
 }
 
+// Was: Führt den Arbeitsschritt `transfer_context` für transfer Kontext aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn transfer_context(source: &mut ComponentTest, target: &mut ComponentTest, call_id: u16) {
     let context = with_cmce(source, |cmce| {
         cmce
@@ -62,6 +75,8 @@ fn transfer_context(source: &mut ComponentTest, target: &mut ComponentTest, call
     with_cmce(target, |cmce| cmce.install_call_restore_context(context));
 }
 
+// Was: Führt den Arbeitsschritt `submit_restore` für submit Wiederherstellung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn submit_restore(
     cell: &mut ComponentTest,
     subscriber: TetraAddress,
@@ -114,9 +129,13 @@ fn submit_restore(
     cell.deliver_all_messages();
 }
 
+// Was: Führt den Arbeitsschritt `take_call_restore` für take Ruf Wiederherstellung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn take_call_restore(
     cell: &mut ComponentTest,
 ) -> (DCallRestore, Option<CmceChanAllocReq>) {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for message in cell.dump_sinks() {
         if let SapMsgInner::TlaTlDataReqBl(primitive) = message.msg {
             let mut sdu = primitive.tl_sdu;
@@ -136,6 +155,8 @@ fn take_call_restore(
     panic!("no D-RESTORE-ACK/D-CALL RESTORE found");
 }
 
+// Was: Führt den Arbeitsschritt `speech_service` für speech Dienst aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn speech_service(communication_type: CommunicationType) -> BasicServiceInformation {
     BasicServiceInformation {
         circuit_mode_type: CircuitModeType::TchS,
@@ -147,6 +168,8 @@ fn speech_service(communication_type: CommunicationType) -> BasicServiceInformat
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `running_group_call_is_restored_on_target_cell_with_floor_and_priority_context` für running Gruppe Ruf is restored on target und weitere Angaben aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn running_group_call_is_restored_on_target_cell_with_floor_and_priority_context() {
     let mut source = make_cell(1521, 10, 1);
     let mut target = make_cell(1522, 11, 2);
@@ -211,6 +234,8 @@ fn running_group_call_is_restored_on_target_cell_with_floor_and_priority_context
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `running_individual_simplex_call_restores_without_stealing_the_other_floor` für running individual simplex Ruf restores without stealing und weitere Angaben aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn running_individual_simplex_call_restores_without_stealing_the_other_floor() {
     let mut source = make_cell(1521, 10, 1);
     let mut target = make_cell(1522, 11, 2);
@@ -277,6 +302,8 @@ fn running_individual_simplex_call_restores_without_stealing_the_other_floor() {
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `call_id_collision_is_remapped_once_and_reused_by_later_group_participants` für Ruf Kennung collision is remapped once and und weitere Angaben aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn call_id_collision_is_remapped_once_and_reused_by_later_group_participants() {
     let mut target = make_cell(1522, 11, 2);
     let old_call_id = 130;
@@ -402,9 +429,13 @@ fn call_id_collision_is_remapped_once_and_reused_by_later_group_participants() {
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `congested_target_acknowledges_restore_as_queued_without_a_channel_allocation` für congested target acknowledges Wiederherstellung as queued without und weitere Angaben aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn congested_target_acknowledges_restore_as_queued_without_a_channel_allocation() {
     let mut target = make_cell(1522, 11, 2);
 
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for index in 0..4_u16 {
         let call_id = 200 + index;
         let subscriber = issi(12_000 + u32::from(index));
@@ -470,6 +501,8 @@ fn congested_target_acknowledges_restore_as_queued_without_a_channel_allocation(
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `replayed_group_restore_keeps_the_same_bearer_allocation` für replayed Gruppe Wiederherstellung keeps the same Übertragungskanal und weitere Angaben aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn replayed_group_restore_keeps_the_same_bearer_allocation() {
     let mut target = make_cell(1522, 11, 2);
     let call_id = 240;
@@ -529,6 +562,8 @@ fn replayed_group_restore_keeps_the_same_bearer_allocation() {
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `group_listener_restore_keeps_receive_plane_when_another_user_is_speaking` für Gruppe listener Wiederherstellung keeps receive plane when und weitere Angaben aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn group_listener_restore_keeps_receive_plane_when_another_user_is_speaking() {
     let mut target = make_cell(1522, 11, 2);
     let call_id = 171;
@@ -583,6 +618,8 @@ fn group_listener_restore_keeps_receive_plane_when_another_user_is_speaking() {
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `duplex_individual_restore_is_granted_even_without_a_tx_request_bit` für duplex individual Wiederherstellung is granted even without und weitere Angaben aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn duplex_individual_restore_is_granted_even_without_a_tx_request_bit() {
     let mut target = make_cell(1522, 11, 2);
     let call_id = 172;

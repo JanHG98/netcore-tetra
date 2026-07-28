@@ -1,3 +1,8 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+// Was: Legt den festen Wert `DASHBOARD_HTML` für dashboard html fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const DASHBOARD_HTML: &str = r#"<!DOCTYPE html>
 <html lang="de" data-uisize="m">
 <head>
@@ -11016,6 +11021,8 @@ boot();
 /// configured. Keeps the visual language of the dashboard (same dark palette, mono
 /// title type) but is self-contained: a single document, no external deps, no
 /// font downloads. Form posts to POST /api/login as JSON via fetch().
+// Was: Legt den festen Wert `LOGIN_HTML` für login html fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const LOGIN_HTML: &str = r##"<!DOCTYPE html>
 <html lang="de">
 <head>

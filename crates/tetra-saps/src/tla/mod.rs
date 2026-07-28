@@ -1,15 +1,22 @@
 #![allow(unused)]
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Nachrichten an den Schnittstellen zwischen TETRA-Protokollschichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use tetra_core::{BitBuffer, EndpointId, LinkId, TetraAddress, Todo, TxReporter};
 
 use crate::lcmc::fields::chan_alloc_req::CmceChanAllocReq;
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tl cancel req in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlCancelReq {
     pub handle: Todo,
 }
 
 /// advanced link
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tl connect req in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlConnectReq {
     // address_type: Todo,
     main_address: Todo,
@@ -27,6 +34,8 @@ pub struct TlConnectReq {
 }
 /// advanced link
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tl connect ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlConnectInd {
     // address_type: Todo,
     main_address: Todo,
@@ -46,6 +55,8 @@ pub struct TlConnectInd {
 }
 /// advanced link
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tl connect resp in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlConnectResp {
     // address_type: Todo,
     main_address: Todo,
@@ -63,6 +74,8 @@ pub struct TlConnectResp {
 }
 /// advanced link
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tl connect conf in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlConnectConf {
     // address_type: Todo,
     main_address: Todo,
@@ -83,16 +96,24 @@ pub struct TlConnectConf {
 
 /// advanced link only
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tl data req al in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlDataReqAl;
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tl data ind al in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlDataIndAl;
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tl data conf al in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlDataConfAl;
 
 /// Clause 20.3.5.1.4
 /// TL-DATA request: this primitive shall be used by the layer 2 service user to request transmission of a TL-SDU. The
 // TL-SDU will be acknowledged by the peer entity.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tla tl data req bl in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlaTlDataReqBl {
     // pub address_type: Todo,
     pub main_address: TetraAddress,
@@ -122,6 +143,8 @@ pub struct TlaTlDataReqBl {
 /// TL-DATA indication: this primitive shall be used by the layer 2 to deliver the received TL-SDU to the layer 2 service
 // user.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tla tl data ind bl in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlaTlDataIndBl {
     // pub address_type: Todo,
     pub main_address: TetraAddress,
@@ -144,6 +167,8 @@ pub struct TlaTlDataIndBl {
 // indication primitive. The TL-DATA response primitive may contain a TL-SDU. That TL-SDU will be sent without an
 // explicit acknowledgement from the peer entity.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tl data resp bl in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlDataRespBl {
     // pub address_type: Todo,
     pub main_address: TetraAddress,
@@ -166,6 +191,8 @@ pub struct TlDataRespBl {
 // successfully the transmission of the requested TL-SDU. Depending on the availability of the response primitive at the
 // peer entity before transmission of the acknowledgement, the confirm primitive may or may not carry a TL-SDU.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tl data conf bl in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlDataConfBl {
     // pub address_type: Todo,
     pub main_address: TetraAddress,
@@ -186,26 +213,38 @@ pub struct TlDataConfBl {
 
 /// Advanced link only
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tl disconnect req in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlDisconnectReq;
 /// Advanced link only
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tl disconnect ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlDisconnectInd;
 /// Advanced link only
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tl disconnect conf in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlDisconnectConf;
 
 /// advanced link, BS only
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tl receive ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlReceiveInd;
 
 // advanced link
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tl release req in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlReleaseReq {
     // pub address_type: Todo,
     pub main_address: TetraAddress,
     pub link_id: LinkId,
 }
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tl release ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlReleaseInd {
     // pub address_type: Todo,
     pub main_address: TetraAddress,
@@ -215,9 +254,13 @@ pub struct TlReleaseInd {
 
 /// advanced link
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tl reconnect req in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlReconnectReq;
 /// advanced link
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tl reconnect resp in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlReconnectResp;
 
 // pub enum TlaReport {
@@ -227,6 +270,8 @@ pub struct TlReconnectResp;
 // }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tla tl report ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlaTlReportInd {
     pub req_handle: Option<Todo>,
     pub report: Todo,
@@ -240,6 +285,8 @@ pub struct TlaTlReportInd {
 /// TL-UNITDATA request: this primitive shall be used in the unacknowledged data transfer service by the layer 2
 /// service user to request layer 2 to transmit a TL-SDU.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tla tl unitdata req bl in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlaTlUnitdataReqBl {
     // pub address_type: Todo,
     pub main_address: TetraAddress,
@@ -272,6 +319,8 @@ pub struct TlaTlUnitdataReqBl {
 /// TL-UNITDATA indication: this primitive shall be used in the unacknowledged data transfer service to deliver
 /// the received TL-SDU to the layer 2 service user.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tla tl unitdata ind bl in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlaTlUnitdataIndBl {
     // pub address_type: Todo,
     pub main_address: TetraAddress,
@@ -293,6 +342,8 @@ pub struct TlaTlUnitdataIndBl {
 /// TL-UNITDATA confirm: this primitive may be used in the unacknowledged data transfer service to indicate
 /// completion of sending of the requested TL-SDU.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tl unitdata conf bl in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlUnitdataConfBl {
     // pub address_type: Todo,
     pub main_address: TetraAddress,
@@ -304,10 +355,16 @@ pub struct TlUnitdataConfBl {
 
 /// Advanced link
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tl unitdata req al in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlUnitdataReqAl;
 /// Advanced link
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tl unitdata ind al in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlUnitdataIndAl;
 /// Advanced link, optional?
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tl unitdata conf al in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlUnitdataConfAl;

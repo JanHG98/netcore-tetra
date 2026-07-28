@@ -1,13 +1,22 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Sicherheitsrichtlinien und Authentifizierungsabläufe.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tetra_entities::net_control_room::{
     ControlRoomNodeCapabilities, ControlRoomNodeIdentity, NodeToControlRoomMessage,
 };
 
+// Was: Legt den festen Wert `BACKEND_PROTOCOL_VERSION` für Hintergrunddienst protocol version fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const BACKEND_PROTOCOL_VERSION: &str = "netcore-node-gateway-backend-v1";
+// Was: Legt den festen Wert `EDGE_PROTOCOL_VERSION` für edge protocol version fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const EDGE_PROTOCOL_VERSION: &str = "netcore-security-edge-v1";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Gateway Netzknoten snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GatewayNodeSnapshot {
     pub node_id: String,
     pub session_id: String,
@@ -33,6 +42,8 @@ pub struct GatewayNodeSnapshot {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Gateway Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GatewayStatus {
     pub service: String,
     pub started_at: String,
@@ -54,12 +65,16 @@ pub struct GatewayStatus {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Gateway snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GatewaySnapshot {
     pub status: GatewayStatus,
     pub nodes: Vec<GatewayNodeSnapshot>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Gateway Ereignis Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GatewayEventRecord {
     pub seq: u64,
     pub timestamp: String,
@@ -70,6 +85,8 @@ pub struct GatewayEventRecord {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für Hintergrunddienst Ereignis auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum BackendEvent {
     Snapshot { snapshot: GatewaySnapshot },
     Event { event: GatewayEventRecord },
@@ -84,11 +101,15 @@ pub enum BackendEvent {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für Hintergrunddienst request auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum BackendRequest {
     Ping { request_id: Option<String> },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für profile input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ProfileInput {
     pub issi: u32,
     #[serde(default)]
@@ -110,6 +131,8 @@ pub struct ProfileInput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für policy input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PolicyInput {
     #[serde(default)]
     pub operating_mode: Option<String>,
@@ -128,6 +151,8 @@ pub struct PolicyInput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für authentication start input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct AuthenticationStartInput {
     pub node_id: String,
     pub issi: u32,
@@ -142,6 +167,8 @@ pub struct AuthenticationStartInput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für authentication response input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct AuthenticationResponseInput {
     pub response_hex: String,
     #[serde(default)]
@@ -151,6 +178,8 @@ pub struct AuthenticationResponseInput {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für disable input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DisableInput {
     #[serde(default)]
     pub equipment: bool,
@@ -163,6 +192,8 @@ pub struct DisableInput {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für revoke input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct RevokeInput {
     #[serde(default)]
     pub reason: Option<String>,
@@ -171,6 +202,8 @@ pub struct RevokeInput {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für alarm ack input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct AlarmAckInput {
     #[serde(default)]
     pub actor: Option<String>,
@@ -179,17 +212,23 @@ pub struct AlarmAckInput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für edge claim input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct EdgeClaimInput {
     pub node_id: String,
     #[serde(default = "default_claim_limit")]
     pub limit: usize,
 }
 
+// Was: Führt den Arbeitsschritt `default_claim_limit` für default claim limit aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_claim_limit() -> usize {
     25
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für edge action ack input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct EdgeActionAckInput {
     #[serde(default = "default_ack_success")]
     pub success: bool,
@@ -197,11 +236,17 @@ pub struct EdgeActionAckInput {
     pub message: Option<String>,
 }
 
+// Was: Führt den Arbeitsschritt `default_ack_success` für default ack success aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_ack_success() -> bool {
     true
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for EdgeActionAckInput`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for EdgeActionAckInput {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             success: true,

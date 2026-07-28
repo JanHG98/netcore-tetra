@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für operations.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::BTreeMap;
 use std::fs;
 use std::io::{Read, Write};
@@ -14,10 +17,14 @@ use uuid::Uuid;
 use crate::config::{CoreServiceConfig, FederationConfig, OperationsConfig};
 use crate::state::now_iso;
 
+// Was: Legt den festen Wert `STATE_SCHEMA_VERSION` für Zustand schema version fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const STATE_SCHEMA_VERSION: u32 = 1;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für Dienst snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ServiceSnapshot {
     pub name: String,
     pub display_name: String,
@@ -40,7 +47,11 @@ pub struct ServiceSnapshot {
     pub summary: Option<Value>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for ServiceSnapshot`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for ServiceSnapshot {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             name: String::new(),
@@ -66,7 +77,11 @@ impl Default for ServiceSnapshot {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `ServiceSnapshot`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl ServiceSnapshot {
+    // Was: Wandelt Eingangsdaten in Konfiguration um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn from_config(config: &CoreServiceConfig) -> Self {
         Self {
             name: config.name.clone(),
@@ -81,6 +96,8 @@ impl ServiceSnapshot {
         }
     }
 
+    // Was: Diese Funktion wendet Konfiguration.
+    // Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
     fn apply_config(&mut self, config: &CoreServiceConfig) {
         self.display_name = config.display_name.clone();
         self.kind = config.kind.clone();
@@ -94,6 +111,8 @@ impl ServiceSnapshot {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für incident note in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct IncidentNote {
     pub id: String,
     pub timestamp: String,
@@ -102,6 +121,8 @@ pub struct IncidentNote {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für incident Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct IncidentRecord {
     pub id: String,
     pub source_key: Option<String>,
@@ -123,6 +144,8 @@ pub struct IncidentRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für shift log entry in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ShiftLogEntry {
     pub id: String,
     pub timestamp: String,
@@ -133,6 +156,8 @@ pub struct ShiftLogEntry {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für operations Zustand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct OperationsState {
     schema_version: u32,
     started_at: String,
@@ -146,7 +171,11 @@ struct OperationsState {
     poll_count: u64,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for OperationsState`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for OperationsState {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         let now = now_iso();
         Self {
@@ -165,6 +194,8 @@ impl Default for OperationsState {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für operations overview in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct OperationsOverview {
     pub started_at: String,
     pub updated_at: String,
@@ -184,6 +215,8 @@ pub struct OperationsOverview {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für create incident request in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CreateIncidentRequest {
     pub severity: Option<String>,
     pub title: String,
@@ -196,18 +229,24 @@ pub struct CreateIncidentRequest {
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]
+// Was: Bündelt die zusammengehörigen Werte für incident action request in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct IncidentActionRequest {
     pub operator_id: Option<String>,
     pub note: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für incident note request in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct IncidentNoteRequest {
     pub operator_id: Option<String>,
     pub text: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für shift log request in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ShiftLogRequest {
     pub operator_id: Option<String>,
     pub category: Option<String>,
@@ -215,6 +254,8 @@ pub struct ShiftLogRequest {
 }
 
 #[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für shared operations in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SharedOperations {
     inner: Arc<Mutex<OperationsState>>,
     federation: FederationConfig,
@@ -222,7 +263,11 @@ pub struct SharedOperations {
     service_configs: Arc<Vec<CoreServiceConfig>>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SharedOperations`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SharedOperations {
+    // Was: Diese Funktion lädt den vorgesehenen Arbeitsschritt.
+    // Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
     pub fn load(
         federation: FederationConfig,
         operations: OperationsConfig,
@@ -230,6 +275,8 @@ impl SharedOperations {
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let mut state = if operations.state_path.is_file() {
             let raw = fs::read_to_string(&operations.state_path)?;
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match serde_json::from_str::<OperationsState>(&raw) {
                 Ok(mut state) => {
                     state.poll_in_progress = false;
@@ -245,6 +292,8 @@ impl SharedOperations {
         };
 
         let mut merged = BTreeMap::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for service in &services {
             let mut snapshot = state
                 .services
@@ -271,6 +320,8 @@ impl SharedOperations {
         Ok(shared)
     }
 
+    // Was: Diese Funktion startet poller.
+    // Warum: Der Dienst oder Teilprozess wird so in einer festen und überprüfbaren Reihenfolge gestartet.
     pub fn start_poller(&self) {
         if !self.federation.enabled {
             tracing::warn!("Core-service federation polling disabled");
@@ -282,6 +333,8 @@ impl SharedOperations {
             .name("control-room-core-poller".to_string())
             .spawn(move || {
                 thread::sleep(Duration::from_millis(250));
+                // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+                // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
                 loop {
                     shared.poll_cycle();
                     thread::sleep(Duration::from_secs(interval));
@@ -289,6 +342,8 @@ impl SharedOperations {
             });
     }
 
+    // Was: Führt den Arbeitsschritt `trigger_poll` für trigger poll aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn trigger_poll(&self) -> bool {
         {
             let mut state = self.inner.lock().expect("operations state poisoned");
@@ -306,6 +361,8 @@ impl SharedOperations {
         true
     }
 
+    // Was: Diese Funktion fragt cycle.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn poll_cycle(&self) {
         {
             let mut state = self.inner.lock().expect("operations state poisoned");
@@ -319,8 +376,12 @@ impl SharedOperations {
         self.poll_cycle_claimed();
     }
 
+    // Was: Diese Funktion fragt cycle claimed.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn poll_cycle_claimed(&self) {
         let configs = self.service_configs.as_ref().clone();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for config in configs {
             let enabled = {
                 let state = self.inner.lock().expect("operations state poisoned");
@@ -374,6 +435,8 @@ impl SharedOperations {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `overview` für overview aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn overview(&self) -> OperationsOverview {
         let state = self.inner.lock().expect("operations state poisoned");
         let mut healthy = 0;
@@ -381,7 +444,11 @@ impl SharedOperations {
         let mut offline = 0;
         let mut disabled = 0;
         let mut critical_offline = 0;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for service in state.services.values() {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match service.status.as_str() {
                 "healthy" => healthy += 1,
                 "degraded" | "unknown" => degraded += 1,
@@ -418,6 +485,8 @@ impl SharedOperations {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `services` für services aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn services(&self) -> Vec<ServiceSnapshot> {
         self.inner
             .lock()
@@ -428,6 +497,8 @@ impl SharedOperations {
             .collect()
     }
 
+    // Was: Führt den Arbeitsschritt `service` für Dienst aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn service(&self, name: &str) -> Option<ServiceSnapshot> {
         self.inner
             .lock()
@@ -437,6 +508,8 @@ impl SharedOperations {
             .cloned()
     }
 
+    // Was: Diese Funktion setzt Dienst enabled.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_service_enabled(
         &self,
         name: &str,
@@ -477,6 +550,8 @@ impl SharedOperations {
         Ok(snapshot)
     }
 
+    // Was: Führt den Arbeitsschritt `incidents` für incidents aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn incidents(&self, status: Option<&str>, limit: usize) -> Vec<IncidentRecord> {
         let state = self.inner.lock().expect("operations state poisoned");
         state
@@ -489,6 +564,8 @@ impl SharedOperations {
             .collect()
     }
 
+    // Was: Diese Funktion erstellt incident.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     pub fn create_incident(&self, request: CreateIncidentRequest) -> Result<IncidentRecord, String> {
         let title = request.title.trim();
         if title.is_empty() {
@@ -524,6 +601,8 @@ impl SharedOperations {
         Ok(incident)
     }
 
+    // Was: Führt den Arbeitsschritt `acknowledge_incident` für acknowledge incident aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn acknowledge_incident(
         &self,
         id: &str,
@@ -559,6 +638,8 @@ impl SharedOperations {
         Ok(updated)
     }
 
+    // Was: Diese Funktion ermittelt incident.
+    // Warum: Unklare oder indirekte Angaben werden so vor der weiteren Verarbeitung eindeutig gemacht.
     pub fn resolve_incident(
         &self,
         id: &str,
@@ -591,6 +672,8 @@ impl SharedOperations {
         Ok(updated)
     }
 
+    // Was: Diese Funktion fügt incident note.
+    // Warum: Das Einfügen wird so einheitlich geprüft und verwaltet.
     pub fn add_incident_note(
         &self,
         id: &str,
@@ -621,6 +704,8 @@ impl SharedOperations {
         Ok(updated)
     }
 
+    // Was: Führt den Arbeitsschritt `shift_log` für shift log aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn shift_log(&self, limit: usize) -> Vec<ShiftLogEntry> {
         self.inner
             .lock()
@@ -633,6 +718,8 @@ impl SharedOperations {
             .collect()
     }
 
+    // Was: Diese Funktion fügt shift log.
+    // Warum: Das Einfügen wird so einheitlich geprüft und verwaltet.
     pub fn add_shift_log(&self, request: ShiftLogRequest) -> Result<ShiftLogEntry, String> {
         let text = request.text.trim();
         if text.is_empty() {
@@ -658,10 +745,14 @@ impl SharedOperations {
         Ok(entry)
     }
 
+    // Was: Führt den Arbeitsschritt `federated_domain_overview` für federated domain overview aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn federated_domain_overview(&self) -> Value {
         let state = self.inner.lock().expect("operations state poisoned");
         let mut domains = BTreeMap::<String, Value>::new();
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (name, service) in &state.services {
             let metrics = curated_metrics(name, service.summary.as_ref());
             domains.insert(
@@ -746,6 +837,8 @@ impl SharedOperations {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `dependencies` für dependencies aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn dependencies(&self) -> Value {
         let services = self.services();
         json!({
@@ -757,6 +850,8 @@ impl SharedOperations {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `export` für export aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn export(&self) -> Value {
         let state = self.inner.lock().expect("operations state poisoned");
         json!({
@@ -768,6 +863,8 @@ impl SharedOperations {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `metrics` für Messwerte aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn metrics(&self) -> String {
         let overview = self.overview();
         format!(
@@ -800,6 +897,8 @@ impl SharedOperations {
         )
     }
 
+    // Was: Führt den Arbeitsschritt `config_snapshot` für Konfiguration snapshot aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn config_snapshot(&self) -> Value {
         json!({
             "security": {
@@ -821,6 +920,8 @@ impl SharedOperations {
         })
     }
 
+    // Was: Diese Funktion speichert den vorgesehenen Arbeitsschritt.
+    // Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
     fn persist(&self) -> Result<(), Box<dyn std::error::Error>> {
         let state = self.inner.lock().expect("operations state poisoned").clone();
         write_json_atomic(&self.operations.state_path, &self.operations.backup_path, &state)
@@ -828,6 +929,8 @@ impl SharedOperations {
 }
 
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für poll result in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct PollResult {
     status: String,
     live: Option<bool>,
@@ -841,6 +944,8 @@ struct PollResult {
     summary: Option<Value>,
 }
 
+// Was: Diese Funktion fragt Dienst.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn poll_service(config: &CoreServiceConfig, federation: &FederationConfig) -> PollResult {
     let timeout = Duration::from_millis(
         config
@@ -859,6 +964,8 @@ fn poll_service(config: &CoreServiceConfig, federation: &FederationConfig) -> Po
 
     let live = live_result.as_ref().ok().map(|response| response.status < 400);
     let ready = ready_result.as_ref().ok().map(|response| response.status < 400);
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let status = match (live, ready) {
         (Some(true), Some(true)) => "healthy",
         (Some(true), _) => "degraded",
@@ -866,6 +973,8 @@ fn poll_service(config: &CoreServiceConfig, federation: &FederationConfig) -> Po
     }
     .to_string();
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let message = match (&live_result, &ready_result) {
         (Ok(_), Ok(_)) if status == "healthy" => None,
         (Ok(_), Ok(_)) => Some("service is live but not ready".to_string()),
@@ -894,6 +1003,8 @@ fn poll_service(config: &CoreServiceConfig, federation: &FederationConfig) -> Po
     }
 }
 
+// Was: Diese Funktion wendet poll result.
+// Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
 fn apply_poll_result(snapshot: &mut ServiceSnapshot, result: PollResult) {
     snapshot.status = result.status;
     snapshot.live = result.live;
@@ -913,6 +1024,8 @@ fn apply_poll_result(snapshot: &mut ServiceSnapshot, result: PollResult) {
     }
 }
 
+// Was: Führt den Arbeitsschritt `reconcile_service_incident` für reconcile Dienst incident aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn reconcile_service_incident(
     incidents: &mut Vec<IncidentRecord>,
     snapshot: &ServiceSnapshot,
@@ -965,11 +1078,15 @@ fn reconcile_service_incident(
 }
 
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für HTTP JSON-Daten response in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct HttpJsonResponse {
     status: u16,
     body: Value,
 }
 
+// Was: Führt den Arbeitsschritt `http_get_json` für HTTP get JSON-Daten aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn http_get_json(
     base_url: &str,
     path: &str,
@@ -1028,6 +1145,8 @@ fn http_get_json(
 }
 
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für parsed HTTP url in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct ParsedHttpUrl {
     host: String,
     host_header: String,
@@ -1035,10 +1154,14 @@ struct ParsedHttpUrl {
     path: String,
 }
 
+// Was: Diese Funktion liest und prüft HTTP url.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_http_url(url: &str) -> Result<ParsedHttpUrl, String> {
     let rest = url
         .strip_prefix("http://")
         .ok_or_else(|| "only http:// URLs are supported in open_lab federation".to_string())?;
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let (authority, path) = match rest.split_once('/') {
         Some((authority, path)) => (authority, format!("/{path}")),
         None => (rest, "/".to_string()),
@@ -1079,6 +1202,8 @@ fn parse_http_url(url: &str) -> Result<ParsedHttpUrl, String> {
     })
 }
 
+// Was: Diese Funktion verknüpft url.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn join_url(base_url: &str, path: &str) -> String {
     let base = base_url.trim_end_matches('/');
     if path.trim().is_empty() || path == "/" {
@@ -1090,10 +1215,14 @@ fn join_url(base_url: &str, path: &str) -> String {
     }
 }
 
+// Was: Diese Funktion sucht subslice.
+// Warum: Die Suchlogik bleibt damit wiederverwendbar und muss nicht an mehreren Stellen kopiert werden.
 fn find_subslice(haystack: &[u8], needle: &[u8]) -> Option<usize> {
     haystack.windows(needle.len()).position(|window| window == needle)
 }
 
+// Was: Diese Funktion schreibt JSON-Daten atomic.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 fn write_json_atomic<T: Serialize>(
     path: &Path,
     backup_path: &Path,
@@ -1115,6 +1244,8 @@ fn write_json_atomic<T: Serialize>(
     Ok(())
 }
 
+// Was: Führt den Arbeitsschritt `normalise_operator` für normalise operator aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn normalise_operator(value: &str) -> String {
     let trimmed = value.trim();
     if trimmed.is_empty() {
@@ -1124,7 +1255,11 @@ fn normalise_operator(value: &str) -> String {
     }
 }
 
+// Was: Führt den Arbeitsschritt `normalise_severity` für normalise severity aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn normalise_severity(value: &str) -> String {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match value.trim().to_ascii_lowercase().as_str() {
         "info" => "info",
         "warning" | "warn" => "warning",
@@ -1134,10 +1269,14 @@ fn normalise_severity(value: &str) -> String {
     .to_string()
 }
 
+// Was: Führt den Arbeitsschritt `clean_optional` für clean optional aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn clean_optional(value: Option<String>) -> Option<String> {
     value.and_then(non_empty_string)
 }
 
+// Was: Führt den Arbeitsschritt `non_empty_string` für non empty string aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn non_empty_string(value: String) -> Option<String> {
     let trimmed = value.trim();
     if trimmed.is_empty() {
@@ -1147,7 +1286,11 @@ fn non_empty_string(value: String) -> Option<String> {
     }
 }
 
+// Was: Führt den Arbeitsschritt `curated_metrics` für curated Messwerte aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn curated_metrics(service_name: &str, summary: Option<&Value>) -> BTreeMap<String, Value> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let fields: &[&str] = match service_name {
         "node-gateway" => &[
             "connected_nodes", "known_nodes", "stale_nodes", "backend_clients",
@@ -1216,6 +1359,8 @@ fn curated_metrics(service_name: &str, summary: Option<&Value>) -> BTreeMap<Stri
     let Some(summary) = summary.and_then(Value::as_object) else {
         return metrics;
     };
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for field in fields {
         if let Some(value) = summary.get(*field) {
             metrics.insert((*field).to_string(), value.clone());
@@ -1224,6 +1369,8 @@ fn curated_metrics(service_name: &str, summary: Option<&Value>) -> BTreeMap<Stri
     metrics
 }
 
+// Was: Führt den Arbeitsschritt `summary_metric` für summary metric aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn summary_metric(services: &BTreeMap<String, ServiceSnapshot>, service: &str, field: &str) -> Option<u64> {
     services
         .get(service)
@@ -1232,12 +1379,16 @@ fn summary_metric(services: &BTreeMap<String, ServiceSnapshot>, service: &str, f
         .and_then(value_as_u64)
 }
 
+// Was: Führt den Arbeitsschritt `first_metric` für first metric aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn first_metric(services: &BTreeMap<String, ServiceSnapshot>, candidates: &[(&str, &str)]) -> Option<u64> {
     candidates
         .iter()
         .find_map(|(service, field)| summary_metric(services, service, field))
 }
 
+// Was: Führt den Arbeitsschritt `sum_metrics` für sum Messwerte aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn sum_metrics(services: &BTreeMap<String, ServiceSnapshot>, candidates: &[(&str, &str)]) -> Option<u64> {
     let values = candidates
         .iter()
@@ -1250,6 +1401,8 @@ fn sum_metrics(services: &BTreeMap<String, ServiceSnapshot>, candidates: &[(&str
     }
 }
 
+// Was: Führt den Arbeitsschritt `value_as_u64` für value as u64 aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn value_as_u64(value: &Value) -> Option<u64> {
     value
         .as_u64()
@@ -1257,6 +1410,8 @@ fn value_as_u64(value: &Value) -> Option<u64> {
         .or_else(|| value.as_str().and_then(|number| number.parse::<u64>().ok()))
 }
 
+// Was: Führt den Arbeitsschritt `trim_incidents` für trim incidents aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn trim_incidents(incidents: &mut Vec<IncidentRecord>, limit: usize) {
     let keep = limit.max(100);
     if incidents.len() > keep {
@@ -1265,6 +1420,8 @@ fn trim_incidents(incidents: &mut Vec<IncidentRecord>, limit: usize) {
     }
 }
 
+// Was: Führt den Arbeitsschritt `trim_shift_log` für trim shift log aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn trim_shift_log(entries: &mut Vec<ShiftLogEntry>, limit: usize) {
     let keep = limit.max(100);
     if entries.len() > keep {

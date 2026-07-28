@@ -1,151 +1,408 @@
+# NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Leitstellenfunktionen und Bedienoberflächen.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 # NetCore Control Room LXC – Open Lab
 
+# Was: Öffnet den Konfigurationsabschnitt `server`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [server]
+# Was: Setzt die Einstellung `bind` für server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 bind = "0.0.0.0:9010"
+# Was: Setzt die Einstellung `node_path` für server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 node_path = "/node"
+# Was: Setzt die Einstellung `ui_path` für server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 ui_path = "/ui"
+# Was: Setzt die Einstellung `history_limit` für server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 history_limit = 2000
 
+# Was: Öffnet den Konfigurationsabschnitt `persistence`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [persistence]
+# Was: Setzt die Einstellung `enabled` für persistence.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `database_path` für persistence.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 database_path = "/var/lib/netcore-control-room/control-room.sqlite3"
+# Was: Setzt die Einstellung `persist_events` für persistence.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 persist_events = true
+# Was: Setzt die Einstellung `persist_noisy_events` für persistence.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 persist_noisy_events = false
+# Was: Setzt die Einstellung `load_recent_limit` für persistence.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 load_recent_limit = 2000
 
+# Was: Öffnet den Konfigurationsabschnitt `auth`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [auth]
 # Current laboratory phase: deliberately no login, no node token and no TLS.
+# Was: Setzt die Einstellung `enabled` für Anmeldung und Berechtigung.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = false
+# Was: Setzt die Einstellung `allow_health_unauthenticated` für Anmeldung und Berechtigung.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 allow_health_unauthenticated = true
+# Was: Setzt die Einstellung `node_token_env` für Anmeldung und Berechtigung.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 node_token_env = ""
+# Was: Setzt die Einstellung `bootstrap_username_env` für Anmeldung und Berechtigung.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 bootstrap_username_env = ""
+# Was: Setzt die Einstellung `bootstrap_password_env` für Anmeldung und Berechtigung.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 bootstrap_password_env = ""
+# Was: Setzt die Einstellung `bootstrap_role` für Anmeldung und Berechtigung.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 bootstrap_role = "admin"
 
+# Was: Öffnet den Konfigurationsabschnitt `federation`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [federation]
+# Was: Setzt die Einstellung `enabled` für federation.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `poll_interval_secs` für federation.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 poll_interval_secs = 5
+# Was: Setzt die Einstellung `request_timeout_ms` für federation.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 request_timeout_ms = 1200
+# Was: Setzt die Einstellung `failure_threshold` für federation.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 failure_threshold = 3
+# Was: Setzt die Einstellung `fetch_summaries` für federation.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 fetch_summaries = true
 
+# Was: Öffnet den Konfigurationsabschnitt `operations`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [operations]
+# Was: Setzt die Einstellung `state_path` für operations.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 state_path = "/var/lib/netcore-control-room/operations.json"
+# Was: Setzt die Einstellung `backup_path` für operations.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 backup_path = "/var/lib/netcore-control-room/operations.json.bak"
+# Was: Setzt die Einstellung `auto_service_incidents` für operations.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 auto_service_incidents = true
+# Was: Setzt die Einstellung `incident_limit` für operations.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 incident_limit = 5000
+# Was: Setzt die Einstellung `shift_log_limit` für operations.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 shift_log_limit = 10000
 
 # Replace 10.0.20.x with the addresses of the respective LXCs.
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "node-gateway"
+# Was: Setzt die Einstellung `display_name` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "Node Gateway"
+# Was: Setzt die Einstellung `kind` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 kind = "edge"
+# Was: Setzt die Einstellung `base_url` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 base_url = "http://10.0.20.10:8080"
+# Was: Setzt die Einstellung `health_live` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 health_live = "/health/live"
+# Was: Setzt die Einstellung `health_ready` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 health_ready = "/health/ready"
+# Was: Setzt die Einstellung `summary_path` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 summary_path = "/api/v1/status"
+# Was: Setzt die Einstellung `webui_path` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 webui_path = "/"
+# Was: Setzt die Einstellung `critical` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 critical = true
+# Was: Setzt die Einstellung `enabled` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
 
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "mobility-core"
+# Was: Setzt die Einstellung `display_name` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "Mobility Core"
+# Was: Setzt die Einstellung `kind` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 kind = "core"
+# Was: Setzt die Einstellung `base_url` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 base_url = "http://10.0.20.11:8090"
+# Was: Setzt die Einstellung `critical` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 critical = true
 
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "subscriber-core"
+# Was: Setzt die Einstellung `display_name` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "Subscriber Core"
+# Was: Setzt die Einstellung `kind` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 kind = "core"
+# Was: Setzt die Einstellung `base_url` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 base_url = "http://10.0.20.12:8100"
+# Was: Setzt die Einstellung `critical` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 critical = true
 
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "group-core"
+# Was: Setzt die Einstellung `display_name` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "Group Core"
+# Was: Setzt die Einstellung `kind` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 kind = "core"
+# Was: Setzt die Einstellung `base_url` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 base_url = "http://10.0.20.13:8110"
+# Was: Setzt die Einstellung `critical` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 critical = true
 
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "call-control"
+# Was: Setzt die Einstellung `display_name` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "Call Control"
+# Was: Setzt die Einstellung `kind` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 kind = "core"
+# Was: Setzt die Einstellung `base_url` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 base_url = "http://10.0.20.14:8120"
+# Was: Setzt die Einstellung `critical` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 critical = true
 
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "media-switch"
+# Was: Setzt die Einstellung `display_name` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "Media Switch"
+# Was: Setzt die Einstellung `kind` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 kind = "media"
+# Was: Setzt die Einstellung `base_url` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 base_url = "http://10.0.20.15:8130"
+# Was: Setzt die Einstellung `critical` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 critical = true
 
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "recorder"
+# Was: Setzt die Einstellung `display_name` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "Recorder"
+# Was: Setzt die Einstellung `kind` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 kind = "media"
+# Was: Setzt die Einstellung `base_url` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 base_url = "http://10.0.20.16:8140"
+# Was: Setzt die Einstellung `critical` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 critical = false
 
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "sds-router"
+# Was: Setzt die Einstellung `display_name` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "SDS Router"
+# Was: Setzt die Einstellung `kind` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 kind = "data"
+# Was: Setzt die Einstellung `base_url` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 base_url = "http://10.0.20.17:8150"
+# Was: Setzt die Einstellung `critical` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 critical = false
 
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "packet-core"
+# Was: Setzt die Einstellung `display_name` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "Packet Core"
+# Was: Setzt die Einstellung `kind` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 kind = "data"
+# Was: Setzt die Einstellung `base_url` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 base_url = "http://10.0.20.18:8160"
+# Was: Setzt die Einstellung `critical` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 critical = false
 
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "ip-gateway"
+# Was: Setzt die Einstellung `display_name` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "IP Gateway"
+# Was: Setzt die Einstellung `kind` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 kind = "data"
+# Was: Setzt die Einstellung `base_url` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 base_url = "http://10.0.20.19:8170"
+# Was: Setzt die Einstellung `critical` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 critical = false
 
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "security-core"
+# Was: Setzt die Einstellung `display_name` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "Security Core"
+# Was: Setzt die Einstellung `kind` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 kind = "security"
+# Was: Setzt die Einstellung `base_url` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 base_url = "http://10.0.20.20:8180"
+# Was: Setzt die Einstellung `critical` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 critical = true
 
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "kmf"
+# Was: Setzt die Einstellung `display_name` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "KMF"
+# Was: Setzt die Einstellung `kind` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 kind = "security"
+# Was: Setzt die Einstellung `base_url` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 base_url = "http://10.0.20.21:8190"
+# Was: Setzt die Einstellung `critical` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 critical = false
 
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "transit"
+# Was: Setzt die Einstellung `display_name` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "Transit"
+# Was: Setzt die Einstellung `kind` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 kind = "interworking"
+# Was: Setzt die Einstellung `base_url` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 base_url = "http://10.0.20.22:8200"
+# Was: Setzt die Einstellung `critical` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 critical = false
 
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "application-gateway"
+# Was: Setzt die Einstellung `display_name` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "Application Gateway"
+# Was: Setzt die Einstellung `kind` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 kind = "application"
+# Was: Setzt die Einstellung `base_url` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 base_url = "http://10.0.20.23:8220"
+# Was: Setzt die Einstellung `critical` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 critical = false
 
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "media-library"
+# Was: Setzt die Einstellung `display_name` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "Media Library"
+# Was: Setzt die Einstellung `kind` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 kind = "media"
+# Was: Setzt die Einstellung `base_url` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 base_url = "http://10.0.20.24:8230"
+# Was: Setzt die Einstellung `critical` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 critical = false
 
+# Was: Öffnet den Konfigurationsabschnitt `directory`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [directory]
+# Was: Setzt die Einstellung `hide_infrastructure` für directory.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 hide_infrastructure = true

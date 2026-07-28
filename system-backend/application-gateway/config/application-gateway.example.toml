@@ -1,267 +1,756 @@
+# NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Anwendungsdienste wie TTS und externe Integrationen.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 # NetCore-Tetra Application Gateway – Open Lab
 
+# Was: Öffnet den Konfigurationsabschnitt `server`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [server]
+# Was: Setzt die Einstellung `bind` für server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 bind = "0.0.0.0:8220"
+# Was: Setzt die Einstellung `public_base_url` für server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 public_base_url = "http://127.0.0.1:8220"
+# Was: Setzt die Einstellung `max_body_bytes` für server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_body_bytes = 4194304
+# Was: Setzt die Einstellung `history_limit` für server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 history_limit = 5000
 
+# Was: Öffnet den Konfigurationsabschnitt `storage`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [storage]
+# Was: Setzt die Einstellung `state_path` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 state_path = "/var/lib/netcore-application-gateway/state.json"
+# Was: Setzt die Einstellung `state_backup_path` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 state_backup_path = "/var/lib/netcore-application-gateway/state.json.bak"
+# Was: Setzt die Einstellung `secrets_path` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 secrets_path = "/var/lib/netcore-application-gateway/secrets.json"
+# Was: Setzt die Einstellung `spool_dir` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 spool_dir = "/var/lib/netcore-application-gateway/spool"
+# Was: Setzt die Einstellung `backup_dir` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 backup_dir = "/var/lib/netcore-application-gateway/backups"
 
+# Was: Öffnet den Konfigurationsabschnitt `security`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [security]
+# Was: Setzt die Einstellung `mode` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 mode = "open_lab"
+# Was: Setzt die Einstellung `management_token_auth` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 management_token_auth = false
+# Was: Setzt die Einstellung `management_tls` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 management_tls = false
+# Was: Setzt die Einstellung `allow_remote_management` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 allow_remote_management = true
+# Was: Setzt die Einstellung `connector_secrets_allowed` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 connector_secrets_allowed = true
+# Was: Setzt die Einstellung `warning_banner` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 warning_banner = "OPEN LAB: no login, no management tokens and no TLS. Isolated management network only."
 
+# Was: Öffnet den Konfigurationsabschnitt `runtime`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [runtime]
 # shadow calculates and records routes without calling external systems.
 # Change to authoritative only after connector endpoints were verified.
+# Was: Setzt die Einstellung `operating_mode` für Laufzeit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 operating_mode = "shadow"
+# Was: Setzt die Einstellung `worker_interval_ms` für Laufzeit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 worker_interval_ms = 1000
+# Was: Setzt die Einstellung `probe_interval_secs` für Laufzeit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 probe_interval_secs = 30
+# Was: Setzt die Einstellung `default_ttl_secs` für Laufzeit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 default_ttl_secs = 300
+# Was: Setzt die Einstellung `max_attempts` für Laufzeit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_attempts = 6
+# Was: Setzt die Einstellung `base_backoff_secs` für Laufzeit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 base_backoff_secs = 2
+# Was: Setzt die Einstellung `max_backoff_secs` für Laufzeit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_backoff_secs = 120
+# Was: Setzt die Einstellung `dedupe_window_secs` für Laufzeit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 dedupe_window_secs = 600
+# Was: Setzt die Einstellung `max_response_bytes` für Laufzeit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_response_bytes = 65536
+# Was: Setzt die Einstellung `max_artifact_bytes` für Laufzeit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_artifact_bytes = 33554432
+# Was: Setzt die Einstellung `max_events` für Laufzeit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_events = 20000
+# Was: Setzt die Einstellung `max_deliveries` für Laufzeit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_deliveries = 50000
+# Was: Setzt die Einstellung `max_tts_jobs` für Laufzeit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_tts_jobs = 5000
+# Was: Setzt die Einstellung `max_audit_records` für Laufzeit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_audit_records = 50000
+# Was: Setzt die Einstellung `event_retention_secs` für Laufzeit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 event_retention_secs = 604800
+# Was: Setzt die Einstellung `delivery_retention_secs` für Laufzeit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 delivery_retention_secs = 1209600
+# Was: Setzt die Einstellung `audit_retention_secs` für Laufzeit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 audit_retention_secs = 2592000
 
+# Was: Öffnet den Konfigurationsabschnitt `connectors`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[connectors]]
+# Was: Setzt die Einstellung `connector_id` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 connector_id = "sds-router"
+# Was: Setzt die Einstellung `display_name` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "SDS Router"
+# Was: Setzt die Einstellung `kind` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 kind = "sds_router"
+# Was: Setzt die Einstellung `direction` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 direction = "outbound"
+# Was: Setzt die Einstellung `endpoint` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 endpoint = "http://127.0.0.1:8150/api/v1/messages"
+# Was: Setzt die Einstellung `health_endpoint` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 health_endpoint = "http://127.0.0.1:8150/health/ready"
+# Was: Setzt die Einstellung `enabled` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `timeout_ms` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 timeout_ms = 5000
+# Was: Setzt die Einstellung `rate_limit_per_minute` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 rate_limit_per_minute = 600
+# Was: Setzt die Einstellung `circuit_failure_threshold` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 circuit_failure_threshold = 5
+# Was: Setzt die Einstellung `circuit_open_secs` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 circuit_open_secs = 60
+# Was: Setzt die Einstellung `required_secrets` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 required_secrets = []
+# Was: Setzt die Einstellung `settings` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 settings = { source_issi = "9999", sds_type = "4", protocol_id = "0", priority = "3" }
 
+# Was: Öffnet den Konfigurationsabschnitt `connectors`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[connectors]]
+# Was: Setzt die Einstellung `connector_id` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 connector_id = "piper-tts"
+# Was: Setzt die Einstellung `display_name` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "Piper TTS"
+# Was: Setzt die Einstellung `kind` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 kind = "piper_tts"
+# Was: Setzt die Einstellung `direction` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 direction = "outbound"
+# Was: Setzt die Einstellung `endpoint` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 endpoint = "http://127.0.0.1:5005/synthesize"
+# Was: Setzt die Einstellung `health_endpoint` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 health_endpoint = "http://127.0.0.1:5005/voices"
+# Was: Setzt die Einstellung `enabled` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `timeout_ms` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 timeout_ms = 30000
+# Was: Setzt die Einstellung `rate_limit_per_minute` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 rate_limit_per_minute = 30
+# Was: Setzt die Einstellung `circuit_failure_threshold` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 circuit_failure_threshold = 3
+# Was: Setzt die Einstellung `circuit_open_secs` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 circuit_open_secs = 60
+# Was: Setzt die Einstellung `required_secrets` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 required_secrets = []
+# Was: Setzt die Einstellung `settings` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 settings = {}
 
+# Was: Öffnet den Konfigurationsabschnitt `connectors`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[connectors]]
+# Was: Setzt die Einstellung `connector_id` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 connector_id = "media-library"
+# Was: Setzt die Einstellung `display_name` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "Media Library"
+# Was: Setzt die Einstellung `kind` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 kind = "media_library"
+# Was: Setzt die Einstellung `direction` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 direction = "outbound"
+# Was: Setzt die Einstellung `endpoint` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 endpoint = "http://127.0.0.1:8230/api/v1/assets/import-url"
+# Was: Setzt die Einstellung `health_endpoint` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 health_endpoint = "http://127.0.0.1:8230/health/ready"
+# Was: Setzt die Einstellung `enabled` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `timeout_ms` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 timeout_ms = 10000
+# Was: Setzt die Einstellung `rate_limit_per_minute` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 rate_limit_per_minute = 120
+# Was: Setzt die Einstellung `circuit_failure_threshold` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 circuit_failure_threshold = 5
+# Was: Setzt die Einstellung `circuit_open_secs` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 circuit_open_secs = 60
+# Was: Setzt die Einstellung `required_secrets` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 required_secrets = []
+# Was: Setzt die Einstellung `settings` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 settings = { method = "POST" }
 
+# Was: Öffnet den Konfigurationsabschnitt `connectors`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[connectors]]
+# Was: Setzt die Einstellung `connector_id` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 connector_id = "telegram"
+# Was: Setzt die Einstellung `display_name` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "Telegram Bot"
+# Was: Setzt die Einstellung `kind` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 kind = "telegram_bot"
+# Was: Setzt die Einstellung `direction` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 direction = "bidirectional"
+# Was: Setzt die Einstellung `endpoint` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 endpoint = "https://api.telegram.org/bot{bot_token}/sendMessage"
+# Was: Setzt die Einstellung `enabled` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = false
+# Was: Setzt die Einstellung `timeout_ms` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 timeout_ms = 10000
+# Was: Setzt die Einstellung `rate_limit_per_minute` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 rate_limit_per_minute = 30
+# Was: Setzt die Einstellung `circuit_failure_threshold` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 circuit_failure_threshold = 5
+# Was: Setzt die Einstellung `circuit_open_secs` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 circuit_open_secs = 120
+# Was: Setzt die Einstellung `required_secrets` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 required_secrets = ["bot_token"]
+# Was: Setzt die Einstellung `settings` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 settings = { chat_id = "", parse_mode = "" }
 
+# Was: Öffnet den Konfigurationsabschnitt `connectors`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[connectors]]
+# Was: Setzt die Einstellung `connector_id` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 connector_id = "dapnet"
+# Was: Setzt die Einstellung `display_name` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "DAPNET Relay"
+# Was: Setzt die Einstellung `kind` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 kind = "dapnet_http"
+# Was: Setzt die Einstellung `direction` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 direction = "bidirectional"
+# Was: Setzt die Einstellung `endpoint` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 endpoint = "http://127.0.0.1:8225/api/v1/messages"
+# Was: Setzt die Einstellung `enabled` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = false
+# Was: Setzt die Einstellung `timeout_ms` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 timeout_ms = 10000
+# Was: Setzt die Einstellung `rate_limit_per_minute` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 rate_limit_per_minute = 60
+# Was: Setzt die Einstellung `circuit_failure_threshold` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 circuit_failure_threshold = 5
+# Was: Setzt die Einstellung `circuit_open_secs` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 circuit_open_secs = 120
+# Was: Setzt die Einstellung `required_secrets` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 required_secrets = ["auth_key"]
+# Was: Setzt die Einstellung `settings` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 settings = { callsign = "" }
 
+# Was: Öffnet den Konfigurationsabschnitt `connectors`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[connectors]]
+# Was: Setzt die Einstellung `connector_id` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 connector_id = "meshcom"
+# Was: Setzt die Einstellung `display_name` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "MeshCom"
+# Was: Setzt die Einstellung `kind` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 kind = "meshcom_http"
+# Was: Setzt die Einstellung `direction` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 direction = "bidirectional"
+# Was: Setzt die Einstellung `endpoint` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 endpoint = "http://127.0.0.1:1799/api/message"
+# Was: Setzt die Einstellung `enabled` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = false
+# Was: Setzt die Einstellung `timeout_ms` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 timeout_ms = 10000
+# Was: Setzt die Einstellung `rate_limit_per_minute` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 rate_limit_per_minute = 120
+# Was: Setzt die Einstellung `circuit_failure_threshold` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 circuit_failure_threshold = 5
+# Was: Setzt die Einstellung `circuit_open_secs` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 circuit_open_secs = 60
+# Was: Setzt die Einstellung `required_secrets` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 required_secrets = ["api_key"]
+# Was: Setzt die Einstellung `settings` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 settings = {}
 
+# Was: Öffnet den Konfigurationsabschnitt `connectors`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[connectors]]
+# Was: Setzt die Einstellung `connector_id` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 connector_id = "snom"
+# Was: Setzt die Einstellung `display_name` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "Snom Notify"
+# Was: Setzt die Einstellung `kind` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 kind = "snom_notify"
+# Was: Setzt die Einstellung `direction` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 direction = "outbound"
+# Was: Setzt die Einstellung `endpoint` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 endpoint = "http://127.0.0.1:8089/notify"
+# Was: Setzt die Einstellung `enabled` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = false
+# Was: Setzt die Einstellung `timeout_ms` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 timeout_ms = 5000
+# Was: Setzt die Einstellung `rate_limit_per_minute` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 rate_limit_per_minute = 120
+# Was: Setzt die Einstellung `circuit_failure_threshold` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 circuit_failure_threshold = 5
+# Was: Setzt die Einstellung `circuit_open_secs` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 circuit_open_secs = 60
+# Was: Setzt die Einstellung `required_secrets` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 required_secrets = []
+# Was: Setzt die Einstellung `settings` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 settings = {}
 
+# Was: Öffnet den Konfigurationsabschnitt `connectors`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[connectors]]
+# Was: Setzt die Einstellung `connector_id` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 connector_id = "geoalarm"
+# Was: Setzt die Einstellung `display_name` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "GeoAlarm"
+# Was: Setzt die Einstellung `kind` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 kind = "geoalarm_http"
+# Was: Setzt die Einstellung `direction` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 direction = "bidirectional"
+# Was: Setzt die Einstellung `endpoint` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 endpoint = "http://127.0.0.1:8099/api/alarms"
+# Was: Setzt die Einstellung `enabled` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = false
+# Was: Setzt die Einstellung `timeout_ms` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 timeout_ms = 10000
+# Was: Setzt die Einstellung `rate_limit_per_minute` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 rate_limit_per_minute = 60
+# Was: Setzt die Einstellung `circuit_failure_threshold` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 circuit_failure_threshold = 5
+# Was: Setzt die Einstellung `circuit_open_secs` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 circuit_open_secs = 120
+# Was: Setzt die Einstellung `required_secrets` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 required_secrets = ["api_key"]
+# Was: Setzt die Einstellung `settings` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 settings = {}
 
+# Was: Öffnet den Konfigurationsabschnitt `connectors`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[connectors]]
+# Was: Setzt die Einstellung `connector_id` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 connector_id = "weather"
+# Was: Setzt die Einstellung `display_name` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "WX / METAR"
+# Was: Setzt die Einstellung `kind` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 kind = "weather_http"
+# Was: Setzt die Einstellung `direction` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 direction = "bidirectional"
+# Was: Setzt die Einstellung `endpoint` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 endpoint = "https://aviationweather.gov/api/data/metar"
+# Was: Setzt die Einstellung `enabled` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = false
+# Was: Setzt die Einstellung `timeout_ms` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 timeout_ms = 10000
+# Was: Setzt die Einstellung `rate_limit_per_minute` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 rate_limit_per_minute = 60
+# Was: Setzt die Einstellung `circuit_failure_threshold` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 circuit_failure_threshold = 5
+# Was: Setzt die Einstellung `circuit_open_secs` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 circuit_open_secs = 120
+# Was: Setzt die Einstellung `required_secrets` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 required_secrets = []
+# Was: Setzt die Einstellung `settings` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 settings = { station = "EDDV" }
 
+# Was: Öffnet den Konfigurationsabschnitt `connectors`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[connectors]]
+# Was: Setzt die Einstellung `connector_id` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 connector_id = "tpg2200"
+# Was: Setzt die Einstellung `display_name` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "TPG2200 Bridge"
+# Was: Setzt die Einstellung `kind` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 kind = "tpg2200_bridge"
+# Was: Setzt die Einstellung `direction` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 direction = "outbound"
+# Was: Setzt die Einstellung `endpoint` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 endpoint = "http://127.0.0.1:8150/api/v1/messages"
+# Was: Setzt die Einstellung `health_endpoint` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 health_endpoint = "http://127.0.0.1:8150/health/ready"
+# Was: Setzt die Einstellung `enabled` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = false
+# Was: Setzt die Einstellung `timeout_ms` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 timeout_ms = 5000
+# Was: Setzt die Einstellung `rate_limit_per_minute` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 rate_limit_per_minute = 120
+# Was: Setzt die Einstellung `circuit_failure_threshold` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 circuit_failure_threshold = 5
+# Was: Setzt die Einstellung `circuit_open_secs` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 circuit_open_secs = 60
+# Was: Setzt die Einstellung `required_secrets` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 required_secrets = []
+# Was: Setzt die Einstellung `settings` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 settings = { source_issi = "9999", protocol_id = "130", priority = "3" }
 
+# Was: Öffnet den Konfigurationsabschnitt `connectors`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[connectors]]
+# Was: Setzt die Einstellung `connector_id` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 connector_id = "directory"
+# Was: Setzt die Einstellung `display_name` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "Status Directory"
+# Was: Setzt die Einstellung `kind` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 kind = "directory_http"
+# Was: Setzt die Einstellung `direction` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 direction = "bidirectional"
+# Was: Setzt die Einstellung `endpoint` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 endpoint = "http://127.0.0.1:8060/api/v1/events"
+# Was: Setzt die Einstellung `enabled` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = false
+# Was: Setzt die Einstellung `timeout_ms` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 timeout_ms = 5000
+# Was: Setzt die Einstellung `rate_limit_per_minute` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 rate_limit_per_minute = 120
+# Was: Setzt die Einstellung `circuit_failure_threshold` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 circuit_failure_threshold = 5
+# Was: Setzt die Einstellung `circuit_open_secs` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 circuit_open_secs = 60
+# Was: Setzt die Einstellung `required_secrets` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 required_secrets = []
+# Was: Setzt die Einstellung `settings` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 settings = { method = "POST" }
 
+# Was: Öffnet den Konfigurationsabschnitt `connectors`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[connectors]]
+# Was: Setzt die Einstellung `connector_id` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 connector_id = "generic-webhook"
+# Was: Setzt die Einstellung `display_name` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "Generic Webhook"
+# Was: Setzt die Einstellung `kind` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 kind = "generic_webhook"
+# Was: Setzt die Einstellung `direction` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 direction = "bidirectional"
+# Was: Setzt die Einstellung `endpoint` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 endpoint = "http://127.0.0.1:9000/webhook"
+# Was: Setzt die Einstellung `enabled` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = false
+# Was: Setzt die Einstellung `timeout_ms` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 timeout_ms = 5000
+# Was: Setzt die Einstellung `rate_limit_per_minute` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 rate_limit_per_minute = 60
+# Was: Setzt die Einstellung `circuit_failure_threshold` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 circuit_failure_threshold = 5
+# Was: Setzt die Einstellung `circuit_open_secs` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 circuit_open_secs = 60
+# Was: Setzt die Einstellung `required_secrets` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 required_secrets = []
+# Was: Setzt die Einstellung `settings` für connectors.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 settings = { method = "POST" }
 
+# Was: Öffnet den Konfigurationsabschnitt `rules`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[rules]]
+# Was: Setzt die Einstellung `rule_id` für rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 rule_id = "manual-to-sds"
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "Manual messages to SDS Router"
+# Was: Setzt die Einstellung `enabled` für rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `priority` für rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 priority = 100
+# Was: Setzt die Einstellung `source_connector` für rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 source_connector = "manual"
+# Was: Setzt die Einstellung `event_type` für rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 event_type = "sds.message"
+# Was: Setzt die Einstellung `target_connector` für rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 target_connector = "sds-router"
+# Was: Setzt die Einstellung `template_id` für rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 template_id = "sds-standard"
+# Was: Setzt die Einstellung `stop_processing` für rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 stop_processing = false
 
+# Was: Öffnet den Konfigurationsabschnitt `rules`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[rules]]
+# Was: Setzt die Einstellung `rule_id` für rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 rule_id = "manual-webhook"
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "Manual webhook dispatch"
+# Was: Setzt die Einstellung `enabled` für rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = false
+# Was: Setzt die Einstellung `priority` für rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 priority = 50
+# Was: Setzt die Einstellung `source_connector` für rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 source_connector = "manual"
+# Was: Setzt die Einstellung `event_type` für rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 event_type = "webhook.message"
+# Was: Setzt die Einstellung `target_connector` für rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 target_connector = "generic-webhook"
+# Was: Setzt die Einstellung `template_id` für rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 template_id = "generic-event-json"
+# Was: Setzt die Einstellung `stop_processing` für rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 stop_processing = false
 
+# Was: Öffnet den Konfigurationsabschnitt `templates`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[templates]]
+# Was: Setzt die Einstellung `template_id` für templates.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 template_id = "sds-standard"
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "SDS Standard"
+# Was: Setzt die Einstellung `kind` für templates.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 kind = "text"
+# Was: Setzt die Einstellung `body` für templates.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 body = "{{text}}"
+# Was: Setzt die Einstellung `content_type` für templates.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 content_type = "text/plain; charset=utf-8"
+# Was: Setzt die Einstellung `enabled` für templates.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `target_connector` für templates.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 target_connector = "sds-router"
+# Was: Beschreibt kurz den Zweck der Komponente.
+# Warum: Menschen und Paketwerkzeuge können die Aufgabe dadurch ohne Quellcodeanalyse erkennen.
 description = "Plain SDS text with destination supplied by the event"
 
+# Was: Öffnet den Konfigurationsabschnitt `templates`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[templates]]
+# Was: Setzt die Einstellung `template_id` für templates.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 template_id = "generic-event-json"
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "Generic event JSON"
+# Was: Setzt die Einstellung `kind` für templates.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 kind = "json"
+# Was: Setzt die Einstellung `body` für templates.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 body = '''{"source":"{{source}}","event_type":"{{event_type}}","destination":"{{destination}}","text":"{{text}}"}'''
+# Was: Setzt die Einstellung `content_type` für templates.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 content_type = "application/json"
+# Was: Setzt die Einstellung `enabled` für templates.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `target_connector` für templates.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 target_connector = "generic-webhook"
+# Was: Beschreibt kurz den Zweck der Komponente.
+# Warum: Menschen und Paketwerkzeuge können die Aufgabe dadurch ohne Quellcodeanalyse erkennen.
 description = "Small interoperable webhook envelope"
 
+# Was: Öffnet den Konfigurationsabschnitt `templates`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[templates]]
+# Was: Setzt die Einstellung `template_id` für templates.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 template_id = "tts-announcement"
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "TTS Announcement"
+# Was: Setzt die Einstellung `kind` für templates.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 kind = "tts"
+# Was: Setzt die Einstellung `body` für templates.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 body = "Achtung. {{text}}"
+# Was: Setzt die Einstellung `content_type` für templates.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 content_type = "text/plain; charset=utf-8"
+# Was: Setzt die Einstellung `enabled` für templates.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `target_connector` für templates.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 target_connector = "piper-tts"
+# Was: Beschreibt kurz den Zweck der Komponente.
+# Warum: Menschen und Paketwerkzeuge können die Aufgabe dadurch ohne Quellcodeanalyse erkennen.
 description = "Reusable TTS announcement prefix"

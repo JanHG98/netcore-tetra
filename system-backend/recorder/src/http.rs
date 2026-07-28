@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Aufzeichnung und Ereignisprotokollierung.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Read, Write};
@@ -11,6 +14,8 @@ use serde_json::json;
 use crate::config::RecorderConfig;
 use crate::state::{HoldInput, RecordingMetadata, RetentionInput, SharedRecorder};
 
+// Was: Diese Funktion startet HTTP server.
+// Warum: Länger laufende Arbeit blockiert dadurch nicht den aufrufenden Ablauf.
 pub fn spawn_http_server(
     config: RecorderConfig,
     recorder: SharedRecorder,
@@ -21,7 +26,11 @@ pub fn spawn_http_server(
         config.server.bind
     );
     Ok(thread::spawn(move || {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for stream in listener.incoming() {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match stream {
                 Ok(stream) => {
                     let config = config.clone();
@@ -38,6 +47,8 @@ pub fn spawn_http_server(
     }))
 }
 
+// Was: Bündelt die zusammengehörigen Werte für HTTP request in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct HttpRequest {
     method: String,
     path: String,
@@ -45,11 +56,15 @@ struct HttpRequest {
     body: Vec<u8>,
 }
 
+// Was: Listet die möglichen Varianten für response body auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 enum ResponseBody {
     Bytes(Vec<u8>),
     File(PathBuf),
 }
 
+// Was: Bündelt die zusammengehörigen Werte für HTTP response in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct HttpResponse {
     status: u16,
     content_type: &'static str,
@@ -57,6 +72,8 @@ struct HttpResponse {
     body: ResponseBody,
 }
 
+// Was: Diese Funktion verarbeitet connection.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 fn handle_connection(
     mut stream: TcpStream,
     config: RecorderConfig,
@@ -67,10 +84,14 @@ fn handle_connection(
     write_response(&mut stream, response).map_err(|error| error.to_string())
 }
 
+// Was: Diese Funktion leitet den vorgesehenen Arbeitsschritt.
+// Warum: Nachrichten und Daten gelangen dadurch nachvollziehbar an das richtige Ziel.
 fn route(request: HttpRequest, recorder: SharedRecorder) -> HttpResponse {
     if request.method == "OPTIONS" {
         return empty(204);
     }
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match (request.method.as_str(), request.path.as_str()) {
         ("GET", "/") => html(INDEX_HTML),
         ("GET", "/health/live") => json_response(200, &json!({"status":"live"})),
@@ -101,6 +122,8 @@ fn route(request: HttpRequest, recorder: SharedRecorder) -> HttpResponse {
     }
 }
 
+// Was: Führt den Arbeitsschritt `recording_route` für recording Weiterleitung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn recording_route(request: HttpRequest, recorder: SharedRecorder) -> HttpResponse {
     let tail = request.path.trim_start_matches("/api/v1/recordings/");
     if request.method == "GET" && !tail.contains('/') {
@@ -112,6 +135,8 @@ fn recording_route(request: HttpRequest, recorder: SharedRecorder) -> HttpRespon
     let Some((id, action)) = tail.rsplit_once('/') else {
         return json_response(404, &json!({"error":"not found"}));
     };
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match (request.method.as_str(), action) {
         ("POST", "verify") => result_response(recorder.verify_recording(id)),
         ("POST", "retention") => parse_json::<RetentionInput>(&request)
@@ -151,6 +176,8 @@ fn recording_route(request: HttpRequest, recorder: SharedRecorder) -> HttpRespon
     }
 }
 
+// Was: Führt den Arbeitsschritt `filter_recordings` für filter recordings aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn filter_recordings(
     mut recordings: Vec<RecordingMetadata>,
     query: &HashMap<String, String>,
@@ -170,10 +197,14 @@ fn filter_recordings(
                 recording.called_issi
             )
             .to_ascii_lowercase();
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for node in &recording.source_nodes {
                 haystack.push(' ');
                 haystack.push_str(&node.to_ascii_lowercase());
             }
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for speaker in &recording.speakers {
                 haystack.push(' ');
                 haystack.push_str(&speaker.to_string());
@@ -204,10 +235,14 @@ fn filter_recordings(
     recordings
 }
 
+// Was: Führt den Arbeitsschritt `result_response` für result response aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn result_response(result: Result<RecordingMetadata, String>) -> HttpResponse {
     result.map_or_else(error_response, |value| json_response(200, &value))
 }
 
+// Was: Führt den Arbeitsschritt `error_response` für error response aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn error_response(error: String) -> HttpResponse {
     let status = if error.contains("not found") {
         404
@@ -222,10 +257,14 @@ fn error_response(error: String) -> HttpResponse {
     json_response(status, &json!({"error":error}))
 }
 
+// Was: Diese Funktion liest und prüft JSON-Daten.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_json<T: serde::de::DeserializeOwned>(request: &HttpRequest) -> Result<T, String> {
     serde_json::from_slice(&request.body).map_err(|error| format!("invalid JSON: {error}"))
 }
 
+// Was: Führt den Arbeitsschritt `query_limit` für query limit aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn query_limit(request: &HttpRequest, default: usize) -> usize {
     request
         .query
@@ -235,6 +274,8 @@ fn query_limit(request: &HttpRequest, default: usize) -> usize {
         .clamp(1, 2_000)
 }
 
+// Was: Führt den Arbeitsschritt `openapi` für openapi aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn openapi() -> serde_json::Value {
     json!({
         "openapi":"3.0.3",
@@ -264,10 +305,14 @@ fn openapi() -> serde_json::Value {
     })
 }
 
+// Was: Diese Funktion liest request.
+// Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
 fn read_request(stream: &mut TcpStream, max_body_bytes: usize) -> Result<HttpRequest, String> {
     let mut buffer = Vec::new();
     let mut chunk = [0u8; 8192];
     let header_end;
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
     loop {
         let read = stream
             .read(&mut chunk)
@@ -313,6 +358,8 @@ fn read_request(stream: &mut TcpStream, max_body_bytes: usize) -> Result<HttpReq
     }
 
     let body_start = header_end + 4;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while buffer.len() < body_start + content_length {
         let read = stream
             .read(&mut chunk)
@@ -331,7 +378,11 @@ fn read_request(stream: &mut TcpStream, max_body_bytes: usize) -> Result<HttpReq
     })
 }
 
+// Was: Führt den Arbeitsschritt `json_response` für JSON-Daten response aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn json_response<T: Serialize>(status: u16, value: &T) -> HttpResponse {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match serde_json::to_vec(value) {
         Ok(body) => HttpResponse {
             status,
@@ -350,10 +401,14 @@ fn json_response<T: Serialize>(status: u16, value: &T) -> HttpResponse {
     }
 }
 
+// Was: Führt den Arbeitsschritt `html` für html aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn html(value: &str) -> HttpResponse {
     text("text/html; charset=utf-8", value.to_string())
 }
 
+// Was: Führt den Arbeitsschritt `text` für text aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn text(content_type: &'static str, value: String) -> HttpResponse {
     HttpResponse {
         status: 200,
@@ -363,6 +418,8 @@ fn text(content_type: &'static str, value: String) -> HttpResponse {
     }
 }
 
+// Was: Führt den Arbeitsschritt `file_response` für file response aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn file_response(
     path: PathBuf,
     content_type: &'static str,
@@ -376,6 +433,8 @@ fn file_response(
     }
 }
 
+// Was: Führt den Arbeitsschritt `empty` für empty aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn empty(status: u16) -> HttpResponse {
     HttpResponse {
         status,
@@ -385,7 +444,11 @@ fn empty(status: u16) -> HttpResponse {
     }
 }
 
+// Was: Diese Funktion schreibt response.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 fn write_response(stream: &mut TcpStream, response: HttpResponse) -> std::io::Result<()> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let reason = match response.status {
         200 => "OK",
         204 => "No Content",
@@ -396,6 +459,8 @@ fn write_response(stream: &mut TcpStream, response: HttpResponse) -> std::io::Re
         503 => "Service Unavailable",
         _ => "OK",
     };
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let content_length = match &response.body {
         ResponseBody::Bytes(body) => body.len() as u64,
         ResponseBody::File(path) => std::fs::metadata(path)?.len(),
@@ -413,11 +478,15 @@ fn write_response(stream: &mut TcpStream, response: HttpResponse) -> std::io::Re
         ),
         response.status, reason, response.content_type, content_length
     );
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (name, value) in response.headers {
         headers.push_str(&format!("{name}: {value}\r\n"));
     }
     headers.push_str("Connection: close\r\n\r\n");
     stream.write_all(headers.as_bytes())?;
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match response.body {
         ResponseBody::Bytes(body) => stream.write_all(&body),
         ResponseBody::File(path) => {
@@ -428,12 +497,16 @@ fn write_response(stream: &mut TcpStream, response: HttpResponse) -> std::io::Re
     }
 }
 
+// Was: Diese Funktion sucht subslice.
+// Warum: Die Suchlogik bleibt damit wiederverwendbar und muss nicht an mehreren Stellen kopiert werden.
 fn find_subslice(haystack: &[u8], needle: &[u8]) -> Option<usize> {
     haystack
         .windows(needle.len())
         .position(|window| window == needle)
 }
 
+// Was: Diese Funktion liest und prüft path and query.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_path_and_query(raw: &str) -> (String, HashMap<String, String>) {
     let (path, raw_query) = raw.split_once('?').unwrap_or((raw, ""));
     let query = raw_query
@@ -445,10 +518,14 @@ fn parse_path_and_query(raw: &str) -> (String, HashMap<String, String>) {
     (percent_decode(path), query)
 }
 
+// Was: Führt den Arbeitsschritt `percent_decode` für percent Dekodierung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn percent_decode(value: &str) -> String {
     let bytes = value.as_bytes();
     let mut output = Vec::with_capacity(bytes.len());
     let mut index = 0;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while index < bytes.len() {
         if bytes[index] == b'%'
             && index + 2 < bytes.len()
@@ -467,7 +544,11 @@ fn percent_decode(value: &str) -> String {
     String::from_utf8_lossy(&output).into_owned()
 }
 
+// Was: Führt den Arbeitsschritt `hex_nibble` für hex nibble aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn hex_nibble(value: u8) -> Option<u8> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match value {
         b'0'..=b'9' => Some(value - b'0'),
         b'a'..=b'f' => Some(value - b'a' + 10),
@@ -476,4 +557,6 @@ fn hex_nibble(value: u8) -> Option<u8> {
     }
 }
 
+// Was: Legt den festen Wert `INDEX_HTML` für index html fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const INDEX_HTML: &str = r#"<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>NetCore Recorder</title><style>:root{color-scheme:dark;--bg:#081116;--panel:#111f28;--line:#2a4451;--text:#edf5f8;--muted:#9eb2bc;--ok:#57d98e;--warn:#ffca58;--bad:#ff6d6d;--accent:#38a5ff}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px system-ui}.lab{padding:10px 20px;background:#8e2020;color:#fff;text-align:center;font-weight:800}header{padding:20px 26px;background:#0e1a22;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:15px}h1,h2{margin:0 0 10px}.wrap{padding:20px;display:grid;gap:16px}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px}.card,.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}.value{font-size:24px;font-weight:760}.muted{color:var(--muted)}.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}input,select,button{background:#192d38;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:8px}button{cursor:pointer}.primary{background:#1268aa}.danger{background:#893039}.hold{background:#6f5317}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:top}.tablewrap{overflow:auto}pre{white-space:pre-wrap;max-height:280px;overflow:auto}@media(max-width:750px){header{display:block}.toolbar>*{flex:1 1 150px}}</style></head><body><div class="lab">⚠ OPEN LAB – keine Anmeldung, keine Tokens, kein TLS. Jeder erreichbare Client darf Aufnahmen exportieren, Aufbewahrung ändern und – sofern erlaubt – löschen.</div><header><div><h1>Recorder</h1><div class="muted">Passive TETRA-Aufzeichnung, Metadaten, Integrität und Retention</div></div><div id="links">Verbindungen …</div></header><main class="wrap"><section class="cards" id="cards"></section><section class="panel"><h2>Aktive Aufnahmen</h2><div class="tablewrap"><table><thead><tr><th>Call</th><th>Ziel / Sprecher</th><th>Start / Frames</th><th>Status</th><th>Aktion</th></tr></thead><tbody id="activeRows"></tbody></table></div></section><section class="panel"><h2>Aufnahmen</h2><div class="toolbar"><input id="search" placeholder="Call, ISSI, GSSI, TBS …"><input id="gssi" type="number" placeholder="GSSI"><input id="issi" type="number" placeholder="ISSI"><select id="emergency"><option value="">alle</option><option value="true">nur Notruf</option><option value="false">ohne Notruf</option></select><button class="primary" onclick="refresh()">Suchen</button></div><div class="tablewrap"><table><thead><tr><th>Zeit / ID</th><th>Ruf</th><th>Frames / Dauer</th><th>Integrität / Retention</th><th>Aktionen</th></tr></thead><tbody id="recordingRows"></tbody></table></div></section><section class="panel"><h2>Ereignisse</h2><pre id="events" class="muted"></pre></section></main><script>const el=id=>document.getElementById(id);async function api(path,opt){const r=await fetch(path,opt);if(!r.ok&&r.status!==204){let e={};try{e=await r.json()}catch{}throw new Error(e.error||r.statusText)}return r.status===204?null:r.json()}function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}function post(path,body){return api(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})})}function fmtBytes(n){if(n==null)return '–';const u=['B','KiB','MiB','GiB','TiB'];let i=0;while(n>=1024&&i<u.length-1){n/=1024;i++}return n.toFixed(i?1:0)+' '+u[i]}function callLabel(r){return r.gssi?'GSSI '+r.gssi:(r.calling_issi||'–')+' → '+(r.called_issi||'–')}async function refresh(){try{const params=new URLSearchParams();if(el('search').value)params.set('q',el('search').value);if(el('gssi').value)params.set('gssi',el('gssi').value);if(el('issi').value)params.set('issi',el('issi').value);if(el('emergency').value)params.set('emergency',el('emergency').value);params.set('limit','500');const[s,a,r,e]=await Promise.all([api('/api/v1/status'),api('/api/v1/active'),api('/api/v1/recordings?'+params),api('/api/v1/events?limit=50')]);el('links').innerHTML=(s.media_switch_connected?'<span class="ok">● Media Switch</span>':'<span class="bad">● Media Switch</span>')+' &nbsp; '+(s.storage_available?'<span class="ok">● Storage</span>':'<span class="bad">● Storage</span>');el('cards').innerHTML=[['aktiv',s.active_recordings],['abgeschlossen',s.completed_recordings],['Frames',s.frames_ingested],['vor Recorder verloren',s.frames_lost_before_recorder],['Speicher',fmtBytes(s.storage_used_bytes)],['frei',fmtBytes(s.storage_free_bytes)],['Cursor',s.media_cursor],['Recovered',s.recordings_recovered]].map(x=>`<div class="card"><div class="muted">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');el('activeRows').innerHTML=a.map(x=>{const r=x.metadata;return `<tr><td><b>${esc(r.session_id)}</b><br><span class="muted">${esc(r.id)}</span></td><td>${callLabel(r)}<br>Sprecher: ${[...r.speakers].join(', ')||'–'}</td><td>${esc(r.started_at)}<br>${r.frame_count} Frames / ${fmtBytes(r.audio_bytes)}</td><td>${x.session_missing?'<span class="warn">Session fehlt</span>':'<span class="ok">nimmt auf</span>'}<br>${x.seconds_since_last_frame}s ohne Frame</td><td><button class="danger" onclick="finalizeRec('${r.id}')">Finalisieren</button></td></tr>`}).join('');el('recordingRows').innerHTML=r.map(x=>`<tr><td>${esc(x.started_at)}<br><b>${esc(x.id)}</b>${x.emergency?'<br><span class="bad">NOTRUF</span>':''}</td><td>${esc(x.call_kind)} / ${callLabel(x)}<br><span class="muted">${[...x.source_nodes].join(', ')}</span></td><td>${x.frame_count} / ${Math.round(x.duration_ms/1000)}s<br>${fmtBytes(x.audio_bytes)}${x.lost_tap_frames?'<br><span class="warn">'+x.lost_tap_frames+' Frames fehlen</span>':''}</td><td>${esc(x.integrity_status)}${x.legal_hold?' / <span class="warn">HOLD</span>':''}<br>bis ${esc(x.retention_until)}</td><td><button onclick="verifyRec('${x.id}')">Prüfen</button> <button onclick="location.href='/api/v1/recordings/${x.id}/export'">Export</button> <button class="hold" onclick="holdRec('${x.id}',${!x.legal_hold})">${x.legal_hold?'Hold lösen':'Hold'}</button> <button onclick="retentionRec('${x.id}')">Retention</button> <button class="danger" onclick="deleteRec('${x.id}')">Löschen</button></td></tr>`).join('');el('events').textContent=e.map(x=>`${x.timestamp} #${x.seq} ${x.kind} ${x.recording_id||''} ${x.session_id||''}`).join('\n')}catch(e){el('links').innerHTML='<span class="bad">UI-Fehler: '+esc(e.message)+'</span>'}}async function verifyRec(id){try{await post(`/api/v1/recordings/${id}/verify`,{});refresh()}catch(e){alert(e.message);refresh()}}async function finalizeRec(id){if(!confirm('Aktive Aufnahme jetzt finalisieren?'))return;try{await post(`/api/v1/recordings/${id}/finalize`,{});refresh()}catch(e){alert(e.message)}}async function holdRec(id,legal_hold){try{await post(`/api/v1/recordings/${id}/hold`,{legal_hold});refresh()}catch(e){alert(e.message)}}async function retentionRec(id){const days=Number(prompt('Aufbewahrung in Tagen:',30));if(!Number.isFinite(days)||days<1)return;try{await post(`/api/v1/recordings/${id}/retention`,{days});refresh()}catch(e){alert(e.message)}}async function deleteRec(id){if(!confirm('Aufnahme endgültig löschen? Das ist absichtlich keine Papierkorb-Aktion.'))return;try{await post(`/api/v1/recordings/${id}/delete`,{});refresh()}catch(e){alert(e.message)}}refresh();setInterval(refresh,2500)</script></body></html>"#;

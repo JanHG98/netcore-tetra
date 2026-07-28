@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für die Verbindung zwischen Basisstationen und Backend-Diensten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::net::TcpStream;
 use std::sync::{Arc, Mutex, mpsc};
 use std::time::{Duration, Instant};
@@ -13,9 +16,15 @@ use tungstenite::{Message, WebSocket, accept_hdr};
 use crate::config::NodeGatewayConfig;
 use crate::state::{BackendEvent, BackendRequest, NodeOutbound, SharedGateway, now_iso};
 
+// Was: Legt den festen Wert `BACKEND_PROTOCOL_VERSION` für Hintergrunddienst protocol version fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const BACKEND_PROTOCOL_VERSION: &str = "netcore-node-gateway-backend-v1";
+// Was: Legt den festen Wert `WS_READ_TIMEOUT` für ws read timeout fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const WS_READ_TIMEOUT: Duration = Duration::from_millis(100);
 
+// Was: Führt den Arbeitsschritt `reject_websocket` für reject websocket aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn reject_websocket(status: StatusCode, message: &str) -> ErrorResponse {
     tungstenite::http::Response::builder()
         .status(status)
@@ -26,6 +35,8 @@ fn reject_websocket(status: StatusCode, message: &str) -> ErrorResponse {
         .expect("valid websocket rejection response")
 }
 
+// Was: Diese Funktion verarbeitet websocket stream.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 pub fn handle_websocket_stream(stream: TcpStream, gateway: SharedGateway, config: NodeGatewayConfig) {
     let peer = stream.peer_addr().ok();
     let selected_path = Arc::new(Mutex::new(String::new()));
@@ -72,6 +83,8 @@ pub fn handle_websocket_stream(stream: TcpStream, gateway: SharedGateway, config
         Ok(response)
     };
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let ws = match accept_hdr(stream, callback) {
         Ok(ws) => ws,
         Err(error) => {
@@ -88,6 +101,8 @@ pub fn handle_websocket_stream(stream: TcpStream, gateway: SharedGateway, config
     }
 }
 
+// Was: Diese Funktion verarbeitet Netzknoten websocket.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 fn handle_node_websocket(mut ws: WebSocket<TcpStream>, gateway: SharedGateway, config: NodeGatewayConfig, peer: String) {
     let _ = ws.get_mut().set_read_timeout(Some(WS_READ_TIMEOUT));
     let _ = ws.get_mut().set_nodelay(true);
@@ -99,8 +114,14 @@ fn handle_node_websocket(mut ws: WebSocket<TcpStream>, gateway: SharedGateway, c
     let connected_at = Instant::now();
     let mut last_ping = Instant::now();
 
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
     loop {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while let Ok(outbound) = rx.try_recv() {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match outbound {
                 NodeOutbound::Protocol(message) => {
                     let payload = codec.encode_downlink(&message);
@@ -139,6 +160,8 @@ fn handle_node_websocket(mut ws: WebSocket<TcpStream>, gateway: SharedGateway, c
             return;
         }
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match ws.read() {
             Ok(Message::Binary(data)) => {
                 if data.len() > config.limits.max_message_bytes {
@@ -146,6 +169,8 @@ fn handle_node_websocket(mut ws: WebSocket<TcpStream>, gateway: SharedGateway, c
                     let _ = ws.close(None);
                     return;
                 }
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match codec.decode_uplink(data.as_ref()) {
                     Ok(message) => {
                         if !handle_node_message(&mut ws, &gateway, &codec, &tx, &session_id, &peer, &mut node_id, message) {
@@ -170,6 +195,8 @@ fn handle_node_websocket(mut ws: WebSocket<TcpStream>, gateway: SharedGateway, c
                     cleanup_node(&gateway, &node_id, &session_id, "message too large");
                     return;
                 }
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match codec.decode_uplink(text.as_bytes()) {
                     Ok(message) => {
                         if !handle_node_message(&mut ws, &gateway, &codec, &tx, &session_id, &peer, &mut node_id, message) {
@@ -206,6 +233,8 @@ fn handle_node_websocket(mut ws: WebSocket<TcpStream>, gateway: SharedGateway, c
 }
 
 #[allow(clippy::too_many_arguments)]
+// Was: Diese Funktion verarbeitet Netzknoten Nachricht.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 fn handle_node_message(
     ws: &mut WebSocket<TcpStream>,
     gateway: &SharedGateway,
@@ -216,6 +245,8 @@ fn handle_node_message(
     node_id: &mut Option<String>,
     message: NodeToControlRoomMessage,
 ) -> bool {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match &message {
         NodeToControlRoomMessage::Hello { hello } => {
             if let Some(existing) = node_id.as_deref() {
@@ -231,6 +262,8 @@ fn handle_node_message(
                 return true;
             }
 
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match gateway.register_node(hello, session_id.to_string(), peer.to_string(), sender.clone()) {
                 Ok(()) => {
                     *node_id = Some(hello.node.node_id.clone());
@@ -265,18 +298,26 @@ fn handle_node_message(
     }
 }
 
+// Was: Diese Funktion räumt Netzknoten.
+// Warum: Zurückgelassene Ressourcen würden sonst spätere Starts oder Verbindungen stören.
 fn cleanup_node(gateway: &SharedGateway, node_id: &Option<String>, session_id: &str, reason: &str) {
     if let Some(node_id) = node_id {
         gateway.mark_disconnected(node_id, session_id, reason);
     }
 }
 
+// Was: Diese Funktion verarbeitet Hintergrunddienst websocket.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 fn handle_backend_websocket(mut ws: WebSocket<TcpStream>, gateway: SharedGateway, config: NodeGatewayConfig) {
     let _ = ws.get_mut().set_read_timeout(Some(WS_READ_TIMEOUT));
     let _ = ws.get_mut().set_nodelay(true);
     let (backend_id, rx) = gateway.register_backend();
 
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
     loop {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while let Ok(event) = rx.try_recv() {
             if send_backend_event(&mut ws, &event).is_err() {
                 gateway.unregister_backend(&backend_id);
@@ -284,6 +325,8 @@ fn handle_backend_websocket(mut ws: WebSocket<TcpStream>, gateway: SharedGateway
             }
         }
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match ws.read() {
             Ok(Message::Binary(data)) => {
                 if data.len() > config.limits.max_message_bytes {
@@ -318,12 +361,16 @@ fn handle_backend_websocket(mut ws: WebSocket<TcpStream>, gateway: SharedGateway
     }
 }
 
+// Was: Diese Funktion verarbeitet Hintergrunddienst request.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 fn handle_backend_request(
     ws: &mut WebSocket<TcpStream>,
     gateway: &SharedGateway,
     backend_id: &str,
     request: Result<BackendRequest, serde_json::Error>,
 ) {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let request = match request {
         Ok(request) => request,
         Err(error) => {
@@ -340,9 +387,13 @@ fn handle_backend_request(
         }
     };
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let request = match request {
         BackendRequest::Subscribe { request_id, topics } => {
             let result = gateway.set_backend_topics(backend_id, &topics);
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let event = match result {
                 Ok(accepted) => BackendEvent::ActionResult {
                     request_id,
@@ -377,6 +428,8 @@ fn handle_backend_request(
         other => other,
     };
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let (request_id, result): (Option<String>, Result<(String, Option<String>), String>) = match request {
         BackendRequest::Ping { request_id } => {
             (request_id, Ok(("pong".to_string(), None)))
@@ -407,6 +460,8 @@ fn handle_backend_request(
         BackendRequest::Subscribe { .. } => unreachable!("subscription handled above"),
         BackendRequest::MediaFrame { .. } => unreachable!("media frame handled above"),
     };
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let event = match result {
         Ok((message, command_id)) => BackendEvent::ActionResult {
             request_id,
@@ -424,6 +479,8 @@ fn handle_backend_request(
     let _ = send_backend_event(ws, &event);
 }
 
+// Was: Diese Funktion sendet Hintergrunddienst Ereignis.
+// Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
 fn send_backend_event(ws: &mut WebSocket<TcpStream>, event: &BackendEvent) -> Result<(), tungstenite::Error> {
     let payload = serde_json::to_string(event).unwrap_or_else(|_| {
         "{\"kind\":\"action_result\",\"ok\":false,\"message\":\"serialization failed\"}".to_string()

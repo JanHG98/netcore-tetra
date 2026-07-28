@@ -1,3 +1,8 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+// Was: Bindet das Untermodul common in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod common;
 
 use tetra_config::bluestation::StackMode;
@@ -20,6 +25,8 @@ use tetra_saps::tmv::{TmvUnitdataInd, enums::logical_chans::LogicalChannel};
 
 use crate::common::ComponentTest;
 
+// Was: Diese Funktion öffnet shared voice circuit.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn open_shared_voice_circuit(ts: u8) -> SapMsg {
     SapMsg {
         sap: Sap::Control,
@@ -39,6 +46,8 @@ fn open_shared_voice_circuit(ts: u8) -> SapMsg {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall opening shared circuit does not start ul und weitere Angaben.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_opening_shared_circuit_does_not_start_ul_inactivity_timer() {
     debug::setup_logging_verbose();
 
@@ -58,6 +67,8 @@ fn test_opening_shared_circuit_does_not_start_ul_inactivity_timer() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall floor grant starts ul inactivity Zeitüberwachung.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_floor_grant_starts_ul_inactivity_timer() {
     debug::setup_logging_verbose();
 
@@ -89,6 +100,8 @@ fn test_floor_grant_starts_ul_inactivity_timer() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall network Downlink (Netz zum Funkgerät) voice does not start ul und weitere Angaben.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_network_downlink_voice_does_not_start_ul_inactivity_timer() {
     debug::setup_logging_verbose();
 
@@ -114,6 +127,8 @@ fn test_network_downlink_voice_does_not_start_ul_inactivity_timer() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall remote floor grant resumes Nutzdatenverkehr without ul und weitere Angaben.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_remote_floor_grant_resumes_traffic_without_ul_inactivity_timer() {
     debug::setup_logging_verbose();
 
@@ -145,6 +160,8 @@ fn test_remote_floor_grant_resumes_traffic_without_ul_inactivity_timer() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall ul MAC-Funkzugriffssteuerung u signal uses floor owner und weitere Angaben.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_ul_mac_u_signal_uses_floor_owner_and_timeslot_link() {
     debug::setup_logging_verbose();
 
@@ -206,6 +223,8 @@ fn test_ul_mac_u_signal_uses_floor_owner_and_timeslot_link() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall in fragmented sch hu and sch f.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_in_fragmented_sch_hu_and_sch_f() {
     // Receive SCH/HU containing MAC-ACCESS with fragmentation start
     // Then receive SCH-F containing MAC-END (UL)
@@ -267,6 +286,8 @@ fn test_in_fragmented_sch_hu_and_sch_f() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall in fragmented sch hu and sch hu.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_in_fragmented_sch_hu_and_sch_hu() {
     // Receive SCH/HU containing MAC-ACCESS with fragmentation start
     // Then receive SCH-HU containing MAC-END-HU
@@ -329,6 +350,8 @@ fn test_in_fragmented_sch_hu_and_sch_hu() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall out fragmented resource.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_out_fragmented_resource() {
     // Test for UMAC (and LLC/MLE)
     // The vector is an MM DAttachDetachGroupIdentityAcknowledgement which contains a lot of groups.
@@ -372,6 +395,8 @@ fn test_out_fragmented_resource() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall facch stealing does not set random access und weitere Angaben.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_facch_stealing_does_not_set_random_access_flag_without_pending_ra() {
     debug::setup_logging_verbose();
 
@@ -422,6 +447,8 @@ fn test_facch_stealing_does_not_set_random_access_flag_without_pending_ra() {
     let sink_msgs = test.dump_sinks();
 
     let mut found = false;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for msg in sink_msgs {
         let SapMsgInner::TmvUnitdataReq(slot) = msg.msg else {
             continue;
@@ -454,6 +481,8 @@ fn test_facch_stealing_does_not_set_random_access_flag_without_pending_ra() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall Nutzdatenverkehr MAC-Funkzugriffssteuerung access does not mark next und weitere Angaben.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_traffic_mac_access_does_not_mark_next_facch_as_random_access() {
     debug::setup_logging_verbose();
 
@@ -535,6 +564,8 @@ fn test_traffic_mac_access_does_not_mark_next_facch_as_random_access() {
     let sink_msgs = test.dump_sinks();
 
     let mut found = false;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for msg in sink_msgs {
         let SapMsgInner::TmvUnitdataReq(slot) = msg.msg else {
             continue;
@@ -575,6 +606,8 @@ fn test_traffic_mac_access_does_not_mark_next_facch_as_random_access() {
 /// This test drives the exact UMAC path (rx_ul_tma_unitdata_req) with a large stealing SDU on
 /// an open traffic circuit and asserts the run completes without panicking.
 #[test]
+// Was: Prüft automatisch den Fall stealing large sdu fragments without panic.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_stealing_large_sdu_fragments_without_panic() {
     debug::setup_logging_verbose();
 

@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Einlesen und Prüfen der TETRA-Konfiguration.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use serde::Deserialize;
 use std::collections::{BTreeSet, HashMap};
 use toml::Value;
@@ -8,6 +11,8 @@ use toml::Value;
 /// configured UDP socket and can send JSON text messages back to a node using the documented
 /// external-client format.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für cfg meshcom in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgMeshcom {
     pub enabled: bool,
     pub bind_addr: String,
@@ -30,7 +35,11 @@ pub struct CfgMeshcom {
     pub telegram_allowed_sources: BTreeSet<String>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for CfgMeshcom`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for CfgMeshcom {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             enabled: false,
@@ -57,6 +66,8 @@ impl Default for CfgMeshcom {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für cfg meshcom dto in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgMeshcomDto {
     #[serde(default)]
     pub enabled: bool,
@@ -101,7 +112,11 @@ pub struct CfgMeshcomDto {
     pub extra: HashMap<String, Value>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for CfgMeshcomDto`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for CfgMeshcomDto {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             enabled: false,
@@ -128,38 +143,56 @@ impl Default for CfgMeshcomDto {
     }
 }
 
+// Was: Führt den Arbeitsschritt `default_true` für default true aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_true() -> bool {
     true
 }
 
+// Was: Führt den Arbeitsschritt `default_bind_addr` für default bind addr aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_bind_addr() -> String {
     "0.0.0.0".to_string()
 }
 
+// Was: Führt den Arbeitsschritt `default_tx_host` für default tx host aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_tx_host() -> String {
     "255.255.255.255".to_string()
 }
 
+// Was: Führt den Arbeitsschritt `default_udp_port` für default UDP port aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_udp_port() -> u16 {
     1799
 }
 
+// Was: Führt den Arbeitsschritt `default_max_messages` für default max messages aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_max_messages() -> usize {
     500
 }
 
+// Was: Führt den Arbeitsschritt `default_max_nodes` für default max nodes aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_max_nodes() -> usize {
     1000
 }
 
+// Was: Führt den Arbeitsschritt `default_source_issi` für default source Teilnehmerkennung (ISSI) aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_source_issi() -> u32 {
     4010001
 }
 
+// Was: Führt den Arbeitsschritt `default_meshcom_prefix` für default meshcom prefix aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_meshcom_prefix() -> String {
     "MeshCom".to_string()
 }
 
+// Was: Diese Funktion wendet meshcom patch.
+// Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
 pub fn apply_meshcom_patch(src: CfgMeshcomDto) -> Result<CfgMeshcom, String> {
     if src.enabled {
         if src.bind_addr.trim().is_empty() {
@@ -204,6 +237,8 @@ pub fn apply_meshcom_patch(src: CfgMeshcomDto) -> Result<CfgMeshcom, String> {
     })
 }
 
+// Was: Führt den Arbeitsschritt `non_empty_or` für non empty or aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn non_empty_or(value: String, fallback: &str) -> String {
     let trimmed = value.trim();
     if trimmed.is_empty() {
@@ -213,10 +248,14 @@ fn non_empty_or(value: String, fallback: &str) -> String {
     }
 }
 
+// Was: Führt den Arbeitsschritt `nonzero_port_or` für nonzero port or aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn nonzero_port_or(value: u16, fallback: u16) -> u16 {
     if value == 0 { fallback } else { value }
 }
 
+// Was: Führt den Arbeitsschritt `normalize_source_list` für normalize source list aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn normalize_source_list(values: Vec<String>) -> BTreeSet<String> {
     values
         .into_iter()

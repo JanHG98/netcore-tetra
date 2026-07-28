@@ -1,3 +1,8 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+// Was: Bindet das Untermodul common in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod common;
 
 use tetra_config::bluestation::StackMode;
@@ -16,9 +21,15 @@ use tetra_saps::{SapMsg, SapMsgInner};
 
 use crate::common::ComponentTest;
 
+// Was: Legt den festen Wert `HOME_ISSI` für home Teilnehmerkennung (ISSI) fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const HOME_ISSI: u32 = 2_260_575;
+// Was: Legt den festen Wert `HOME_MNI` für home mni fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const HOME_MNI: u64 = 0x04_0001;
 
+// Was: Führt den Arbeitsschritt `context` für Kontext aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn context() -> MmClientMobilityContext {
     MmClientMobilityContext {
         issi: HOME_ISSI,
@@ -33,6 +44,8 @@ fn context() -> MmClientMobilityContext {
     }
 }
 
+// Was: Führt den Arbeitsschritt `cell` für cell aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn cell() -> ComponentTest {
     let mut test = ComponentTest::new(StackMode::Bs, Some(TdmaTime::default()));
     test.populate_entities(vec![], vec![TetraEntity::Mle]);
@@ -40,6 +53,8 @@ fn cell() -> ComponentTest {
     test
 }
 
+// Was: Führt den Arbeitsschritt `with_mm` für with Mobilitätsverwaltung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn with_mm<R>(test: &mut ComponentTest, f: impl FnOnce(&mut MmBs) -> R) -> R {
     let entity = test
         .router
@@ -52,6 +67,8 @@ fn with_mm<R>(test: &mut ComponentTest, f: impl FnOnce(&mut MmBs) -> R) -> R {
     f(mm)
 }
 
+// Was: Führt den Arbeitsschritt `demand` für demand aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn demand(kind: LocationUpdateType) -> ULocationUpdateDemand {
     ULocationUpdateDemand {
         location_update_type: kind,
@@ -71,6 +88,8 @@ fn demand(kind: LocationUpdateType) -> ULocationUpdateDemand {
     }
 }
 
+// Was: Führt den Arbeitsschritt `submit_demand` für submit demand aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn submit_demand(test: &mut ComponentTest, address: TetraAddress, handle: u32, pdu: ULocationUpdateDemand) {
     let mut sdu = BitBuffer::new_autoexpand(64);
     pdu.to_bitbuf(&mut sdu).expect("encode U-LOCATION-UPDATE-DEMAND");
@@ -88,6 +107,8 @@ fn submit_demand(test: &mut ComponentTest, address: TetraAddress, handle: u32, p
     test.run_stack(Some(2));
 }
 
+// Was: Führt den Arbeitsschritt `proceeding_from` für proceeding from aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn proceeding_from(messages: &[SapMsg]) -> DLocationUpdateProceeding {
     messages
         .iter()
@@ -101,6 +122,8 @@ fn proceeding_from(messages: &[SapMsg]) -> DLocationUpdateProceeding {
         .expect("D-LOCATION-UPDATE-PROCEEDING missing")
 }
 
+// Was: Diese Funktion nimmt from.
+// Warum: Eingehende Verbindungen und Daten werden dadurch an einer klaren Stelle angenommen.
 fn accept_from(messages: &[SapMsg]) -> DLocationUpdateAccept {
     messages
         .iter()
@@ -115,6 +138,8 @@ fn accept_from(messages: &[SapMsg]) -> DLocationUpdateAccept {
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `migration_context_moves_between_two_mm_cells_and_survives_under_vassi` für migration Kontext moves between two Mobilitätsverwaltung cells und weitere Angaben aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn migration_context_moves_between_two_mm_cells_and_survives_under_vassi() {
     let mut home = cell();
     let mut visited = cell();
@@ -165,6 +190,8 @@ fn migration_context_moves_between_two_mm_cells_and_survives_under_vassi() {
 }
 
 #[test]
+// Was: Diese Funktion leitet registration embeds accept and exports Kontext for und weitere Angaben.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn forward_registration_embeds_accept_and_exports_context_for_target_cell() {
     let mut source = cell();
     let mut target = cell();

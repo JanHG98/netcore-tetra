@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für SNDCP-Kontexte und TETRA-Paketdaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
@@ -13,6 +16,8 @@ use crate::protocol::{
 };
 use crate::state::SharedPacketCore;
 
+// Was: Diese Funktion startet HTTP server.
+// Warum: Länger laufende Arbeit blockiert dadurch nicht den aufrufenden Ablauf.
 pub fn spawn_http_server(
     config: PacketCoreConfig,
     core: SharedPacketCore,
@@ -24,7 +29,11 @@ pub fn spawn_http_server(
         config.server.bind
     );
     Ok(thread::spawn(move || {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for stream in listener.incoming() {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match stream {
                 Ok(stream) => {
                     let core = core.clone();
@@ -42,6 +51,8 @@ pub fn spawn_http_server(
     }))
 }
 
+// Was: Bündelt die zusammengehörigen Werte für HTTP request in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct HttpRequest {
     method: String,
     path: String,
@@ -49,6 +60,8 @@ struct HttpRequest {
     body: Vec<u8>,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für HTTP response in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct HttpResponse {
     status: u16,
     content_type: &'static str,
@@ -56,6 +69,8 @@ struct HttpResponse {
     disposition: Option<String>,
 }
 
+// Was: Diese Funktion verarbeitet connection.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 fn handle_connection(
     mut stream: TcpStream,
     core: SharedPacketCore,
@@ -67,6 +82,8 @@ fn handle_connection(
     write_response(&mut stream, response).map_err(|error| error.to_string())
 }
 
+// Was: Diese Funktion leitet den vorgesehenen Arbeitsschritt.
+// Warum: Nachrichten und Daten gelangen dadurch nachvollziehbar an das richtige Ziel.
 fn route(
     request: HttpRequest,
     core: SharedPacketCore,
@@ -77,6 +94,8 @@ fn route(
         return empty(204);
     }
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match (request.method.as_str(), request.path.as_str()) {
         ("GET", "/") => html(INDEX_HTML),
         ("GET", "/health/live") => json_response(200, &json!({"status":"live"})),
@@ -114,6 +133,8 @@ fn route(
         ),
         ("GET", "/openapi.json") => json_response(200, &openapi()),
         ("POST", "/api/v1/edge/events") => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json::<EdgeEventInput>(&request.body)
                 .and_then(|input| core.ingest_edge_event(input))
             {
@@ -122,6 +143,8 @@ fn route(
             }
         }
         ("POST", "/api/v1/downlink") => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json::<DownlinkNpduInput>(&request.body)
                 .and_then(|input| core.queue_downlink(input))
             {
@@ -133,12 +156,16 @@ fn route(
     }
 }
 
+// Was: Führt den Arbeitsschritt `dynamic_route` für dynamic Weiterleitung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn dynamic_route(
     request: HttpRequest,
     core: SharedPacketCore,
     gateway_tx: Sender<BackendRequest>,
 ) -> HttpResponse {
     let parts: Vec<&str> = request.path.trim_matches('/').split('/').collect();
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match (request.method.as_str(), parts.as_slice()) {
         ("GET", ["api", "v1", "contexts", id]) => match core.context(id) {
             Some(context) => json_response(200, &context),
@@ -157,6 +184,8 @@ fn dynamic_route(
             } else {
                 parse_json::<ContextActionInput>(&request.body)
             };
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match input.and_then(|input| core.context_action(id, action, input)) {
                 Ok((actions, commands)) => match dispatch_all(&gateway_tx, commands) {
                     Ok(()) => json_response(202, &json!({"accepted":true,"actions":actions})),
@@ -166,6 +195,8 @@ fn dynamic_route(
             }
         }
         ("POST", ["api", "v1", "actions", id, "ack"]) => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json::<ActionAckInput>(&request.body)
                 .and_then(|input| core.acknowledge_action(id, input))
             {
@@ -181,7 +212,11 @@ fn dynamic_route(
     }
 }
 
+// Was: Diese Funktion verteilt all.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn dispatch_all(tx: &Sender<BackendRequest>, commands: Vec<BackendRequest>) -> Result<(), String> {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for command in commands {
         tx.send(command)
             .map_err(|_| "node gateway worker is unavailable".to_string())?;
@@ -189,10 +224,14 @@ fn dispatch_all(tx: &Sender<BackendRequest>, commands: Vec<BackendRequest>) -> R
     Ok(())
 }
 
+// Was: Diese Funktion liest und prüft JSON-Daten.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_json<T: serde::de::DeserializeOwned>(body: &[u8]) -> Result<T, String> {
     serde_json::from_slice(body).map_err(|error| format!("invalid JSON: {error}"))
 }
 
+// Was: Führt den Arbeitsschritt `query_usize` für query usize aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn query_usize(request: &HttpRequest, key: &str, default: usize, maximum: usize) -> usize {
     request
         .query
@@ -202,6 +241,8 @@ fn query_usize(request: &HttpRequest, key: &str, default: usize, maximum: usize)
         .min(maximum)
 }
 
+// Was: Führt den Arbeitsschritt `query_u64` für query u64 aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn query_u64(request: &HttpRequest, key: &str, default: u64) -> u64 {
     request
         .query
@@ -210,6 +251,8 @@ fn query_u64(request: &HttpRequest, key: &str, default: u64) -> u64 {
         .unwrap_or(default)
 }
 
+// Was: Führt den Arbeitsschritt `openapi` für openapi aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn openapi() -> serde_json::Value {
     json!({
         "openapi":"3.0.3",
@@ -240,7 +283,11 @@ fn openapi() -> serde_json::Value {
     })
 }
 
+// Was: Führt den Arbeitsschritt `json_response` für JSON-Daten response aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn json_response<T: Serialize>(status: u16, value: &T) -> HttpResponse {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match serde_json::to_vec_pretty(value) {
         Ok(body) => HttpResponse {
             status,
@@ -258,7 +305,11 @@ fn json_response<T: Serialize>(status: u16, value: &T) -> HttpResponse {
     }
 }
 
+// Was: Führt den Arbeitsschritt `download_json` für download JSON-Daten aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn download_json<T: Serialize>(name: &str, value: &T) -> HttpResponse {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match serde_json::to_vec_pretty(value) {
         Ok(body) => HttpResponse {
             status: 200,
@@ -270,6 +321,8 @@ fn download_json<T: Serialize>(name: &str, value: &T) -> HttpResponse {
     }
 }
 
+// Was: Führt den Arbeitsschritt `text` für text aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn text(content_type: &'static str, value: String) -> HttpResponse {
     HttpResponse {
         status: 200,
@@ -279,6 +332,8 @@ fn text(content_type: &'static str, value: String) -> HttpResponse {
     }
 }
 
+// Was: Führt den Arbeitsschritt `html` für html aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn html(value: &str) -> HttpResponse {
     HttpResponse {
         status: 200,
@@ -288,6 +343,8 @@ fn html(value: &str) -> HttpResponse {
     }
 }
 
+// Was: Führt den Arbeitsschritt `empty` für empty aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn empty(status: u16) -> HttpResponse {
     HttpResponse {
         status,
@@ -297,6 +354,8 @@ fn empty(status: u16) -> HttpResponse {
     }
 }
 
+// Was: Diese Funktion liest request.
+// Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
 fn read_request(stream: &mut TcpStream, max_body_bytes: usize) -> Result<HttpRequest, String> {
     stream
         .set_read_timeout(Some(std::time::Duration::from_secs(10)))
@@ -304,6 +363,8 @@ fn read_request(stream: &mut TcpStream, max_body_bytes: usize) -> Result<HttpReq
     let mut bytes = Vec::new();
     let mut buffer = [0_u8; 8192];
     let header_end;
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
     loop {
         let read = stream.read(&mut buffer).map_err(|error| error.to_string())?;
         if read == 0 {
@@ -342,6 +403,8 @@ fn read_request(stream: &mut TcpStream, max_body_bytes: usize) -> Result<HttpReq
     if content_length > max_body_bytes {
         return Err("request body exceeds configured limit".to_string());
     }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while bytes.len() < header_end + content_length {
         let read = stream.read(&mut buffer).map_err(|error| error.to_string())?;
         if read == 0 {
@@ -358,7 +421,11 @@ fn read_request(stream: &mut TcpStream, max_body_bytes: usize) -> Result<HttpReq
     })
 }
 
+// Was: Diese Funktion schreibt response.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 fn write_response(stream: &mut TcpStream, response: HttpResponse) -> std::io::Result<()> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let reason = match response.status {
         200 => "OK",
         201 => "Created",
@@ -388,10 +455,14 @@ fn write_response(stream: &mut TcpStream, response: HttpResponse) -> std::io::Re
     stream.write_all(&response.body)
 }
 
+// Was: Diese Funktion sucht subslice.
+// Warum: Die Suchlogik bleibt damit wiederverwendbar und muss nicht an mehreren Stellen kopiert werden.
 fn find_subslice(haystack: &[u8], needle: &[u8]) -> Option<usize> {
     haystack.windows(needle.len()).position(|window| window == needle)
 }
 
+// Was: Diese Funktion liest und prüft path and query.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_path_and_query(raw: &str) -> (String, HashMap<String, String>) {
     let (path, raw_query) = raw.split_once('?').unwrap_or((raw, ""));
     let query = raw_query
@@ -403,10 +474,14 @@ fn parse_path_and_query(raw: &str) -> (String, HashMap<String, String>) {
     (percent_decode(path), query)
 }
 
+// Was: Führt den Arbeitsschritt `percent_decode` für percent Dekodierung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn percent_decode(value: &str) -> String {
     let bytes = value.as_bytes();
     let mut output = Vec::new();
     let mut index = 0;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while index < bytes.len() {
         if bytes[index] == b'%' && index + 2 < bytes.len() {
             if let Ok(hex) = u8::from_str_radix(&value[index + 1..index + 3], 16) {
@@ -421,6 +496,8 @@ fn percent_decode(value: &str) -> String {
     String::from_utf8_lossy(&output).into_owned()
 }
 
+// Was: Legt den festen Wert `INDEX_HTML` für index html fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const INDEX_HTML: &str = r#"<!doctype html>
 <html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>NetCore Packet Core</title><style>

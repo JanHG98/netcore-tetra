@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für den Betrieb der TETRA-Basisstation.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use clap::Parser;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -34,13 +37,23 @@ use tetra_entities::net_audio_player::{AudioPlayerEntity, AudioPlayerHandle};
 use tetra_entities::net_tts::TtsHandle;
 
 #[cfg(feature = "recording")]
+// Was: Vergibt für optional Aufzeichnung handle einen fachlich verständlichen Typnamen.
+// Warum: Der Alias macht Signaturen lesbarer und hält technische Details aus dem aufrufenden Code heraus.
 type OptionalRecorderHandle = Option<RecorderHandle>;
 #[cfg(not(feature = "recording"))]
+// Was: Vergibt für optional Aufzeichnung handle einen fachlich verständlichen Typnamen.
+// Warum: Der Alias macht Signaturen lesbarer und hält technische Details aus dem aufrufenden Code heraus.
 type OptionalRecorderHandle = ();
 #[cfg(feature = "audio-player")]
+// Was: Vergibt für optional audio player handle einen fachlich verständlichen Typnamen.
+// Warum: Der Alias macht Signaturen lesbarer und hält technische Details aus dem aufrufenden Code heraus.
 type OptionalAudioPlayerHandle = Option<AudioPlayerHandle>;
 #[cfg(not(feature = "audio-player"))]
+// Was: Vergibt für optional audio player handle einen fachlich verständlichen Typnamen.
+// Warum: Der Alias macht Signaturen lesbarer und hält technische Details aus dem aufrufenden Code heraus.
 type OptionalAudioPlayerHandle = ();
+// Was: Vergibt für optional Steuerung room Audio- und Mediendaten einen fachlich verständlichen Typnamen.
+// Warum: Der Alias macht Signaturen lesbarer und hält technische Details aus dem aufrufenden Code heraus.
 type OptionalControlRoomMedia = Option<(MediaUplinkSource, MediaDownlinkSink)>;
 use tetra_entities::net_echolink::{EcholinkEntity, echolink_channel};
 use tetra_entities::net_geoalarm::{GeoAlarmSink, spawn_geoalarm_worker};
@@ -65,6 +78,8 @@ use tetra_entities::{
 };
 
 /// Result of loading config — either primary or fallback.
+// Was: Listet die möglichen Varianten für Konfiguration load result auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 enum ConfigLoadResult {
     Primary(StackConfig),
     Fallback {
@@ -77,7 +92,11 @@ enum ConfigLoadResult {
 /// Try to load the primary config. If it fails, try the fallback
 /// (`<config>.fallback` alongside the primary file).
 /// Returns Ok(ConfigLoadResult) or exits if both fail.
+// Was: Diese Funktion lädt Konfiguration with fallback.
+// Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
 fn load_config_with_fallback(cfg_path: &str) -> ConfigLoadResult {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match parsing::from_file(cfg_path) {
         Ok(c) => ConfigLoadResult::Primary(c),
         Err(primary_err) => {
@@ -88,6 +107,8 @@ fn load_config_with_fallback(cfg_path: &str) -> ConfigLoadResult {
             let fallback_path = format!("{}.fallback", cfg_path);
 
             eprintln!("WARNING: Trying fallback config '{}'...", fallback_path);
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parsing::from_file(&fallback_path) {
                 Ok(c) => {
                     eprintln!(
@@ -111,6 +132,8 @@ fn load_config_with_fallback(cfg_path: &str) -> ConfigLoadResult {
     }
 }
 
+// Was: Diese Funktion startet Telemetrie Hintergrundverarbeitung.
+// Warum: Der Dienst oder Teilprozess wird so in einer festen und überprüfbaren Reihenfolge gestartet.
 fn start_telemetry_worker(cfg: SharedConfig, telemetry_source: TelemetrySource) -> thread::JoinHandle<()> {
     let config = cfg.config();
     let tcfg = config.telemetry.as_ref().unwrap();
@@ -144,6 +167,8 @@ fn start_telemetry_worker(cfg: SharedConfig, telemetry_source: TelemetrySource) 
     })
 }
 
+// Was: Diese Funktion startet Steuerung Hintergrundverarbeitung.
+// Warum: Der Dienst oder Teilprozess wird so in einer festen und überprüfbaren Reihenfolge gestartet.
 fn start_control_worker(cfg: SharedConfig, command_dispatchers: HashMap<TetraEntity, CommandDispatcher>) -> thread::JoinHandle<()> {
     let config = cfg.config();
     let ccfg = config.control.as_ref().unwrap();
@@ -177,6 +202,8 @@ fn start_control_worker(cfg: SharedConfig, command_dispatchers: HashMap<TetraEnt
     })
 }
 
+// Was: Diese Funktion startet Steuerung room Hintergrundverarbeitung.
+// Warum: Der Dienst oder Teilprozess wird so in einer festen und überprüfbaren Reihenfolge gestartet.
 fn start_control_room_worker(
     cfg: SharedConfig,
     telemetry_source: TelemetrySource,
@@ -245,6 +272,8 @@ fn start_control_room_worker(
 }
 
 /// Start base station stack
+// Was: Diese Funktion erstellt Basisstation stack.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
 fn build_bs_stack(
     cfg: &mut SharedConfig,
     config_path: &str,
@@ -294,6 +323,8 @@ fn build_bs_stack(
     };
 
     // Add suitable Phy component based on PhyIo type
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match cfg.config().phy_io.backend {
         PhyBackend::SoapySdr => {
             let rxdev = RxTxDevSoapySdr::with_telemetry(cfg, tsink.clone());
@@ -394,6 +425,8 @@ fn build_bs_stack(
     // they are logged and exposed as unavailable in the dashboard.
     #[cfg(feature = "recording")]
     if cfg.config().recording.enabled {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match RecorderEntity::new(cfg.clone()) {
             Ok((recorder, handle)) => {
                 router.register_entity(Box::new(recorder));
@@ -428,6 +461,8 @@ fn build_bs_stack(
     // only pre-encoded TETRA blocks are injected during TDMA playout.
     #[cfg(feature = "audio-player")]
     if cfg.config().audio_player.enabled {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match AudioPlayerEntity::new(cfg.clone()) {
             Ok((player, handle)) => {
                 router.register_entity(Box::new(player));
@@ -445,6 +480,8 @@ fn build_bs_stack(
                 if let Some(warning) = handle.startup_warning() {
                     eprintln!("    Audio cache warning: {warning}");
                 }
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for share in &cfg.config().audio_player.shares {
                     eprintln!("    Media source '{}' [{}]: {}", share.name, share.id, share.path);
                 }
@@ -462,6 +499,8 @@ fn build_bs_stack(
     }
 
     // Drop all command links that were not given to a TetraEntity
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (entity, dispatcher) in c_e.into_iter() {
         drop(dispatcher);
         c_d.remove(&entity);
@@ -490,6 +529,8 @@ fn build_bs_stack(
     // Register Asterisk SIP/RTP entity if enabled
     #[cfg(feature = "asterisk")]
     if cfg.config().asterisk.enabled {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match AsteriskEntity::new(cfg.clone()) {
             Ok(asterisk_entity) => {
                 router.register_entity(Box::new(asterisk_entity));
@@ -532,12 +573,16 @@ fn build_bs_stack(
     long_about = "Runs the TETRA BlueStation base station stack using the provided TOML configuration files"
 )]
 
+// Was: Bündelt die zusammengehörigen Werte für args in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct Args {
     /// Config file (required)
     #[arg(help = "TOML config with network/cell parameters")]
     config: String,
 }
 
+// Was: Startet das Programm, lädt die benötigten Einstellungen und übergibt an den eigentlichen Dienstablauf.
+// Warum: Ein klarer Einstiegspunkt hält Startreihenfolge, Fehlerausgabe und geordnetes Beenden zusammen.
 fn main() {
     eprintln!("░▀█▀░█▀▀░▀█▀░█▀▄░█▀█░░░░░░░░░█▀▀░█░░░█▀█░█░█░█▀▀░▀█▀░█▀█░▀█▀░▀█▀░█▀█░█▀█");
     eprintln!("░░█░░█▀▀░░█░░█▀▄░█▀█░░░▄▄▄░░░█▀▀░█░░░█░█░█▄█░▀▀█░░█░░█▀█░░█░░░█░░█░█░█░█");
@@ -550,6 +595,8 @@ fn main() {
     let args = Args::parse();
 
     // Load config — tries primary, falls back to <config>.fallback if primary is invalid.
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let (stack_cfg, fallback_info) = match load_config_with_fallback(&args.config) {
         ConfigLoadResult::Primary(c) => (c, None),
         ConfigLoadResult::Fallback {
@@ -563,6 +610,8 @@ fn main() {
     // start.  This keeps an isolated cell deterministic after a host reboot instead
     // of silently reverting to an open policy.
     let mut initial_state = StackState::default();
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match tetra_entities::net_control_room::edge_store::load_edge_policy_cache(&stack_cfg, &mut initial_state) {
         Ok(true) => eprintln!("Loaded last-known NetCore edge policy cache."),
         Ok(false) => {}
@@ -614,6 +663,8 @@ fn main() {
     ) = build_bs_stack(&mut cfg, &args.config, echolink_cmd_rx);
     #[cfg(feature = "audio-player")]
     let tts_handle = if cfg.config().tts.enabled {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match (audio_player_handle.clone(), recorder_handle.clone()) {
             (Some(player), Some(recorder)) => match TtsHandle::new(cfg.config().tts.clone(), player, recorder) {
                 Ok(handle) => {
@@ -783,6 +834,8 @@ fn main() {
             thread::Builder::new()
                 .name("log-fanout".into())
                 .spawn(move || {
+                    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                     while let Ok((level, msg)) = log_rx.recv() {
                         // Filter out debug/trace noise.
                         if level == "DEBUG" || level == "TRACE" {
@@ -834,10 +887,16 @@ fn main() {
                     // the health registry (Radios domain). Re-registrations of an already-known radio
                     // don't emit MsRegistration, so increment/decrement stays balanced.
                     let mut radio_count: usize = 0;
+                    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+                    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
                     loop {
+                        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                         match telemetry_source.recv() {
                             Some(event) => {
                                 // Feed the lite health registry (cheap, before the fan-out clones).
+                                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                                 match &event {
                                     TelemetryEvent::BrewConnected { connected, .. } => health_registry().set_brew_up(*connected),
                                     TelemetryEvent::MsRegistration { .. } => {

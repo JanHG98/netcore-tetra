@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Sicherheitsrichtlinien und Authentifizierungsabläufe.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -10,6 +13,8 @@ use crate::config::SecurityCoreConfig;
 use crate::protocol::{BACKEND_PROTOCOL_VERSION, BackendEvent, BackendRequest};
 use crate::state::SharedSecurityCore;
 
+// Was: Diese Funktion startet Gateway Hintergrundverarbeitung.
+// Warum: Länger laufende Arbeit blockiert dadurch nicht den aufrufenden Ablauf.
 pub fn spawn_gateway_worker(
     config: SecurityCoreConfig,
     core: SharedSecurityCore,
@@ -17,12 +22,18 @@ pub fn spawn_gateway_worker(
     thread::spawn(move || run_gateway_worker(config, core))
 }
 
+// Was: Diese Funktion führt Gateway Hintergrundverarbeitung.
+// Warum: Der Lebenszyklus des Dienstes bleibt so an einer zentralen Stelle steuerbar.
 fn run_gateway_worker(config: SecurityCoreConfig, core: SharedSecurityCore) {
     if !config.node_gateway.observe_nodes {
         tracing::info!("Security Core Node Gateway observation is disabled");
         return;
     }
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
     loop {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match connect_gateway(&config) {
             Ok(mut socket) => {
                 core.gateway_connected();
@@ -36,6 +47,8 @@ fn run_gateway_worker(config: SecurityCoreConfig, core: SharedSecurityCore) {
     }
 }
 
+// Was: Diese Funktion verbindet Gateway.
+// Warum: Der Verbindungsaufbau wird dadurch zentral überwacht und kann sauber fehlschlagen.
 fn connect_gateway(
     config: &SecurityCoreConfig,
 ) -> Result<WebSocket<MaybeTlsStream<std::net::TcpStream>>, String> {
@@ -61,12 +74,18 @@ fn connect_gateway(
     Ok(socket)
 }
 
+// Was: Führt den Arbeitsschritt `connected_loop` für connected loop aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn connected_loop(
     socket: &mut WebSocket<MaybeTlsStream<std::net::TcpStream>>,
     core: &SharedSecurityCore,
 ) -> Result<(), String> {
     let mut last_ping = Instant::now();
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
     loop {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match socket.read() {
             Ok(Message::Text(text)) => handle_event(core, serde_json::from_str(text.as_str()))?,
             Ok(Message::Binary(data)) => handle_event(core, serde_json::from_slice(data.as_ref()))?,
@@ -96,6 +115,8 @@ fn connected_loop(
     }
 }
 
+// Was: Diese Funktion verarbeitet Ereignis.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 fn handle_event(
     core: &SharedSecurityCore,
     event: Result<BackendEvent, serde_json::Error>,

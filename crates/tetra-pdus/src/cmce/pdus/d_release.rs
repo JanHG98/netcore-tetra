@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 
 use crate::cmce::enums::disconnect_cause::DisconnectCause;
@@ -11,6 +14,8 @@ use tetra_core::{BitBuffer, expect_pdu_type, pdu_parse_error::PduParseErr};
 /// Response to: -/U-DISCONNECT
 
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für drelease in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DRelease {
     /// Type1, 14 bits, Call identifier
     pub call_identifier: u16,
@@ -25,8 +30,12 @@ pub struct DRelease {
 }
 
 #[allow(unreachable_code)] // TODO FIXME review, finalize and remove this
+// Was: Implementiert das zugehörige Verhalten für `DRelease`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl DRelease {
     /// Parse from BitBuffer
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buffer: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let pdu_type = buffer.read_field(5, "pdu_type")?;
         expect_pdu_type!(pdu_type, CmcePduTypeDl::DRelease)?;
@@ -69,6 +78,8 @@ impl DRelease {
     }
 
     /// Serialize this PDU into the given BitBuffer.
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buffer: &mut BitBuffer) -> Result<(), PduParseErr> {
         // PDU Type
         buffer.write_bits(CmcePduTypeDl::DRelease.into_raw(), 5);
@@ -99,7 +110,11 @@ impl DRelease {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for DRelease`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for DRelease {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -110,11 +125,15 @@ impl fmt::Display for DRelease {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
     use tetra_core::debug;
 
     #[test]
+    // Was: Prüft automatisch den Fall parse d release.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_parse_d_release() {
         debug::setup_logging_verbose();
         let bitstr = "0011000000011011001011010";

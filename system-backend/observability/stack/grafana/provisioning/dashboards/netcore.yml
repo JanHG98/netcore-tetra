@@ -1,10 +1,33 @@
+# NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Metriken, Protokolle und Betriebsüberwachung.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+# Was: Legt den YAML-Bereich oder Wert `apiVersion` fest.
+# Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
 apiVersion: 1
+# Was: Legt den YAML-Bereich oder Wert `providers` fest.
+# Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
 providers:
+  # Was: Vergibt einen verständlichen Namen für diesen Workflow oder Arbeitsschritt.
+  # Warum: Der Ablauf ist dadurch in GitHub und in Protokollen schnell wiederzuerkennen.
   - name: NetCore-Tetra
+    # Was: Legt den YAML-Bereich oder Wert `orgId` fest.
+    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
     orgId: 1
+    # Was: Legt den YAML-Bereich oder Wert `folder` fest.
+    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
     folder: NetCore-Tetra
+    # Was: Legt den YAML-Bereich oder Wert `type` fest.
+    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
     type: file
+    # Was: Legt den YAML-Bereich oder Wert `disableDeletion` fest.
+    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
     disableDeletion: false
+    # Was: Legt den YAML-Bereich oder Wert `updateIntervalSeconds` fest.
+    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
     updateIntervalSeconds: 30
+    # Was: Legt den YAML-Bereich oder Wert `options` fest.
+    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
     options:
+      # Was: Legt den YAML-Bereich oder Wert `path` fest.
+      # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
       path: /var/lib/grafana/dashboards

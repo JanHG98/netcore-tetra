@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 
 use tetra_core::pdu_parse_error::PduParseErr;
@@ -7,6 +10,8 @@ use crate::umac::enums::reservation_requirement::ReservationRequirement;
 
 /// Clause 21.4.2.3 MAC-DATA
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für MAC-Funkzugriffssteuerung data in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MacData {
     // 1
     pub fill_bits: bool,
@@ -27,7 +32,11 @@ pub struct MacData {
     pub reservation_req: Option<ReservationRequirement>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `MacData`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl MacData {
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buf: &mut BitBuffer) -> Result<Self, PduParseErr> {
         // required constant mac_pdu_type — MacData is type 0. A corrupted or misrouted
         // burst could carry a different value; return InvalidValue instead of asserting
@@ -42,6 +51,8 @@ impl MacData {
         let fill_bits = buf.read_field(1, "fill_bits")? != 0;
         let encrypted = buf.read_field(1, "encrypted")? != 0;
         let addr_type = buf.read_field(2, "addr_type")? as u8;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let (addr, event_label) = match addr_type {
             0 => {
                 let ssi = buf.read_field(24, "ssi")? as u32;
@@ -77,6 +88,8 @@ impl MacData {
         };
 
         let length_ind_or_cap_req = buf.read_field(1, "length_ind_or_cap_req")?;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let (length_ind, frag_flag, reservation_req) = match length_ind_or_cap_req {
             0 => (Some(buf.read_field(6, "length_ind")? as u8), None, None),
             1 => {
@@ -107,6 +120,8 @@ impl MacData {
         })
     }
 
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buf: &mut BitBuffer) {
         // write required constant mac_pdu_type
         buf.write_bits(0, 2);
@@ -121,6 +136,8 @@ impl MacData {
         // If addr is given; we write one of three address types followed by the 24-bit addr
         if let Some(addr) = &self.addr {
             assert!((addr.ssi_type == SsiType::Esi) == self.encrypted);
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match addr.ssi_type {
                 SsiType::Ssi | SsiType::Issi | SsiType::Gssi => {
                     buf.write_bits(0, 2);
@@ -160,7 +177,11 @@ impl MacData {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for MacData`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for MacData {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "MacData {{ fill_bits: {} encrypted: {}", self.fill_bits, self.encrypted)?;
         if let Some(v) = &self.addr {

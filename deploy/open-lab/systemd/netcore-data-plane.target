@@ -1,7 +1,22 @@
+# NETCORE-KOMMENTAR – Was: Beschreibt Installation oder Betrieb von netcore data plane.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+# Was: Beginnt den Abschnitt `Unit`.
+# Warum: Zusammengehörige Start-, Laufzeit- oder Installationswerte bleiben dadurch geordnet.
 [Unit]
+# Was: Beschreibt den Dienst für systemd und Administratoren.
+# Warum: Statusausgaben zeigen dadurch sofort, wofür die Einheit zuständig ist.
 Description=NetCore-Tetra packet and media data-plane target
+# Was: Nennt Einheiten, die gemeinsam gestartet werden sollen.
+# Warum: Zusammengehörige Dienste stehen dadurch beim Start möglichst vollständig bereit.
 Wants=netcore-media-switch.service netcore-recorder.service netcore-packet-core.service netcore-ip-gateway.service netcore-media-library.service
+# Was: Legt die Startreihenfolge gegenüber anderen Einheiten fest.
+# Warum: Abhängige Netzwerk- oder Systemfunktionen müssen zuerst verfügbar sein.
 After=network-online.target
 
+# Was: Beginnt den Abschnitt `Install`.
+# Warum: Zusammengehörige Start-, Laufzeit- oder Installationswerte bleiben dadurch geordnet.
 [Install]
+# Was: Legt fest, an welches systemd-Ziel die Einheit bei Aktivierung angehängt wird.
+# Warum: Der Dienst startet dadurch automatisch in der vorgesehenen Betriebsphase.
 WantedBy=multi-user.target

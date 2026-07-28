@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use super::*;
 
 /// Energy-Economy D-SETUP gate (clause 16.7): individual-call setup resends are held for the
@@ -6,27 +9,43 @@ use super::*;
 /// comfortably under the shortest setup timeout (`T10s`/`Predefined`) so a wrong granted window
 /// phase degrades to "no worse than before", never to a setup that times out unanswered.
 /// (6 s / (170/12 ms per slot) ≈ 423 timeslots.)
+// Was: Legt den festen Wert `EE_DSETUP_FALLBACK_TS` für ee dsetup fallback ts fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub(super) const EE_DSETUP_FALLBACK_TS: i32 = 423;
 
 /// Extra network-originated group D-SETUP announcements after the immediate + backup pair.
 /// 28 TETRA timeslots are about 397 ms, so stages 1..=4 land at roughly
 /// 0.4 / 0.8 / 1.2 / 1.6 seconds — fully inside the 1.8-second AudioPlayer lead-in.
+// Was: Legt den festen Wert `NETWORK_SETUP_BURST_INTERVAL_TS` für network setup burst interval ts fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub(super) const NETWORK_SETUP_BURST_INTERVAL_TS: i32 = 28;
+// Was: Legt den festen Wert `NETWORK_SETUP_BURST_STAGES` für network setup burst stages fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub(super) const NETWORK_SETUP_BURST_STAGES: u8 = 4;
 
 /// Network calls already emit the immediate D-SETUP, the normal backup and four dense
 /// setup-burst pages. Suppress the separate Energy-Economy re-announce until that initial
 /// sequence is finished, otherwise two or three channel-allocation PDUs can land in the
 /// same TS1 scheduler turn and be deferred/fragmented. 112 timeslots are about 1.6 s.
+// Was: Legt den festen Wert `NETWORK_EE_ANNOUNCE_MIN_AGE_TS` für network ee announce min age ts fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub(super) const NETWORK_EE_ANNOUNCE_MIN_AGE_TS: i32 =
     NETWORK_SETUP_BURST_INTERVAL_TS * NETWORK_SETUP_BURST_STAGES as i32;
 
 /// Keep explicit common-SCCH paging active for the young-call window. Six seconds covers several
 /// frame-18 opportunities even when TS1 is occupied by the rotating mandatory BSCH/BNCH mapping.
+// Was: Legt den festen Wert `NETWORK_FRAME18_SCCH_WINDOW_TS` für network frame18 scch window ts fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub(super) const NETWORK_FRAME18_SCCH_WINDOW_TS: i32 = 6 * 18 * 4;
+// Was: Legt den festen Wert `NETWORK_FRAME18_SCCH_MAX_PAGES` für network frame18 scch max pages fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub(super) const NETWORK_FRAME18_SCCH_MAX_PAGES: u8 = 3;
 
+// Was: Implementiert das zugehörige Verhalten für `CcBsSubentity`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl CcBsSubentity {
+    // Was: Diese Funktion bearbeitet start.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn tick_start(&mut self, queue: &mut MessageQueue, dltime: TdmaTime) {
         self.dltime = dltime;
 
@@ -39,6 +58,8 @@ impl CcBsSubentity {
         // individually addressed D-TX GRANTED carrying the new channel allocation.
         self.drive_queued_call_restores(queue);
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for key in self.call_restore.tick(dltime) {
             tracing::warn!(
                 subscriber = %key.subscriber,
@@ -72,11 +93,17 @@ impl CcBsSubentity {
         self.drive_group_ee_announce(queue);
 
         if let Some(tasks) = self.circuits.tick_start(dltime) {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for task in tasks {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match task {
                     CircuitMgrCmd::SendDSetup(call_id, usage, ts) => {
                         // Peek at routing info first (immutable) so the EE gate — a `&self` method —
                         // can run before we take the mutable borrow on the cached D-SETUP below.
+                        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                         let (dest_ssi, resend) = match self.cached_setups.get(&call_id) {
                             Some(c) => (c.dest_addr.ssi, c.resend),
                             None => {
@@ -284,16 +311,22 @@ impl CcBsSubentity {
     /// shared state so the SDS path can FACCH-steal to an MS engaged in a call instead of
     /// sending on the MCCH it is no longer monitoring (ETSI EN 300 392-2 §23.5). Rebuilt from
     /// the live call tables every tick, so it can never reference a stale/closed circuit.
+    // Was: Diese Funktion veröffentlicht active Ruf ts.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn publish_active_call_ts(&self) {
         use std::collections::HashMap;
         let mut map: HashMap<u32, (u8, u8)> = HashMap::new();
         // Group calls: the group address and the current/last speaker ISSI are both on the
         // group's assigned traffic slot.
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for call in self.active_calls.values() {
             map.insert(call.dest_gssi, (call.ts, call.usage));
             map.insert(call.source_issi, (call.ts, call.usage));
         }
         // Individual calls: parties are on a traffic channel only once the call is connected.
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for call in self.individual_calls.values() {
             if call.is_active() {
                 map.insert(call.calling_addr.ssi, (call.calling_ts, call.calling_usage));
@@ -304,6 +337,8 @@ impl CcBsSubentity {
     }
 
     /// Release active calls when their configured call timeout expires.
+    // Was: Diese Funktion prüft Ruf timeout expiry.
+    // Warum: Fehler oder unzulässige Zustände werden dadurch früh erkannt.
     pub(super) fn check_call_timeout_expiry(&mut self, queue: &mut MessageQueue) {
         let expired_group_calls: Vec<u16> = self
             .active_calls
@@ -322,6 +357,8 @@ impl CcBsSubentity {
             })
             .collect();
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for call_id in expired_group_calls {
             tracing::info!("Call timeout expired for group call_id={}, releasing", call_id);
             self.release_group_call(queue, call_id, DisconnectCause::SwmiRequestedDisconnection);
@@ -333,6 +370,8 @@ impl CcBsSubentity {
             .filter_map(|(&call_id, call)| call.active_timeout_expired(self.dltime).then_some(call_id))
             .collect();
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for call_id in expired_individual_calls {
             tracing::info!("Call timeout expired for individual call_id={}, releasing", call_id);
             self.release_individual_call(queue, call_id, DisconnectCause::SwmiRequestedDisconnection);
@@ -345,6 +384,8 @@ impl CcBsSubentity {
     /// the normal one-frame backup. These extra pages are intentionally untracked: they are a
     /// bounded reliability burst, must not be blocked by a still-pending receipt from the backup,
     /// and stop automatically after stage four.
+    // Was: Führt den Arbeitsschritt `drive_network_setup_burst` für drive network setup burst aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn drive_network_setup_burst(&mut self, queue: &mut MessageQueue) {
         let due_calls: Vec<(u16, u8, u8, u8, i32)> = self
             .active_calls
@@ -364,6 +405,8 @@ impl CcBsSubentity {
             })
             .collect();
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (call_id, usage, ts, stage, age) in due_calls {
             let Some(cached) = self.cached_setups.get(&call_id) else {
                 tracing::debug!(
@@ -399,6 +442,8 @@ impl CcBsSubentity {
     }
 
     /// Release individual setup attempts that exceed setup timeout.
+    // Was: Diese Funktion prüft individual setup timeout.
+    // Warum: Fehler oder unzulässige Zustände werden dadurch früh erkannt.
     pub(super) fn check_individual_setup_timeout(&mut self, queue: &mut MessageQueue) {
         let expired_setup_calls: Vec<u16> = self
             .individual_calls
@@ -406,6 +451,8 @@ impl CcBsSubentity {
             .filter_map(|(&call_id, call)| call.setup_timeout_expired(self.dltime).then_some(call_id))
             .collect();
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for call_id in expired_setup_calls {
             tracing::info!("Setup timeout expired for individual call_id={}, releasing", call_id);
             self.release_individual_call(queue, call_id, DisconnectCause::ExpiryOfTimer);
@@ -419,6 +466,8 @@ impl CcBsSubentity {
         // window (the ee_dsetup_blocks gate below only lets a retry through when that window is open),
         // yet bounded so we never flood the MS before the 60 s setup timeout.
         // NOTE: TdmaTime::age()/diff() return TIMESLOTS (not frames) — locals are named accordingly.
+        // Was: Legt den festen Wert `DSETUP_RETRY_INTERVAL_TS` für dsetup retry interval ts fest.
+        // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
         const DSETUP_RETRY_INTERVAL_TS: i32 = 180; // ~2.5 s
         let retry_calls: Vec<u16> = self
             .individual_calls
@@ -438,6 +487,8 @@ impl CcBsSubentity {
             })
             .collect();
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for call_id in retry_calls {
             let Some(cached) = self.cached_setups.get(&call_id) else {
                 continue;
@@ -478,9 +529,13 @@ impl CcBsSubentity {
     /// when its window is open, or once setup has been pending longer than `EE_DSETUP_FALLBACK_TS`
     /// (the bounded fallback: a wrong granted window phase degrades to the historical blind resend
     /// rather than blocking setup until it times out unanswered).
+    // Was: Führt den Arbeitsschritt `ee_dsetup_blocks` für ee dsetup blocks aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn ee_dsetup_blocks(&self, call_id: u16, dest_ssi: u32) -> bool {
         let window_closed = {
             let state = self.config.state_read();
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match state.ee_monitoring_windows.get(&dest_ssi) {
                 Some(&(frame, mframe, cycle_len)) => !self.dltime.in_ee_monitoring_window(frame, mframe, cycle_len),
                 None => false, // not in energy economy — always reachable
@@ -490,6 +545,8 @@ impl CcBsSubentity {
             return false;
         }
         // Bounded fallback: stop holding once setup has been pending too long.
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.individual_calls.get(&call_id).and_then(|c| c.setup_timer_started) {
             Some(started) => started.age(self.dltime) < EE_DSETUP_FALLBACK_TS,
             None => false, // no setup clock to bound the wait — don't gate
@@ -504,6 +561,8 @@ impl CcBsSubentity {
     /// Queue two slots ahead (frame 17/TS3 -> frame 18/TS1), and only when TS1 is not occupied by
     /// the rotating mandatory BSCH/BNCH mapping. The UMAC scheduler then emits the addressed SCH/F
     /// in that exact frame-18 SCCH opportunity.
+    // Was: Führt den Arbeitsschritt `drive_network_frame18_scch_announce` für drive network frame18 scch announce aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn drive_network_frame18_scch_announce(&mut self, queue: &mut MessageQueue) {
         if self.dltime.f != 17 || self.dltime.t != 3 {
             return;
@@ -531,6 +590,8 @@ impl CcBsSubentity {
             })
             .collect();
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (call_id, usage, ts, age) in due_calls {
             let Some(cached) = self.cached_setups.get(&call_id) else {
                 continue;
@@ -578,6 +639,8 @@ impl CcBsSubentity {
     /// member has had a wake frame. It is a strict no-op for an all-StayAlive group (those members
     /// received the first send and need no window) and after coverage completes — the normal ~5 s
     /// late-entry cadence then takes over for steady-state late joiners.
+    // Was: Führt den Arbeitsschritt `drive_group_ee_announce` für drive Gruppe ee announce aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn drive_group_ee_announce(&mut self, queue: &mut MessageQueue) {
         // EE wake windows are whole-frame, so only act on frame boundaries (ts == 1).
         if self.dltime.t != 1 {
@@ -607,6 +670,8 @@ impl CcBsSubentity {
             return;
         }
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for call_id in candidates {
             let Some(call) = self.active_calls.get(&call_id) else {
                 continue;
@@ -637,10 +702,14 @@ impl CcBsSubentity {
             let mut all_covered = true;
             {
                 let state = self.config.state_read();
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for m in &members {
                     if already_covered.contains(m) {
                         continue;
                     }
+                    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                     match state.ee_monitoring_windows.get(m) {
                         None => newly_covered.push(*m), // StayAlive — already reached
                         Some(&(frame, mframe, cycle_len)) => {
@@ -657,6 +726,8 @@ impl CcBsSubentity {
 
             // Apply coverage + completion to the call.
             if let Some(call) = self.active_calls.get_mut(&call_id) {
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for m in &newly_covered {
                     call.ee_announce_covered.insert(*m);
                 }
@@ -686,6 +757,8 @@ impl CcBsSubentity {
     }
 
     /// Check if any active calls in NoActiveSpeaker (hangtime) have expired and release them.
+    // Was: Diese Funktion prüft hangtime expiry.
+    // Warum: Fehler oder unzulässige Zustände werden dadurch früh erkannt.
     pub(super) fn check_hangtime_expiry(&mut self, queue: &mut MessageQueue) {
         // Hangtime in TDMA timeslots, from config (cell.hangtime_secs, default 5s).
         // TETRA: 18 frames/multiframe, 4 timeslots/frame → 72 timeslots/second.
@@ -705,6 +778,8 @@ impl CcBsSubentity {
             })
             .collect();
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for call_id in expired {
             tracing::info!("Hangtime expired for call_id={}, releasing", call_id);
             self.release_group_call(queue, call_id, DisconnectCause::SwmiRequestedDisconnection);
@@ -713,6 +788,8 @@ impl CcBsSubentity {
 
     /// Handle UL inactivity timeout from UMAC: a radio disappeared mid-transmission.
     /// Force the group floor to released and enter hangtime.
+    // Was: Diese Funktion verarbeitet ul inactivity timeout.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     pub(super) fn handle_ul_inactivity_timeout(&mut self, queue: &mut MessageQueue, ts: u8) {
         let call_id = self
             .active_calls
@@ -726,6 +803,8 @@ impl CcBsSubentity {
                     return None;
                 }
 
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match call.floor_holder {
                     Some(issi) if issi == call.calling_addr.ssi && call.calling_ts == ts => Some((call_id, call.calling_addr)),
                     Some(issi) if issi == call.called_addr.ssi && call.called_ts == ts => Some((call_id, call.called_addr)),

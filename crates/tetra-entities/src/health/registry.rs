@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! Process-global health registry.
 //!
 //! Hot paths (the core loop, MM, UMAC, SDS, the Brew fan-out) poke cheap atomics here; the
@@ -14,6 +17,8 @@ use super::types::{DomainHealth, HealthDomain, HealthLevel, HealthSnapshot};
 
 /// Tunables for turning raw counters into levels. Built from `[health]` config by the caller.
 #[derive(Debug, Clone, Copy)]
+// Was: Bündelt die zusammengehörigen Werte für health thresholds in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct HealthThresholds {
     /// Service is Critical if no core tick for this long (Degraded at half this).
     pub core_stall_critical_ms: u64,
@@ -33,7 +38,11 @@ pub struct HealthThresholds {
     pub sds_queue_critical: usize,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for HealthThresholds`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for HealthThresholds {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             core_stall_critical_ms: 10_000,
@@ -52,6 +61,8 @@ impl Default for HealthThresholds {
 /// is raised to at least 1.5 × T351 — a radio is only "overdue" once it has clearly missed its
 /// scheduled registration (with grace for a single transient miss). T351 == 0 (no periodic
 /// registration) keeps the plain floor.
+// Was: Führt den Arbeitsschritt `effective_radios_silent_secs` für effective radios silent secs aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn effective_radios_silent_secs(floor_secs: u64, periodic_registration_secs: u64) -> u64 {
     if periodic_registration_secs > 0 {
         floor_secs.max(periodic_registration_secs + periodic_registration_secs / 2)
@@ -61,8 +72,12 @@ fn effective_radios_silent_secs(floor_secs: u64, periodic_registration_secs: u64
 }
 
 /// Startup grace: don't flag Service Critical for the first few seconds while the stack boots.
+// Was: Legt den festen Wert `SERVICE_STARTUP_GRACE_MS` für Dienst startup grace ms fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const SERVICE_STARTUP_GRACE_MS: u64 = 5_000;
 
+// Was: Bündelt die zusammengehörigen Werte für health registry in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct HealthRegistry {
     start: Instant,
     /// Millis-since-`start` at the last core tick; 0 = no tick observed yet.
@@ -78,14 +93,22 @@ pub struct HealthRegistry {
     last_action: Mutex<Option<String>>,
 }
 
+// Was: Legt den festen Wert `REGISTRY` für registry fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 static REGISTRY: OnceLock<HealthRegistry> = OnceLock::new();
 
 /// The process-global health registry (created on first use).
+// Was: Führt den Arbeitsschritt `registry` für registry aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn registry() -> &'static HealthRegistry {
     REGISTRY.get_or_init(HealthRegistry::new)
 }
 
+// Was: Implementiert das zugehörige Verhalten für `HealthRegistry`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl HealthRegistry {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     fn new() -> Self {
         Self {
             start: Instant::now(),
@@ -101,39 +124,59 @@ impl HealthRegistry {
     }
 
     #[inline]
+    // Was: Führt den Arbeitsschritt `now_ms` für now ms aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn now_ms(&self) -> u64 {
         self.start.elapsed().as_millis() as u64
     }
 
+    // Was: Führt den Arbeitsschritt `uptime_secs` für uptime secs aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn uptime_secs(&self) -> u64 {
         self.start.elapsed().as_secs()
     }
 
     // ── hot-path setters (cheap, never block) ──────────────────────────────────────────────
     /// Stamp a core-loop tick (called from the message router each TDMA tick).
+    // Was: Führt den Arbeitsschritt `note_tick` für note tick aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn note_tick(&self) {
         self.last_tick_ms.store(self.now_ms().max(1), Ordering::Relaxed);
     }
+    // Was: Diese Funktion setzt Brew-Verbindung configured.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_brew_configured(&self, on: bool) {
         self.brew_configured.store(on, Ordering::Relaxed);
     }
+    // Was: Diese Funktion setzt Brew-Verbindung up.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_brew_up(&self, up: bool) {
         self.brew_up.store(up, Ordering::Relaxed);
     }
+    // Was: Diese Funktion setzt registered radios.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_registered_radios(&self, n: usize) {
         self.registered_radios.store(n, Ordering::Relaxed);
     }
     /// Note that some radio was just heard on the air (any uplink).
+    // Was: Führt den Arbeitsschritt `note_radio_activity` für note radio activity aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn note_radio_activity(&self) {
         self.last_radio_activity_ms.store(self.now_ms().max(1), Ordering::Relaxed);
     }
+    // Was: Diese Funktion setzt dl Warteschlange depth.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_dl_queue_depth(&self, n: usize) {
         self.dl_queue_depth.store(n, Ordering::Relaxed);
     }
+    // Was: Diese Funktion setzt TETRA-Kurznachricht (SDS) Warteschlange depth.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_sds_queue_depth(&self, n: usize) {
         self.sds_queue_depth.store(n, Ordering::Relaxed);
     }
     /// Record a remediation action (shown in the snapshot / dashboard / Telegram).
+    // Was: Führt den Arbeitsschritt `record_action` für Datensatz action aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn record_action(&self, what: String) {
         if let Ok(mut g) = self.last_action.lock() {
             *g = Some(what);
@@ -142,6 +185,8 @@ impl HealthRegistry {
 
     /// Millis since the last core tick. `u64::MAX`-ish handling is avoided: if no tick has been
     /// seen yet we report the time since registry start (so a stalled-from-boot loop still ages).
+    // Was: Diese Funktion bearbeitet age ms.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn tick_age_ms(&self) -> u64 {
         let last = self.last_tick_ms.load(Ordering::Relaxed);
         if last == 0 {
@@ -152,6 +197,8 @@ impl HealthRegistry {
     }
 
     // ── snapshot (read by the sampler) ─────────────────────────────────────────────────────
+    // Was: Diese Funktion erzeugt den vorgesehenen Arbeitsschritt.
+    // Warum: Die Oberfläche und andere Dienste erhalten dadurch eine in sich stimmige Momentaufnahme.
     pub fn snapshot(&self, t: &HealthThresholds) -> HealthSnapshot {
         let mut domains = Vec::with_capacity(4);
 
@@ -247,10 +294,14 @@ impl HealthRegistry {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
     #[test]
+    // Was: Diese Funktion erzeugt rolls up worst level.
+    // Warum: Die Oberfläche und andere Dienste erhalten dadurch eine in sich stimmige Momentaufnahme.
     fn snapshot_rolls_up_worst_level() {
         // A fresh registry on a separate instance (not the global) for deterministic assertions.
         let reg = HealthRegistry::new();
@@ -280,6 +331,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `radios_silent_is_degraded_only_when_attached` für radios silent is degraded only when attached aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn radios_silent_is_degraded_only_when_attached() {
         let reg = HealthRegistry::new();
         let mut t = HealthThresholds::default();
@@ -310,6 +363,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `radios_silent_threshold_respects_t351` für radios silent threshold respects t351 aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn radios_silent_threshold_respects_t351() {
         // The effective threshold must never fall inside the T351 re-registration window, so a
         // radio that is simply quiet between periodic registrations is not flagged. (This is the

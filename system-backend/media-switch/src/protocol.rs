@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für die Audioverteilung zwischen Basisstationen und Rufen.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
@@ -7,9 +10,13 @@ use tetra_entities::net_control_room::{
     ControlRoomNodeCapabilities, ControlRoomNodeIdentity, NodeToControlRoomMessage,
 };
 
+// Was: Legt den festen Wert `BACKEND_PROTOCOL_VERSION` für Hintergrunddienst protocol version fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const BACKEND_PROTOCOL_VERSION: &str = "netcore-node-gateway-backend-v1";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Gateway Netzknoten snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GatewayNodeSnapshot {
     pub node_id: String,
     pub session_id: String,
@@ -35,6 +42,8 @@ pub struct GatewayNodeSnapshot {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Gateway Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GatewayStatus {
     pub service: String,
     pub started_at: String,
@@ -56,12 +65,16 @@ pub struct GatewayStatus {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Gateway snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GatewaySnapshot {
     pub status: GatewayStatus,
     pub nodes: Vec<GatewayNodeSnapshot>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Gateway Ereignis Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GatewayEventRecord {
     pub seq: u64,
     pub timestamp: String,
@@ -72,6 +85,8 @@ pub struct GatewayEventRecord {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für Hintergrunddienst Ereignis auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum BackendEvent {
     Snapshot { snapshot: GatewaySnapshot },
     Event { event: GatewayEventRecord },
@@ -86,6 +101,8 @@ pub enum BackendEvent {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für Hintergrunddienst request auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum BackendRequest {
     Ping { request_id: Option<String> },
     Subscribe {
@@ -98,9 +115,13 @@ pub enum BackendRequest {
     },
 }
 
+// Was: Legt den festen Wert `CALL_CONTROL_MEDIA_PROTOCOL_VERSION` für Ruf Steuerung Audio- und Mediendaten protocol version fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const CALL_CONTROL_MEDIA_PROTOCOL_VERSION: &str = "netcore-call-control-media-v1";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Ruf Steuerung Audio- und Mediendaten Ereignis in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CallControlMediaEvent {
     pub kind: String,
     pub revision: u64,
@@ -111,6 +132,8 @@ pub struct CallControlMediaEvent {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Ruf Steuerung Rufzweig in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CallControlLeg {
     pub node_id: String,
     pub local_call_id: Option<u16>,
@@ -123,6 +146,8 @@ pub struct CallControlLeg {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Ruf Steuerung Ruf in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CallControlCall {
     pub logical_call_id: String,
     pub kind: String,
@@ -144,6 +169,8 @@ pub struct CallControlCall {
     pub legs: BTreeMap<String, CallControlLeg>,
 }
 
+// Was: Führt den Arbeitsschritt `media_frame_from_node_message` für Audio- und Mediendaten Funkrahmen from Netzknoten Nachricht aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn media_frame_from_node_message(
     node_id: &str,
     message: &NodeToControlRoomMessage,

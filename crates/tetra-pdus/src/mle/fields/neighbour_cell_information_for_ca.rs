@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 
 use tetra_core::typed_pdu_fields::delimiters;
@@ -8,6 +11,8 @@ use crate::mle::fields::bs_service_details::BsServiceDetails;
 
 /// Clause 18.5.17: D-NWRK-BROADCAST Neighbor cell information for CA element (Table 18.64).
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für neighbour cell information for ca in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct NeighbourCellInformationForCa {
     /// Type1, 5 bits
     pub cell_identifier_ca: u8,
@@ -41,7 +46,11 @@ pub struct NeighbourCellInformationForCa {
     pub tdma_frame_offset: Option<u8>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `NeighbourCellInformationForCa`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl NeighbourCellInformationForCa {
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buf: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let cell_identifier_ca = buf.read_field(5, "cell_identifier_ca")? as u8;
         let cell_reselection_types_supported = buf.read_field(2, "cell_reselection_types_supported")? as u8;
@@ -84,6 +93,8 @@ impl NeighbourCellInformationForCa {
         })
     }
 
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buf: &mut BitBuffer) -> Result<(), PduParseErr> {
         self.ensure_bits(self.cell_identifier_ca as u64, 5, "cell_identifier_ca")?;
         self.ensure_bits(self.cell_reselection_types_supported as u64, 2, "cell_reselection_types_supported")?;
@@ -150,6 +161,8 @@ impl NeighbourCellInformationForCa {
         Ok(())
     }
 
+    // Was: Diese Funktion stellt bits.
+    // Warum: So wird die notwendige Voraussetzung hergestellt, bevor abhängiger Code weiterläuft.
     fn ensure_bits(&self, value: u64, bits: u8, field: &'static str) -> Result<(), PduParseErr> {
         let max = if bits >= 64 { u64::MAX } else { (1u64 << bits) - 1 };
         if value > max {
@@ -158,6 +171,8 @@ impl NeighbourCellInformationForCa {
         Ok(())
     }
 
+    // Was: Diese Funktion stellt opt bits.
+    // Warum: So wird die notwendige Voraussetzung hergestellt, bevor abhängiger Code weiterläuft.
     fn ensure_opt_bits(&self, value: Option<u64>, bits: u8, field: &'static str) -> Result<(), PduParseErr> {
         if let Some(v) = value {
             self.ensure_bits(v, bits, field)?;
@@ -166,7 +181,11 @@ impl NeighbourCellInformationForCa {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for NeighbourCellInformationForCa`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for NeighbourCellInformationForCa {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,

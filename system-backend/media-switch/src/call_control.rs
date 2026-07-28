@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für die Audioverteilung zwischen Basisstationen und Rufen.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::net::{TcpStream, ToSocketAddrs};
@@ -15,6 +18,8 @@ use crate::protocol::{
 };
 use crate::state::SharedMedia;
 
+// Was: Diese Funktion startet Ruf Steuerung Hintergrundverarbeitung.
+// Warum: Länger laufende Arbeit blockiert dadurch nicht den aufrufenden Ablauf.
 pub fn spawn_call_control_worker(
     config: MediaSwitchConfig,
     media: SharedMedia,
@@ -23,6 +28,8 @@ pub fn spawn_call_control_worker(
         // Always seed the route graph before opening the event stream. This also
         // makes a restarted Media Switch useful when Call Control is temporarily
         // unable to accept WebSocket clients.
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match fetch_calls(&config) {
             Ok(calls) => {
                 let _ = media.reconcile_calls(calls);
@@ -30,6 +37,8 @@ pub fn spawn_call_control_worker(
             Err(error) => media.call_control_failed(error),
         }
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match connect_events(&config) {
             Ok(mut socket) => {
                 tracing::info!(
@@ -51,6 +60,8 @@ pub fn spawn_call_control_worker(
     })
 }
 
+// Was: Diese Funktion verbindet events.
+// Warum: Der Verbindungsaufbau wird dadurch zentral überwacht und kann sauber fehlschlagen.
 fn connect_events(
     config: &MediaSwitchConfig,
 ) -> Result<WebSocket<MaybeTlsStream<TcpStream>>, String> {
@@ -84,6 +95,8 @@ fn connect_events(
     Ok(socket)
 }
 
+// Was: Führt den Arbeitsschritt `connected_loop` für connected loop aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn connected_loop(
     socket: &mut WebSocket<MaybeTlsStream<TcpStream>>,
     config: &MediaSwitchConfig,
@@ -93,7 +106,11 @@ fn connected_loop(
     let mut last_ack_retry = Instant::now();
     let mut last_revision = None;
     let mut acknowledged = HashMap::<String, u64>::new();
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
     loop {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match socket.read() {
             Ok(Message::Text(text)) => {
                 last_revision = Some(apply_event(
@@ -141,6 +158,8 @@ fn connected_loop(
         // This is a safety net, not the speech-path synchronisation mechanism.
         // Normal call/leg/floor changes arrive immediately over the WebSocket.
         if last_fallback.elapsed() >= Duration::from_secs(config.call_control.reconcile_secs) {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match fetch_calls(config) {
                 Ok(calls) => {
                     let ready_calls = media.reconcile_calls(calls);
@@ -160,6 +179,8 @@ fn connected_loop(
     }
 }
 
+// Was: Diese Funktion wendet Ereignis.
+// Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
 fn apply_event(
     media: &SharedMedia,
     config: &MediaSwitchConfig,
@@ -185,12 +206,16 @@ fn apply_event(
     Ok(revision)
 }
 
+// Was: Führt den Arbeitsschritt `acknowledge_ready_calls` für acknowledge ready calls aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn acknowledge_ready_calls(
     config: &MediaSwitchConfig,
     ready_calls: Vec<String>,
     revision: u64,
     acknowledged: &mut HashMap<String, u64>,
 ) {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for logical_call_id in ready_calls {
         if acknowledged
             .get(&logical_call_id)
@@ -211,6 +236,8 @@ fn acknowledge_ready_calls(
     }
 }
 
+// Was: Führt den Arbeitsschritt `post_route_ready` für post Weiterleitung ready aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn post_route_ready(
     config: &MediaSwitchConfig,
     logical_call_id: &str,
@@ -277,6 +304,8 @@ fn post_route_ready(
     Ok(())
 }
 
+// Was: Diese Funktion lädt calls.
+// Warum: Externe oder entfernte Daten werden dadurch an einer Stelle geladen und geprüft.
 fn fetch_calls(config: &MediaSwitchConfig) -> Result<Vec<CallControlCall>, String> {
     let parsed = ParsedHttpUrl::parse(&config.call_control.url)?;
     let timeout = Duration::from_secs(config.call_control.request_timeout_secs);
@@ -329,13 +358,19 @@ fn fetch_calls(config: &MediaSwitchConfig) -> Result<Vec<CallControlCall>, Strin
         .map_err(|error| format!("Call Control JSON failed: {error}"))
 }
 
+// Was: Bündelt die zusammengehörigen Werte für parsed HTTP url in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct ParsedHttpUrl {
     host: String,
     port: u16,
     path: String,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `ParsedHttpUrl`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl ParsedHttpUrl {
+    // Was: Diese Funktion liest und prüft den vorgesehenen Arbeitsschritt.
+    // Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     fn parse(url: &str) -> Result<Self, String> {
         let rest = url
             .strip_prefix("http://")
@@ -361,15 +396,21 @@ impl ParsedHttpUrl {
     }
 }
 
+// Was: Diese Funktion sucht subslice.
+// Warum: Die Suchlogik bleibt damit wiederverwendbar und muss nicht an mehreren Stellen kopiert werden.
 fn find_subslice(haystack: &[u8], needle: &[u8]) -> Option<usize> {
     haystack.windows(needle.len()).position(|window| window == needle)
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::ParsedHttpUrl;
 
     #[test]
+    // Was: Führt den Arbeitsschritt `parses_open_lab_call_control_url` für parses open lab Ruf Steuerung url aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn parses_open_lab_call_control_url() {
         let url = ParsedHttpUrl::parse("http://127.0.0.1:8120/api/v1/calls")
             .expect("URL parses");

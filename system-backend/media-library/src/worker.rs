@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für gespeicherte Aufzeichnungen, TTS- und Mediendateien.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 use std::thread;
@@ -11,11 +14,15 @@ use crate::media;
 use crate::model::{DispatchClaim, ImportClaim};
 use crate::state::SharedLibrary;
 
+// Was: Diese Funktion startet Hintergrundverarbeitung.
+// Warum: Länger laufende Arbeit blockiert dadurch nicht den aufrufenden Ablauf.
 pub fn spawn_worker(
     config: MediaLibraryConfig,
     library: SharedLibrary,
 ) -> thread::JoinHandle<()> {
     thread::spawn(move || {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let client = match build_client(&config) {
             Ok(client) => client,
             Err(error) => {
@@ -27,6 +34,8 @@ pub fn spawn_worker(
             .checked_sub(Duration::from_secs(config.runtime.probe_interval_secs))
             .unwrap_or_else(Instant::now);
         let mut last_maintenance = Instant::now();
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             run_cycle(&config, &library, &client, &mut last_probe, &mut last_maintenance);
             thread::sleep(Duration::from_millis(config.runtime.worker_interval_ms));
@@ -34,6 +43,8 @@ pub fn spawn_worker(
     })
 }
 
+// Was: Diese Funktion erstellt client.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
 pub fn build_client(config: &MediaLibraryConfig) -> Result<Client, String> {
     Client::builder()
         .timeout(Duration::from_secs(config.runtime.import_timeout_secs))
@@ -42,6 +53,8 @@ pub fn build_client(config: &MediaLibraryConfig) -> Result<Client, String> {
         .map_err(|error| error.to_string())
 }
 
+// Was: Diese Funktion führt cycle.
+// Warum: Der Lebenszyklus des Dienstes bleibt so an einer zentralen Stelle steuerbar.
 pub fn run_cycle(
     config: &MediaLibraryConfig,
     library: &SharedLibrary,
@@ -55,6 +68,8 @@ pub fn run_cycle(
     }
 
     if let Some(claim) = library.claim_import() {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match download_import(config, client, &claim)
             .and_then(|bytes| library.complete_import(&claim, &bytes).map(|_| ()))
         {
@@ -79,6 +94,8 @@ pub fn run_cycle(
                     .ok_or_else(|| "asset original path has no parent".to_string())?;
                 media::process_asset(config, original, directory, &claim.asset.media_type)
             });
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match result.and_then(|result| library.complete_processing(&asset_id, result).map(|_| ())) {
             Ok(()) => tracing::info!(asset_id = %asset_id, "Media processing completed"),
             Err(error) => {
@@ -101,6 +118,8 @@ pub fn run_cycle(
     }
 }
 
+// Was: Führt den Arbeitsschritt `download_import` für download import aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn download_import(
     config: &MediaLibraryConfig,
     client: &Client,
@@ -133,6 +152,8 @@ fn download_import(
     Ok(bytes)
 }
 
+// Was: Führt den Arbeitsschritt `require_success` für require success aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn require_success(response: Response) -> Result<Response, String> {
     if response.status().is_success() {
         Ok(response)
@@ -141,6 +162,8 @@ fn require_success(response: Response) -> Result<Response, String> {
     }
 }
 
+// Was: Führt den Arbeitsschritt `play_dispatch` für play dispatch aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn play_dispatch(
     config: &MediaLibraryConfig,
     library: &SharedLibrary,
@@ -186,6 +209,8 @@ fn play_dispatch(
     let frame_interval = Duration::from_millis(config.runtime.frame_interval_ms);
     let mut next_deadline = Instant::now();
 
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while frame_index < frame_count {
         if library.dispatch_cancel_requested(&claim.job.job_id) {
             library.complete_dispatch(&claim.job.job_id);
@@ -230,7 +255,11 @@ fn play_dispatch(
     Ok(())
 }
 
+// Was: Führt den Arbeitsschritt `probe_dependencies` für probe dependencies aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn probe_dependencies(config: &MediaLibraryConfig, library: &SharedLibrary, client: &Client) {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (service, base_url) in [
         ("media-switch", &config.dependencies.media_switch_base_url),
         ("recorder", &config.dependencies.recorder_base_url),
@@ -243,6 +272,8 @@ fn probe_dependencies(config: &MediaLibraryConfig, library: &SharedLibrary, clie
             .get(format!("{base_url}/health/live"))
             .timeout(Duration::from_secs(3))
             .send();
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match outcome {
             Ok(response) if response.status().is_success() => {
                 library.update_dependency_probe(service, true, None)
@@ -257,8 +288,12 @@ fn probe_dependencies(config: &MediaLibraryConfig, library: &SharedLibrary, clie
     }
 }
 
+// Was: Führt den Arbeitsschritt `url_component` für url component aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn url_component(value: &str) -> String {
     let mut output = String::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for byte in value.bytes() {
         if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b'~') {
             output.push(byte as char);

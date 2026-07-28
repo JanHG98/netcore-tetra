@@ -1,3 +1,8 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+// Was: Bindet das Untermodul common in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod common;
 
 use std::time::Duration;
@@ -25,10 +30,16 @@ use tetra_saps::sapmsg::{SapMsg, SapMsgInner};
 
 use crate::common::ComponentTest;
 
+// Was: Legt den festen Wert `TEST_GSSI` für test Gruppenkennung (GSSI) fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const TEST_GSSI: u32 = 91;
+// Was: Legt den festen Wert `TEST_ISSI` für test Teilnehmerkennung (ISSI) fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const TEST_ISSI: u32 = 1000001;
 
 /// Helper: register a subscriber on a GSSI so CMCE accepts calls for that group.
+// Was: Diese Funktion registriert Teilnehmer.
+// Warum: Die Zuordnung bleibt dadurch eindeutig und kann später sauber wieder entfernt werden.
 fn register_subscriber(test: &mut ComponentTest, issi: u32, gssi: u32) {
     let register = SapMsg {
         sap: Sap::Control,
@@ -58,6 +69,8 @@ fn register_subscriber(test: &mut ComponentTest, issi: u32, gssi: u32) {
     test.dump_sinks();
 }
 
+// Was: Diese Funktion startet network Gruppe Ruf.
+// Warum: Der Dienst oder Teilprozess wird so in einer festen und überprüfbaren Reihenfolge gestartet.
 fn start_network_group_call(test: &mut ComponentTest, gssi: u32, priority: u8) {
     let brew_uuid = uuid::Uuid::new_v4();
     test.submit_message(SapMsg {
@@ -74,6 +87,8 @@ fn start_network_group_call(test: &mut ComponentTest, gssi: u32, priority: u8) {
 }
 
 /// Helper: build a U-SETUP SAP message for a group call.
+// Was: Diese Funktion erstellt u setup msg.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
 fn build_u_setup_msg(calling_issi: u32, dest_gssi: u32) -> SapMsg {
     let u_setup = USetup {
         area_selection: 0,
@@ -120,10 +135,14 @@ fn build_u_setup_msg(calling_issi: u32, dest_gssi: u32) -> SapMsg {
 }
 
 /// Helper: build a U-SETUP SAP message for an individual call.
+// Was: Diese Funktion erstellt individual u setup msg.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
 fn build_individual_u_setup_msg(calling_issi: u32, called_issi: u32) -> SapMsg {
     build_individual_u_setup_msg_with_mode(calling_issi, called_issi, true)
 }
 
+// Was: Diese Funktion erstellt individual u setup msg with mode.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
 fn build_individual_u_setup_msg_with_mode(calling_issi: u32, called_issi: u32, simplex_duplex_selection: bool) -> SapMsg {
     let u_setup = USetup {
         area_selection: 0,
@@ -171,6 +190,8 @@ fn build_individual_u_setup_msg_with_mode(calling_issi: u32, called_issi: u32, s
 
 /// Helper: build a U-SETUP SAP message for a group call with an explicit ETSI call priority
 /// (0..=15; 15 = emergency). Used to exercise emergency / pre-emptive call handling.
+// Was: Diese Funktion erstellt u setup msg prio.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
 fn build_u_setup_msg_prio(calling_issi: u32, dest_gssi: u32, call_priority: u8) -> SapMsg {
     let u_setup = USetup {
         area_selection: 0,
@@ -217,6 +238,8 @@ fn build_u_setup_msg_prio(calling_issi: u32, dest_gssi: u32, call_priority: u8) 
 }
 
 /// Helper: build a U-SETUP SAP message for a simplex P2P (individual) call to `called_issi`.
+// Was: Diese Funktion erstellt u setup p2p msg.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
 fn build_u_setup_p2p_msg(calling_issi: u32, called_issi: u32) -> SapMsg {
     let u_setup = USetup {
         area_selection: 0,
@@ -263,6 +286,8 @@ fn build_u_setup_p2p_msg(calling_issi: u32, called_issi: u32) -> SapMsg {
 }
 
 /// Count individual-call D-SETUP resends addressed to `ssi` on the MCCH (no chan_alloc).
+// Was: Führt den Arbeitsschritt `count_individual_dsetup_to` für count individual dsetup to aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn count_individual_dsetup_to(msgs: &[SapMsg], ssi: u32) -> usize {
     msgs.iter()
         .filter(|m| {
@@ -273,6 +298,8 @@ fn count_individual_dsetup_to(msgs: &[SapMsg], ssi: u32) -> usize {
         .count()
 }
 
+// Was: Führt den Arbeitsschritt `lcmc_ind` für lcmc ind aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn lcmc_ind(sender_issi: u32, sdu: BitBuffer) -> SapMsg {
     SapMsg {
         sap: Sap::LcmcSap,
@@ -290,6 +317,8 @@ fn lcmc_ind(sender_issi: u32, sdu: BitBuffer) -> SapMsg {
     }
 }
 
+// Was: Diese Funktion erstellt u connect msg.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
 fn build_u_connect_msg(sender_issi: u32, call_id: u16, simplex_duplex_selection: bool) -> SapMsg {
     let u_connect = UConnect {
         call_identifier: call_id,
@@ -306,6 +335,8 @@ fn build_u_connect_msg(sender_issi: u32, call_id: u16, simplex_duplex_selection:
     lcmc_ind(sender_issi, sdu)
 }
 
+// Was: Diese Funktion erstellt u tx demand msg.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
 fn build_u_tx_demand_msg(sender_issi: u32, call_id: u16) -> SapMsg {
     let u_tx_demand = UTxDemand {
         call_identifier: call_id,
@@ -323,6 +354,8 @@ fn build_u_tx_demand_msg(sender_issi: u32, call_id: u16) -> SapMsg {
     lcmc_ind(sender_issi, sdu)
 }
 
+// Was: Diese Funktion erstellt u disconnect msg.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
 fn build_u_disconnect_msg(sender_issi: u32, call_id: u16) -> SapMsg {
     let u_disconnect = UDisconnect {
         call_identifier: call_id,
@@ -337,6 +370,8 @@ fn build_u_disconnect_msg(sender_issi: u32, call_id: u16) -> SapMsg {
     lcmc_ind(sender_issi, sdu)
 }
 
+// Was: Diese Funktion erstellt u tx ceased msg.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
 fn build_u_tx_ceased_msg(sender_issi: u32, call_id: u16) -> SapMsg {
     let u_tx_ceased = UTxCeased {
         call_identifier: call_id,
@@ -351,10 +386,14 @@ fn build_u_tx_ceased_msg(sender_issi: u32, call_id: u16) -> SapMsg {
     lcmc_ind(sender_issi, sdu)
 }
 
+// Was: Führt den Arbeitsschritt `dl_pdu_type` für dl Protokollnachricht (PDU) type aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn dl_pdu_type(sdu: &BitBuffer) -> Option<CmcePduTypeDl> {
     CmcePduTypeDl::try_from(sdu.peek_bits(5)?).ok()
 }
 
+// Was: Diese Funktion sucht lcmc req.
+// Warum: Die Suchlogik bleibt damit wiederverwendbar und muss nicht an mehreren Stellen kopiert werden.
 fn find_lcmc_req(msgs: &[SapMsg], address_issi: u32, pdu_type: CmcePduTypeDl) -> Option<(BitBuffer, Option<UlDlAssignment>)> {
     msgs.iter().find_map(|msg| {
         if msg.dest != TetraEntity::Mle {
@@ -376,12 +415,16 @@ fn find_lcmc_req(msgs: &[SapMsg], address_issi: u32, pdu_type: CmcePduTypeDl) ->
     })
 }
 
+// Was: Führt den Arbeitsschritt `first_d_setup_call_id` für first d setup Ruf Kennung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn first_d_setup_call_id(msgs: &[SapMsg], called_issi: u32) -> u16 {
     let (mut sdu, _) = find_lcmc_req(msgs, called_issi, CmcePduTypeDl::DSetup).expect("Expected D-SETUP to called ISSI");
     let d_setup = DSetup::from_bitbuf(&mut sdu).expect("Failed to parse DSetup");
     d_setup.call_identifier
 }
 
+// Was: Führt den Arbeitsschritt `connected_simplex_individual_call` für connected simplex individual Ruf aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn connected_simplex_individual_call(calling_issi: u32, called_issi: u32) -> (ComponentTest, u16, Vec<SapMsg>) {
     let dltime = TdmaTime { h: 0, m: 1, f: 1, t: 1 };
     let mut test = ComponentTest::new(StackMode::Bs, Some(dltime));
@@ -403,6 +446,8 @@ fn connected_simplex_individual_call(calling_issi: u32, called_issi: u32) -> (Co
     (test, call_id, connect_msgs)
 }
 
+// Was: Führt den Arbeitsschritt `connected_brew_originated_simplex_call` für connected Brew-Verbindung originated simplex Ruf aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn connected_brew_originated_simplex_call(remote_issi: u32, local_issi: u32) -> (ComponentTest, u16, uuid::Uuid) {
     let dltime = TdmaTime { h: 0, m: 1, f: 1, t: 1 };
     let mut test = ComponentTest::new(StackMode::Bs, Some(dltime));
@@ -463,8 +508,12 @@ fn connected_brew_originated_simplex_call(remote_issi: u32, local_issi: u32) -> 
 
 /// Extract tx_reporters from D-SETUP messages in the sink output.
 /// D-SETUPs are identified as LcmcMleUnitdataReq with a chan_alloc that has a usage field.
+// Was: Führt den Arbeitsschritt `extract_d_setup_reporters` für extract d setup reporters aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn extract_d_setup_reporters(msgs: &mut Vec<SapMsg>) -> Vec<tetra_core::TxReporter> {
     let mut reporters = vec![];
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for msg in msgs.iter_mut() {
         if msg.dest == TetraEntity::Mle {
             if let SapMsgInner::LcmcMleUnitdataReq(ref mut prim) = msg.msg {
@@ -480,6 +529,8 @@ fn extract_d_setup_reporters(msgs: &mut Vec<SapMsg>) -> Vec<tetra_core::TxReport
 }
 
 /// Count D-SETUP messages in sink output without taking reporters.
+// Was: Führt den Arbeitsschritt `count_d_setups` für count d setups aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn count_d_setups(msgs: &[SapMsg]) -> usize {
     msgs.iter()
         .filter(|msg| {
@@ -491,6 +542,8 @@ fn count_d_setups(msgs: &[SapMsg]) -> usize {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall individual setup uses central Teilnehmer registry for und weitere Angaben.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_individual_setup_uses_central_subscriber_registry_for_local_destination() {
     debug::setup_logging_verbose();
 
@@ -523,6 +576,8 @@ fn test_individual_setup_uses_central_subscriber_registry_for_local_destination(
 }
 
 #[test]
+// Was: Prüft automatisch den Fall duplex individual uses infinite timeout.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_duplex_individual_uses_infinite_timeout() {
     debug::setup_logging_verbose();
 
@@ -564,6 +619,8 @@ fn test_duplex_individual_uses_infinite_timeout() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall simplex individual connect grants calling ms initial und weitere Angaben.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_simplex_individual_connect_grants_calling_ms_initial_floor() {
     debug::setup_logging_verbose();
 
@@ -593,6 +650,8 @@ fn test_simplex_individual_connect_grants_calling_ms_initial_floor() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall Brew-Verbindung originated simplex connect confirm makes local und weitere Angaben.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_brew_originated_simplex_connect_confirm_makes_local_ms_listener() {
     debug::setup_logging_verbose();
 
@@ -709,6 +768,8 @@ fn test_brew_originated_simplex_connect_confirm_makes_local_ms_listener() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall Brew-Verbindung originated simplex remote idle hands floor und weitere Angaben.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_brew_originated_simplex_remote_idle_hands_floor_to_queued_local_ms() {
     debug::setup_logging_verbose();
 
@@ -769,6 +830,8 @@ fn test_brew_originated_simplex_remote_idle_hands_floor_to_queued_local_ms() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall Brew-Verbindung originated simplex local tx ceased notifies und weitere Angaben.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_brew_originated_simplex_local_tx_ceased_notifies_brew_idle() {
     debug::setup_logging_verbose();
 
@@ -808,6 +871,8 @@ fn test_brew_originated_simplex_local_tx_ceased_notifies_brew_idle() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall Brew-Verbindung simplex granted resumes remote Downlink (Netz zum Funkgerät) without und weitere Angaben.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_brew_simplex_granted_resumes_remote_downlink_without_ul_timer() {
     debug::setup_logging_verbose();
 
@@ -851,6 +916,8 @@ fn test_brew_simplex_granted_resumes_remote_downlink_without_ul_timer() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall network Gruppe speaker change uses remote floor und weitere Angaben.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_network_group_speaker_change_uses_remote_floor_grant() {
     debug::setup_logging_verbose();
 
@@ -938,6 +1005,8 @@ fn test_network_group_speaker_change_uses_remote_floor_grant() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall simplex individual tx ceased without queued demand und weitere Angaben.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_simplex_individual_tx_ceased_without_queued_demand_releases_floor() {
     debug::setup_logging_verbose();
 
@@ -979,6 +1048,8 @@ fn test_simplex_individual_tx_ceased_without_queued_demand_releases_floor() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall simplex individual tx demand queues and hands und weitere Angaben.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_simplex_individual_tx_demand_queues_and_hands_off_on_ceased() {
     debug::setup_logging_verbose();
 
@@ -1023,6 +1094,8 @@ fn test_simplex_individual_tx_demand_queues_and_hands_off_on_ceased() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall simplex individual current speaker tx demand is und weitere Angaben.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_simplex_individual_current_speaker_tx_demand_is_granted() {
     debug::setup_logging_verbose();
 
@@ -1057,6 +1130,8 @@ fn test_simplex_individual_current_speaker_tx_demand_is_granted() {
 /// D-SETUP's TxReceipt is still in Pending state (UMAC hasn't transmitted it yet),
 /// and that they resume once the receipt reaches a final state.
 #[test]
+// Was: Prüft automatisch den Fall dsetup late entry throttle.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_dsetup_late_entry_throttle() {
     debug::setup_logging_verbose();
 
@@ -1132,6 +1207,8 @@ fn test_dsetup_late_entry_throttle() {
 /// down (`CallControl::CallEnded` toward UMAC) and opens a fresh circuit for itself
 /// (`CallControl::Open`), leaving the cell still fully utilised by the freed slot.
 #[test]
+// Was: Prüft automatisch den Fall emergency Ruf preempts when cell full.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_emergency_call_preempts_when_cell_full() {
     let config = ComponentTest::get_default_test_config(StackMode::Bs);
     let mut test = ComponentTest::from_config(config, None);
@@ -1142,6 +1219,8 @@ fn test_emergency_call_preempts_when_cell_full() {
 
     // Three distinct talkgroups, each with a registered listener, will fill TS2..TS4.
     let gssis = [101u32, 102, 103];
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (i, &g) in gssis.iter().enumerate() {
         register_subscriber(&mut test, 2_000_001 + i as u32, g);
     }
@@ -1150,6 +1229,8 @@ fn test_emergency_call_preempts_when_cell_full() {
     register_subscriber(&mut test, 2_000_099, emergency_gssi);
 
     // Fill the three traffic channels with ordinary-priority (priority 0) group calls.
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (i, &g) in gssis.iter().enumerate() {
         test.submit_message(build_u_setup_msg_prio(3_000_001 + i as u32, g, 0));
         test.run_stack(Some(1));
@@ -1197,6 +1278,8 @@ fn test_emergency_call_preempts_when_cell_full() {
 /// Verify a non-pre-emptive (ordinary priority) call does NOT pre-empt when the cell is full:
 /// it is rejected with a D-RELEASE instead, and all three existing calls stay up.
 #[test]
+// Was: Prüft automatisch den Fall ordinary Ruf does not preempt when cell und weitere Angaben.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_ordinary_call_does_not_preempt_when_cell_full() {
     let config = ComponentTest::get_default_test_config(StackMode::Bs);
     let mut test = ComponentTest::from_config(config, None);
@@ -1206,12 +1289,16 @@ fn test_ordinary_call_does_not_preempt_when_cell_full() {
     );
 
     let gssis = [101u32, 102, 103];
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (i, &g) in gssis.iter().enumerate() {
         register_subscriber(&mut test, 2_000_001 + i as u32, g);
     }
     let extra_gssi = 199u32;
     register_subscriber(&mut test, 2_000_099, extra_gssi);
 
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (i, &g) in gssis.iter().enumerate() {
         test.submit_message(build_u_setup_msg_prio(3_000_001 + i as u32, g, 0));
         test.run_stack(Some(1));
@@ -1241,6 +1328,8 @@ fn test_ordinary_call_does_not_preempt_when_cell_full() {
 /// A sleeping EE MS (monitoring window closed for the whole sub-fallback run) must NOT receive
 /// any D-SETUP resend — they are held for its window.
 #[test]
+// Was: Prüft automatisch den Fall dsetup to ee ms held outside monitoring und weitere Angaben.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_dsetup_to_ee_ms_held_outside_monitoring_window() {
     debug::setup_logging_verbose();
     let dltime = TdmaTime { h: 0, m: 1, f: 1, t: 1 };
@@ -1271,6 +1360,8 @@ fn test_dsetup_to_ee_ms_held_outside_monitoring_window() {
 /// A non-EE MS (absent from the published window map) is always reachable — the gate must not
 /// suppress its D-SETUP resends.
 #[test]
+// Was: Prüft automatisch den Fall dsetup to non ee ms resends normally.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_dsetup_to_non_ee_ms_resends_normally() {
     debug::setup_logging_verbose();
     let dltime = TdmaTime { h: 0, m: 1, f: 1, t: 1 };
@@ -1298,6 +1389,8 @@ fn test_dsetup_to_non_ee_ms_resends_normally() {
 /// resends must resume once the setup has been pending longer than the fallback — so call setup
 /// is never worse than the historical blind resend.
 #[test]
+// Was: Prüft automatisch den Fall dsetup ee fallback resends after timeout.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_dsetup_ee_fallback_resends_after_timeout() {
     debug::setup_logging_verbose();
     let dltime = TdmaTime { h: 0, m: 1, f: 1, t: 1 };
@@ -1330,9 +1423,13 @@ fn test_dsetup_ee_fallback_resends_after_timeout() {
 /// frame) compared to an identical all-StayAlive group. Both runs see the same late-entry
 /// cadence, so the difference isolates the batching contribution.
 #[test]
+// Was: Prüft automatisch den Fall Gruppe ee announce adds resends for sleeping und weitere Angaben.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_group_ee_announce_adds_resends_for_sleeping_member() {
     debug::setup_logging_verbose();
 
+    // Was: Diese Funktion führt Gruppe Ruf.
+    // Warum: Der Lebenszyklus des Dienstes bleibt so an einer zentralen Stelle steuerbar.
     fn run_group_call(with_ee_member: bool) -> usize {
         let dltime = TdmaTime { h: 0, m: 1, f: 1, t: 1 };
         let mut test = ComponentTest::new(StackMode::Bs, Some(dltime));
@@ -1371,6 +1468,8 @@ fn test_group_ee_announce_adds_resends_for_sleeping_member() {
 /// D-SETUPs even when the EE-subscriber caller's window opens mid-run (regression for the
 /// speaker-counted-as-uncovered bug).
 #[test]
+// Was: Prüft automatisch den Fall Gruppe ee announce excludes speaker.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_group_ee_announce_excludes_speaker() {
     debug::setup_logging_verbose();
     let dltime = TdmaTime { h: 0, m: 1, f: 1, t: 1 };
@@ -1400,6 +1499,8 @@ fn test_group_ee_announce_excludes_speaker() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall network Gruppe start uses requested Priorität without und weitere Angaben.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_network_group_start_uses_requested_priority_without_group_d_connect() {
     debug::setup_logging_verbose();
 
@@ -1432,6 +1533,8 @@ fn test_network_group_start_uses_requested_priority_without_group_d_connect() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall network Gruppe start emits dense initial dsetup und weitere Angaben.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_network_group_start_emits_dense_initial_dsetup_burst() {
     debug::setup_logging_verbose();
 
@@ -1471,6 +1574,8 @@ fn test_network_group_start_emits_dense_initial_dsetup_burst() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall network Gruppe Ruf reannounced after affiliation refresh.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_network_group_call_reannounced_after_affiliation_refresh() {
     debug::setup_logging_verbose();
 
@@ -1522,6 +1627,8 @@ fn test_network_group_call_reannounced_after_affiliation_refresh() {
 
 /// Find the LcmcMleUnitdataReq carrying `pdu_type` addressed to `address` and return its
 /// `layer2service`. `None` if no such PDU was emitted.
+// Was: Führt den Arbeitsschritt `lcmc_req_layer2service` für lcmc req layer2service aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn lcmc_req_layer2service(msgs: &[SapMsg], address: u32, pdu_type: CmcePduTypeDl) -> Option<tetra_core::Layer2Service> {
     msgs.iter().find_map(|msg| {
         if msg.dest != TetraEntity::Mle {
@@ -1538,6 +1645,8 @@ fn lcmc_req_layer2service(msgs: &[SapMsg], address: u32, pdu_type: CmcePduTypeDl
 }
 
 #[test]
+// Was: Prüft automatisch den Fall Gruppe d setup uses unacknowledged LLC-Verbindungsschicht.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_group_d_setup_uses_unacknowledged_llc() {
     debug::setup_logging_verbose();
 
@@ -1563,6 +1672,8 @@ fn test_group_d_setup_uses_unacknowledged_llc() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall Gruppe d release uses unacknowledged LLC-Verbindungsschicht.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_group_d_release_uses_unacknowledged_llc() {
     debug::setup_logging_verbose();
 
@@ -1598,6 +1709,8 @@ fn test_group_d_release_uses_unacknowledged_llc() {
 // ─── FH FIX 1 guard: call-lifecycle telemetry must reach the dashboard sink ────────────────────
 
 #[test]
+// Was: Prüft automatisch den Fall Gruppe Ruf emits started and ended Telemetrie.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_group_call_emits_started_and_ended_telemetry() {
     use tetra_entities::cmce::cmce_bs::CmceBs;
     use tetra_entities::net_telemetry::{TelemetryEvent, telemetry_channel};
@@ -1615,6 +1728,8 @@ fn test_group_call_emits_started_and_ended_telemetry() {
 
     register_subscriber(&mut test, TEST_ISSI, TEST_GSSI);
     // Drain any telemetry produced by registration (there should be none for call lifecycle).
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while source.try_recv().is_some() {}
 
     // Start a group call.
@@ -1624,6 +1739,8 @@ fn test_group_call_emits_started_and_ended_telemetry() {
     let call_id = first_d_setup_call_id(&setup_msgs, TEST_GSSI);
 
     let mut started = None;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while let Some(ev) = source.try_recv() {
         if let TelemetryEvent::GroupCallStarted {
             call_id: ev_call_id,
@@ -1646,6 +1763,8 @@ fn test_group_call_emits_started_and_ended_telemetry() {
     test.dump_sinks();
 
     let mut ended = false;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while let Some(ev) = source.try_recv() {
         if let TelemetryEvent::GroupCallEnded { call_id: ev_call_id, .. } = ev {
             if ev_call_id == call_id {
@@ -1662,6 +1781,8 @@ fn test_group_call_emits_started_and_ended_telemetry() {
 /// MS received no response to its SS request. The BS must reply, not stay silent (and must
 /// not crash).
 #[test]
+// Was: Prüft automatisch den Fall u facility answered with function not supported.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_u_facility_answered_with_function_not_supported() {
     use tetra_pdus::cmce::enums::cmce_pdu_type_ul::CmcePduTypeUl;
     use tetra_pdus::cmce::pdus::cmce_function_not_supported::CmceFunctionNotSupported;

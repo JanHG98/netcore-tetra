@@ -1,15 +1,26 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für SNDCP-Kontexte und TETRA-Paketdaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::fs;
 use std::net::{Ipv4Addr, SocketAddr};
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
+// Was: Legt den festen Wert `OPEN_LAB_MODE` für open lab mode fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const OPEN_LAB_MODE: &str = "open_lab";
+// Was: Legt den festen Wert `MODE_SHADOW` für mode shadow fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const MODE_SHADOW: &str = "shadow";
+// Was: Legt den festen Wert `MODE_AUTHORITATIVE` für mode authoritative fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const MODE_AUTHORITATIVE: &str = "authoritative";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für Datenpaket core Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PacketCoreConfig {
     pub server: ServerConfig,
     pub node_gateway: NodeGatewayConfig,
@@ -22,7 +33,11 @@ pub struct PacketCoreConfig {
     pub limits: LimitsConfig,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for PacketCoreConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for PacketCoreConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             server: ServerConfig::default(),
@@ -38,8 +53,14 @@ impl Default for PacketCoreConfig {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `PacketCoreConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl PacketCoreConfig {
+    // Was: Diese Funktion lädt den vorgesehenen Arbeitsschritt.
+    // Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
     pub fn load(path: Option<&Path>) -> Result<Self, Box<dyn std::error::Error>> {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let mut config = match path {
             Some(path) => toml::from_str::<Self>(&fs::read_to_string(path)?)?,
             None => Self::default(),
@@ -50,6 +71,8 @@ impl PacketCoreConfig {
         Ok(config)
     }
 
+    // Was: Diese Funktion wendet bind override.
+    // Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
     pub fn apply_bind_override(&mut self, bind: Option<SocketAddr>) -> Result<(), String> {
         if let Some(bind) = bind {
             self.server.bind = bind;
@@ -57,6 +80,8 @@ impl PacketCoreConfig {
         self.normalise()
     }
 
+    // Was: Führt den Arbeitsschritt `normalise` für normalise aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn normalise(&mut self) -> Result<(), String> {
         if self.security.mode != OPEN_LAB_MODE {
             return Err(format!(
@@ -115,11 +140,17 @@ impl PacketCoreConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für server Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ServerConfig {
     pub bind: SocketAddr,
     pub history_limit: usize,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for ServerConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for ServerConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             bind: "0.0.0.0:8160".parse().expect("valid default bind"),
@@ -130,11 +161,17 @@ impl Default for ServerConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für Netzknoten Gateway Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct NodeGatewayConfig {
     pub url: String,
     pub reconnect_secs: u64,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for NodeGatewayConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for NodeGatewayConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             url: "ws://127.0.0.1:8080/ws/backend".to_string(),
@@ -145,11 +182,17 @@ impl Default for NodeGatewayConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für storage Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct StorageConfig {
     pub database_path: PathBuf,
     pub backup_path: PathBuf,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for StorageConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for StorageConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             database_path: "/var/lib/netcore-packet-core/state.json".into(),
@@ -160,6 +203,8 @@ impl Default for StorageConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für Datenpaket Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PacketConfig {
     pub mode: String,
     pub ready_timer_secs: u64,
@@ -173,7 +218,11 @@ pub struct PacketConfig {
     pub strict_source_address: bool,
     pub preserve_context_on_node_loss: bool,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for PacketConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for PacketConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             mode: MODE_SHADOW.to_string(),
@@ -193,6 +242,8 @@ impl Default for PacketConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für address pool Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct AddressPoolConfig {
     pub network_prefix: [u8; 3],
     pub first_host: u8,
@@ -200,7 +251,11 @@ pub struct AddressPoolConfig {
     pub gateway: Ipv4Addr,
     pub allow_static: bool,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for AddressPoolConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for AddressPoolConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             network_prefix: [10, 0, 0],
@@ -214,6 +269,8 @@ impl Default for AddressPoolConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für fragmentation Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct FragmentationConfig {
     pub timeout_secs: u64,
     pub max_datagrams: usize,
@@ -221,7 +278,11 @@ pub struct FragmentationConfig {
     pub max_fragments_per_datagram: usize,
     pub reject_overlaps: bool,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for FragmentationConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for FragmentationConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             timeout_secs: 30,
@@ -235,6 +296,8 @@ impl Default for FragmentationConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für flow Steuerung Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct FlowControlConfig {
     pub max_queue_packets_per_context: usize,
     pub max_queue_bytes_per_context: usize,
@@ -242,7 +305,11 @@ pub struct FlowControlConfig {
     pub action_retry_secs: u64,
     pub action_max_attempts: u32,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for FlowControlConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for FlowControlConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             max_queue_packets_per_context: 64,
@@ -256,12 +323,18 @@ impl Default for FlowControlConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für Sicherheit Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SecurityConfig {
     pub mode: String,
     pub allow_remote_management: bool,
     pub expose_payloads: bool,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for SecurityConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for SecurityConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             mode: OPEN_LAB_MODE.to_string(),
@@ -273,13 +346,19 @@ impl Default for SecurityConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für limits Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LimitsConfig {
     pub max_body_bytes: usize,
     pub max_events: usize,
     pub max_actions: usize,
     pub max_payload_bytes: usize,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for LimitsConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for LimitsConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             max_body_bytes: 2_097_152,

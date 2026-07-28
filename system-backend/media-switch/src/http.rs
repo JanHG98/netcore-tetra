@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für die Audioverteilung zwischen Basisstationen und Rufen.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
@@ -11,6 +14,8 @@ use crate::config::MediaSwitchConfig;
 use crate::protocol::BackendRequest;
 use crate::state::{InjectionInput, MuteInput, SharedMedia};
 
+// Was: Diese Funktion startet HTTP server.
+// Warum: Länger laufende Arbeit blockiert dadurch nicht den aufrufenden Ablauf.
 pub fn spawn_http_server(
     config: MediaSwitchConfig,
     media: SharedMedia,
@@ -22,7 +27,11 @@ pub fn spawn_http_server(
         config.server.bind
     );
     Ok(thread::spawn(move || {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for stream in listener.incoming() {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match stream {
                 Ok(stream) => {
                     let config = config.clone();
@@ -42,6 +51,8 @@ pub fn spawn_http_server(
     }))
 }
 
+// Was: Bündelt die zusammengehörigen Werte für HTTP request in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct HttpRequest {
     method: String,
     path: String,
@@ -49,12 +60,16 @@ struct HttpRequest {
     body: Vec<u8>,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für HTTP response in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct HttpResponse {
     status: u16,
     content_type: &'static str,
     body: Vec<u8>,
 }
 
+// Was: Diese Funktion verarbeitet connection.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 fn handle_connection(
     mut stream: TcpStream,
     config: MediaSwitchConfig,
@@ -66,6 +81,8 @@ fn handle_connection(
     write_response(&mut stream, response).map_err(|error| error.to_string())
 }
 
+// Was: Diese Funktion leitet den vorgesehenen Arbeitsschritt.
+// Warum: Nachrichten und Daten gelangen dadurch nachvollziehbar an das richtige Ziel.
 fn route(
     request: HttpRequest,
     media: SharedMedia,
@@ -74,6 +91,8 @@ fn route(
     if request.method == "OPTIONS" {
         return empty(204);
     }
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match (request.method.as_str(), request.path.as_str()) {
         ("GET", "/") => html(INDEX_HTML),
         ("GET", "/health/live") => json_response(200, &json!({"status":"live"})),
@@ -115,6 +134,8 @@ fn route(
             let request = BackendRequest::Ping {
                 request_id: Some(format!("media-switch-{}", chrono::Utc::now().timestamp_millis())),
             };
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match gateway_tx.send(request) {
                 Ok(()) => json_response(202, &json!({"queued":true})),
                 Err(_) => json_response(503, &json!({"error":"Node Gateway worker unavailable"})),
@@ -132,6 +153,8 @@ fn route(
     }
 }
 
+// Was: Führt den Arbeitsschritt `session_route` für Sitzung Weiterleitung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn session_route(request: HttpRequest, media: SharedMedia) -> HttpResponse {
     let tail = request.path.trim_start_matches("/api/v1/sessions/");
     if request.method == "GET" && !tail.contains('/') {
@@ -146,6 +169,8 @@ fn session_route(request: HttpRequest, media: SharedMedia) -> HttpResponse {
     if request.method != "POST" {
         return json_response(405, &json!({"error":"method not allowed"}));
     }
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match action {
         "mute" => match parse_json::<MuteInput>(&request.body)
             .and_then(|input| media.mute_stream(session_id, input))
@@ -167,6 +192,8 @@ fn session_route(request: HttpRequest, media: SharedMedia) -> HttpResponse {
     }
 }
 
+// Was: Führt den Arbeitsschritt `query_limit` für query limit aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn query_limit(request: &HttpRequest, default: usize) -> usize {
     request
         .query
@@ -176,10 +203,14 @@ fn query_limit(request: &HttpRequest, default: usize) -> usize {
         .min(2_000)
 }
 
+// Was: Diese Funktion liest und prüft JSON-Daten.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_json<T: serde::de::DeserializeOwned>(body: &[u8]) -> Result<T, String> {
     serde_json::from_slice(body).map_err(|error| format!("invalid JSON: {error}"))
 }
 
+// Was: Führt den Arbeitsschritt `openapi` für openapi aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn openapi() -> serde_json::Value {
     json!({
         "openapi":"3.0.3",
@@ -210,7 +241,11 @@ fn openapi() -> serde_json::Value {
     })
 }
 
+// Was: Führt den Arbeitsschritt `json_response` für JSON-Daten response aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn json_response<T: Serialize>(status: u16, value: &T) -> HttpResponse {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match serde_json::to_vec_pretty(value) {
         Ok(body) => HttpResponse {
             status,
@@ -226,6 +261,8 @@ fn json_response<T: Serialize>(status: u16, value: &T) -> HttpResponse {
     }
 }
 
+// Was: Führt den Arbeitsschritt `text` für text aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn text(content_type: &'static str, value: String) -> HttpResponse {
     HttpResponse {
         status: 200,
@@ -234,6 +271,8 @@ fn text(content_type: &'static str, value: String) -> HttpResponse {
     }
 }
 
+// Was: Führt den Arbeitsschritt `html` für html aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn html(value: &str) -> HttpResponse {
     HttpResponse {
         status: 200,
@@ -242,6 +281,8 @@ fn html(value: &str) -> HttpResponse {
     }
 }
 
+// Was: Führt den Arbeitsschritt `empty` für empty aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn empty(status: u16) -> HttpResponse {
     HttpResponse {
         status,
@@ -250,6 +291,8 @@ fn empty(status: u16) -> HttpResponse {
     }
 }
 
+// Was: Diese Funktion liest request.
+// Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
 fn read_request(stream: &mut TcpStream, max_body_bytes: usize) -> Result<HttpRequest, String> {
     let mut buffer = Vec::new();
     let mut chunk = [0u8; 4096];
@@ -284,6 +327,8 @@ fn read_request(stream: &mut TcpStream, max_body_bytes: usize) -> Result<HttpReq
         .ok_or_else(|| "missing path".to_string())?;
     let (path, query) = parse_path_and_query(raw_path);
     let mut content_length = 0usize;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for line in lines {
         if let Some((name, value)) = line.split_once(':') {
             if name.eq_ignore_ascii_case("content-length") {
@@ -298,6 +343,8 @@ fn read_request(stream: &mut TcpStream, max_body_bytes: usize) -> Result<HttpReq
         return Err("body too large".to_string());
     }
     let mut body = buffer[header_end..].to_vec();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while body.len() < content_length {
         let read = stream
             .read(&mut chunk)
@@ -319,7 +366,11 @@ fn read_request(stream: &mut TcpStream, max_body_bytes: usize) -> Result<HttpReq
     })
 }
 
+// Was: Diese Funktion schreibt response.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 fn write_response(stream: &mut TcpStream, response: HttpResponse) -> std::io::Result<()> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let reason = match response.status {
         200 => "OK",
         201 => "Created",
@@ -355,10 +406,14 @@ fn write_response(stream: &mut TcpStream, response: HttpResponse) -> std::io::Re
     stream.write_all(&response.body)
 }
 
+// Was: Diese Funktion sucht subslice.
+// Warum: Die Suchlogik bleibt damit wiederverwendbar und muss nicht an mehreren Stellen kopiert werden.
 fn find_subslice(haystack: &[u8], needle: &[u8]) -> Option<usize> {
     haystack.windows(needle.len()).position(|window| window == needle)
 }
 
+// Was: Diese Funktion liest und prüft path and query.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_path_and_query(raw: &str) -> (String, HashMap<String, String>) {
     let (path, raw_query) = raw.split_once('?').unwrap_or((raw, ""));
     let query = raw_query
@@ -370,10 +425,14 @@ fn parse_path_and_query(raw: &str) -> (String, HashMap<String, String>) {
     (percent_decode(path), query)
 }
 
+// Was: Führt den Arbeitsschritt `percent_decode` für percent Dekodierung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn percent_decode(value: &str) -> String {
     let bytes = value.as_bytes();
     let mut output = Vec::new();
     let mut index = 0;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while index < bytes.len() {
         if bytes[index] == b'%' && index + 2 < bytes.len() {
             if let Ok(hex) = u8::from_str_radix(&value[index + 1..index + 3], 16) {
@@ -392,4 +451,6 @@ fn percent_decode(value: &str) -> String {
     String::from_utf8_lossy(&output).into_owned()
 }
 
+// Was: Legt den festen Wert `INDEX_HTML` für index html fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const INDEX_HTML: &str = r#"<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>NetCore Media Switch</title><style>:root{color-scheme:dark;--bg:#071118;--panel:#111f29;--line:#294250;--text:#ecf5f8;--muted:#9fb2bd;--ok:#57d98e;--warn:#ffca58;--bad:#ff6d6d;--accent:#36a3ff}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px system-ui}.lab{padding:10px 20px;background:#8e2020;color:#fff;text-align:center;font-weight:800}header{padding:20px 26px;background:#0e1a22;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:15px}h1,h2{margin:0 0 10px}.wrap{padding:20px;display:grid;gap:16px}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px}.card,.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}.value{font-size:24px;font-weight:760}.muted{color:var(--muted)}.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}input,select,button,textarea{background:#192c37;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:8px}button{cursor:pointer}.primary{background:#1268aa}.danger{background:#893039}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:top}.tablewrap{overflow:auto}pre{white-space:pre-wrap;max-height:300px;overflow:auto}@media(max-width:750px){header{display:block}.toolbar>*{flex:1 1 150px}}</style></head><body><div class="lab">⚠ OPEN LAB – keine Anmeldung, keine Tokens, kein TLS. Jeder erreichbare Client darf Medienströme stummschalten, puffern und Testframes einspeisen.</div><header><div><h1>Media Switch</h1><div class="muted">Netzweites Routing gepackter TETRA-Sprachframes, Jitter-Puffer und Media-Taps</div></div><div id="links">Verbindungen …</div></header><main class="wrap"><section class="cards" id="cards"></section><section class="panel"><h2>Media-Sessions</h2><div class="tablewrap"><table><thead><tr><th>Session</th><th>Typ / Zustand</th><th>Floor</th><th>Streams</th><th>Frames</th><th>Aktion</th></tr></thead><tbody id="sessionRows"></tbody></table></div></section><section class="panel"><h2>Streams / TBS-Legs</h2><div class="tablewrap"><table><thead><tr><th>Session</th><th>Node / TS</th><th>Status</th><th>RX / TX / Drop</th><th>Sequenz</th><th>Aktion</th></tr></thead><tbody id="streamRows"></tbody></table></div></section><section class="panel"><h2>Jitter-Puffer</h2><div class="tablewrap"><table><thead><tr><th>Session</th><th>Ziel</th><th>Frames</th><th>Fällig in</th></tr></thead><tbody id="bufferRows"></tbody></table></div></section><section class="panel"><h2>Basisstationen</h2><div class="tablewrap"><table><thead><tr><th>Node</th><th>Zelle</th><th>Online</th><th>Media Bridge</th><th>Frames</th></tr></thead><tbody id="nodeRows"></tbody></table></div></section><section class="panel"><h2>Testframe einspeisen</h2><div class="muted">35 gepackte Bytes, dezimal und kommasepariert. Diese offene Schnittstelle ist zugleich der vorbereitete Audio-Player-Eingang.</div><div class="toolbar"><input id="injectSession" placeholder="Session-ID"><input id="injectNode" placeholder="Ziel-Node optional"><input id="injectTs" type="number" min="1" max="7" placeholder="Ziel-TS optional"><textarea id="injectPayload" rows="3" style="min-width:420px" placeholder="0,0,0,... exakt 35 Werte"></textarea><button class="primary" onclick="injectFrame()">Einspeisen</button></div></section><section class="panel"><h2>Media-Taps</h2><pre id="taps" class="muted"></pre></section><section class="panel"><h2>Ereignisse</h2><pre id="events" class="muted"></pre></section></main><script>let sessions=[],streams=[];const el=id=>document.getElementById(id);async function api(path,opt){const r=await fetch(path,opt);if(!r.ok&&r.status!==204){let e={};try{e=await r.json()}catch{}throw new Error(e.error||r.statusText)}return r.status===204?null:r.json()}function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}function post(path,body){return api(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})})}async function refresh(){try{const[s,se,st,b,n,t,e]=await Promise.all([api('/api/v1/status'),api('/api/v1/sessions'),api('/api/v1/streams'),api('/api/v1/buffers'),api('/api/v1/nodes'),api('/api/v1/taps?limit=30'),api('/api/v1/events?limit=40')]);sessions=se;streams=st;el('links').innerHTML=(s.node_gateway_connected?'<span class="ok">● Gateway</span>':'<span class="bad">● Gateway</span>')+' &nbsp; '+(s.call_control_connected?'<span class="ok">● Call Control</span>':'<span class="bad">● Call Control</span>');el('cards').innerHTML=[['Sessions',s.sessions_active],['Streams',s.streams_active],['Puffer',s.pending_frames],['RX',s.frames_received],['geroutet',s.frames_routed],['gesendet',s.frames_sent],['Drops',s.frames_dropped],['Duplikate',s.duplicate_frames],['Injection',s.frames_injected]].map(x=>`<div class="card"><div class="muted">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');renderSessions();renderStreams();el('bufferRows').innerHTML=b.map(x=>`<tr><td>${esc(x.session_id)}</td><td>${esc(x.target_node_id)} / TS ${x.target_logical_ts}</td><td>${x.queued_frames}</td><td>${x.oldest_due_in_ms} ms</td></tr>`).join('');el('nodeRows').innerHTML=n.map(x=>`<tr><td>${esc(x.node_id)}<br><span class="muted">${esc(x.station_name)}</span></td><td>${x.mcc}/${x.mnc} LA ${x.location_area} CC ${x.colour_code}</td><td>${x.connected&&!x.stale?'<span class="ok">online</span>':'<span class="bad">offline</span>'}</td><td>${x.media_bridge?'ja':'nein'}</td><td>${x.media_frame_count}</td></tr>`).join('');el('taps').textContent=t.map(x=>`${x.timestamp} #${x.seq} ${x.session_id} ${x.source_node_id}/TS${x.source_logical_ts} seq=${x.source_sequence} → ${x.target_count}${x.injected?' INJECT':''}`).join('\n');el('events').textContent=e.map(x=>`${x.timestamp} #${x.seq} ${x.kind} ${x.session_id||''} ${x.node_id||''}`).join('\n')}catch(e){el('links').innerHTML='<span class="bad">UI-Fehler: '+esc(e.message)+'</span>'}}function renderSessions(){el('sessionRows').innerHTML=sessions.map(s=>`<tr><td><b>${esc(s.logical_call_id)}</b></td><td>${esc(s.kind)} / ${esc(s.phase)}${s.emergency?' / NOTRUF':''}</td><td>${s.floor_holder??'frei'}</td><td>${Object.keys(s.legs||{}).length}</td><td>${s.frames_received} / ${s.frames_routed} / ${s.frames_dropped}</td><td><button class="danger" onclick="flushSession('${s.logical_call_id}')">Puffer leeren</button></td></tr>`).join('')}function renderStreams(){el('streamRows').innerHTML=streams.map(s=>`<tr><td>${esc(s.session_id)}</td><td>${esc(s.node_id)} / TS ${s.logical_ts}<br><span class="muted">Call ${s.local_call_id??'–'} Carrier ${s.carrier_num??'–'}</span></td><td>${esc(s.phase)} ${s.muted?'<span class="bad">STUMM</span>':''}</td><td>${s.rx_frames} / ${s.tx_frames} / ${s.dropped_frames}</td><td>${s.last_sequence??'–'}</td><td><button onclick="muteStream('${s.session_id}','${s.node_id}',${s.logical_ts},${!s.muted})">${s.muted?'Aktivieren':'Stumm'}</button></td></tr>`).join('')}async function muteStream(id,node,ts,muted){try{await post(`/api/v1/sessions/${id}/mute`,{node_id:node,logical_ts:ts,muted});refresh()}catch(e){alert(e.message)}}async function flushSession(id){if(!confirm('Jitter-Puffer dieser Session leeren?'))return;try{await post(`/api/v1/sessions/${id}/flush`,{});refresh()}catch(e){alert(e.message)}}async function injectFrame(){try{const payload=el('injectPayload').value.split(/[\s,;]+/).filter(Boolean).map(Number);await post(`/api/v1/sessions/${encodeURIComponent(el('injectSession').value.trim())}/inject`,{payload,target_node:el('injectNode').value.trim()||null,target_logical_ts:el('injectTs').value?Number(el('injectTs').value):null});refresh()}catch(e){alert(e.message)}}refresh();setInterval(refresh,2000)</script></body></html>"#;

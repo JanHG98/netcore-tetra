@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! Resampling, buffering and timestamp handling
 //! between SDR device and modulator/demodulator code.
 
@@ -19,6 +22,8 @@ use super::fcfb;
 use super::modulator;
 use super::soapyio;
 
+// Was: Bündelt die zusammengehörigen Werte für sdr Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SdrConfig<'a> {
     /// SoapySDR device arguments
     pub dev_args: &'a [(&'a str, &'a str)],
@@ -29,6 +34,8 @@ pub struct SdrConfig<'a> {
 }
 
 #[derive(Default)]
+// Was: Bündelt die zusammengehörigen Werte für phy Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PhyConfig<'a> {
     /// Downlink/uplink carrier frequency pairs to monitor.
     /// Uplink frequency can be set to None to monitor downlink only.
@@ -43,6 +50,8 @@ pub struct PhyConfig<'a> {
     pub bs_carrier_numbers: &'a [u16],
 }
 
+// Was: Bündelt die zusammengehörigen Werte für rx tx dev soapy sdr in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct RxTxDevSoapySdr {
     sdr: soapyio::SoapyIo,
     rx_dsp: Option<RxDsp>,
@@ -50,15 +59,23 @@ pub struct RxTxDevSoapySdr {
     health: Option<SdrHealthMonitor>,
 }
 
+// Was: Vergibt für fft planner einen fachlich verständlichen Typnamen.
+// Warum: Der Alias macht Signaturen lesbarer und hält technische Details aus dem aufrufenden Code heraus.
 type FftPlanner = rustfft::FftPlanner<RealSample>;
 
+// Was: Implementiert das zugehörige Verhalten für `RxTxDevSoapySdr`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl RxTxDevSoapySdr {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(cfg: &SharedConfig) -> Self {
         Self::with_telemetry(cfg, None)
     }
 
     /// Construct with an attached telemetry sink so the TX DSP can stream
     /// live spectrum + constellation snapshots to the dashboard.
+    // Was: Führt den Arbeitsschritt `with_telemetry` für with Telemetrie aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn with_telemetry(cfg: &SharedConfig, telemetry: Option<TelemetrySink>) -> Self {
         let mut fft_planner = rustfft::FftPlanner::new();
 
@@ -106,6 +123,8 @@ impl RxTxDevSoapySdr {
             bs_carrier_numbers: &bs_carrier_numbers,
         };
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let mut sdr = match soapyio::SoapyIo::new(cfg) {
             Ok(sdr) => sdr,
             Err(e) => {
@@ -149,6 +168,8 @@ impl RxTxDevSoapySdr {
     /// Process a block of received signal.
     /// Return true if processing can be continued,
     /// false if a slot has been demodulated and rxtx_timeslot should return.
+    // Was: Diese Funktion verarbeitet rx block.
+    // Warum: Die einzelnen Verarbeitungsschritte bleiben damit gebündelt und leichter testbar.
     fn process_rx_block(&mut self) -> Result<bool, RxTxDevError> {
         if let Some(rx_dsp) = &mut self.rx_dsp {
             rx_dsp.process_block(&mut self.sdr)
@@ -161,6 +182,8 @@ impl RxTxDevSoapySdr {
     /// Return true if processing can be continued,
     /// false if more data is needed
     /// or if it wants to wait before producing more.
+    // Was: Diese Funktion verarbeitet tx block.
+    // Warum: Die einzelnen Verarbeitungsschritte bleiben damit gebündelt und leichter testbar.
     fn process_tx_block(&mut self, tx_slot: &[TxSlotBits]) -> Result<bool, RxTxDevError> {
         if let Some(tx_dsp) = &mut self.tx_dsp {
             if self.sdr.tx_possible() {
@@ -174,17 +197,27 @@ impl RxTxDevSoapySdr {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `RxTxDev for RxTxDevSoapySdr`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl RxTxDev for RxTxDevSoapySdr {
+    // Was: Führt den Arbeitsschritt `rxtx_timeslot` für rxtx timeslot aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rxtx_timeslot<'a>(
         &'a mut self,
         tx_slot: &[TxSlotBits],
         // TODO multiple demodulators
     ) -> Result<Vec<Option<RxSlotBits<'a>>>, RxTxDevError> {
         // First generate as much TX signal as possible at the moment.
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while self.process_tx_block(tx_slot)? {}
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while self.process_rx_block()? {
             // Continue producing TX signal if possible.
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             while self.process_tx_block(tx_slot)? {}
         }
 
@@ -205,6 +238,8 @@ impl RxTxDev for RxTxDevSoapySdr {
     }
 }
 
+// Was: Bündelt die zusammengehörigen Werte für rx dsp in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct RxDsp {
     rx_fcfb: fcfb::AnalysisInputProcessor,
 
@@ -218,7 +253,11 @@ struct RxDsp {
     ul_demodulators: Vec<DemodulatorChannel>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `RxDsp`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl RxDsp {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     fn new(fft_planner: &mut FftPlanner, sdr: &mut soapyio::SoapyIo, phy_config: &PhyConfig) -> Self {
         let sdr_sample_rate = sdr.rx_sample_rate();
         let rx_fcfb_params = fcfb::AnalysisInputParameters {
@@ -276,6 +315,8 @@ impl RxDsp {
         }
     }
 
+    // Was: Diese Funktion verarbeitet block.
+    // Warum: Die einzelnen Verarbeitungsschritte bleiben damit gebündelt und leichter testbar.
     fn process_block(&mut self, sdr: &mut soapyio::SoapyIo) -> Result<bool, RxTxDevError> {
         self.receive_block(sdr)?;
 
@@ -283,6 +324,8 @@ impl RxDsp {
 
         let mut continue_processing = true;
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for pair in self.monitors.iter_mut() {
             let continue_dl = pair.dl.process(fcfb_result, self.rx_block_count);
             if let Some(ul) = &mut pair.ul {
@@ -293,6 +336,8 @@ impl RxDsp {
             }
         }
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for demod in self.ul_demodulators.iter_mut() {
             continue_processing = demod.process(fcfb_result, self.rx_block_count) && continue_processing;
         }
@@ -300,6 +345,8 @@ impl RxDsp {
         Ok(continue_processing)
     }
 
+    // Was: Diese Funktion empfängt block.
+    // Warum: Eingehende Daten werden so geordnet geprüft, bevor sie weiterverteilt werden.
     fn receive_block(&mut self, sdr: &mut soapyio::SoapyIo) -> Result<(), RxTxDevError> {
         self.rx_block_count += 1;
 
@@ -308,6 +355,8 @@ impl RxDsp {
             .copy_within(self.rx_block_size.new..self.rx_block_size.new + self.rx_block_size.overlap, 0);
         self.rx_buffer_i = self.rx_block_size.overlap;
 
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             let result = sdr.receive(&mut self.rx_buffer[self.rx_buffer_i..])?;
 
@@ -340,6 +389,8 @@ impl RxDsp {
                 self.rx_buffer_i = 0;
 
                 // Repeat reads until the correct number of samples has been skipped.
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 while samples_to_skip > 0 {
                     let result = sdr.receive(&mut self.rx_buffer[0..samples_to_skip as usize])?;
                     samples_to_skip -= result.len as SampleCount;
@@ -358,10 +409,14 @@ impl RxDsp {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `take_slot_bits` für take slot bits aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn take_slot_bits<'a>(&'a mut self) -> Vec<Option<RxSlotBits<'a>>> {
         // TODO: avoid dynamic allocation here?
         let mut slot_bits = Vec::with_capacity(2 * self.monitors.len() + self.ul_demodulators.len());
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for pair in self.monitors.iter_mut() {
             slot_bits.push(pair.dl.demodulator.take_demodulated_slot());
             slot_bits.push(if let Some(ul) = &mut pair.ul {
@@ -371,6 +426,8 @@ impl RxDsp {
             });
         }
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for demod in self.ul_demodulators.iter_mut() {
             slot_bits.push(demod.demodulator.take_demodulated_slot());
         }
@@ -379,6 +436,8 @@ impl RxDsp {
     }
 }
 
+// Was: Bündelt die zusammengehörigen Werte für tx dsp in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct TxDsp {
     fcfb: fcfb::SynthesisOutputProcessor,
     block_count: fcfb::BlockCount,
@@ -391,7 +450,11 @@ struct TxDsp {
     tx_signal_scratch: Vec<ComplexSample>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `TxDsp`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl TxDsp {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     fn new(fft_planner: &mut FftPlanner, sdr: &mut soapyio::SoapyIo, phy_config: &PhyConfig, telemetry: Option<TelemetrySink>) -> Self {
         let sdr_sample_rate = sdr.tx_sample_rate();
         let fcfb_params = fcfb::SynthesisOutputParameters {
@@ -404,6 +467,8 @@ impl TxDsp {
         let fcfb = fcfb::SynthesisOutputProcessor::new(fft_planner, fcfb_params);
 
         let mut modulators = Vec::<ModulatorChannel>::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for dl_freq in phy_config.bs_dl_frequencies {
             modulators.push(ModulatorChannel::new(fft_planner, fcfb_params, *dl_freq, modulator::Mode::Dl));
         }
@@ -421,6 +486,8 @@ impl TxDsp {
         }
     }
 
+    // Was: Diese Funktion verarbeitet block.
+    // Warum: Die einzelnen Verarbeitungsschritte bleiben damit gebündelt und leichter testbar.
     fn process_block(
         &mut self,
         sdr: &mut soapyio::SoapyIo,
@@ -463,6 +530,8 @@ impl TxDsp {
             }
         }
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (modulator, tx_slot) in self.modulators.iter_mut().zip(tx_slot) {
             if !modulator.process(&mut self.fcfb, self.block_count, tx_slot) {
                 return Ok(false);
@@ -518,12 +587,18 @@ impl TxDsp {
     }
 }
 
+// Was: Bündelt die zusammengehörigen Werte für demodulator Kanal in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct DemodulatorChannel {
     downconverter: fcfb::AnalysisOutputProcessor,
     demodulator: demodulator::Demodulator,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `DemodulatorChannel`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl DemodulatorChannel {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     fn new(
         fft_planner: &mut FftPlanner,
         analysis_in_params: fcfb::AnalysisInputParameters,
@@ -545,8 +620,12 @@ impl DemodulatorChannel {
 
     /// Return true if processing should be continued,
     /// false if a new demodulated slot is available.
+    // Was: Diese Funktion verarbeitet den vorgesehenen Arbeitsschritt.
+    // Warum: Die einzelnen Verarbeitungsschritte bleiben damit gebündelt und leichter testbar.
     fn process(&mut self, fcfb_result: &fcfb::AnalysisIntermediateResult, block_count: fcfb::BlockCount) -> bool {
         let samples = self.downconverter.process(fcfb_result);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (i, sample) in samples.iter().enumerate() {
             // TODO: include delay of FCFB in sample count
             self.demodulator.sample(
@@ -558,6 +637,8 @@ impl DemodulatorChannel {
     }
 }
 
+// Was: Bündelt die zusammengehörigen Werte für modulator Kanal in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct ModulatorChannel {
     upconverter: fcfb::SynthesisInputProcessor,
     modulator: modulator::Modulator,
@@ -567,7 +648,11 @@ struct ModulatorChannel {
     buffer_i: usize,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `ModulatorChannel`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl ModulatorChannel {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     fn new(
         fft_planner: &mut FftPlanner,
         synthesis_out_params: fcfb::SynthesisOutputParameters,
@@ -589,10 +674,16 @@ impl ModulatorChannel {
         }
     }
 
+    // Was: Diese Funktion verarbeitet den vorgesehenen Arbeitsschritt.
+    // Warum: Die einzelnen Verarbeitungsschritte bleiben damit gebündelt und leichter testbar.
     fn process(&mut self, fcfb: &mut fcfb::SynthesisOutputProcessor, block_count: fcfb::BlockCount, tx_slot: &TxSlotBits) -> bool {
         let buf = self.buffer.buffer_in();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while self.buffer_i < buf.len() {
             // TODO: include delay of FCFB in sample count
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match self.modulator.sample(
                 block_count as SampleCount * buf.len() as SampleCount + self.buffer_i as SampleCount,
                 tx_slot,
@@ -614,6 +705,8 @@ impl ModulatorChannel {
     }
 }
 
+// Was: Bündelt die zusammengehörigen Werte für monitor dl ul pair in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct MonitorDlUlPair {
     dl: DemodulatorChannel,
     ul: Option<DemodulatorChannel>,
@@ -634,6 +727,8 @@ struct MonitorDlUlPair {
 // Both paths share the FFT and constellation recovery, so when both are due
 // in the same call they are computed once and emitted in two messages.
 
+// Was: Bündelt die zusammengehörigen Werte für tx signal monitor in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct TxSignalMonitor {
     sink: TelemetrySink,
     sample_rate: RealSample,
@@ -659,11 +754,21 @@ struct TxSignalMonitor {
     quality_interval: std::time::Duration,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `TxSignalMonitor`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl TxSignalMonitor {
+    // Was: Legt den festen Wert `FFT_LEN` für fft len fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const FFT_LEN: usize = 512;
+    // Was: Legt den festen Wert `CONSTELLATION_POINTS` für constellation points fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const CONSTELLATION_POINTS: usize = 192;
+    // Was: Legt den festen Wert `CONSTELLATION_ENCODE_SCALE` für constellation Kodierung scale fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const CONSTELLATION_ENCODE_SCALE: RealSample = 32767.0 / 1.5;
 
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     fn new(fft_planner: &mut FftPlanner, sink: TelemetrySink, sample_rate: RealSample, center_frequency: f64) -> Self {
         let fft = fft_planner.plan_fft_forward(Self::FFT_LEN);
         let window = (0..Self::FFT_LEN)
@@ -690,11 +795,15 @@ impl TxSignalMonitor {
     /// Cheap predicate: would a call to `observe()` actually emit anything
     /// right now? Used by the hot TX path to skip an expensive Vec clone when
     /// no telemetry is due.
+    // Was: Prüft, ob emit zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     fn should_emit(&self) -> bool {
         let now = std::time::Instant::now();
         now >= self.next_visual_emit || now >= self.next_quality_emit
     }
 
+    // Was: Führt den Arbeitsschritt `observe` für observe aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn observe(&mut self, samples: &[ComplexSample], _tx_slots: &[TxSlotBits], _block_count: fcfb::BlockCount) {
         let now = std::time::Instant::now();
         let need_visual = now >= self.next_visual_emit;
@@ -717,6 +826,8 @@ impl TxSignalMonitor {
         let mut sum_q2: RealSample = 0.0;
         let mut sum_iq: RealSample = 0.0;
         let n = samples.len() as RealSample;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for sample in samples {
             let p = sample.norm_sqr();
             peak2 = peak2.max(p);
@@ -737,6 +848,8 @@ impl TxSignalMonitor {
         // Take the centre FFT_LEN samples (avoids the band-edges of overlap-add
         // fcfb output where amplitude is artificially reduced).
         let start = (samples.len() - Self::FFT_LEN) / 2;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for i in 0..Self::FFT_LEN {
             self.fft_buffer[i] = samples[start + i] * self.window[i];
         }
@@ -744,6 +857,8 @@ impl TxSignalMonitor {
 
         // Linear magnitude² in unshifted order — reused below.
         let mut mag2 = vec![0.0_f32; Self::FFT_LEN];
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for i in 0..Self::FFT_LEN {
             let m = self.fft_buffer[i].norm() / Self::FFT_LEN as RealSample;
             mag2[i] = m * m;
@@ -830,6 +945,8 @@ impl TxSignalMonitor {
     /// Recover symbol-rate IQ samples AND compute RMS-normalized EVM in one pass.
     /// Returns (interleaved I,Q,... as i16, EVM in %). EVM is computed only over the
     /// freshly-derotated symbols in this call, not over the rolling history.
+    // Was: Führt den Arbeitsschritt `measured_constellation_with_evm` für measured constellation with evm aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn measured_constellation_with_evm(&mut self, samples: &[ComplexSample]) -> (Vec<i16>, f32) {
         // TETRA symbol rate is 18 kbaud (π/4-DQPSK). At our typical 600 kHz SDR
         // sample rate that's 33.3 samples/symbol.
@@ -849,6 +966,8 @@ impl TxSignalMonitor {
         let mut err_sum: RealSample = 0.0;
         let mut err_count: usize = 0;
         let mut sample_at = phase;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while sample_at < samples.len() as RealSample {
             let idx = sample_at.round() as usize;
             if let Some(sample) = samples.get(idx) {
@@ -889,6 +1008,8 @@ impl TxSignalMonitor {
         }
 
         let mut points = Vec::with_capacity(self.constellation_history.len() * 2);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for sample in &self.constellation_history {
             points.push(
                 (sample.re.clamp(-1.5, 1.5) * Self::CONSTELLATION_ENCODE_SCALE)
@@ -915,6 +1036,8 @@ impl TxSignalMonitor {
 ///
 /// `mag2_unshifted` is the magnitude-squared spectrum in standard (non-fftshift'd)
 /// FFT order — bin 0 = DC, bins 1..N/2 = positive freqs, bins N/2..N = negative.
+// Was: Führt den Arbeitsschritt `occupied_bandwidth` für occupied bandwidth aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn occupied_bandwidth(mag2_unshifted: &[RealSample], sample_rate: RealSample, fraction: RealSample) -> RealSample {
     let n = mag2_unshifted.len();
     if n < 4 {
@@ -929,6 +1052,8 @@ fn occupied_bandwidth(mag2_unshifted: &[RealSample], sample_rate: RealSample, fr
     // Accumulate DC bin first, then symmetric pairs (k, N-k) representing +/- k.
     let mut accum = mag2_unshifted[0];
     let half = n / 2;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for k in 1..=half {
         if accum >= target {
             // (k-1) bins each side of DC produced the threshold crossing.
@@ -948,13 +1073,19 @@ fn occupied_bandwidth(mag2_unshifted: &[RealSample], sample_rate: RealSample, fr
 /// Sweep 64 timing offsets within one symbol period to find the best constellation
 /// sampling instant. For each candidate offset, we estimate the constellation rotation
 /// and gain, then score by squared distance to ideal π/4-DQPSK points. Lower score = better.
+// Was: Führt den Arbeitsschritt `constellation_timing_rotation_gain` für constellation timing rotation gain aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn constellation_timing_rotation_gain(
     samples: &[ComplexSample],
     samples_per_symbol: RealSample,
 ) -> Option<(RealSample, RealSample, RealSample)> {
+    // Was: Legt den festen Wert `STEPS` für steps fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const STEPS: usize = 64;
     let mut best: Option<(RealSample, RealSample, RealSample, RealSample)> = None;
 
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for step in 0..STEPS {
         let phase = samples_per_symbol * step as RealSample / STEPS as RealSample;
         let points = constellation_points_for_phase(samples, samples_per_symbol, phase);
@@ -965,6 +1096,8 @@ fn constellation_timing_rotation_gain(
         let (sin_rot, cos_rot) = rotation.sin_cos();
         let mut radius_sum = 0.0;
         let mut radius_count = 0usize;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for point in &points {
             let derotated = ComplexSample {
                 re: point.re * cos_rot + point.im * sin_rot,
@@ -982,6 +1115,8 @@ fn constellation_timing_rotation_gain(
         let gain = radius_sum / radius_count as RealSample;
         let mut err_sum = 0.0;
         let mut err_count = 0usize;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for point in &points {
             let derotated = ComplexSample {
                 re: (point.re * cos_rot + point.im * sin_rot) / gain,
@@ -1005,6 +1140,8 @@ fn constellation_timing_rotation_gain(
             continue;
         }
         let score = err_sum / err_count as RealSample;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match best {
             Some((best_score, _, _, _)) if score >= best_score => {}
             _ => best = Some((score, phase, rotation, gain.max(1.0e-5))),
@@ -1014,9 +1151,13 @@ fn constellation_timing_rotation_gain(
     best.map(|(_, phase, rotation, gain)| (phase, rotation, gain))
 }
 
+// Was: Führt den Arbeitsschritt `constellation_points_for_phase` für constellation points for phase aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn constellation_points_for_phase(samples: &[ComplexSample], samples_per_symbol: RealSample, phase: RealSample) -> Vec<ComplexSample> {
     let mut points = Vec::new();
     let mut sample_at = phase;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while sample_at < samples.len() as RealSample {
         let idx = sample_at.round() as usize;
         if let Some(sample) = samples.get(idx) {
@@ -1031,6 +1172,8 @@ fn constellation_points_for_phase(samples: &[ComplexSample], samples_per_symbol:
 /// (π/4-DQPSK has 8 ideal phases) and finding the dominant angle. Returns the rotation
 /// in radians (the angle that, applied as a derotation, lines points up with the
 /// real and imaginary axes).
+// Was: Führt den Arbeitsschritt `constellation_rotation` für constellation rotation aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn constellation_rotation(points: &[ComplexSample]) -> Option<RealSample> {
     let max_radius = points.iter().map(|point| point.norm()).fold(0.0, RealSample::max);
     if max_radius <= 1.0e-6 {
@@ -1041,6 +1184,8 @@ fn constellation_rotation(points: &[ComplexSample]) -> Option<RealSample> {
     let mut sum_re = 0.0;
     let mut sum_im = 0.0;
     let mut weight_sum = 0.0;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for point in points {
         let radius = point.norm();
         if radius < min_radius {
@@ -1072,6 +1217,8 @@ fn constellation_rotation(points: &[ComplexSample]) -> Option<RealSample> {
 //   2. Different data (no DSP, just hardware introspection).
 //   3. Some SDRs don't expose any sensors — we still want TX DSP metrics on those.
 
+// Was: Bündelt die zusammengehörigen Werte für sdr health monitor in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct SdrHealthMonitor {
     sink: TelemetrySink,
     /// Wall-clock time of next emission. Initialised to "now-ish" so the first tick fires immediately.
@@ -1089,7 +1236,11 @@ struct SdrHealthMonitor {
     cached_rx_gains: Option<Vec<(String, f32)>>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SdrHealthMonitor`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SdrHealthMonitor {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     fn new(sink: TelemetrySink) -> Self {
         Self {
             sink,
@@ -1102,6 +1253,8 @@ impl SdrHealthMonitor {
         }
     }
 
+    // Was: Diese Funktion bearbeitet den vorgesehenen Arbeitsschritt.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn tick(&mut self, sdr: &soapyio::SoapyIo) {
         let now = std::time::Instant::now();
         if now < self.next_emit {

@@ -1,5 +1,16 @@
+# NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für cross.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+# Was: Öffnet den Konfigurationsabschnitt `target.aarch64-unknown-linux-gnu`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [target.aarch64-unknown-linux-gnu]
+# Was: Setzt die Einstellung `dockerfile` für target aarch64 unknown linux gnu.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 dockerfile = "contrib/cross-compile/Dockerfile.aarch64"
 
+# Was: Öffnet den Konfigurationsabschnitt `target.aarch64-unknown-linux-gnu.env`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [target.aarch64-unknown-linux-gnu.env]
+# Was: Setzt die Einstellung `passthrough` für target aarch64 unknown linux gnu env.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 passthrough = ["CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUSTFLAGS"]

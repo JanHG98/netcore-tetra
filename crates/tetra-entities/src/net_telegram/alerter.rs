@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! The alerter worker thread.
 //!
 //! Consumes [`TelegramAlertMsg`]s, decides what is worth notifying about, and sends formatted
@@ -24,23 +27,41 @@ use crate::net_snom::SnomNotifySink;
 use crate::net_telemetry::TelemetryEvent;
 
 /// SDS protocol identifier for the Location Information Protocol (LIP / APRS-style beacons).
+// Was: Legt den festen Wert `LIP_PROTOCOL_ID` für lip protocol Kennung fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const LIP_PROTOCOL_ID: u8 = 10;
 
 /// How long to wait on the channel before running the maintenance cycle.
+// Was: Legt den festen Wert `POLL` für poll fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const POLL: Duration = Duration::from_millis(500);
 /// Hold a generic disconnect briefly so an accompanying T351 drop can suppress it.
+// Was: Legt den festen Wert `DISCONNECT_COALESCE` für disconnect coalesce fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const DISCONNECT_COALESCE: Duration = Duration::from_secs(2);
 /// A disconnect arriving within this window of a T351 drop for the same ISSI is the same event.
+// Was: Legt den festen Wert `T351_WINDOW` für t351 window fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const T351_WINDOW: Duration = Duration::from_secs(5);
 /// Minimum spacing between LIP beacon alerts from the same radio (beacons can be frequent).
+// Was: Legt den festen Wert `LIP_DEBOUNCE` für lip debounce fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const LIP_DEBOUNCE: Duration = Duration::from_secs(60);
 /// Coalescing window for critical-log alerts: collect lines for this long, then send one message.
+// Was: Legt den festen Wert `LOG_COALESCE` für log coalesce fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const LOG_COALESCE: Duration = Duration::from_secs(5);
 /// Maximum log lines shown per coalesced message; the rest are summarised as "+N more".
+// Was: Legt den festen Wert `LOG_MAX_LINES` für log max lines fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const LOG_MAX_LINES: usize = 5;
 /// Hard cap on buffered log lines between flushes (excess is counted, not stored).
+// Was: Legt den festen Wert `LOG_BUFFER_CAP` für log buffer cap fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const LOG_BUFFER_CAP: usize = 50;
 
+// Was: Bündelt die zusammengehörigen Werte für telegram alerter in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TelegramAlerter {
     cfg: SharedConfig,
     source: TelegramAlertSource,
@@ -80,7 +101,11 @@ pub struct TelegramAlerter {
     snom_sink: Option<SnomNotifySink>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `TelegramAlerter`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl TelegramAlerter {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(cfg: SharedConfig, source: TelegramAlertSource) -> Self {
         let station = StationInfo::from_config(&cfg);
         Self {
@@ -103,14 +128,22 @@ impl TelegramAlerter {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `with_snom_sink` für with snom sink aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn with_snom_sink(mut self, sink: Option<SnomNotifySink>) -> Self {
         self.snom_sink = sink;
         self
     }
 
+    // Was: Diese Funktion führt den vorgesehenen Arbeitsschritt.
+    // Warum: Der Lebenszyklus des Dienstes bleibt so an einer zentralen Stelle steuerbar.
     pub fn run(&mut self) {
         tracing::info!("Telegram alerter started");
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match self.source.recv_timeout(POLL) {
                 Ok(TelegramAlertMsg::Event(event)) => self.handle_event(event),
                 Ok(TelegramAlertMsg::CriticalLog { level, message }) => self.handle_log(level, message),
@@ -125,8 +158,12 @@ impl TelegramAlerter {
         tracing::info!("Telegram alerter exiting");
     }
 
+    // Was: Diese Funktion verarbeitet Ereignis.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_event(&mut self, event: TelemetryEvent) {
         let tg = self.cfg.effective_telegram();
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match event {
             TelemetryEvent::MsRegistration { issi } => {
                 self.recent_t351.remove(&issi);
@@ -225,6 +262,8 @@ impl TelegramAlerter {
         }
     }
 
+    // Was: Diese Funktion verarbeitet log.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_log(&mut self, level: String, message: String) {
         if self.log_buffer.is_empty() {
             self.log_window_start = Some(Instant::now());
@@ -236,6 +275,8 @@ impl TelegramAlerter {
         }
     }
 
+    // Was: Diese Funktion verarbeitet dapnet.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_dapnet(&self, prefix: String, callsign: String, text: String) {
         let tg = self.cfg.effective_telegram();
         if tg.is_deliverable() {
@@ -245,6 +286,8 @@ impl TelegramAlerter {
     }
 
     /// Per-tick maintenance: emit deferred disconnects and flush the coalesced log buffer.
+    // Was: Führt den Arbeitsschritt `maintenance` für maintenance aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn maintenance(&mut self) {
         let tg = self.cfg.effective_telegram();
 
@@ -255,6 +298,8 @@ impl TelegramAlerter {
             .filter(|(_, t)| t.elapsed() >= DISCONNECT_COALESCE)
             .map(|(issi, _)| *issi)
             .collect();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for issi in due {
             self.pending_disconnect.remove(&issi);
             self.known_issis.remove(&issi);
@@ -276,6 +321,8 @@ impl TelegramAlerter {
         }
     }
 
+    // Was: Diese Funktion schreibt logs.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn flush_logs(&mut self, tg: &CfgTelegram) {
         let buffer = std::mem::take(&mut self.log_buffer);
         let dropped = std::mem::take(&mut self.log_dropped);
@@ -293,11 +340,15 @@ impl TelegramAlerter {
 
     /// Deliver one HTML message to every configured chat. Failures are logged at `debug!` (never
     /// WARN/ERROR) so the critical-log catch-all cannot re-feed them as alerts.
+    // Was: Diese Funktion sendet all.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_all(&self, tg: &CfgTelegram, html: &str) {
         if let Some(sink) = &self.snom_sink {
             sink.send_telegram_html(html.to_string());
         }
         let token = tg.bot_token.as_ref();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for &chat_id in &tg.chat_ids {
             if let Err(e) = self.client.send_message_html(token, chat_id, html) {
                 tracing::debug!("Telegram: send to chat {} failed: {}", chat_id, e);
@@ -306,6 +357,8 @@ impl TelegramAlerter {
     }
 }
 
+// Was: Führt den Arbeitsschritt `brew_register_allowed` für Brew-Verbindung register allowed aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn brew_register_allowed(tg: &CfgTelegram, issi: u32) -> bool {
     if tg.brew_register_issi_blacklist.contains(&issi) {
         return false;
@@ -314,6 +367,8 @@ fn brew_register_allowed(tg: &CfgTelegram, issi: u32) -> bool {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
     use tetra_config::bluestation::SharedConfig;
@@ -321,6 +376,8 @@ mod tests {
     /// A SharedConfig with no `[telegram_alerts]` section → `effective_telegram()` is not
     /// deliverable, so `handle_event` exercises the dedup/coalescing state machine without ever
     /// touching the network.
+    // Was: Prüft automatisch den Fall cfg.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_cfg() -> SharedConfig {
         let toml = r#"
 config_version = "0.6"
@@ -342,6 +399,8 @@ location_area = 1
         SharedConfig::from_parts(cfg, None)
     }
 
+    // Was: Führt den Arbeitsschritt `alerter` für alerter aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn alerter() -> TelegramAlerter {
         let (_sink, source) = super::super::telegram_alert_channel();
         // Keep the sink alive for the alerter's lifetime is unnecessary here — we call
@@ -350,6 +409,8 @@ location_area = 1
     }
 
     #[test]
+    // Was: Diese Funktion verbindet is transition only.
+    // Warum: Der Verbindungsaufbau wird dadurch zentral überwacht und kann sauber fehlschlagen.
     fn connect_is_transition_only() {
         let mut a = alerter();
         a.handle_event(TelemetryEvent::MsRegistration { issi: 100 });
@@ -360,6 +421,8 @@ location_area = 1
     }
 
     #[test]
+    // Was: Diese Funktion trennt is deferred then t351 suppresses it.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn disconnect_is_deferred_then_t351_suppresses_it() {
         let mut a = alerter();
         a.handle_event(TelemetryEvent::MsRegistration { issi: 100 });
@@ -376,6 +439,8 @@ location_area = 1
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `reregister_cancels_pending_disconnect` für reregister cancels pending disconnect aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn reregister_cancels_pending_disconnect() {
         let mut a = alerter();
         a.handle_event(TelemetryEvent::MsRegistration { issi: 7 });
@@ -388,6 +453,8 @@ location_area = 1
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `t351_drop_for_unknown_issi_is_a_noop` für t351 drop for unknown Teilnehmerkennung (ISSI) is a und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn t351_drop_for_unknown_issi_is_a_noop() {
         // A T351 drop for a radio we never saw connect must not be tracked as a known drop
         // (so it can't later masquerade as a transition). known_issis stays empty.
@@ -400,6 +467,8 @@ location_area = 1
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `backhaul_first_observation_is_not_an_event` für backhaul first observation is not an Ereignis aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn backhaul_first_observation_is_not_an_event() {
         let mut a = alerter();
         // First observation only records state (no spurious "connected" alert on every restart).
@@ -411,6 +480,8 @@ location_area = 1
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `critical_log_buffers_until_flush_window` für critical log buffers until flush window aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn critical_log_buffers_until_flush_window() {
         let mut a = alerter();
         a.handle_log("WARN".to_string(), "something".to_string());

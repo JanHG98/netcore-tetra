@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Verbindungen zu anderen Netzen und Systemen.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
@@ -17,9 +20,13 @@ use crate::protocol::{
     SubscriberLocationInput, TransitEnvelopeInput, TransitSubmitInput,
 };
 
+// Was: Legt den festen Wert `MAX_SSI` für max TETRA-Teilnehmerkennung (SSI) fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const MAX_SSI: u32 = 16_777_215;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für local region Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LocalRegionRecord {
     pub region_id: String,
     pub swmi_id: String,
@@ -31,6 +38,8 @@ pub struct LocalRegionRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für peer Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PeerRecord {
     pub peer_id: String,
     pub region_id: String,
@@ -54,6 +63,8 @@ pub struct PeerRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Weiterleitung Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct RouteRecord {
     pub route_id: String,
     pub service: String,
@@ -74,6 +85,8 @@ pub struct RouteRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Teilnehmer location in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SubscriberLocation {
     pub issi: u32,
     pub home_region: String,
@@ -85,6 +98,8 @@ pub struct SubscriberLocation {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Gruppe reachability in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GroupReachability {
     pub gssi: u32,
     pub regions: Vec<String>,
@@ -93,6 +108,8 @@ pub struct GroupReachability {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Sitzung Rufzweig in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SessionLeg {
     pub target_region: String,
     pub selected_peer: Option<String>,
@@ -104,6 +121,8 @@ pub struct SessionLeg {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Sitzung Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SessionRecord {
     pub session_id: String,
     pub service: String,
@@ -123,6 +142,8 @@ pub struct SessionRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für outbound envelope in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct OutboundEnvelope {
     pub protocol_version: String,
     pub envelope_id: String,
@@ -155,7 +176,11 @@ pub struct OutboundEnvelope {
     pub last_error: Option<String>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `OutboundEnvelope`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl OutboundEnvelope {
+    // Was: Wandelt den vorhandenen Wert in wire um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_wire(&self, local_region: &str) -> TransitEnvelopeInput {
         TransitEnvelopeInput {
             protocol_version: self.protocol_version.clone(),
@@ -183,6 +208,8 @@ impl OutboundEnvelope {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für local delivery in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LocalDelivery {
     pub delivery_id: String,
     pub envelope_id: String,
@@ -205,6 +232,8 @@ pub struct LocalDelivery {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für dedupe entry in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DedupeEntry {
     pub dedupe_key: String,
     pub envelope_id: String,
@@ -212,6 +241,8 @@ pub struct DedupeEntry {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Netzübergang Ereignis in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TransitEvent {
     pub sequence: u64,
     pub timestamp: DateTime<Utc>,
@@ -224,6 +255,8 @@ pub struct TransitEvent {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Netzübergang Datenbank in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TransitDatabase {
     pub schema_version: u32,
     pub local_region: LocalRegionRecord,
@@ -243,6 +276,8 @@ pub struct TransitDatabase {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Netzübergang Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TransitStatus {
     pub service: &'static str,
     pub version: &'static str,
@@ -272,6 +307,8 @@ pub struct TransitStatus {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Weiterleitung decision in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct RouteDecision {
     pub accepted: bool,
     pub target_region: Option<String>,
@@ -284,6 +321,8 @@ pub struct RouteDecision {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für submit result in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SubmitResult {
     pub accepted: bool,
     pub session_id: String,
@@ -293,6 +332,8 @@ pub struct SubmitResult {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für ingest result in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct IngestResult {
     pub accepted: bool,
     pub duplicate: bool,
@@ -302,6 +343,8 @@ pub struct IngestResult {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für backup result in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct BackupResult {
     pub path: String,
     pub bytes: u64,
@@ -309,12 +352,18 @@ pub struct BackupResult {
 }
 
 #[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für shared Netzübergang in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SharedTransit {
     inner: Arc<Mutex<TransitDatabase>>,
     config: TransitConfig,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SharedTransit`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SharedTransit {
+    // Was: Diese Funktion lädt den vorgesehenen Arbeitsschritt.
+    // Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
     pub fn load(config: TransitConfig) -> Result<Self, Box<dyn std::error::Error>> {
         let now = Utc::now();
         let local_region = local_region_from_config(&config, now);
@@ -350,6 +399,8 @@ impl SharedTransit {
         Ok(transit)
     }
 
+    // Was: Führt den Arbeitsschritt `status` für Status aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn status(&self) -> TransitStatus {
         let database = self.inner.lock().expect("transit state poisoned");
         let now = Utc::now();
@@ -423,6 +474,8 @@ impl SharedTransit {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `peers` für peers aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn peers(&self) -> Vec<PeerRecord> {
         let database = self.inner.lock().expect("transit state poisoned");
         let mut peers: Vec<_> = database.peers.values().cloned().collect();
@@ -430,6 +483,8 @@ impl SharedTransit {
         peers
     }
 
+    // Was: Führt den Arbeitsschritt `routes` für routes aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn routes(&self) -> Vec<RouteRecord> {
         let database = self.inner.lock().expect("transit state poisoned");
         let mut routes: Vec<_> = database.routes.values().cloned().collect();
@@ -442,6 +497,8 @@ impl SharedTransit {
         routes
     }
 
+    // Was: Führt den Arbeitsschritt `subscriber_locations` für Teilnehmer locations aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn subscriber_locations(&self) -> Vec<SubscriberLocation> {
         let database = self.inner.lock().expect("transit state poisoned");
         let mut values: Vec<_> = database.subscriber_locations.values().cloned().collect();
@@ -449,6 +506,8 @@ impl SharedTransit {
         values
     }
 
+    // Was: Führt den Arbeitsschritt `group_reachability` für Gruppe reachability aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn group_reachability(&self) -> Vec<GroupReachability> {
         let database = self.inner.lock().expect("transit state poisoned");
         let mut values: Vec<_> = database.group_reachability.values().cloned().collect();
@@ -456,6 +515,8 @@ impl SharedTransit {
         values
     }
 
+    // Was: Führt den Arbeitsschritt `sessions` für sessions aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn sessions(&self) -> Vec<SessionRecord> {
         let database = self.inner.lock().expect("transit state poisoned");
         let mut values: Vec<_> = database.sessions.values().cloned().collect();
@@ -463,6 +524,8 @@ impl SharedTransit {
         values
     }
 
+    // Was: Führt den Arbeitsschritt `outbound` für outbound aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn outbound(&self, peer_id: Option<&str>, limit: usize) -> Vec<OutboundEnvelope> {
         let database = self.inner.lock().expect("transit state poisoned");
         let mut values: Vec<_> = database
@@ -476,6 +539,8 @@ impl SharedTransit {
         values
     }
 
+    // Was: Führt den Arbeitsschritt `local_deliveries` für local deliveries aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn local_deliveries(&self, service: Option<&str>, limit: usize) -> Vec<LocalDelivery> {
         let database = self.inner.lock().expect("transit state poisoned");
         let mut values: Vec<_> = database
@@ -489,11 +554,15 @@ impl SharedTransit {
         values
     }
 
+    // Was: Führt den Arbeitsschritt `recent_events` für recent events aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn recent_events(&self, limit: usize) -> Vec<TransitEvent> {
         let database = self.inner.lock().expect("transit state poisoned");
         database.events.iter().rev().take(limit).cloned().collect()
     }
 
+    // Was: Diese Funktion erstellt peer.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     pub fn create_peer(&self, input: PeerCreateInput) -> Result<PeerRecord, String> {
         validate_identifier(&input.peer_id, "peer_id")?;
         validate_identifier(&input.region_id, "region_id")?;
@@ -535,11 +604,15 @@ impl SharedTransit {
         Ok(record)
     }
 
+    // Was: Führt den Arbeitsschritt `peer_action` für peer action aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn peer_action(&self, peer_id: &str, action: &str, input: PeerActionInput) -> Result<PeerRecord, String> {
         let now = Utc::now();
         let actor = input.actor.unwrap_or_else(|| "operator".to_string());
         let mut database = self.inner.lock().map_err(|_| "state lock poisoned".to_string())?;
         let record = database.peers.get_mut(peer_id).ok_or_else(|| "peer not found".to_string())?;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match action {
             "enable" | "unblock" => record.admin_state = "enabled".to_string(),
             "maintenance" => record.admin_state = "maintenance".to_string(),
@@ -560,6 +633,8 @@ impl SharedTransit {
         Ok(output)
     }
 
+    // Was: Führt den Arbeitsschritt `ingest_heartbeat` für ingest heartbeat aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn ingest_heartbeat(&self, input: PeerHeartbeatInput) -> Result<PeerRecord, String> {
         if input.protocol_version != TRANSIT_PROTOCOL_VERSION {
             return Err(format!("incompatible protocol_version={}", input.protocol_version));
@@ -572,6 +647,8 @@ impl SharedTransit {
         let latency_ms = now.signed_duration_since(sent_at).num_milliseconds().max(0) as f64;
         let mut database = self.inner.lock().map_err(|_| "state lock poisoned".to_string())?;
         let existing_id = database.peers.values().find(|peer| peer.region_id == input.region_id).map(|peer| peer.peer_id.clone());
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let peer_id = match existing_id {
             Some(peer_id) => peer_id,
             None if self.config.routing.allow_dynamic_peers => format!("dynamic-{}", sanitise_id(&input.region_id)),
@@ -618,6 +695,8 @@ impl SharedTransit {
         Ok(output)
     }
 
+    // Was: Diese Funktion erstellt Weiterleitung.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     pub fn create_route(&self, input: RouteCreateInput) -> Result<RouteRecord, String> {
         validate_route_input(&input)?;
         let expires_at = input.expires_at.as_deref().map(|value| parse_time(value, "expires_at")).transpose()?;
@@ -654,10 +733,14 @@ impl SharedTransit {
         Ok(record)
     }
 
+    // Was: Diese Funktion leitet action.
+    // Warum: Nachrichten und Daten gelangen dadurch nachvollziehbar an das richtige Ziel.
     pub fn route_action(&self, route_id: &str, action: &str, input: RouteActionInput) -> Result<RouteRecord, String> {
         let actor = input.actor.unwrap_or_else(|| "operator".to_string());
         let mut database = self.inner.lock().map_err(|_| "state lock poisoned".to_string())?;
         let route = database.routes.get_mut(route_id).ok_or_else(|| "route not found".to_string())?;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match action {
             "enable" => route.enabled = true,
             "disable" => route.enabled = false,
@@ -676,6 +759,8 @@ impl SharedTransit {
         Ok(output)
     }
 
+    // Was: Diese Funktion löscht Weiterleitung.
+    // Warum: Das Entfernen wird dadurch kontrolliert durchgeführt und hinterlässt keine verwaisten Verweise.
     pub fn delete_route(&self, route_id: &str) -> Result<(), String> {
         let mut database = self.inner.lock().map_err(|_| "state lock poisoned".to_string())?;
         if database.routes.remove(route_id).is_none() {
@@ -685,6 +770,8 @@ impl SharedTransit {
         self.persist_locked(&database)
     }
 
+    // Was: Diese Funktion aktualisiert Teilnehmer location.
+    // Warum: Bestehender Zustand wird dadurch kontrolliert und nach einheitlichen Regeln geändert.
     pub fn update_subscriber_location(&self, input: SubscriberLocationInput) -> Result<SubscriberLocation, String> {
         validate_ssi(input.issi, "ISSI")?;
         let now = Utc::now();
@@ -710,6 +797,8 @@ impl SharedTransit {
         Ok(record)
     }
 
+    // Was: Diese Funktion aktualisiert Gruppe reachability.
+    // Warum: Bestehender Zustand wird dadurch kontrolliert und nach einheitlichen Regeln geändert.
     pub fn update_group_reachability(&self, input: GroupReachabilityInput) -> Result<GroupReachability, String> {
         validate_ssi(input.gssi, "GSSI")?;
         let key = input.gssi.to_string();
@@ -728,12 +817,16 @@ impl SharedTransit {
         Ok(record)
     }
 
+    // Was: Diese Funktion ermittelt den vorgesehenen Arbeitsschritt.
+    // Warum: Unklare oder indirekte Angaben werden so vor der weiteren Verarbeitung eindeutig gemacht.
     pub fn resolve(&self, input: RouteResolveInput) -> Result<RouteDecision, String> {
         let database = self.inner.lock().map_err(|_| "state lock poisoned".to_string())?;
         let target = determine_single_target(&database, &input.service, &input.destination_kind, &input.destination, input.target_region.as_deref())?;
         Ok(resolve_route(&database, &self.config, &input.service, &input.destination_kind, &input.destination, &target, &input.trace))
     }
 
+    // Was: Führt den Arbeitsschritt `submit` für submit aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn submit(&self, input: TransitSubmitInput) -> Result<SubmitResult, String> {
         let service = normalise_service(&input.service)?;
         validate_priority(input.priority.unwrap_or(5))?;
@@ -754,6 +847,8 @@ impl SharedTransit {
         let mut decisions = Vec::new();
         let mut envelope_ids = Vec::new();
         let mut legs = Vec::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for target_region in targets {
             if target_region == self.config.region.region_id {
                 let envelope_id = Uuid::new_v4().to_string();
@@ -877,6 +972,8 @@ impl SharedTransit {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `ingest_envelope` für ingest envelope aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn ingest_envelope(&self, input: TransitEnvelopeInput) -> Result<IngestResult, String> {
         if input.protocol_version != TRANSIT_PROTOCOL_VERSION {
             return Err(format!("unsupported transit protocol {}", input.protocol_version));
@@ -1013,6 +1110,8 @@ impl SharedTransit {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `acknowledge_local_delivery` für acknowledge local delivery aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn acknowledge_local_delivery(&self, delivery_id: &str, input: DeliveryAckInput) -> Result<LocalDelivery, String> {
         let now = Utc::now();
         let actor = input.actor.unwrap_or_else(|| "local-core".to_string());
@@ -1033,10 +1132,14 @@ impl SharedTransit {
         Ok(output)
     }
 
+    // Was: Führt den Arbeitsschritt `session_action` für Sitzung action aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn session_action(&self, session_id: &str, action: &str, input: SessionActionInput) -> Result<SessionRecord, String> {
         let now = Utc::now();
         let actor = input.actor.unwrap_or_else(|| "operator".to_string());
         let mut database = self.inner.lock().map_err(|_| "state lock poisoned".to_string())?;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match action {
             "close" | "cleanup" => {
                 let session = database.sessions.get_mut(session_id).ok_or_else(|| "session not found".to_string())?;
@@ -1046,6 +1149,8 @@ impl SharedTransit {
                 if let Some(reason) = input.reason.clone() {
                     session.last_error = Some(reason);
                 }
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for envelope in database.outbound.values_mut().filter(|envelope| envelope.session_id == session_id && !matches!(envelope.state.as_str(), "delivered" | "failed" | "expired")) {
                     envelope.state = "cancelled".to_string();
                     envelope.last_error = Some("session closed by operator".to_string());
@@ -1062,6 +1167,8 @@ impl SharedTransit {
         Ok(output)
     }
 
+    // Was: Führt den Arbeitsschritt `due_outbound` für due outbound aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn due_outbound(&self, limit: usize) -> Vec<OutboundEnvelope> {
         if self.config.region.operating_mode != MODE_AUTHORITATIVE {
             return Vec::new();
@@ -1079,6 +1186,8 @@ impl SharedTransit {
         values
     }
 
+    // Was: Diese Funktion kennzeichnet outbound attempt.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn mark_outbound_attempt(&self, envelope_id: &str) -> Result<OutboundEnvelope, String> {
         let now = Utc::now();
         let mut database = self.inner.lock().map_err(|_| "state lock poisoned".to_string())?;
@@ -1094,6 +1203,8 @@ impl SharedTransit {
         Ok(output)
     }
 
+    // Was: Führt den Arbeitsschritt `complete_outbound` für complete outbound aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn complete_outbound(&self, envelope_id: &str, success: bool, error: Option<String>, latency_ms: Option<f64>) -> Result<OutboundEnvelope, String> {
         let now = Utc::now();
         let mut database = self.inner.lock().map_err(|_| "state lock poisoned".to_string())?;
@@ -1115,6 +1226,8 @@ impl SharedTransit {
                 mark_peer_failure(&mut database, peer_id, error.clone(), now);
             }
             let backup = choose_backup_peer(&database, &self.config, &current);
+            // Was: Listet die möglichen Varianten für failure outcome auf.
+            // Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
             enum FailureOutcome {
                 Failover(String),
                 Failed,
@@ -1142,6 +1255,8 @@ impl SharedTransit {
                     FailureOutcome::Retry
                 }
             };
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match outcome {
                 FailureOutcome::Failover(backup_peer) => {
                     increment_session_failover(&mut database, &current.session_id, &current.target_region, &backup_peer, error.clone(), now);
@@ -1161,6 +1276,8 @@ impl SharedTransit {
         Ok(output)
     }
 
+    // Was: Führt den Arbeitsschritt `peers_due_for_heartbeat` für peers due for heartbeat aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn peers_due_for_heartbeat(&self) -> Vec<PeerRecord> {
         if self.config.region.operating_mode != MODE_AUTHORITATIVE {
             return Vec::new();
@@ -1177,6 +1294,8 @@ impl SharedTransit {
             .collect()
     }
 
+    // Was: Führt den Arbeitsschritt `heartbeat_payload` für heartbeat payload aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn heartbeat_payload(&self) -> PeerHeartbeatInput {
         let mut database = self.inner.lock().expect("transit state poisoned");
         let sequence = database.next_heartbeat_sequence;
@@ -1193,6 +1312,8 @@ impl SharedTransit {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `record_heartbeat_result` für Datensatz heartbeat result aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn record_heartbeat_result(&self, peer_id: &str, success: bool, error: Option<String>, latency_ms: Option<f64>) -> Result<(), String> {
         let now = Utc::now();
         let mut database = self.inner.lock().map_err(|_| "state lock poisoned".to_string())?;
@@ -1220,11 +1341,15 @@ impl SharedTransit {
         self.persist_locked(&database)
     }
 
+    // Was: Führt den Arbeitsschritt `maintenance_tick` für maintenance tick aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn maintenance_tick(&self, _input: MaintenanceInput) -> Result<TransitStatus, String> {
         let now = Utc::now();
         let mut database = self.inner.lock().map_err(|_| "state lock poisoned".to_string())?;
         let timeout = Duration::seconds(self.config.transport.peer_timeout_secs as i64);
         let mut down_peers = Vec::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for peer in database.peers.values_mut() {
             if peer.admin_state == "enabled" && peer.last_seen_at.as_ref().is_some_and(|last| now.signed_duration_since(last.clone()) > timeout) {
                 if peer.oper_state != "down" {
@@ -1235,6 +1360,8 @@ impl SharedTransit {
                 }
             }
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for peer_id in down_peers {
             failover_from_peer(&mut database, &self.config, &peer_id, now, "maintenance");
             record_event(&mut database, &self.config, "error", "peer", "peer_timeout", "maintenance", &peer_id, json!({}));
@@ -1246,6 +1373,8 @@ impl SharedTransit {
         Ok(self.status())
     }
 
+    // Was: Führt den Arbeitsschritt `backup` für backup aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn backup(&self) -> Result<BackupResult, String> {
         let database = self.inner.lock().map_err(|_| "state lock poisoned".to_string())?;
         let bytes = serde_json::to_vec_pretty(&*database).map_err(|error| error.to_string())?;
@@ -1257,10 +1386,14 @@ impl SharedTransit {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `export` für export aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn export(&self) -> TransitDatabase {
         self.inner.lock().expect("transit state poisoned").clone()
     }
 
+    // Was: Führt den Arbeitsschritt `metrics` für Messwerte aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn metrics(&self) -> String {
         let status = self.status();
         format!(
@@ -1301,17 +1434,23 @@ impl SharedTransit {
         )
     }
 
+    // Was: Diese Funktion speichert den vorgesehenen Arbeitsschritt.
+    // Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
     fn persist(&self) -> Result<(), String> {
         let database = self.inner.lock().map_err(|_| "state lock poisoned".to_string())?;
         self.persist_locked(&database)
     }
 
+    // Was: Diese Funktion speichert locked.
+    // Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
     fn persist_locked(&self, database: &TransitDatabase) -> Result<(), String> {
         let bytes = serde_json::to_vec_pretty(database).map_err(|error| error.to_string())?;
         write_atomic(&self.config.storage.database_path, &bytes)
     }
 }
 
+// Was: Führt den Arbeitsschritt `local_region_from_config` für local region from Konfiguration aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn local_region_from_config(config: &TransitConfig, now: DateTime<Utc>) -> LocalRegionRecord {
     LocalRegionRecord {
         region_id: config.region.region_id.clone(),
@@ -1324,6 +1463,8 @@ fn local_region_from_config(config: &TransitConfig, now: DateTime<Utc>) -> Local
     }
 }
 
+// Was: Diese Funktion ermittelt Weiterleitung.
+// Warum: Unklare oder indirekte Angaben werden so vor der weiteren Verarbeitung eindeutig gemacht.
 fn resolve_route(
     database: &TransitDatabase,
     config: &TransitConfig,
@@ -1335,6 +1476,8 @@ fn resolve_route(
 ) -> RouteDecision {
     let mut candidates: Vec<(Option<RouteRecord>, PeerRecord, i32, u32)> = Vec::new();
     let now = Utc::now();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for route in database.routes.values() {
         if !route.enabled || route.destination_region != target_region {
             continue;
@@ -1353,6 +1496,8 @@ fn resolve_route(
         }
     }
     if config.routing.prefer_direct_region_peer {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for peer in database.peers.values() {
             if peer.region_id == target_region && peer_usable(peer, service, trace, config) {
                 candidates.push((None, peer.clone(), 10_000 + peer.priority, 0));
@@ -1375,6 +1520,8 @@ fn resolve_route(
     });
     let mut unique = Vec::new();
     let mut seen = HashSet::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for candidate in candidates {
         if seen.insert(candidate.1.peer_id.clone()) {
             unique.push(candidate);
@@ -1404,10 +1551,14 @@ fn resolve_route(
     }
 }
 
+// Was: Diese Funktion leitet matches.
+// Warum: Nachrichten und Daten gelangen dadurch nachvollziehbar an das richtige Ziel.
 fn route_matches(route: &RouteRecord, service: &str, destination_kind: &str, destination: &str, target_region: &str) -> bool {
     if route.service != "*" && route.service != service {
         return false;
     }
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match route.selector_type.as_str() {
         "default" => true,
         "region" => route.selector_value == target_region,
@@ -1418,6 +1569,8 @@ fn route_matches(route: &RouteRecord, service: &str, destination_kind: &str, des
     }
 }
 
+// Was: Führt den Arbeitsschritt `peer_usable` für peer usable aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn peer_usable(peer: &PeerRecord, service: &str, trace: &[String], config: &TransitConfig) -> bool {
     if peer.admin_state != "enabled" || !matches!(peer.oper_state.as_str(), "up" | "degraded" | "unknown") {
         return false;
@@ -1434,6 +1587,8 @@ fn peer_usable(peer: &PeerRecord, service: &str, trace: &[String], config: &Tran
     trace.len() < config.routing.max_hops as usize
 }
 
+// Was: Führt den Arbeitsschritt `determine_targets` für determine targets aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn determine_targets(
     database: &TransitDatabase,
     service: &str,
@@ -1473,6 +1628,8 @@ fn determine_targets(
     Ok(inferred)
 }
 
+// Was: Führt den Arbeitsschritt `determine_single_target` für determine single target aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn determine_single_target(database: &TransitDatabase, service: &str, destination_kind: &str, destination: &str, explicit_target: Option<&str>) -> Result<String, String> {
     determine_targets(database, service, destination_kind, destination, explicit_target, "")?
         .into_iter()
@@ -1480,6 +1637,8 @@ fn determine_single_target(database: &TransitDatabase, service: &str, destinatio
         .ok_or_else(|| "no target region can be determined".to_string())
 }
 
+// Was: Führt den Arbeitsschritt `make_local_delivery_from_submit` für make local delivery from submit aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn make_local_delivery_from_submit(input: &TransitSubmitInput, service: &str, session_id: &str, envelope_id: &str, trace: &[String], now: DateTime<Utc>) -> LocalDelivery {
     LocalDelivery {
         delivery_id: Uuid::new_v4().to_string(),
@@ -1503,6 +1662,8 @@ fn make_local_delivery_from_submit(input: &TransitSubmitInput, service: &str, se
     }
 }
 
+// Was: Führt den Arbeitsschritt `upsert_session_from_inbound` für upsert Sitzung from inbound aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn upsert_session_from_inbound(database: &mut TransitDatabase, input: &TransitEnvelopeInput, now: DateTime<Utc>) {
     let session = database.sessions.entry(input.session_id.clone()).or_insert_with(|| SessionRecord {
         session_id: input.session_id.clone(),
@@ -1536,7 +1697,11 @@ fn upsert_session_from_inbound(database: &mut TransitDatabase, input: &TransitEn
     }
 }
 
+// Was: Diese Funktion führt legs.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn merge_legs(existing: &mut Vec<SessionLeg>, incoming: Vec<SessionLeg>) {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for leg in incoming {
         if let Some(current) = existing.iter_mut().find(|current| current.target_region == leg.target_region) {
             *current = leg;
@@ -1546,12 +1711,16 @@ fn merge_legs(existing: &mut Vec<SessionLeg>, incoming: Vec<SessionLeg>) {
     }
 }
 
+// Was: Führt den Arbeitsschritt `choose_backup_peer` für choose backup peer aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn choose_backup_peer(database: &TransitDatabase, config: &TransitConfig, envelope: &OutboundEnvelope) -> Option<String> {
     envelope.backup_peers.iter().find(|peer_id| {
         database.peers.get(*peer_id).is_some_and(|peer| peer_usable(peer, &envelope.service, &envelope.trace, config))
     }).cloned()
 }
 
+// Was: Führt den Arbeitsschritt `failover_from_peer` für failover from peer aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn failover_from_peer(database: &mut TransitDatabase, config: &TransitConfig, peer_id: &str, now: DateTime<Utc>, actor: &str) {
     let envelope_ids: Vec<String> = database
         .outbound
@@ -1559,6 +1728,8 @@ fn failover_from_peer(database: &mut TransitDatabase, config: &TransitConfig, pe
         .filter(|envelope| envelope.selected_peer.as_deref() == Some(peer_id) && matches!(envelope.state.as_str(), "queued" | "retry" | "in_flight"))
         .map(|envelope| envelope.envelope_id.clone())
         .collect();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for envelope_id in envelope_ids {
         let Some(current) = database.outbound.get(&envelope_id).cloned() else {
             continue;
@@ -1595,6 +1766,8 @@ fn failover_from_peer(database: &mut TransitDatabase, config: &TransitConfig, pe
     }
 }
 
+// Was: Führt den Arbeitsschritt `force_session_failover` für force Sitzung failover aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn force_session_failover(database: &mut TransitDatabase, config: &TransitConfig, session_id: &str, now: DateTime<Utc>, actor: &str) -> Result<(), String> {
     if !database.sessions.contains_key(session_id) {
         return Err("session not found".to_string());
@@ -1603,6 +1776,8 @@ fn force_session_failover(database: &mut TransitDatabase, config: &TransitConfig
     if envelope_ids.is_empty() {
         return Err("session has no failover-capable outbound envelope".to_string());
     }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for envelope_id in envelope_ids {
         let current = database.outbound.get(&envelope_id).cloned().ok_or_else(|| "envelope not found".to_string())?;
         let Some(current_peer) = current.selected_peer.clone() else {
@@ -1626,6 +1801,8 @@ fn force_session_failover(database: &mut TransitDatabase, config: &TransitConfig
     Ok(())
 }
 
+// Was: Führt den Arbeitsschritt `increment_session_failover` für increment Sitzung failover aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn increment_session_failover(database: &mut TransitDatabase, session_id: &str, target_region: &str, new_peer: &str, error: Option<String>, now: DateTime<Utc>) {
     if let Some(session) = database.sessions.get_mut(session_id) {
         session.updated_at = now;
@@ -1639,6 +1816,8 @@ fn increment_session_failover(database: &mut TransitDatabase, session_id: &str, 
     }
 }
 
+// Was: Diese Funktion aktualisiert Sitzung Rufzweig Zustand.
+// Warum: Bestehender Zustand wird dadurch kontrolliert und nach einheitlichen Regeln geändert.
 fn update_session_leg_state(database: &mut TransitDatabase, session_id: &str, target_region: &str, state: &str, error: Option<String>, now: DateTime<Utc>) {
     if let Some(session) = database.sessions.get_mut(session_id) {
         session.updated_at = now;
@@ -1658,6 +1837,8 @@ fn update_session_leg_state(database: &mut TransitDatabase, session_id: &str, ta
     }
 }
 
+// Was: Diese Funktion kennzeichnet peer success.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn mark_peer_success(database: &mut TransitDatabase, peer_id: &str, latency_ms: Option<f64>, now: DateTime<Utc>) {
     if let Some(peer) = database.peers.get_mut(peer_id) {
         peer.oper_state = "up".to_string();
@@ -1671,6 +1852,8 @@ fn mark_peer_success(database: &mut TransitDatabase, peer_id: &str, latency_ms: 
     }
 }
 
+// Was: Diese Funktion kennzeichnet peer failure.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn mark_peer_failure(database: &mut TransitDatabase, peer_id: &str, error: Option<String>, now: DateTime<Utc>) {
     if let Some(peer) = database.peers.get_mut(peer_id) {
         peer.failure_count += 1;
@@ -1680,9 +1863,13 @@ fn mark_peer_failure(database: &mut TransitDatabase, peer_id: &str, error: Optio
     }
 }
 
+// Was: Führt den Arbeitsschritt `prune_database` für prune Datenbank aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn prune_database(database: &mut TransitDatabase, config: &TransitConfig, now: DateTime<Utc>) {
     database.dedupe.retain(|_, entry| entry.expires_at > now);
     database.routes.retain(|_, route| route.expires_at.as_ref().is_none_or(|expires| expires > &now));
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for envelope in database.outbound.values_mut() {
         if envelope.expires_at <= now && !matches!(envelope.state.as_str(), "delivered" | "failed" | "expired" | "cancelled") {
             envelope.state = "expired".to_string();
@@ -1690,6 +1877,8 @@ fn prune_database(database: &mut TransitDatabase, config: &TransitConfig, now: D
         }
     }
     let session_ttl = Duration::seconds(config.routing.session_idle_ttl_secs as i64);
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for session in database.sessions.values_mut() {
         if now.signed_duration_since(session.updated_at.clone()) > session_ttl && !matches!(session.state.as_str(), "closed" | "failed" | "expired") {
             session.state = "expired".to_string();
@@ -1705,6 +1894,8 @@ fn prune_database(database: &mut TransitDatabase, config: &TransitConfig, now: D
     }
 }
 
+// Was: Führt den Arbeitsschritt `truncate_map_by_time` für truncate map by time aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn truncate_map_by_time<T, F>(map: &mut HashMap<String, T>, limit: usize, time: F)
 where
     F: Fn(&T) -> DateTime<Utc>,
@@ -1714,11 +1905,15 @@ where
     }
     let mut entries: Vec<_> = map.iter().map(|(key, value)| (key.clone(), time(value))).collect();
     entries.sort_by_key(|entry| entry.1.clone());
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (key, _) in entries.into_iter().take(map.len() - limit) {
         map.remove(&key);
     }
 }
 
+// Was: Führt den Arbeitsschritt `record_event` für Datensatz Ereignis aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn record_event(database: &mut TransitDatabase, config: &TransitConfig, severity: &str, category: &str, action: &str, actor: &str, target: &str, detail: Value) {
     let event = TransitEvent {
         sequence: database.next_event_sequence,
@@ -1738,6 +1933,8 @@ fn record_event(database: &mut TransitDatabase, config: &TransitConfig, severity
     }
 }
 
+// Was: Diese Funktion prüft Weiterleitung input.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_route_input(input: &RouteCreateInput) -> Result<(), String> {
     normalise_service(&input.service)?;
     if !matches!(input.selector_type.to_ascii_lowercase().as_str(), "default" | "region" | "issi" | "gssi" | "prefix") {
@@ -1755,6 +1952,8 @@ fn validate_route_input(input: &RouteCreateInput) -> Result<(), String> {
     Ok(())
 }
 
+// Was: Führt den Arbeitsschritt `normalise_service` für normalise Dienst aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn normalise_service(value: &str) -> Result<String, String> {
     let service = value.trim().to_ascii_lowercase();
     if matches!(service.as_str(), "*" | "mobility" | "individual_call" | "group_call" | "sds" | "media" | "supplementary_service" | "packet_data") {
@@ -1764,6 +1963,8 @@ fn normalise_service(value: &str) -> Result<String, String> {
     }
 }
 
+// Was: Diese Funktion prüft address.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_address(kind: &str, value: &str) -> Result<(), String> {
     if kind.eq_ignore_ascii_case("issi") || kind.eq_ignore_ascii_case("gssi") {
         let parsed = value.parse::<u32>().map_err(|_| format!("{kind} address must be numeric"))?;
@@ -1774,6 +1975,8 @@ fn validate_address(kind: &str, value: &str) -> Result<(), String> {
     Ok(())
 }
 
+// Was: Diese Funktion prüft TETRA-Teilnehmerkennung (SSI).
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_ssi(value: u32, label: &str) -> Result<(), String> {
     if value > MAX_SSI {
         Err(format!("{label} exceeds the 24-bit SSI range"))
@@ -1782,6 +1985,8 @@ fn validate_ssi(value: u32, label: &str) -> Result<(), String> {
     }
 }
 
+// Was: Diese Funktion prüft Priorität.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_priority(value: u8) -> Result<(), String> {
     if value > 15 {
         Err("priority must be between 0 and 15".to_string())
@@ -1790,6 +1995,8 @@ fn validate_priority(value: u8) -> Result<(), String> {
     }
 }
 
+// Was: Diese Funktion prüft identifier.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_identifier(value: &str, label: &str) -> Result<(), String> {
     if value.trim().is_empty() {
         return Err(format!("{label} must not be empty"));
@@ -1800,13 +2007,19 @@ fn validate_identifier(value: &str, label: &str) -> Result<(), String> {
     Ok(())
 }
 
+// Was: Diese Funktion liest und prüft time.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_time(value: &str, label: &str) -> Result<DateTime<Utc>, String> {
     DateTime::parse_from_rfc3339(value)
         .map(|time| time.with_timezone(&Utc))
         .map_err(|error| format!("invalid {label}: {error}"))
 }
 
+// Was: Führt den Arbeitsschritt `default_ttl` für default ttl aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_ttl(service: &str) -> u64 {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match service {
         "media" => 30,
         "group_call" | "individual_call" => 300,
@@ -1816,16 +2029,22 @@ fn default_ttl(service: &str) -> u64 {
     }
 }
 
+// Was: Führt den Arbeitsschritt `sorted_unique` für sorted unique aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn sorted_unique(mut values: Vec<String>) -> Vec<String> {
     values.sort();
     values.dedup();
     values
 }
 
+// Was: Führt den Arbeitsschritt `sanitise_id` für sanitise Kennung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn sanitise_id(value: &str) -> String {
     value.chars().map(|character| if character.is_ascii_alphanumeric() || matches!(character, '-' | '_') { character } else { '-' }).collect()
 }
 
+// Was: Diese Funktion schreibt atomic.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|error| format!("create {}: {error}", parent.display()))?;

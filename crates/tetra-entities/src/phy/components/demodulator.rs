@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use num;
 use num::complex::ComplexFloat;
 
@@ -14,18 +17,28 @@ use super::history;
 use super::modem_common::*;
 
 /// Samples per symbol
+// Was: Legt den festen Wert `SPS` für sps fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const SPS: usize = 4;
 
 /// Samples per symbol as SampleCount
+// Was: Legt den festen Wert `SAMPLES_SYMBOL` für samples symbol fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const SAMPLES_SYMBOL: SampleCount = SPS as SampleCount;
 
 /// Samples per slot
+// Was: Legt den festen Wert `SAMPLES_SLOT` für samples slot fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const SAMPLES_SLOT: SampleCount = SAMPLES_SYMBOL * 255;
 
 /// Input sample rate
+// Was: Legt den festen Wert `SAMPLE_RATE` für sample rate fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const SAMPLE_RATE: f64 = 18000.0 * SPS as f64;
 
 #[derive(Copy, Clone, PartialEq)]
+// Was: Listet die möglichen Varianten für mode auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum Mode {
     /// Do nothing.
     /// This is used in uplink monitor when the corresponding
@@ -42,6 +55,8 @@ pub enum Mode {
     Ul,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für demodulator in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct Demodulator {
     carrier_num: u16,
     mode: Mode,
@@ -78,7 +93,11 @@ pub struct Demodulator {
     past_samples_abs: history::History<RealSample, { SPS * 512 }>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Demodulator`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Demodulator {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(initial_mode: Mode, carrier_num: u16) -> Self {
         let mut self_ = Self {
             carrier_num,
@@ -107,27 +126,39 @@ impl Demodulator {
         self_
     }
 
+    // Was: Diese Funktion fügt slots.
+    // Warum: Das Einfügen wird so einheitlich geprüft und verwaltet.
     fn add_slots(&mut self, slots: i32) {
         self.set_slot(self.current_slot.add_timeslots(slots));
     }
 
+    // Was: Diese Funktion setzt slot.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     fn set_slot(&mut self, slot: TdmaTime) {
         self.current_slot = slot;
         self.set_slot_ready_time();
     }
 
+    // Was: Diese Funktion setzt slot ready time.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     fn set_slot_ready_time(&mut self) {
         let slot_begin_time = self.reference_time + self.current_slot.to_int() as SampleCount * SAMPLES_SLOT;
         self.slot_ready_time = slot_begin_time + Self::slot_ready_from_begin(self.mode);
     }
 
     /// Number of samples to beginning of a slot to the point where it is ready to be demodulated
+    // Was: Führt den Arbeitsschritt `slot_ready_from_begin` für slot ready from begin aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn slot_ready_from_begin(mode: Mode) -> SampleCount {
         // TODO set this to a reasonable value once FCFB delay and SDR delay
         // are properly compensated for and timing relationship between TX and RX
         // is actually correct.
         //const UL_OFFSET_SYMBOLS: SampleCount = 16;
+        // Was: Legt den festen Wert `UL_OFFSET_SYMBOLS` für ul offset symbols fest.
+        // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
         const UL_OFFSET_SYMBOLS: SampleCount = 0;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match mode {
             Mode::Idle | // ?
             Mode::Dl | Mode::DlUnsynchronized =>
@@ -142,6 +173,8 @@ impl Demodulator {
     }
 
     /// Process one input sample
+    // Was: Führt den Arbeitsschritt `sample` für sample aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn sample(&mut self, input: ComplexSample, sample_counter: SampleCount) {
         // Lost samples during a slot would cause some symbols to be
         // in the wrong position in the history buffer.
@@ -151,6 +184,8 @@ impl Demodulator {
         // due to a small number of lost samples.
         let samples_lost = sample_counter - self.next_input_sample_count;
         let samples_to_add = samples_lost.max(0).min(SAMPLES_SLOT);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for i in -samples_to_add..0 {
             self.process_sample(ComplexSample::ZERO, sample_counter + i);
         }
@@ -158,6 +193,8 @@ impl Demodulator {
         self.next_input_sample_count = sample_counter + 1;
     }
 
+    // Was: Diese Funktion verarbeitet sample.
+    // Warum: Die einzelnen Verarbeitungsschritte bleiben damit gebündelt und leichter testbar.
     pub fn process_sample(&mut self, input: ComplexSample, sample_counter: SampleCount) {
         // Compensate for delay of matched filter in sample count
         let sample_counter = sample_counter - CHANNEL_FILTER_TAPS.len() as SampleCount;
@@ -183,6 +220,8 @@ impl Demodulator {
             self.process_past_samples();
 
             // Slot timing logic for different modes
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match self.mode {
                 Mode::Idle => {}
                 Mode::DlUnsynchronized => {
@@ -213,7 +252,11 @@ impl Demodulator {
         }
     }
 
+    // Was: Diese Funktion verarbeitet past samples.
+    // Warum: Die einzelnen Verarbeitungsschritte bleiben damit gebündelt und leichter testbar.
     fn process_past_samples(&mut self) {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.mode {
             Mode::Idle => {}
             Mode::Ul => {
@@ -232,6 +275,8 @@ impl Demodulator {
     /// Try to find bursts from a slot.
     /// First symbol is used as a phase reference for the first 2 demodulated bits,
     /// so number of bits demodulated is (n_symbols-1)*2.
+    // Was: Diese Funktion verarbeitet slot.
+    // Warum: Die einzelnen Verarbeitungsschritte bleiben damit gebündelt und leichter testbar.
     fn process_slot(&mut self, d: usize, n_symbols: usize, subslot_number: u8) {
         let symbol_timing = self.estimate_timing(d, SPS * n_symbols);
         let first_symbol_index = symbol_timing.floor() as usize;
@@ -244,6 +289,8 @@ impl Demodulator {
         let rssi_dbfs = {
             let n = SPS * n_symbols;
             let mut sum_sq = 0.0f32;
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for i in 0..n {
                 let s = self.past_samples_abs.delayed(d - i);
                 sum_sq += s * s;
@@ -252,6 +299,8 @@ impl Demodulator {
             if rms > 0.0 { 20.0 * rms.log10() } else { f32::NEG_INFINITY }
         };
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let burst_finder = match subslot_number {
             0 => &mut self.full_slot,
             1 => &mut self.subslot1,
@@ -263,6 +312,8 @@ impl Demodulator {
 
         let bits = &mut burst_finder.bits;
         let mut previous_symbol: Option<ComplexSample> = None;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for i in (first_symbol_index..first_symbol_index + SPS * n_symbols).step_by(SPS) {
             // Use fractional part of timing estimate to interpolate between samples.
             // Linear interpolation is not the best choice here but maybe good enough.
@@ -281,6 +332,8 @@ impl Demodulator {
         let mut training_sequence_found = false;
         //tracing::trace!("{} {:?}", symbol_timing, bits);
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.mode {
             Mode::DlUnsynchronized => {
                 // Try to find a synchronization training sequence in bits.
@@ -356,6 +409,8 @@ impl Demodulator {
         }
 
         // Store RSSI into the correct burst finder now that all borrows have ended.
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match subslot_number {
             0 => self.full_slot.rssi_dbfs = rssi_dbfs,
             1 => self.subslot1.rssi_dbfs = rssi_dbfs,
@@ -370,6 +425,8 @@ impl Demodulator {
     /// from which the first symbol should be sampled.
     /// The value is a floating point number whose fractional part
     /// may be used to interpolate between samples.
+    // Was: Führt den Arbeitsschritt `estimate_timing` für estimate timing aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn estimate_timing(&self, d: usize, n: usize) -> RealSample {
         // Taking the absolute value of samples
         // produces a tone at the symbol rate.
@@ -386,6 +443,8 @@ impl Demodulator {
 
         let mut sum_i: RealSample = 0.0;
         let mut sum_q: RealSample = 0.0;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for i in (0..n).step_by(SPS) {
             sum_i += self.past_samples_abs.delayed(d - i) - self.past_samples_abs.delayed(d - (i + 2));
             sum_q += self.past_samples_abs.delayed(d - (i + 1)) - self.past_samples_abs.delayed(d - (i + 3));
@@ -400,6 +459,8 @@ impl Demodulator {
 
     /// Synchronize an uplink demodulator to a downlink demodulator
     /// for simultaneous UL/DL monitoring.
+    // Was: Diese Funktion gleicht to demodulator.
+    // Warum: Mehrere Zustandsquellen bleiben dadurch auf demselben Stand.
     pub fn sync_to_demodulator(&mut self, demod: &Demodulator) {
         if demod.mode == Mode::DlUnsynchronized {
             self.mode = Mode::Idle;
@@ -415,10 +476,14 @@ impl Demodulator {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `demodulated_slot_available` für demodulated slot available aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn demodulated_slot_available(&self) -> bool {
         self.demodulated_slot_available
     }
 
+    // Was: Führt den Arbeitsschritt `take_demodulated_slot` für take demodulated slot aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn take_demodulated_slot<'a>(&'a mut self) -> Option<RxSlotBits<'a>> {
         if self.demodulated_slot_available {
             self.demodulated_slot_available = false;
@@ -435,6 +500,8 @@ impl Demodulator {
     }
 }
 
+// Was: Führt den Arbeitsschritt `hamming_distance` für hamming distance aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn hamming_distance(a: &[u8], b: &[u8]) -> usize {
     a.iter().zip(b).map(|(a_bit, b_bit)| if a_bit != b_bit { 1 } else { 0 }).sum()
 }
@@ -442,9 +509,13 @@ fn hamming_distance(a: &[u8], b: &[u8]) -> usize {
 /// Find the position in bits which looks most like the sequence.
 /// Return the position and hamming distance.
 /// Step in multiples of 2 bits because offset is always whole symbols.
+// Was: Diese Funktion sucht sequence.
+// Warum: Die Suchlogik bleibt damit wiederverwendbar und muss nicht an mehreren Stellen kopiert werden.
 fn find_sequence(bits: &[u8], sequence: &[u8]) -> (usize, usize) {
     let mut min_dist = sequence.len();
     let mut min_pos = 0;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (position, window) in bits.windows(sequence.len()).enumerate().step_by(2) {
         let dist = hamming_distance(window, sequence);
         if dist < min_dist {
@@ -455,6 +526,8 @@ fn find_sequence(bits: &[u8], sequence: &[u8]) -> (usize, usize) {
     (min_pos, min_dist)
 }
 
+// Was: Listet die möglichen Varianten für slot type auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 enum SlotType {
     /// Downlink slot
     Dl,
@@ -464,6 +537,8 @@ enum SlotType {
     UlSub,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für slot burst finder in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct SlotBurstFinder {
     /// Demodulated bits of a slot
     bits: Vec<u8>,
@@ -479,7 +554,11 @@ struct SlotBurstFinder {
     rssi_dbfs: f32,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SlotBurstFinder`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SlotBurstFinder {
+    // Was: Legt den festen Wert `ERRS_NO_BURST` für errs no burst fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const ERRS_NO_BURST: usize = 100;
 
     // const SEQ_NORM_DL_MAX_ERRS: usize = 2;
@@ -487,11 +566,21 @@ impl SlotBurstFinder {
     // const SEQ_EXT_MAX_ERRS: usize = 2;
     // const SEQ_SYNC_MAX_ERRS: usize = 3;
 
+    // Was: Legt den festen Wert `SEQ_NORM_DL_MAX_ERRS` für seq norm dl max errs fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const SEQ_NORM_DL_MAX_ERRS: usize = 1;
+    // Was: Legt den festen Wert `SEQ_NORM_UL_MAX_ERRS` für seq norm ul max errs fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const SEQ_NORM_UL_MAX_ERRS: usize = 1;
+    // Was: Legt den festen Wert `SEQ_EXT_MAX_ERRS` für seq ext max errs fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const SEQ_EXT_MAX_ERRS: usize = 1;
+    // Was: Legt den festen Wert `SEQ_SYNC_MAX_ERRS` für seq sync max errs fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const SEQ_SYNC_MAX_ERRS: usize = 1;
 
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     fn new() -> Self {
         Self {
             bits: Vec::with_capacity(510),
@@ -503,6 +592,8 @@ impl SlotBurstFinder {
         }
     }
 
+    // Was: Diese Funktion leert den vorgesehenen Arbeitsschritt.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn clear(&mut self) {
         self.bits.clear();
         self.train_type = TrainingSequence::NotFound;
@@ -512,6 +603,8 @@ impl SlotBurstFinder {
         self.rssi_dbfs = f32::NEG_INFINITY;
     }
 
+    // Was: Diese Funktion prüft sequence.
+    // Warum: Fehler oder unzulässige Zustände werden dadurch früh erkannt.
     fn check_sequence(
         &mut self,
         train_pos_in_burst: usize,
@@ -541,8 +634,12 @@ impl SlotBurstFinder {
         }
     }
 
+    // Was: Diese Funktion prüft slot.
+    // Warum: Fehler oder unzulässige Zustände werden dadurch früh erkannt.
     fn check_slot(&mut self, slot_type: SlotType) -> bool {
         self.train_errs = Self::ERRS_NO_BURST;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match slot_type {
             SlotType::Dl => {
                 if self.check_sequence(
@@ -608,6 +705,8 @@ impl SlotBurstFinder {
         false
     }
 
+    // Was: Diese Funktion liest burst.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     fn get_burst<'a>(&'a mut self) -> RxBurstBits<'a> {
         RxBurstBits {
             train_type: self.train_type,

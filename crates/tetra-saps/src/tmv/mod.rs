@@ -1,3 +1,8 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Nachrichten an den Schnittstellen zwischen TETRA-Protokollschichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+// Was: Bindet das Untermodul enums in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 pub mod enums;
 
 use tetra_core::{BitBuffer, PhyBlockNum, PhysicalChannel, TdmaTime, Todo};
@@ -6,6 +11,8 @@ use crate::tmv::enums::logical_chans::LogicalChannel;
 
 // The TMV-UNITDATA request primitive shall be used to request the lower MAC to transmit a MAC block
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tmv unitdata req in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TmvUnitdataReq {
     pub mac_block: BitBuffer,
     pub logical_channel: LogicalChannel,
@@ -13,6 +20,8 @@ pub struct TmvUnitdataReq {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tmv unitdata req slot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TmvUnitdataReqSlot {
     pub carrier_num: u16,
     /// Timeslot at which this block is to be transmitted
@@ -35,12 +44,16 @@ pub struct TmvUnitdataReqSlot {
 
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tmv unitdata req slots in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TmvUnitdataReqSlots {
     pub slots: Vec<TmvUnitdataReqSlot>,
 }
 
 /// The TMV-UNITDATA indication primitive shall be used by the lower MAC to deliver a received MAC block;
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tmv unitdata ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TmvUnitdataInd {
     pub carrier_num: u16,
     pub pdu: BitBuffer,
@@ -64,6 +77,8 @@ pub struct TmvUnitdataInd {
 /// of the channel or about the format of a received slot.
 
 #[derive(Debug, Clone, Default)]
+// Was: Bündelt die zusammengehörigen Werte für tmv configure req in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TmvConfigureReq {
     /// Carrier this configuration update applies to. Legacy single-carrier callers may leave it unset.
     pub carrier_num: Option<u16>,
@@ -82,6 +97,8 @@ pub struct TmvConfigureReq {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tmv configure conf in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TmvConfigureConf {
     pub channel_info: Todo,
 }

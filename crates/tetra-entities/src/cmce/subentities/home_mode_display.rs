@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 /// Home Mode Display periodic SDS broadcast — ETSI PID 220.
 ///
 /// Broadcasts a configurable text string to all MSs on the cell (GSSI 0xFFFFFF) at a
@@ -10,12 +13,16 @@ use tetra_config::bluestation::{CfgHomeModeDisplay, HomeModeDisplaySdsTextCoding
 use tetra_core::{BitBuffer, TdmaTime};
 use tetra_saps::control::enums::sds_user_data::SdsUserData;
 
+// Was: Bündelt die zusammengehörigen Werte für home mode display tx in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub(super) struct HomeModeDisplayTx {
     pub source_issi: u32,
     pub dest_gssi: u32,
     pub payload: SdsUserData,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für home mode display sender in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub(super) struct HomeModeDisplaySender {
     start_time: Option<TdmaTime>,
     last_tx: Option<TdmaTime>,
@@ -29,19 +36,41 @@ pub(super) struct HomeModeDisplaySender {
     live_sds_idx: usize,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `HomeModeDisplaySender`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl HomeModeDisplaySender {
     /// Broadcast destination: all MSs on the cell.
+    // Was: Legt den festen Wert `HOME_MODE_BROADCAST_GSSI` für home mode broadcast Gruppenkennung (GSSI) fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const HOME_MODE_BROADCAST_GSSI: u32 = 0x00FF_FFFF;
     /// Delay after startup before first broadcast (frames). Avoids congestion during registration.
+    // Was: Legt den festen Wert `HOME_MODE_START_DELAY_FRAMES` für home mode start delay frames fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const HOME_MODE_START_DELAY_FRAMES: u32 = 96;
+    // Was: Legt den festen Wert `SLOTS_PER_FRAME` für slots per Funkrahmen fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const SLOTS_PER_FRAME: u32 = 4;
+    // Was: Legt den festen Wert `FRAMES_PER_MULTIFRAME` für frames per multiframe fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const FRAMES_PER_MULTIFRAME: u32 = 18;
+    // Was: Legt den festen Wert `SLOTS_PER_MULTIFRAME` für slots per multiframe fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const SLOTS_PER_MULTIFRAME: u32 = Self::FRAMES_PER_MULTIFRAME * Self::SLOTS_PER_FRAME;
+    // Was: Legt den festen Wert `MAX_SDS_TYPE4_BYTES` für max TETRA-Kurznachricht (SDS) type4 bytes fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const MAX_SDS_TYPE4_BYTES: usize = 255; // 2040 bits max when byte-aligned
+    // Was: Legt den festen Wert `SDS_TL_TRANSFER_HEADER_BYTES` für TETRA-Kurznachricht (SDS) tl transfer header bytes fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const SDS_TL_TRANSFER_HEADER_BYTES: usize = 3;
+    // Was: Legt den festen Wert `HOME_MODE_TEXT_CODING_SCHEME_BYTES` für home mode text coding scheme bytes fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const HOME_MODE_TEXT_CODING_SCHEME_BYTES: usize = 1;
+    // Was: Legt den festen Wert `MAX_TEXT_BYTES` für max text bytes fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const MAX_TEXT_BYTES: usize = Self::MAX_SDS_TYPE4_BYTES - Self::SDS_TL_TRANSFER_HEADER_BYTES - Self::HOME_MODE_TEXT_CODING_SCHEME_BYTES;
 
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new() -> Self {
         Self {
             start_time: None,
@@ -61,6 +90,8 @@ impl HomeModeDisplaySender {
     ///
     /// Uses the same interval as the static HMD (home_mode_display) if configured,
     /// otherwise falls back to sds_broadcast interval, otherwise 96 multiframes.
+    // Was: Diese Funktion bearbeitet live TETRA-Kurznachricht (SDS).
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn tick_live_sds(&mut self, config: &SharedConfig, dltime: TdmaTime) -> Option<HomeModeDisplayTx> {
         // Determine the interval to use: prefer home_mode_display, then sds_broadcast, then default.
         let interval_multiframes = config
@@ -85,6 +116,8 @@ impl HomeModeDisplaySender {
         }
 
         // Check interval since last live SDS TX.
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let should_send = match self.live_sds_last_tx {
             None => true,
             Some(last) => last.age(dltime) >= interval_slots,
@@ -157,16 +190,22 @@ impl HomeModeDisplaySender {
 
     /// Called every tick. Returns `Some(HomeModeDisplayTx)` when it's time to broadcast,
     /// `None` otherwise. The caller (SdsBsSubentity) sends the returned PDU via send_d_sds_data.
+    // Was: Diese Funktion bearbeitet start.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn tick_start(&mut self, config: &SharedConfig, dltime: TdmaTime) -> Option<HomeModeDisplayTx> {
         let cfg = config.config().cell.home_mode_display.clone();
         self.tick_with_cfg(cfg, dltime)
     }
 
+    // Was: Diese Funktion bearbeitet start broadcast.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn tick_start_broadcast(&mut self, config: &SharedConfig, dltime: TdmaTime) -> Option<HomeModeDisplayTx> {
         let cfg = config.config().cell.sds_broadcast.clone();
         self.tick_with_cfg(cfg, dltime)
     }
 
+    // Was: Diese Funktion bearbeitet with cfg.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn tick_with_cfg(&mut self, home_mode_cfg: Option<CfgHomeModeDisplay>, dltime: TdmaTime) -> Option<HomeModeDisplayTx> {
         let Some(home_mode_cfg) = home_mode_cfg else {
             // Feature disabled — reset timers so a re-enable works cleanly
@@ -207,6 +246,8 @@ impl HomeModeDisplaySender {
 
         // Interval check
         let interval_slots = interval_multiframes.saturating_mul(Self::SLOTS_PER_MULTIFRAME).min(i32::MAX as u32) as i32;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let should_send = match self.last_tx {
             None => true,
             Some(last_tx) => last_tx.age(dltime) >= interval_slots,
@@ -268,12 +309,18 @@ impl HomeModeDisplaySender {
         })
     }
 
+    // Was: Diese Funktion setzt timers.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn reset_timers(&mut self) {
         self.start_time = None;
         self.last_tx = None;
     }
 
+    // Was: Diese Funktion kodiert text.
+    // Warum: Alle Gegenstellen erhalten dadurch dasselbe erwartete Protokollformat.
     fn encode_text(text: &str, text_coding_scheme: u8) -> (Vec<u8>, bool) {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match text_coding_scheme {
             // 0x1A = ISO/IEC 10646-1 UCS-2/UTF-16BE (ETSI EN 300 392-2 table 29.29)
             0x1A => (
@@ -284,6 +331,8 @@ impl HomeModeDisplaySender {
             0x01 => {
                 let mut lossy = false;
                 let mut out = Vec::with_capacity(text.len());
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for ch in text.chars() {
                     let cp = ch as u32;
                     if cp <= 0xFF {
@@ -300,7 +349,11 @@ impl HomeModeDisplaySender {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `text_coding_scheme_to_sds_tl_value` für text coding scheme to TETRA-Kurznachricht (SDS) tl value aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn text_coding_scheme_to_sds_tl_value(scheme: HomeModeDisplaySdsTextCodingScheme) -> u8 {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match scheme {
             HomeModeDisplaySdsTextCodingScheme::LATIN => 0x01,
             HomeModeDisplaySdsTextCodingScheme::UTF16 => 0x1A,
@@ -312,6 +365,8 @@ impl HomeModeDisplaySender {
     /// Layout: protocol_id(8) | message_type(4)=0 | delivery_report_req(2)=0 |
     ///         service_selection(1)=0 | storage_forward_control(1)=0 |
     ///         message_reference(8) | user_data(variable)
+    // Was: Diese Funktion erstellt TETRA-Kurznachricht (SDS) tl transfer payload.
+    // Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
     fn build_sds_tl_transfer_payload(protocol_id: u8, message_reference: u8, user_data: &[u8]) -> SdsUserData {
         let mut payload = BitBuffer::new_autoexpand((3 + user_data.len()) * 8);
         payload.write_bits(protocol_id as u64, 8);
@@ -320,6 +375,8 @@ impl HomeModeDisplaySender {
         payload.write_bits(0, 1); // Service selection/short form report: short form recommended
         payload.write_bits(0, 1); // Storage/forward control: not available
         payload.write_bits(message_reference as u64, 8);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for b in user_data {
             payload.write_bits(*b as u64, 8);
         }

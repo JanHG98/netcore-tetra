@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für netcore.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 const DEFAULT_TIMEOUT_MS = 10000;
 
 export class NetCoreApiClient {
@@ -9,6 +12,8 @@ export class NetCoreApiClient {
   async request(path, { method = "GET", body, headers = {}, signal } = {}) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(new DOMException("Request timeout", "TimeoutError")), this.timeoutMs);
+    // Was: Führt den Arbeitsschritt `relayAbort` für relay abort aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     const relayAbort = () => controller.abort(signal.reason);
     signal?.addEventListener("abort", relayAbort, { once: true });
     try {

@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Weiterleitung von SDS- und Statusnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fs;
 use std::hash::{Hash, Hasher};
@@ -15,10 +18,14 @@ use uuid::Uuid;
 use crate::config::SdsRouterConfig;
 use crate::protocol::{BackendEvent, BackendRequest, GatewaySnapshot};
 
+// Was: Legt den festen Wert `DATABASE_SCHEMA_VERSION` für Datenbank schema version fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const DATABASE_SCHEMA_VERSION: u32 = 1;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für Nachricht Zustand auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum MessageState {
     Received,
     Queued,
@@ -34,6 +41,8 @@ pub enum MessageState {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für Rufzweig Zustand auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum LegState {
     Pending,
     InFlight,
@@ -46,6 +55,8 @@ pub enum LegState {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für Weiterleitung kind auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum RouteKind {
     Protocol,
     Individual,
@@ -54,6 +65,8 @@ pub enum RouteKind {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für Weiterleitung target kind auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum RouteTargetKind {
     Node,
     Application,
@@ -61,6 +74,8 @@ pub enum RouteTargetKind {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für Weiterleitung mode auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum RouteMode {
     Tap,
     Intercept,
@@ -68,6 +83,8 @@ pub enum RouteMode {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Weiterleitung rule in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct RouteRule {
     pub id: String,
     pub name: String,
@@ -84,6 +101,8 @@ pub struct RouteRule {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Weiterleitung input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct RouteInput {
     #[serde(default)]
     pub name: String,
@@ -99,15 +118,21 @@ pub struct RouteInput {
     pub notes: String,
 }
 
+// Was: Führt den Arbeitsschritt `default_true` für default true aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_true() -> bool {
     true
 }
 
+// Was: Führt den Arbeitsschritt `default_route_mode` für default Weiterleitung mode aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_route_mode() -> RouteMode {
     RouteMode::Route
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für delivery Rufzweig in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DeliveryLeg {
     pub node_id: String,
     pub state: LegState,
@@ -123,6 +148,8 @@ pub struct DeliveryLeg {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für application Rufzweig in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ApplicationLeg {
     pub application: String,
     pub route_id: String,
@@ -134,6 +161,8 @@ pub struct ApplicationLeg {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für terminal report in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TerminalReport {
     pub received_at: String,
     pub source_issi: u32,
@@ -142,6 +171,8 @@ pub struct TerminalReport {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Kurznachricht (SDS) Nachricht Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SdsMessageRecord {
     pub id: String,
     pub ingress_node: Option<String>,
@@ -172,6 +203,8 @@ pub struct SdsMessageRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für trace entry in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TraceEntry {
     pub timestamp: String,
     pub kind: String,
@@ -179,6 +212,8 @@ pub struct TraceEntry {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Nachricht summary in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MessageSummary {
     pub id: String,
     pub created_at: String,
@@ -199,6 +234,8 @@ pub struct MessageSummary {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Netzknoten Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct NodeRecord {
     pub node_id: String,
     pub station_name: String,
@@ -214,6 +251,8 @@ pub struct NodeRecord {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Teilnehmer location in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SubscriberLocation {
     pub issi: u32,
     pub node_id: String,
@@ -221,12 +260,16 @@ pub struct SubscriberLocation {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Gruppe location in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GroupLocation {
     pub gssi: u32,
     pub nodes: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Kurznachricht (SDS) Ereignis Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SdsEventRecord {
     pub seq: u64,
     pub timestamp: String,
@@ -237,6 +280,8 @@ pub struct SdsEventRecord {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Kurznachricht (SDS) Router Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SdsRouterStatus {
     pub service: &'static str,
     pub started_at: String,
@@ -262,6 +307,8 @@ pub struct SdsRouterStatus {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Nachricht input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MessageInput {
     pub source_issi: u32,
     pub dest_issi: u32,
@@ -286,15 +333,21 @@ pub struct MessageInput {
     pub force_nodes: Vec<String>,
 }
 
+// Was: Führt den Arbeitsschritt `default_sds_type` für default TETRA-Kurznachricht (SDS) type aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_sds_type() -> u8 {
     4
 }
 
+// Was: Führt den Arbeitsschritt `default_protocol_id` für default protocol Kennung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_protocol_id() -> u8 {
     0x82
 }
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für application ack input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ApplicationAckInput {
     #[serde(default = "default_true")]
     pub success: bool,
@@ -303,6 +356,8 @@ pub struct ApplicationAckInput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Kurznachricht (SDS) Datenbank in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct SdsDatabase {
     schema_version: u32,
     revision: u64,
@@ -310,12 +365,16 @@ struct SdsDatabase {
     routes: BTreeMap<String, RouteRule>,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für pending request in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct PendingRequest {
     message_id: String,
     node_id: String,
     handle: u32,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für Router Zustand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct RouterState {
     config: SdsRouterConfig,
     started_at: String,
@@ -339,9 +398,15 @@ struct RouterState {
 }
 
 #[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für shared TETRA-Kurznachricht (SDS) Router in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SharedSdsRouter(Arc<Mutex<RouterState>>);
 
+// Was: Implementiert das zugehörige Verhalten für `SharedSdsRouter`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SharedSdsRouter {
+    // Was: Diese Funktion lädt den vorgesehenen Arbeitsschritt.
+    // Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
     pub fn load(config: SdsRouterConfig) -> Result<Self, Box<dyn std::error::Error>> {
         let database = load_database(&config)?;
         let router = Self(Arc::new(Mutex::new(RouterState {
@@ -373,21 +438,29 @@ impl SharedSdsRouter {
         Ok(router)
     }
 
+    // Was: Führt den Arbeitsschritt `status` für Status aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn status(&self) -> SdsRouterStatus {
         let state = self.0.lock().expect("SDS router state poisoned");
         status_locked(&state)
     }
 
+    // Was: Führt den Arbeitsschritt `nodes` für nodes aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn nodes(&self) -> Vec<NodeRecord> {
         let state = self.0.lock().expect("SDS router state poisoned");
         state.nodes.values().cloned().collect()
     }
 
+    // Was: Führt den Arbeitsschritt `subscribers` für subscribers aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn subscribers(&self) -> Vec<SubscriberLocation> {
         let state = self.0.lock().expect("SDS router state poisoned");
         state.subscribers.values().cloned().collect()
     }
 
+    // Was: Führt den Arbeitsschritt `groups` für groups aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn groups(&self) -> Vec<GroupLocation> {
         let state = self.0.lock().expect("SDS router state poisoned");
         state
@@ -400,6 +473,8 @@ impl SharedSdsRouter {
             .collect()
     }
 
+    // Was: Führt den Arbeitsschritt `messages` für messages aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn messages(&self, limit: usize, state_filter: Option<MessageState>) -> Vec<MessageSummary> {
         let state = self.0.lock().expect("SDS router state poisoned");
         let mut values: Vec<_> = state
@@ -413,6 +488,8 @@ impl SharedSdsRouter {
         values
     }
 
+    // Was: Führt den Arbeitsschritt `message` für Nachricht aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn message(&self, id: &str) -> Option<SdsMessageRecord> {
         self.0
             .lock()
@@ -422,6 +499,8 @@ impl SharedSdsRouter {
             .cloned()
     }
 
+    // Was: Führt den Arbeitsschritt `routes` für routes aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn routes(&self) -> Vec<RouteRule> {
         self.0
             .lock()
@@ -432,6 +511,8 @@ impl SharedSdsRouter {
             .collect()
     }
 
+    // Was: Führt den Arbeitsschritt `recent_events` für recent events aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn recent_events(&self, limit: usize) -> Vec<SdsEventRecord> {
         self.0
             .lock()
@@ -444,6 +525,8 @@ impl SharedSdsRouter {
             .collect()
     }
 
+    // Was: Diese Funktion erstellt Nachricht.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     pub fn create_message(
         &self,
         input: MessageInput,
@@ -475,6 +558,8 @@ impl SharedSdsRouter {
         Ok((message, requests))
     }
 
+    // Was: Führt den Arbeitsschritt `retry_message` für retry Nachricht aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn retry_message(&self, id: &str) -> Result<Vec<BackendRequest>, String> {
         let mut state = self.0.lock().expect("SDS router state poisoned");
         let now = now_iso();
@@ -482,6 +567,8 @@ impl SharedSdsRouter {
         if matches!(message.state, MessageState::Expired | MessageState::Cancelled) {
             return Err("expired or cancelled messages cannot be retried; requeue them instead".to_string());
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for leg in &mut message.delivery_legs {
             if !matches!(leg.state, LegState::Delivered) {
                 leg.state = LegState::Pending;
@@ -499,6 +586,8 @@ impl SharedSdsRouter {
         Ok(requests)
     }
 
+    // Was: Diese Funktion bricht Nachricht.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn cancel_message(&self, id: &str) -> Result<(), String> {
         let mut state = self.0.lock().expect("SDS router state poisoned");
         let message = state.messages.get_mut(id).ok_or_else(|| "message not found".to_string())?;
@@ -507,11 +596,15 @@ impl SharedSdsRouter {
         }
         message.state = MessageState::Cancelled;
         message.updated_at = now_iso();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for leg in &mut message.delivery_legs {
             if !matches!(leg.state, LegState::Delivered) {
                 leg.state = LegState::Cancelled;
             }
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for leg in &mut message.application_legs {
             if !matches!(leg.state, LegState::Delivered) {
                 leg.state = LegState::Cancelled;
@@ -523,6 +616,8 @@ impl SharedSdsRouter {
         Ok(())
     }
 
+    // Was: Führt den Arbeitsschritt `requeue_message` für requeue Nachricht aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn requeue_message(&self, id: &str) -> Result<(SdsMessageRecord, Vec<BackendRequest>), String> {
         let mut state = self.0.lock().expect("SDS router state poisoned");
         let original = state.messages.get(id).cloned().ok_or_else(|| "message not found".to_string())?;
@@ -558,6 +653,8 @@ impl SharedSdsRouter {
         Ok((state.messages.get(&new_id).cloned().expect("requeued message"), requests))
     }
 
+    // Was: Diese Funktion löscht Nachricht.
+    // Warum: Das Entfernen wird dadurch kontrolliert durchgeführt und hinterlässt keine verwaisten Verweise.
     pub fn delete_message(&self, id: &str) -> Result<(), String> {
         let mut state = self.0.lock().expect("SDS router state poisoned");
         let Some(message) = state.messages.get(id) else {
@@ -573,6 +670,8 @@ impl SharedSdsRouter {
         Ok(())
     }
 
+    // Was: Diese Funktion erstellt Weiterleitung.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     pub fn create_route(&self, input: RouteInput) -> Result<RouteRule, String> {
         let mut state = self.0.lock().expect("SDS router state poisoned");
         validate_route_input(&state, &input)?;
@@ -607,6 +706,8 @@ impl SharedSdsRouter {
         Ok(route)
     }
 
+    // Was: Diese Funktion aktualisiert Weiterleitung.
+    // Warum: Bestehender Zustand wird dadurch kontrolliert und nach einheitlichen Regeln geändert.
     pub fn update_route(&self, id: &str, input: RouteInput) -> Result<RouteRule, String> {
         let mut state = self.0.lock().expect("SDS router state poisoned");
         validate_route_input(&state, &input)?;
@@ -638,6 +739,8 @@ impl SharedSdsRouter {
         Ok(route)
     }
 
+    // Was: Diese Funktion löscht Weiterleitung.
+    // Warum: Das Entfernen wird dadurch kontrolliert durchgeführt und hinterlässt keine verwaisten Verweise.
     pub fn delete_route(&self, id: &str) -> Result<(), String> {
         let mut state = self.0.lock().expect("SDS router state poisoned");
         if state.routes.remove(id).is_none() {
@@ -655,6 +758,8 @@ impl SharedSdsRouter {
         Ok(())
     }
 
+    // Was: Führt den Arbeitsschritt `application_outbox` für application outbox aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn application_outbox(&self, application: Option<&str>, limit: usize) -> Vec<SdsMessageRecord> {
         let state = self.0.lock().expect("SDS router state poisoned");
         let mut messages: Vec<_> = state
@@ -673,6 +778,8 @@ impl SharedSdsRouter {
         messages
     }
 
+    // Was: Führt den Arbeitsschritt `acknowledge_application` für acknowledge application aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn acknowledge_application(
         &self,
         message_id: &str,
@@ -706,6 +813,8 @@ impl SharedSdsRouter {
         Ok(state.messages.get(message_id).cloned().expect("message still present"))
     }
 
+    // Was: Führt den Arbeitsschritt `gateway_connected` für Gateway connected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn gateway_connected(&self) {
         let mut state = self.0.lock().expect("SDS router state poisoned");
         state.gateway_connected = true;
@@ -713,6 +822,8 @@ impl SharedSdsRouter {
         push_event_locked(&mut state, "gateway_connected", None, None, json!({}));
     }
 
+    // Was: Führt den Arbeitsschritt `gateway_disconnected` für Gateway disconnected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn gateway_disconnected(&self, error: String) {
         let mut state = self.0.lock().expect("SDS router state poisoned");
         state.gateway_connected = false;
@@ -726,8 +837,12 @@ impl SharedSdsRouter {
         );
     }
 
+    // Was: Diese Funktion verarbeitet Hintergrunddienst Ereignis.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     pub fn handle_backend_event(&self, event: BackendEvent) -> Vec<BackendRequest> {
         let mut state = self.0.lock().expect("SDS router state poisoned");
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match event {
             BackendEvent::Snapshot { snapshot } => apply_snapshot_locked(&mut state, snapshot),
             BackendEvent::Event { event } => {
@@ -757,6 +872,8 @@ impl SharedSdsRouter {
         requests
     }
 
+    // Was: Diese Funktion bearbeitet den vorgesehenen Arbeitsschritt.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn tick(&self) -> Vec<BackendRequest> {
         let mut state = self.0.lock().expect("SDS router state poisoned");
         prune_dedupe_locked(&mut state);
@@ -767,6 +884,8 @@ impl SharedSdsRouter {
         requests
     }
 
+    // Was: Führt den Arbeitsschritt `metrics` für Messwerte aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn metrics(&self) -> String {
         let status = self.status();
         format!(
@@ -803,6 +922,8 @@ impl SharedSdsRouter {
     }
 }
 
+// Was: Diese Funktion lädt Datenbank.
+// Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
 fn load_database(config: &SdsRouterConfig) -> Result<SdsDatabase, Box<dyn std::error::Error>> {
     if !config.storage.database_path.exists() {
         return Ok(SdsDatabase {
@@ -824,6 +945,8 @@ fn load_database(config: &SdsRouterConfig) -> Result<SdsDatabase, Box<dyn std::e
     Ok(database)
 }
 
+// Was: Diese Funktion speichert locked.
+// Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
 fn persist_locked(state: &RouterState) -> Result<(), String> {
     let database = SdsDatabase {
         schema_version: DATABASE_SCHEMA_VERSION,
@@ -850,12 +973,18 @@ fn persist_locked(state: &RouterState) -> Result<(), String> {
     Ok(())
 }
 
+// Was: Diese Funktion stellt incomplete locked.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn recover_incomplete_locked(state: &mut RouterState) {
     let now = now_iso();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for message in state.messages.values_mut() {
         if matches!(message.state, MessageState::InFlight | MessageState::Queued) {
             message.state = MessageState::Queued;
             message.updated_at = now.clone();
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for leg in &mut message.delivery_legs {
                 if matches!(leg.state, LegState::InFlight) {
                     leg.state = LegState::RetryWaiting;
@@ -870,6 +999,8 @@ fn recover_incomplete_locked(state: &mut RouterState) {
     }
 }
 
+// Was: Führt den Arbeitsschritt `status_locked` für Status locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn status_locked(state: &RouterState) -> SdsRouterStatus {
     let count = |needle| state.messages.values().filter(|message| message.state == needle).count();
     SdsRouterStatus {
@@ -902,6 +1033,8 @@ fn status_locked(state: &RouterState) -> SdsRouterStatus {
     }
 }
 
+// Was: Führt den Arbeitsschritt `message_from_input_locked` für Nachricht from input locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn message_from_input_locked(state: &RouterState, input: MessageInput) -> Result<SdsMessageRecord, String> {
     validate_ssi(input.source_issi, "source_issi")?;
     validate_ssi(input.dest_issi, "dest_issi")?;
@@ -928,6 +1061,8 @@ fn message_from_input_locked(state: &RouterState, input: MessageInput) -> Result
         if payload.len() > state.config.limits.max_payload_bytes {
             return Err(format!("payload exceeds {} bytes", state.config.limits.max_payload_bytes));
         }
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let required = match input.sds_type {
             1 => 16,
             2 => 32,
@@ -991,10 +1126,14 @@ fn message_from_input_locked(state: &RouterState, input: MessageInput) -> Result
     })
 }
 
+// Was: Diese Funktion prüft Weiterleitung input.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_route_input(state: &RouterState, input: &RouteInput) -> Result<(), String> {
     if input.target.trim().is_empty() {
         return Err("target must not be empty".to_string());
     }
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match input.kind {
         RouteKind::Protocol if input.match_value > 255 => {
             return Err("protocol route match_value must be 0..=255".to_string());
@@ -1014,8 +1153,12 @@ fn validate_route_input(state: &RouterState, input: &RouteInput) -> Result<(), S
     Ok(())
 }
 
+// Was: Diese Funktion wendet snapshot locked.
+// Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
 fn apply_snapshot_locked(state: &mut RouterState, snapshot: GatewaySnapshot) {
     let mut seen = BTreeSet::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for node in snapshot.nodes {
         seen.insert(node.node_id.clone());
         state.nodes.insert(
@@ -1035,6 +1178,8 @@ fn apply_snapshot_locked(state: &mut RouterState, snapshot: GatewaySnapshot) {
             },
         );
     }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (node_id, node) in &mut state.nodes {
         if !seen.contains(node_id) {
             node.connected = false;
@@ -1042,7 +1187,11 @@ fn apply_snapshot_locked(state: &mut RouterState, snapshot: GatewaySnapshot) {
     }
 }
 
+// Was: Diese Funktion verarbeitet Netzknoten Nachricht locked.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 fn handle_node_message_locked(state: &mut RouterState, node_id: &str, message: NodeToControlRoomMessage) {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match message {
         NodeToControlRoomMessage::Telemetry { envelope } => {
             handle_telemetry_locked(state, node_id, envelope.timestamp, envelope.event)
@@ -1080,7 +1229,11 @@ fn handle_node_message_locked(state: &mut RouterState, node_id: &str, message: N
     }
 }
 
+// Was: Diese Funktion verarbeitet Telemetrie locked.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 fn handle_telemetry_locked(state: &mut RouterState, node_id: &str, timestamp: String, event: TelemetryEvent) {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match event {
         TelemetryEvent::MsRegistration { issi } => {
             state.subscribers.insert(
@@ -1098,6 +1251,8 @@ fn handle_telemetry_locked(state: &mut RouterState, node_id: &str, timestamp: St
         }
         TelemetryEvent::MsGroupAttach { issi, gssis } => {
             let entry = state.node_groups.entry(node_id.to_string()).or_default().entry(issi).or_default();
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for gssi in gssis {
                 entry.insert(gssi);
                 state.group_nodes.entry(gssi).or_default().insert(node_id.to_string());
@@ -1106,6 +1261,8 @@ fn handle_telemetry_locked(state: &mut RouterState, node_id: &str, timestamp: St
         TelemetryEvent::MsGroupsSnapshot { issi, gssis } => {
             remove_subscriber_groups_locked(state, node_id, issi);
             let entry = state.node_groups.entry(node_id.to_string()).or_default().entry(issi).or_default();
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for gssi in gssis {
                 entry.insert(gssi);
                 state.group_nodes.entry(gssi).or_default().insert(node_id.to_string());
@@ -1113,6 +1270,8 @@ fn handle_telemetry_locked(state: &mut RouterState, node_id: &str, timestamp: St
         }
         TelemetryEvent::MsGroupDetach { issi, gssis } => {
             if let Some(groups) = state.node_groups.get_mut(node_id).and_then(|members| members.get_mut(&issi)) {
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for gssi in gssis {
                     groups.remove(&gssi);
                 }
@@ -1150,6 +1309,8 @@ fn handle_telemetry_locked(state: &mut RouterState, node_id: &str, timestamp: St
 }
 
 #[allow(clippy::too_many_arguments)]
+// Was: Führt den Arbeitsschritt `ingest_edge_message_locked` für ingest edge Nachricht locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn ingest_edge_message_locked(
     state: &mut RouterState,
     node_id: &str,
@@ -1243,6 +1404,8 @@ fn ingest_edge_message_locked(
     );
 }
 
+// Was: Führt den Arbeitsschritt `correlate_terminal_report_locked` für correlate terminal report locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn correlate_terminal_report_locked(state: &mut RouterState, report: &SdsMessageRecord) {
     let report_data = if report.sds_type == 4
         && matches!(report.protocol_id, 0x82 | 0x89)
@@ -1287,6 +1450,8 @@ fn correlate_terminal_report_locked(state: &mut RouterState, report: &SdsMessage
     }
 }
 
+// Was: Führt den Arbeitsschritt `plan_message_locked` für plan Nachricht locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn plan_message_locked(state: &mut RouterState, id: &str, force_nodes: &[String]) {
     let Some(snapshot) = state.messages.get(id).cloned() else {
         return;
@@ -1315,6 +1480,8 @@ fn plan_message_locked(state: &mut RouterState, id: &str, force_nodes: &[String]
     let intercept = matching_routes.iter().any(|route| {
         route.target_kind == RouteTargetKind::Application && route.mode == RouteMode::Intercept
     });
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for route in matching_routes.iter().filter(|route| route.target_kind == RouteTargetKind::Application) {
         application_legs.push(ApplicationLeg {
             application: route.target.clone(),
@@ -1329,9 +1496,13 @@ fn plan_message_locked(state: &mut RouterState, id: &str, force_nodes: &[String]
 
     let mut target_nodes = BTreeSet::new();
     if !intercept {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for node_id in force_nodes {
             target_nodes.insert(node_id.clone());
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for route in matching_routes.iter().filter(|route| route.target_kind == RouteTargetKind::Node) {
             target_nodes.insert(route.target.clone());
         }
@@ -1398,6 +1569,8 @@ fn plan_message_locked(state: &mut RouterState, id: &str, force_nodes: &[String]
     }
 }
 
+// Was: Diese Funktion sammelt due requests locked.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn collect_due_requests_locked(state: &mut RouterState) -> Vec<BackendRequest> {
     let now = Utc::now();
     let mut due = Vec::new();
@@ -1407,6 +1580,8 @@ fn collect_due_requests_locked(state: &mut RouterState) -> Vec<BackendRequest> {
         .map(|message| (message.priority, message.created_at.clone(), message.id.clone()))
         .collect();
     ids.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.cmp(&b.1)));
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (_, _, id) in ids {
         let Some(message_snapshot) = state.messages.get(&id).cloned() else {
             continue;
@@ -1424,6 +1599,8 @@ fn collect_due_requests_locked(state: &mut RouterState) -> Vec<BackendRequest> {
             .filter(|leg| leg.next_attempt_at.as_deref().is_none_or(|at| parse_time(at).is_none_or(|at| at <= now)))
             .map(|leg| leg.node_id.clone())
             .collect();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for node_id in leg_nodes {
             if !node_available(state, &node_id) {
                 continue;
@@ -1471,6 +1648,8 @@ fn collect_due_requests_locked(state: &mut RouterState) -> Vec<BackendRequest> {
     due
 }
 
+// Was: Diese Funktion erstellt delivery command.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
 fn build_delivery_command(message: &SdsMessageRecord, handle: u32) -> ControlCommand {
     if message.sds_type == 0 {
         ControlCommand::SendStatus {
@@ -1498,6 +1677,8 @@ fn build_delivery_command(message: &SdsMessageRecord, handle: u32) -> ControlCom
     }
 }
 
+// Was: Diese Funktion verarbeitet action result locked.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 fn handle_action_result_locked(
     state: &mut RouterState,
     request_id: Option<String>,
@@ -1529,6 +1710,8 @@ fn handle_action_result_locked(
     }
 }
 
+// Was: Führt den Arbeitsschritt `complete_handle_locked` für complete handle locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn complete_handle_locked(state: &mut RouterState, handle: u32, success: bool, detail: String) {
     let Some(pending) = state.handle_map.remove(&handle) else {
         return;
@@ -1588,6 +1771,8 @@ fn complete_handle_locked(state: &mut RouterState, handle: u32, success: bool, d
     );
 }
 
+// Was: Führt den Arbeitsschritt `fail_leg_locked` für fail Rufzweig locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn fail_leg_locked(state: &mut RouterState, message_id: &str, node_id: &str, error: String) {
     let delay_config = state.config.clone();
     let Some(message) = state.messages.get_mut(message_id) else {
@@ -1622,6 +1807,8 @@ fn fail_leg_locked(state: &mut RouterState, message_id: &str, node_id: &str, err
     update_message_state(message);
 }
 
+// Was: Diese Funktion aktualisiert Nachricht Zustand.
+// Warum: Bestehender Zustand wird dadurch kontrolliert und nach einheitlichen Regeln geändert.
 fn update_message_state(message: &mut SdsMessageRecord) {
     if matches!(message.state, MessageState::Cancelled | MessageState::Expired) {
         return;
@@ -1661,6 +1848,8 @@ fn update_message_state(message: &mut SdsMessageRecord) {
     }
 }
 
+// Was: Führt den Arbeitsschritt `refresh_offline_locked` für refresh offline locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn refresh_offline_locked(state: &mut RouterState) {
     let ids: Vec<String> = state
         .messages
@@ -1668,6 +1857,8 @@ fn refresh_offline_locked(state: &mut RouterState) {
         .filter(|message| message.state == MessageState::Offline)
         .map(|message| message.id.clone())
         .collect();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for id in ids {
         if is_expired(state.messages.get(&id).map(|message| message.expires_at.as_str()).unwrap_or("")) {
             continue;
@@ -1676,6 +1867,8 @@ fn refresh_offline_locked(state: &mut RouterState) {
     }
 }
 
+// Was: Führt den Arbeitsschritt `expire_locked` für expire locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn expire_locked(state: &mut RouterState) {
     let ids: Vec<String> = state
         .messages
@@ -1686,16 +1879,22 @@ fn expire_locked(state: &mut RouterState) {
         })
         .map(|message| message.id.clone())
         .collect();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for id in ids {
         if let Some(message) = state.messages.get_mut(&id) {
             message.state = MessageState::Expired;
             message.updated_at = now_iso();
             message.last_error = Some("message TTL expired".to_string());
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for leg in &mut message.delivery_legs {
                 if !matches!(leg.state, LegState::Delivered) {
                     leg.state = LegState::Expired;
                 }
             }
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for leg in &mut message.application_legs {
                 if !matches!(leg.state, LegState::Delivered) {
                     leg.state = LegState::Expired;
@@ -1707,8 +1906,14 @@ fn expire_locked(state: &mut RouterState) {
     }
 }
 
+// Was: Führt den Arbeitsschritt `move_node_legs_offline_locked` für move Netzknoten legs offline locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn move_node_legs_offline_locked(state: &mut RouterState, node_id: &str, reason: &str) {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for message in state.messages.values_mut() {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for leg in &mut message.delivery_legs {
             if leg.node_id == node_id && matches!(leg.state, LegState::Pending | LegState::InFlight) {
                 leg.state = LegState::RetryWaiting;
@@ -1725,6 +1930,8 @@ fn move_node_legs_offline_locked(state: &mut RouterState, node_id: &str, reason:
     state.request_map.retain(|_, pending| pending.node_id != node_id);
 }
 
+// Was: Diese Funktion entfernt Teilnehmer groups locked.
+// Warum: Das Entfernen bleibt damit vollständig und hinterlässt keinen widersprüchlichen Zustand.
 fn remove_subscriber_groups_locked(state: &mut RouterState, node_id: &str, issi: u32) {
     if let Some(members) = state.node_groups.get_mut(node_id) {
         members.remove(&issi);
@@ -1732,10 +1939,18 @@ fn remove_subscriber_groups_locked(state: &mut RouterState, node_id: &str, issi:
     rebuild_group_nodes_locked(state);
 }
 
+// Was: Führt den Arbeitsschritt `rebuild_group_nodes_locked` für rebuild Gruppe nodes locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn rebuild_group_nodes_locked(state: &mut RouterState) {
     state.group_nodes.clear();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (node_id, subscribers) in &state.node_groups {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for groups in subscribers.values() {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for gssi in groups {
                 state.group_nodes.entry(*gssi).or_default().insert(node_id.clone());
             }
@@ -1743,10 +1958,14 @@ fn rebuild_group_nodes_locked(state: &mut RouterState) {
     }
 }
 
+// Was: Führt den Arbeitsschritt `node_available` für Netzknoten available aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn node_available(state: &RouterState, node_id: &str) -> bool {
     state.nodes.get(node_id).is_some_and(|node| node.connected && !node.stale && node.sds_capable)
 }
 
+// Was: Führt den Arbeitsschritt `retry_delay_secs` für retry delay secs aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn retry_delay_secs(config: &SdsRouterConfig, attempts: u32) -> u64 {
     let factor = 1u64.checked_shl(attempts.saturating_sub(1).min(20)).unwrap_or(u64::MAX);
     config
@@ -1756,7 +1975,11 @@ fn retry_delay_secs(config: &SdsRouterConfig, attempts: u32) -> u64 {
         .min(config.routing.max_retry_secs)
 }
 
+// Was: Diese Funktion weist handle locked.
+// Warum: Knapp vorhandene Ressourcen werden dadurch nachvollziehbar und konfliktfrei vergeben.
 fn allocate_handle_locked(state: &mut RouterState) -> u32 {
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
     loop {
         let handle = state.next_handle.max(1);
         state.next_handle = state.next_handle.wrapping_add(1).max(1);
@@ -1766,6 +1989,8 @@ fn allocate_handle_locked(state: &mut RouterState) -> u32 {
     }
 }
 
+// Was: Führt den Arbeitsschritt `prune_terminal_messages_locked` für prune terminal messages locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn prune_terminal_messages_locked(state: &mut RouterState) {
     let mut candidates: Vec<_> = state
         .messages
@@ -1783,16 +2008,22 @@ fn prune_terminal_messages_locked(state: &mut RouterState) {
         .collect();
     candidates.sort();
     let remove_count = candidates.len().min((state.config.limits.max_messages / 10).max(1));
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (_, id) in candidates.into_iter().take(remove_count) {
         state.messages.remove(&id);
     }
 }
 
+// Was: Führt den Arbeitsschritt `prune_dedupe_locked` für prune dedupe locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn prune_dedupe_locked(state: &mut RouterState) {
     let window = state.config.routing.dedupe_window_secs.saturating_mul(2);
     state.dedupe.retain(|_, (_, timestamp)| seconds_since(timestamp).is_none_or(|age| age <= window));
 }
 
+// Was: Führt den Arbeitsschritt `summary` für summary aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn summary(message: &SdsMessageRecord, mask_payload: bool) -> MessageSummary {
     MessageSummary {
         id: message.id.clone(),
@@ -1826,6 +2057,8 @@ fn summary(message: &SdsMessageRecord, mask_payload: bool) -> MessageSummary {
     }
 }
 
+// Was: Diese Funktion legt trace.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn push_trace(message: &mut SdsMessageRecord, kind: &str, detail: &str) {
     message.trace.push(TraceEntry {
         timestamp: now_iso(),
@@ -1838,6 +2071,8 @@ fn push_trace(message: &mut SdsMessageRecord, kind: &str, detail: &str) {
     }
 }
 
+// Was: Diese Funktion legt Ereignis locked.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn push_event_locked(
     state: &mut RouterState,
     kind: &str,
@@ -1854,11 +2089,15 @@ fn push_event_locked(
         detail,
     });
     state.next_event_seq = state.next_event_seq.wrapping_add(1);
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while state.events.len() > state.config.server.history_limit {
         state.events.pop_front();
     }
 }
 
+// Was: Diese Funktion prüft TETRA-Teilnehmerkennung (SSI).
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_ssi(value: u32, name: &str) -> Result<(), String> {
     if value == 0 || value > 0xFF_FFFF {
         Err(format!("{name} must be 1..=16777215"))
@@ -1867,6 +2106,8 @@ fn validate_ssi(value: u32, name: &str) -> Result<(), String> {
     }
 }
 
+// Was: Diese Funktion dekodiert hex.
+// Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
 fn decode_hex(value: &str) -> Result<Vec<u8>, String> {
     let clean: String = value.chars().filter(|character| !character.is_whitespace() && *character != ':' && *character != '-').collect();
     if clean.len() % 2 != 0 {
@@ -1878,7 +2119,11 @@ fn decode_hex(value: &str) -> Result<Vec<u8>, String> {
         .collect()
 }
 
+// Was: Diese Funktion dekodiert text preview.
+// Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
 fn decode_text_preview(protocol_id: u8, payload: &[u8]) -> String {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let body = match protocol_id {
         0x82 | 0x89 | 0x80 | 0x8A if payload.len() > 4 => &payload[4..],
         0x02 | 0x09 if payload.len() > 1 => &payload[1..],
@@ -1892,6 +2137,8 @@ fn decode_text_preview(protocol_id: u8, payload: &[u8]) -> String {
         .to_string()
 }
 
+// Was: Führt den Arbeitsschritt `extract_message_reference` für extract Nachricht reference aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn extract_message_reference(sds_type: u8, protocol_id: u8, payload: &[u8]) -> Option<u8> {
     (sds_type == 4
         && matches!(protocol_id, 0x82 | 0x89)
@@ -1900,8 +2147,12 @@ fn extract_message_reference(sds_type: u8, protocol_id: u8, payload: &[u8]) -> O
         .then_some(payload[2])
 }
 
+// Was: Führt den Arbeitsschritt `next_message_reference` für next Nachricht reference aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn next_message_reference() -> u8 {
     use std::sync::atomic::{AtomicU8, Ordering};
+    // Was: Legt den festen Wert `NEXT` für next fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     static NEXT: AtomicU8 = AtomicU8::new(1);
     let value = NEXT.fetch_add(1, Ordering::Relaxed);
     if value == 0 {
@@ -1912,6 +2163,8 @@ fn next_message_reference() -> u8 {
     }
 }
 
+// Was: Führt den Arbeitsschritt `fingerprint_message` für fingerprint Nachricht aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn fingerprint_message(
     source_issi: u32,
     dest_issi: u32,
@@ -1930,6 +2183,8 @@ fn fingerprint_message(
     hasher.finish()
 }
 
+// Was: Führt den Arbeitsschritt `clone_pending` für clone pending aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn clone_pending(pending: &PendingRequest) -> PendingRequest {
     PendingRequest {
         message_id: pending.message_id.clone(),
@@ -1938,30 +2193,44 @@ fn clone_pending(pending: &PendingRequest) -> PendingRequest {
     }
 }
 
+// Was: Diese Funktion liest und prüft time.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_time(value: &str) -> Option<DateTime<Utc>> {
     DateTime::parse_from_rfc3339(value).ok().map(|value| value.with_timezone(&Utc))
 }
 
+// Was: Prüft, ob expired zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
 fn is_expired(value: &str) -> bool {
     parse_time(value).is_some_and(|time| time <= Utc::now())
 }
 
+// Was: Führt den Arbeitsschritt `seconds_since` für seconds since aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn seconds_since(value: &str) -> Option<u64> {
     let time = parse_time(value)?;
     Some(Utc::now().signed_duration_since(time).num_seconds().max(0) as u64)
 }
 
+// Was: Führt den Arbeitsschritt `seconds_between` für seconds between aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn seconds_between(older: &str, newer: &str) -> Option<u64> {
     let older = parse_time(older)?;
     let newer = parse_time(newer)?;
     Some(newer.signed_duration_since(older).num_seconds().unsigned_abs())
 }
 
+// Was: Führt den Arbeitsschritt `hex` für hex aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|byte| format!("{byte:02X}")).collect::<Vec<_>>().join(" ")
 }
 
+// Was: Diese Funktion liest und prüft Nachricht Zustand.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 pub fn parse_message_state(value: &str) -> Option<MessageState> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match value {
         "received" => Some(MessageState::Received),
         "queued" => Some(MessageState::Queued),
@@ -1977,15 +2246,21 @@ pub fn parse_message_state(value: &str) -> Option<MessageState> {
     }
 }
 
+// Was: Führt den Arbeitsschritt `now_iso` für now iso aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn now_iso() -> String {
     Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
     #[test]
+    // Was: Führt den Arbeitsschritt `text_message_is_wrapped_as_sds_tl_type4` für text Nachricht is wrapped as TETRA-Kurznachricht (SDS) tl und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn text_message_is_wrapped_as_sds_tl_type4() {
         let state = RouterState {
             config: SdsRouterConfig::default(),
@@ -2034,6 +2309,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `fixed_size_sds_rejects_non_exact_payload_length` für fixed size TETRA-Kurznachricht (SDS) rejects non exact payload und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fixed_size_sds_rejects_non_exact_payload_length() {
         let state = RouterState {
             config: SdsRouterConfig::default(),
@@ -2079,6 +2356,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `retry_delay_is_bounded` für retry delay is bounded aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn retry_delay_is_bounded() {
         let config = SdsRouterConfig::default();
         assert_eq!(retry_delay_secs(&config, 1), 2);

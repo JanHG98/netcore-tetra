@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! Runtime state for the SwMI side of ETSI EN 300 392-2 clause 28 SNDCP.
 //!
 //! The implementation deliberately models the capability profile advertised by
@@ -10,12 +13,16 @@ use std::time::{Duration, Instant};
 use super::qos::QosProfile;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+// Was: Bündelt die zusammengehörigen Werte für Kontext key in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ContextKey {
     pub issi: u32,
     pub nsapi: u8,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für PDP-Paketdatenkontext Zustand auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum PdpState {
     Standby,
     Ready,
@@ -26,14 +33,22 @@ pub enum PdpState {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für Kontext availability auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum ContextAvailability {
     Available,
     ScheduleSuspended,
     Reserved(u8),
 }
 
+// Was: Implementiert das zugehörige Verhalten für `ContextAvailability`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl ContextAvailability {
+    // Was: Wandelt Eingangsdaten in code um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_code(code: u8) -> Self {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match code & 7 {
             0 => Self::Available,
             1 => Self::ScheduleSuspended,
@@ -41,7 +56,11 @@ impl ContextAvailability {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `code` für code aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn code(self) -> u8 {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self {
             Self::Available => 0,
             Self::ScheduleSuspended => 1,
@@ -51,6 +70,8 @@ impl ContextAvailability {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für Kontext usage auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum ContextUsage {
     /// Internal runtime state: the context is not paused by SN-MODIFY USAGE.
     Active,
@@ -59,8 +80,14 @@ pub enum ContextUsage {
     Reserved(u8),
 }
 
+// Was: Implementiert das zugehörige Verhalten für `ContextUsage`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl ContextUsage {
+    // Was: Wandelt Eingangsdaten in code um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_code(code: u8) -> Self {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match code & 7 {
             0 => Self::SchedulePaused,
             1 => Self::ContextPaused,
@@ -68,7 +95,11 @@ impl ContextUsage {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `code` für code aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn code(self) -> Option<u8> {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self {
             Self::Active => None,
             Self::SchedulePaused => Some(0),
@@ -79,6 +110,8 @@ impl ContextUsage {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für PDP-Paketdatenkontext Kontext in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PdpContext {
     pub address: [u8; 4],
     pub state: PdpState,
@@ -98,7 +131,11 @@ pub struct PdpContext {
     pub standby_deadline: Option<Instant>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `PdpContext`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl PdpContext {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(
         address: [u8; 4],
         pdu_priority_max: u8,
@@ -126,6 +163,8 @@ impl PdpContext {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `enter_ready` für enter ready aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn enter_ready(&mut self, ready_timer_code: u8, now: Instant) {
         self.state = PdpState::Ready;
         self.usage = ContextUsage::Active;
@@ -134,6 +173,8 @@ impl PdpContext {
         self.standby_deadline = None;
     }
 
+    // Was: Führt den Arbeitsschritt `refresh_ready` für refresh ready aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn refresh_ready(&mut self, ready_timer_code: u8, now: Instant) {
         if self.state == PdpState::Ready {
             self.last_activity = now;
@@ -141,6 +182,8 @@ impl PdpContext {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `enter_standby` für enter standby aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn enter_standby(&mut self, standby_timer_code: u8, now: Instant) {
         self.state = PdpState::Standby;
         self.usage = ContextUsage::Active;
@@ -149,6 +192,8 @@ impl PdpContext {
         self.standby_deadline = deadline(now, standby_timer_duration(standby_timer_code));
     }
 
+    // Was: Führt den Arbeitsschritt `suspend` für suspend aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn suspend(&mut self, standby_timer_code: u8, now: Instant) {
         self.state = PdpState::Suspended;
         self.usage = ContextUsage::ContextPaused;
@@ -159,6 +204,8 @@ impl PdpContext {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für Zeitüberwachung Ereignis auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum TimerEvent {
     ReadyExpired(u32),
     ContextReadyExpired(ContextKey),
@@ -166,12 +213,16 @@ pub enum TimerEvent {
 }
 
 #[derive(Debug, Default)]
+// Was: Bündelt die zusammengehörigen Werte für Übertragungskanal Zustand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct BearerState {
     nsapis: HashSet<u8>,
     ready_deadline: Option<Instant>,
 }
 
 #[derive(Debug, Default)]
+// Was: Bündelt die zusammengehörigen Werte für Kontext table in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ContextTable {
     contexts: HashMap<ContextKey, PdpContext>,
     default_priorities: HashMap<u32, u8>,
@@ -182,16 +233,24 @@ pub struct ContextTable {
     bearers: HashMap<u32, BearerState>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `ContextTable`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl ContextTable {
+    // Was: Führt den Arbeitsschritt `len` für len aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn len(&self) -> usize {
         self.contexts.len()
     }
 
+    // Was: Führt den Arbeitsschritt `contexts_for_issi` für contexts for Teilnehmerkennung (ISSI) aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn contexts_for_issi(&self, issi: u32) -> usize {
         self.contexts.keys().filter(|key| key.issi == issi).count()
     }
 
 
+    // Was: Diese Funktion stellt network endpoint Kennung.
+    // Warum: So wird die notwendige Voraussetzung hergestellt, bevor abhängiger Code weiterläuft.
     pub fn ensure_network_endpoint_id(&mut self, issi: u32) -> u16 {
         if let Some(value) = self.network_endpoint_ids.get(&issi).copied() {
             return value;
@@ -206,11 +265,17 @@ impl ContextTable {
         value
     }
 
+    // Was: Führt den Arbeitsschritt `network_endpoint_id` für network endpoint Kennung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn network_endpoint_id(&self, issi: u32) -> Option<u16> {
         self.network_endpoint_ids.get(&issi).copied()
     }
 
+    // Was: Diese Funktion aktualisiert ms type.
+    // Warum: Bestehender Zustand wird dadurch kontrolliert und nach einheitlichen Regeln geändert.
     pub fn update_ms_type(&mut self, issi: u32, packet_data_ms_type: u8) {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (key, context) in &mut self.contexts {
             if key.issi == issi {
                 context.packet_data_ms_type = packet_data_ms_type;
@@ -218,7 +283,11 @@ impl ContextTable {
         }
     }
 
+    // Was: Diese Funktion aktualisiert secondary addresses.
+    // Warum: Bestehender Zustand wird dadurch kontrolliert und nach einheitlichen Regeln geändert.
     pub fn update_secondary_addresses(&mut self, issi: u32, primary_nsapi: u8, address: [u8; 4]) {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (key, context) in &mut self.contexts {
             if key.issi == issi && context.primary_nsapi == Some(primary_nsapi) {
                 context.address = address;
@@ -226,6 +295,8 @@ impl ContextTable {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `family_nsapis` für family nsapis aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn family_nsapis(&self, issi: u32, nsapi: u8) -> Vec<u8> {
         let is_primary = self
             .contexts
@@ -246,18 +317,26 @@ impl ContextTable {
         nsapis
     }
 
+    // Was: Diese Funktion liest den vorgesehenen Arbeitsschritt.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     pub fn get(&self, key: ContextKey) -> Option<&PdpContext> {
         self.contexts.get(&key)
     }
 
+    // Was: Diese Funktion liest mut.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     pub fn get_mut(&mut self, key: ContextKey) -> Option<&mut PdpContext> {
         self.contexts.get_mut(&key)
     }
 
+    // Was: Diese Funktion trägt den vorgesehenen Arbeitsschritt.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn insert(&mut self, key: ContextKey, context: PdpContext) -> Option<PdpContext> {
         self.contexts.insert(key, context)
     }
 
+    // Was: Diese Funktion entfernt den vorgesehenen Arbeitsschritt.
+    // Warum: Das Entfernen bleibt damit vollständig und hinterlässt keinen widersprüchlichen Zustand.
     pub fn remove(&mut self, key: ContextKey) -> Option<PdpContext> {
         if let Some(bearer) = self.bearers.get_mut(&key.issi) {
             bearer.nsapis.remove(&key.nsapi);
@@ -268,6 +347,8 @@ impl ContextTable {
         removed
     }
 
+    // Was: Diese Funktion entfernt all for Teilnehmerkennung (ISSI).
+    // Warum: Das Entfernen bleibt damit vollständig und hinterlässt keinen widersprüchlichen Zustand.
     pub fn remove_all_for_issi(&mut self, issi: u32) -> Vec<(ContextKey, PdpContext)> {
         let keys = self
             .contexts
@@ -276,6 +357,8 @@ impl ContextTable {
             .copied()
             .collect::<Vec<_>>();
         let mut removed = Vec::with_capacity(keys.len());
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for key in keys {
             if let Some(context) = self.contexts.remove(&key) {
                 removed.push((key, context));
@@ -287,20 +370,28 @@ impl ContextTable {
         removed
     }
 
+    // Was: Führt den Arbeitsschritt `addresses` für addresses aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn addresses(&self) -> impl Iterator<Item = [u8; 4]> + '_ {
         self.contexts.values().map(|context| context.address)
     }
 
+    // Was: Führt den Arbeitsschritt `iter` für iter aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn iter(&self) -> impl Iterator<Item = (&ContextKey, &PdpContext)> {
         self.contexts.iter()
     }
 
+    // Was: Führt den Arbeitsschritt `keys_for_address` für keys for address aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn keys_for_address(&self, address: [u8; 4]) -> impl Iterator<Item = ContextKey> + '_ {
         self.contexts
             .iter()
             .filter_map(move |(key, context)| (context.address == address).then_some(*key))
     }
 
+    // Was: Führt den Arbeitsschritt `address_in_use_by_other` für address in use by other aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn address_in_use_by_other(&self, key: ContextKey, address: [u8; 4]) -> bool {
         self.contexts.iter().any(|(other_key, context)| {
             if *other_key == key || context.address != address {
@@ -315,6 +406,8 @@ impl ContextTable {
 
     /// Compatibility helper for older diagnostics: returns the sole bearer owner
     /// only when exactly one subscriber currently owns a bearer.
+    // Was: Führt den Arbeitsschritt `bearer_owner` für Übertragungskanal owner aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn bearer_owner(&self) -> Option<u32> {
         if self.bearers.len() == 1 {
             self.bearers.keys().next().copied()
@@ -323,18 +416,26 @@ impl ContextTable {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `bearer_count` für Übertragungskanal count aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn bearer_count(&self) -> usize {
         self.bearers.len()
     }
 
+    // Was: Führt den Arbeitsschritt `bearer_owners` für Übertragungskanal owners aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn bearer_owners(&self) -> impl Iterator<Item = u32> + '_ {
         self.bearers.keys().copied()
     }
 
+    // Was: Prüft, ob Übertragungskanal zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     pub fn has_bearer(&self, issi: u32) -> bool {
         self.bearers.contains_key(&issi)
     }
 
+    // Was: Führt den Arbeitsschritt `refresh_bearer_ready` für refresh Übertragungskanal ready aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn refresh_bearer_ready(&mut self, issi: u32, ready_timer_code: u8, now: Instant) -> bool {
         let Some(bearer) = self.bearers.get_mut(&issi) else {
             return false;
@@ -343,16 +444,22 @@ impl ContextTable {
         true
     }
 
+    // Was: Führt den Arbeitsschritt `bearer_ready_deadline` für Übertragungskanal ready deadline aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn bearer_ready_deadline(&self, issi: u32) -> Option<Instant> {
         self.bearers.get(&issi).and_then(|bearer| bearer.ready_deadline)
     }
 
     /// Multi-PDCH runtime permits every subscriber to claim its own bearer. The
     /// physical capacity decision remains in the shared timeslot allocator.
+    // Was: Prüft, ob claim Übertragungskanal zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     pub fn can_claim_bearer(&self, _issi: u32) -> bool {
         true
     }
 
+    // Was: Führt den Arbeitsschritt `claim_bearer` für claim Übertragungskanal aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn claim_bearer(&mut self, issi: u32, nsapis: &[u8]) -> bool {
         let bearer = self.bearers.entry(issi).or_default();
         bearer.nsapis.extend(nsapis.iter().copied().filter(|nsapi| (1..=14).contains(nsapi)));
@@ -360,20 +467,28 @@ impl ContextTable {
     }
 
     /// Returns true when the subscriber bearer became empty and was removed.
+    // Was: Diese Funktion gibt Übertragungskanal nsapis.
+    // Warum: Ressourcen werden dadurch rechtzeitig freigegeben und blockieren keine weiteren Vorgänge.
     pub fn release_bearer_nsapis(&mut self, issi: u32, nsapis: &[u8]) -> bool {
         let Some(bearer) = self.bearers.get_mut(&issi) else {
             return false;
         };
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for nsapi in nsapis {
             bearer.nsapis.remove(nsapi);
         }
         self.clear_bearer_if_empty(issi)
     }
 
+    // Was: Diese Funktion gibt Übertragungskanal for Teilnehmerkennung (ISSI).
+    // Warum: Ressourcen werden dadurch rechtzeitig freigegeben und blockieren keine weiteren Vorgänge.
     pub fn release_bearer_for_issi(&mut self, issi: u32) -> bool {
         self.bearers.remove(&issi).is_some()
     }
 
+    // Was: Diese Funktion leert Übertragungskanal if empty.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn clear_bearer_if_empty(&mut self, issi: u32) -> bool {
         let empty = self.bearers.get(&issi).is_some_and(|bearer| bearer.nsapis.is_empty());
         if empty {
@@ -382,6 +497,8 @@ impl ContextTable {
         empty
     }
 
+    // Was: Führt den Arbeitsschritt `bearer_nsapis` für Übertragungskanal nsapis aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn bearer_nsapis(&self, issi: u32) -> impl Iterator<Item = u8> + '_ {
         self.bearers
             .get(&issi)
@@ -389,18 +506,26 @@ impl ContextTable {
             .flat_map(|bearer| bearer.nsapis.iter().copied())
     }
 
+    // Was: Diese Funktion setzt default Priorität.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_default_priority(&mut self, issi: u32, priority: u8) {
         self.default_priorities.insert(issi, priority.min(7));
     }
 
+    // Was: Diese Funktion verfolgt network default Priorität.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn track_network_default_priority(&mut self, issi: u32) {
         self.default_priorities.remove(&issi);
     }
 
+    // Was: Führt den Arbeitsschritt `default_priority` für default Priorität aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn default_priority(&self, issi: u32, network_default: u8) -> u8 {
         self.default_priorities.get(&issi).copied().unwrap_or(network_default.min(7))
     }
 
+    // Was: Diese Funktion bearbeitet den vorgesehenen Arbeitsschritt.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn tick(&mut self, now: Instant, standby_timer_code: u8) -> Vec<TimerEvent> {
         let mut events = Vec::new();
         let mut standby_expired_issis = HashSet::new();
@@ -412,7 +537,11 @@ impl ContextTable {
             .iter()
             .filter_map(|(issi, bearer)| bearer.ready_deadline.is_some_and(|deadline| now >= deadline).then_some(*issi))
             .collect::<Vec<_>>();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for issi in ready_expired {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for (key, context) in &mut self.contexts {
                 if key.issi == issi && matches!(context.state, PdpState::Ready | PdpState::Quiescent) {
                     context.enter_standby(standby_timer_code, now);
@@ -425,6 +554,8 @@ impl ContextTable {
         // CONTEXT_READY is per PDP context. Its expiry merely marks that context
         // quiescent; it does not release a bearer still used by other contexts.
         let keys = self.contexts.keys().copied().collect::<Vec<_>>();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for key in keys {
             let Some(context) = self.contexts.get_mut(&key) else {
                 continue;
@@ -438,6 +569,8 @@ impl ContextTable {
             }
         }
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (key, context) in &self.contexts {
             if matches!(context.state, PdpState::Standby | PdpState::Suspended)
                 && context.standby_deadline.is_some_and(|deadline| now >= deadline)
@@ -448,7 +581,11 @@ impl ContextTable {
 
         // EN 300 392-2 models STANDBY expiry per MS/SNDCP entity: expiry tears
         // down all PDP contexts for that subscriber, including secondary NSAPIs.
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for issi in standby_expired_issis {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for (key, _) in self.remove_all_for_issi(issi) {
                 events.push(TimerEvent::StandbyExpired(key));
             }
@@ -456,6 +593,8 @@ impl ContextTable {
         events
     }
 
+    // Was: Diese Funktion räumt Teilnehmer if unused.
+    // Warum: Zurückgelassene Ressourcen würden sonst spätere Starts oder Verbindungen stören.
     fn cleanup_subscriber_if_unused(&mut self, issi: u32) {
         if self.contexts.keys().any(|key| key.issi == issi) {
             return;
@@ -466,13 +605,19 @@ impl ContextTable {
     }
 }
 
+// Was: Führt den Arbeitsschritt `deadline` für deadline aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn deadline(now: Instant, duration: Option<Duration>) -> Option<Instant> {
     duration.and_then(|duration| now.checked_add(duration))
 }
 
 /// CONTEXT_READY code 0 tracks the global READY timer; codes 1..14 use
 /// the same duration table, and code 15 is reserved.
+// Was: Führt den Arbeitsschritt `context_ready_timer_duration` für Kontext ready Zeitüberwachung duration aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn context_ready_timer_duration(context_code: u8, ready_code: u8) -> Option<Duration> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match context_code & 0x0f {
         0 => ready_timer_duration(ready_code),
         1..=14 => ready_timer_duration(context_code),
@@ -482,7 +627,11 @@ pub fn context_ready_timer_duration(context_code: u8, ready_code: u8) -> Option<
 }
 
 /// EN 300 392-2 READY timer coding. Codes 0 and 15 are reserved.
+// Was: Führt den Arbeitsschritt `ready_timer_duration` für ready Zeitüberwachung duration aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn ready_timer_duration(code: u8) -> Option<Duration> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match code & 0x0f {
         0 => None,
         1 => Some(Duration::from_millis(200)),
@@ -506,7 +655,11 @@ pub fn ready_timer_duration(code: u8) -> Option<Duration> {
 
 /// EN 300 392-2 STANDBY timer coding. Code 0 disables the timer; code 15 means
 /// that the context remains until explicit deactivation/deregistration.
+// Was: Führt den Arbeitsschritt `standby_timer_duration` für standby Zeitüberwachung duration aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn standby_timer_duration(code: u8) -> Option<Duration> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match code & 0x0f {
         0 => None,
         1 => Some(Duration::from_secs(10)),
@@ -528,7 +681,11 @@ pub fn standby_timer_duration(code: u8) -> Option<Duration> {
     }
 }
 
+// Was: Führt den Arbeitsschritt `response_wait_timer_duration` für response wait Zeitüberwachung duration aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn response_wait_timer_duration(code: u8) -> Option<Duration> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match code & 0x0f {
         0 => Some(Duration::from_millis(400)),
         1 => Some(Duration::from_millis(600)),
@@ -550,7 +707,11 @@ pub fn response_wait_timer_duration(code: u8) -> Option<Duration> {
     }
 }
 
+// Was: Führt den Arbeitsschritt `mtu_octets` für mtu octets aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn mtu_octets(code: u8) -> Option<usize> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match code & 7 {
         0 => None,
         1 => Some(296),
@@ -564,10 +725,14 @@ pub fn mtu_octets(code: u8) -> Option<usize> {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
     #[test]
+    // Was: Führt den Arbeitsschritt `timer_reference_codes_match_profile` für Zeitüberwachung reference codes match profile aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn timer_reference_codes_match_profile() {
         assert_eq!(ready_timer_duration(8), Some(Duration::from_secs(10)));
         assert_eq!(standby_timer_duration(4), Some(Duration::from_secs(300)));
@@ -578,6 +743,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `one_subscriber_can_share_bearer_across_nsapis` für one Teilnehmer can share Übertragungskanal across nsapis aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn one_subscriber_can_share_bearer_across_nsapis() {
         let mut table = ContextTable::default();
         assert!(table.claim_bearer(1001, &[2]));
@@ -590,6 +757,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `removing_non_owner_context_does_not_release_owner_nsapi` für removing non owner Kontext does not release und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn removing_non_owner_context_does_not_release_owner_nsapi() {
         let now = Instant::now();
         let mut table = ContextTable::default();
@@ -602,6 +771,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `snei_is_stable_per_issi_and_unique_between_active_subscribers` für snei is stable per Teilnehmerkennung (ISSI) and unique und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn snei_is_stable_per_issi_and_unique_between_active_subscribers() {
         let mut table = ContextTable::default();
         let a = table.ensure_network_endpoint_id(0x1234_5678);
@@ -613,6 +784,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `primary_family_contains_secondary_contexts` für primary family contains secondary contexts aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn primary_family_contains_secondary_contexts() {
         let now = Instant::now();
         let mut table = ContextTable::default();
@@ -625,11 +798,15 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `global_ready_expiry_returns_all_contexts_to_standby` für global ready expiry returns all contexts to und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn global_ready_expiry_returns_all_contexts_to_standby() {
         let now = Instant::now();
         let first = ContextKey { issi: 42, nsapi: 2 };
         let second = ContextKey { issi: 42, nsapi: 3 };
         let mut table = ContextTable::default();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for key in [first, second] {
             let mut context = PdpContext::new([10, 0, 0, 2], 4, 576, 4, now);
             context.enter_ready(8, now);
@@ -645,9 +822,13 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `multiple_bearers_expire_independently` für multiple bearers expire independently aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn multiple_bearers_expire_independently() {
         let now = Instant::now();
         let mut table = ContextTable::default();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for issi in [42, 43] {
             let key = ContextKey { issi, nsapi: 2 };
             table.insert(key, PdpContext::new([10, 0, 0, issi as u8], 4, 576, 4, now));
@@ -665,6 +846,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `context_ready_expiry_does_not_release_global_bearer` für Kontext ready expiry does not release global und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn context_ready_expiry_does_not_release_global_bearer() {
         let now = Instant::now();
         let key = ContextKey { issi: 42, nsapi: 2 };
@@ -680,6 +863,8 @@ mod tests {
         assert!(table.has_bearer(42));
     }
     #[test]
+    // Was: Führt den Arbeitsschritt `primary_reactivation_may_reuse_address_shared_with_secondary` für primary reactivation may reuse address shared with und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn primary_reactivation_may_reuse_address_shared_with_secondary() {
         let now = Instant::now();
         let mut table = ContextTable::default();
@@ -692,6 +877,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `standby_expiry_removes_all_contexts_and_subscriber_identity` für standby expiry removes all contexts and Teilnehmer und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn standby_expiry_removes_all_contexts_and_subscriber_identity() {
         let now = Instant::now();
         let mut table = ContextTable::default();

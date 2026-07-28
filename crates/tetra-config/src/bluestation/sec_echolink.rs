@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Einlesen und Prüfen der TETRA-Konfiguration.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use serde::Deserialize;
 use std::collections::{BTreeMap, HashMap};
 use toml::Value;
@@ -10,6 +13,8 @@ use crate::bluestation::SecretField;
 /// credentials, local EchoLink ports, and deterministic TETRA routing. The voice QSO engine can
 /// use the same config once the GSM-FR EchoLink audio bridge is enabled.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für cfg echolink in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgEcholink {
     pub enabled: bool,
     pub callsign: String,
@@ -37,13 +42,19 @@ pub struct CfgEcholink {
     pub max_session_secs: u64,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for CfgEcholink`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for CfgEcholink {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         apply_echolink_patch(CfgEcholinkDto::default()).expect("default echolink config must be valid")
     }
 }
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für cfg echolink dto in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgEcholinkDto {
     #[serde(default)]
     pub enabled: bool,
@@ -98,7 +109,11 @@ pub struct CfgEcholinkDto {
     pub extra: HashMap<String, Value>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for CfgEcholinkDto`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for CfgEcholinkDto {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             enabled: false,
@@ -130,58 +145,86 @@ impl Default for CfgEcholinkDto {
     }
 }
 
+// Was: Führt den Arbeitsschritt `default_true` für default true aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_true() -> bool {
     true
 }
 
+// Was: Führt den Arbeitsschritt `default_location` für default location aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_location() -> String {
     "FlowStation".to_string()
 }
 
+// Was: Führt den Arbeitsschritt `default_status_text` für default Status text aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_status_text() -> String {
     "FlowStation EchoLink bridge".to_string()
 }
 
+// Was: Führt den Arbeitsschritt `default_directory_servers` für default directory servers aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_directory_servers() -> Vec<String> {
     vec!["servers.echolink.org".to_string(), "backup.echolink.org".to_string()]
 }
 
+// Was: Führt den Arbeitsschritt `default_directory_port` für default directory port aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_directory_port() -> u16 {
     5200
 }
 
+// Was: Führt den Arbeitsschritt `default_bind_addr` für default bind addr aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_bind_addr() -> String {
     "0.0.0.0".to_string()
 }
 
+// Was: Führt den Arbeitsschritt `default_audio_port` für default audio port aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_audio_port() -> u16 {
     5198
 }
 
+// Was: Führt den Arbeitsschritt `default_control_port` für default Steuerung port aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_control_port() -> u16 {
     5199
 }
 
+// Was: Führt den Arbeitsschritt `default_outbound_prefix` für default outbound prefix aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_outbound_prefix() -> String {
     "92".to_string()
 }
 
+// Was: Führt den Arbeitsschritt `default_strip_outbound_prefix` für default strip outbound prefix aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_strip_outbound_prefix() -> bool {
     true
 }
 
+// Was: Führt den Arbeitsschritt `default_tetra_source_issi` für default TETRA source Teilnehmerkennung (ISSI) aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_tetra_source_issi() -> u32 {
     4010001
 }
 
+// Was: Führt den Arbeitsschritt `default_reconnect_interval_secs` für default reconnect interval secs aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_reconnect_interval_secs() -> u64 {
     30
 }
 
+// Was: Führt den Arbeitsschritt `default_max_session_secs` für default max Sitzung secs aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_max_session_secs() -> u64 {
     3600
 }
 
+// Was: Diese Funktion wendet echolink patch.
+// Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
 pub fn apply_echolink_patch(src: CfgEcholinkDto) -> Result<CfgEcholink, String> {
     if src.enabled {
         if src.callsign.trim().is_empty() {
@@ -237,14 +280,20 @@ pub fn apply_echolink_patch(src: CfgEcholinkDto) -> Result<CfgEcholink, String> 
     })
 }
 
+// Was: Führt den Arbeitsschritt `normalize_echolink_target` für normalize echolink target aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn normalize_echolink_target(target: &str) -> String {
     target.trim().to_ascii_uppercase()
 }
 
+// Was: Führt den Arbeitsschritt `normalize_callsign` für normalize callsign aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn normalize_callsign(callsign: &str) -> String {
     callsign.trim().to_ascii_uppercase()
 }
 
+// Was: Führt den Arbeitsschritt `normalize_string_list` für normalize string list aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn normalize_string_list(values: Vec<String>, callsigns: bool) -> Vec<String> {
     values
         .into_iter()
@@ -253,8 +302,12 @@ fn normalize_string_list(values: Vec<String>, callsigns: bool) -> Vec<String> {
         .collect()
 }
 
+// Was: Führt den Arbeitsschritt `normalize_routes` für normalize routes aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn normalize_routes(routes: HashMap<String, String>) -> Result<BTreeMap<String, String>, String> {
     let mut out = BTreeMap::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (dial, target) in routes {
         let dial = dial.trim().to_string();
         let target = normalize_echolink_target(&target);

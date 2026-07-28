@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -15,6 +18,8 @@ use super::service::RecorderHandle;
 use super::types::{RecordingMetadata, RecordingSegment};
 use super::wav::PcmWavWriter;
 
+// Was: Bündelt die zusammengehörigen Werte für recording Sitzung in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct RecordingSession {
     id: String,
     call_id: u16,
@@ -33,7 +38,11 @@ struct RecordingSession {
     current_segment: Option<usize>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `RecordingSession`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl RecordingSession {
+    // Was: Führt den Arbeitsschritt `begin_segment` für begin segment aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn begin_segment(&mut self, source_issi: u32, carrier_num: u16, ts: u8) -> Result<(), String> {
         self.finish_segment();
         self.decoder = TetraSpeechDecoder::new().ok_or_else(|| "tetra decoder creation failed".to_string())?;
@@ -50,6 +59,8 @@ impl RecordingSession {
         self.write_partial_metadata()
     }
 
+    // Was: Führt den Arbeitsschritt `finish_segment` für finish segment aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn finish_segment(&mut self) {
         if let Some(index) = self.current_segment.take()
             && let Some(segment) = self.segments.get_mut(index)
@@ -58,6 +69,8 @@ impl RecordingSession {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `append_audio` für append audio aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn append_audio(&mut self, data: &[u8]) -> Result<(), String> {
         let pcm = self
             .decoder
@@ -74,6 +87,8 @@ impl RecordingSession {
         Ok(())
     }
 
+    // Was: Führt den Arbeitsschritt `metadata` für metadata aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn metadata(&self, ended_at: String, recovered: bool, audio_bytes: u64) -> RecordingMetadata {
         RecordingMetadata {
             schema_version: 1,
@@ -94,12 +109,16 @@ impl RecordingSession {
         }
     }
 
+    // Was: Diese Funktion schreibt partial metadata.
+    // Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
     fn write_partial_metadata(&self) -> Result<(), String> {
         let metadata = self.metadata(String::new(), false, self.samples_written.saturating_mul(2));
         write_json_atomic(&self.metadata_part_path, &metadata)
     }
 }
 
+// Was: Bündelt die zusammengehörigen Werte für Aufzeichnung entity in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct RecorderEntity {
     config: SharedConfig,
     handle: RecorderHandle,
@@ -109,7 +128,11 @@ pub struct RecorderEntity {
     runtime_was_active: bool,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `RecorderEntity`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl RecorderEntity {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(config: SharedConfig) -> Result<(Self, RecorderHandle), String> {
         let handle = RecorderHandle::new(config.config().recording.clone()).map_err(|e| format!("cannot initialize recording directory: {e}"))?;
         let entity = Self {
@@ -123,6 +146,8 @@ impl RecorderEntity {
         Ok((entity, handle))
     }
 
+    // Was: Führt den Arbeitsschritt `on_floor_granted` für on floor granted aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn on_floor_granted(
         &mut self,
         call_id: u16,
@@ -146,6 +171,8 @@ impl RecorderEntity {
 
         let session_key = (call_id, ts);
         if !self.sessions.contains_key(&session_key) {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match self.create_session(call_id, destination_id, destination_is_group, ts) {
                 Ok(session) => {
                     tracing::info!(
@@ -181,6 +208,8 @@ impl RecorderEntity {
         self.refresh_live_status();
     }
 
+    // Was: Führt den Arbeitsschritt `on_floor_released` für on floor released aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn on_floor_released(&mut self, call_id: u16, ts: u8) {
         self.active_floors.remove(&(call_id, ts));
         if self.calls_by_ts.get(&ts).copied() == Some(call_id) {
@@ -194,6 +223,8 @@ impl RecorderEntity {
         self.refresh_live_status();
     }
 
+    // Was: Führt den Arbeitsschritt `on_audio` für on audio aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn on_audio(&mut self, prim: TmdCircuitDataInd) {
         let Some(call_id) = self.calls_by_ts.get(&prim.ts).copied() else {
             return;
@@ -218,6 +249,8 @@ impl RecorderEntity {
         }
     }
 
+    // Was: Diese Funktion erstellt Sitzung.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     fn create_session(&self, call_id: u16, destination_id: u32, destination_is_group: bool, ts: u8) -> Result<RecordingSession, String> {
         let now = chrono::Local::now();
         let id = Uuid::new_v4().to_string();
@@ -269,6 +302,8 @@ impl RecorderEntity {
         Ok(session)
     }
 
+    // Was: Führt den Arbeitsschritt `finish_session` für finish Sitzung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn finish_session(&mut self, session_key: (u16, u8), reason: &str) {
         let (call_id, ts) = session_key;
         self.active_floors.remove(&session_key);
@@ -286,9 +321,13 @@ impl RecorderEntity {
         let final_metadata_path = final_audio_path.with_extension("json");
         let ended_at = chrono::Local::now().to_rfc3339();
         let mut metadata = session.metadata(ended_at, false, session.samples_written.saturating_mul(2));
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match session.writer.finalize(&final_audio_path) {
             Ok(audio_bytes) => {
                 metadata.audio_bytes = audio_bytes;
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match write_json_atomic(&final_metadata_path, &metadata) {
                     Ok(()) => {
                         let _ = fs::remove_file(metadata_part_path);
@@ -311,6 +350,8 @@ impl RecorderEntity {
         self.refresh_live_status();
     }
 
+    // Was: Führt den Arbeitsschritt `finalize_expired_sessions` für finalize expired sessions aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn finalize_expired_sessions(&mut self) {
         let idle = Duration::from_secs(self.handle.config().idle_finalize_secs as u64);
         let max_duration = Duration::from_secs(self.handle.config().max_recording_minutes as u64 * 60);
@@ -327,6 +368,8 @@ impl RecorderEntity {
                 }
             })
             .collect();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (key, reason) in keys {
             if reason == "maximum-duration" {
                 self.handle.note_error(format!("recording call {} reached maximum duration", key.0));
@@ -335,24 +378,38 @@ impl RecorderEntity {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `finish_all` für finish all aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn finish_all(&mut self, reason: &str) {
         let keys: Vec<(u16, u8)> = self.sessions.keys().copied().collect();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for key in keys {
             self.finish_session(key, reason);
         }
     }
 
+    // Was: Führt den Arbeitsschritt `refresh_live_status` für refresh live Status aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn refresh_live_status(&self) {
         self.handle.set_active_calls(self.sessions.keys().map(|(call_id, _)| *call_id).collect());
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `TetraEntityTrait for RecorderEntity`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl TetraEntityTrait for RecorderEntity {
+    // Was: Führt den Arbeitsschritt `entity` für entity aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn entity(&self) -> TetraEntity {
         TetraEntity::Recorder
     }
 
+    // Was: Führt den Arbeitsschritt `rx_prim` für rx prim aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_prim(&mut self, _queue: &mut MessageQueue, message: SapMsg) {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match message.msg {
             SapMsgInner::CmceCallControl(CallControl::FloorGranted {
                 call_id,
@@ -367,6 +424,8 @@ impl TetraEntityTrait for RecorderEntity {
             SapMsgInner::CmceCallControl(CallControl::FloorReleased { call_id, ts }) => self.on_floor_released(call_id, ts),
             SapMsgInner::CmceCallControl(CallControl::CallEnded { call_id, .. }) => {
                 let keys: Vec<(u16, u8)> = self.sessions.keys().copied().filter(|(id, _)| *id == call_id).collect();
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for key in keys {
                     self.finish_session(key, "call-ended");
                 }
@@ -376,6 +435,8 @@ impl TetraEntityTrait for RecorderEntity {
         }
     }
 
+    // Was: Diese Funktion bearbeitet start.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn tick_start(&mut self, _queue: &mut MessageQueue, _ts: TdmaTime) {
         let active = self.handle.is_active();
         if self.runtime_was_active && !active {
@@ -386,12 +447,18 @@ impl TetraEntityTrait for RecorderEntity {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Drop for RecorderEntity`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Drop for RecorderEntity {
+    // Was: Führt den Arbeitsschritt `drop` für drop aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn drop(&mut self) {
         self.finish_all("shutdown");
     }
 }
 
+// Was: Führt den Arbeitsschritt `carrier_for_logical_ts` für carrier for logical ts aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn carrier_for_logical_ts(config: &SharedConfig, ts: u8) -> u16 {
     if ts >= 5 {
         config.config().cell.secondary_carrier.unwrap_or(config.config().cell.main_carrier)
@@ -400,10 +467,14 @@ fn carrier_for_logical_ts(config: &SharedConfig, ts: u8) -> u16 {
     }
 }
 
+// Was: Führt den Arbeitsschritt `samples_to_ms` für samples to ms aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn samples_to_ms(samples: u64) -> u64 {
     samples.saturating_mul(1000) / TETRA_PCM_SAMPLE_RATE as u64
 }
 
+// Was: Diese Funktion schreibt JSON-Daten atomic.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 fn write_json_atomic(path: &Path, metadata: &RecordingMetadata) -> Result<(), String> {
     let body = serde_json::to_vec_pretty(metadata).map_err(|e| e.to_string())?;
     let tmp = PathBuf::from(format!("{}.tmp", path.display()));

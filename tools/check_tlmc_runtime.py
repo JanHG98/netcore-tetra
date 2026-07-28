@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für check tlmc Laufzeit.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 """Static Package-C guard for the TLMC runtime.
 
 This checker intentionally uses only the Python standard library so it can run
@@ -16,6 +19,8 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 
 
+# Was: Diese Funktion liest den vorgesehenen Arbeitsschritt.
+# Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
 def read(path: str) -> str:
     target = ROOT / path
     if not target.is_file():
@@ -23,17 +28,23 @@ def read(path: str) -> str:
     return target.read_text(encoding="utf-8")
 
 
+# Was: Führt den Arbeitsschritt `fail` für fail aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def fail(message: str) -> None:
     print(f"TLMC Package C check failed: {message}", file=sys.stderr)
     raise SystemExit(1)
 
 
+# Was: Führt den Arbeitsschritt `require` für require aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def require(text: str, markers: list[str], label: str) -> None:
     missing = [marker for marker in markers if marker not in text]
     if missing:
         fail(f"{label} is missing: {', '.join(missing)}")
 
 
+# Was: Führt den Arbeitsschritt `extract_function` für extract function aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def extract_function(text: str, name: str) -> str:
     marker = re.search(rf"\bfn\s+{re.escape(name)}\b", text)
     if marker is None:
@@ -42,6 +53,8 @@ def extract_function(text: str, name: str) -> str:
     if brace < 0:
         fail(f"function {name} has no body")
     depth = 0
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for index in range(brace, len(text)):
         char = text[index]
         if char == "{":
@@ -54,6 +67,8 @@ def extract_function(text: str, name: str) -> str:
     return ""
 
 
+# Was: Führt den Arbeitsschritt `strip_comments_and_strings` für strip comments and strings aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def strip_comments_and_strings(text: str) -> str:
     # Good enough for a delimiter sanity check. Raw strings are replaced first.
     text = re.sub(r'r#+".*?"#+', '""', text, flags=re.S)
@@ -65,11 +80,15 @@ def strip_comments_and_strings(text: str) -> str:
     return text
 
 
+# Was: Diese Funktion prüft delimiters.
+# Warum: Fehler oder unzulässige Zustände werden dadurch früh erkannt.
 def check_delimiters(path: str, text: str) -> None:
     # Rust format strings and lifetimes make a dependency-free lexical stripper
     # surprisingly error-prone. The architecture guard therefore uses a
     # conservative raw-count check; Cargo/rustc in the following CI step remains
     # the authoritative parser.
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for opening, closing in (("{", "}"), ("(", ")"), ("[", "]")):
         if text.count(opening) != text.count(closing):
             fail(
@@ -78,6 +97,8 @@ def check_delimiters(path: str, text: str) -> None:
             )
 
 
+# Was: Startet das Programm, lädt die benötigten Einstellungen und übergibt an den eigentlichen Dienstablauf.
+# Warum: Ein klarer Einstiegspunkt hält Startreihenfolge, Fehlerausgabe und geordnetes Beenden zusammen.
 def main() -> None:
     runtime_path = "crates/tetra-entities/src/umac/tlmc_runtime.rs"
     ms_path = "crates/tetra-entities/src/umac/umac_ms.rs"
@@ -231,6 +252,8 @@ def main() -> None:
     if "matches!(message.msg" in tests:
         fail("integration tests move SapMsgInner out of a borrowed message")
 
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for path, text in [
         (runtime_path, runtime),
         (ms_path, ms),
@@ -250,5 +273,7 @@ def main() -> None:
     print("  TBS diagnostics snapshot: present")
 
 
+# Was: Startet den Programmablauf nur dann, wenn diese Datei direkt ausgeführt wird.
+# Warum: Beim Import als Modul sollen nur Funktionen bereitstehen und keine Nebenwirkungen automatisch starten.
 if __name__ == "__main__":
     main()

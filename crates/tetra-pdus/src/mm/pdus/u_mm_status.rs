@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 
 use tetra_core::expect_pdu_type;
@@ -15,6 +18,8 @@ use crate::mm::enums::status_uplink::StatusUplink;
 // note 2: This information element or set of information elements shall be as defined by the status uplink information element, refer to clauses 16.9.3.5.1 to 16.9.3.5.8.
 // note 3: This Status uplink element indicates which sub-PDU this U-MM STATUS PDU contains; in case the receiving party does not support indicated function but recognizes this PDU structure, it should set the received value of Status uplink element to Not-supported sub PDU type element.
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für umm Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct UMmStatus {
     /// Type1, 6 bits, See notes 1 and 3,
     pub status_uplink: StatusUplink,
@@ -25,8 +30,12 @@ pub struct UMmStatus {
 
 #[allow(unreachable_code)] // TODO FIXME review, finalize and remove this
 #[allow(unused_variables)]
+// Was: Implementiert das zugehörige Verhalten für `UMmStatus`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl UMmStatus {
     /// Parse from BitBuffer
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buffer: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let pdu_type = buffer.read_field(4, "pdu_type")?;
         expect_pdu_type!(pdu_type, MmPduTypeUl::UMmStatus)?;
@@ -34,6 +43,8 @@ impl UMmStatus {
         // Type1
         let val = buffer.read_field(6, "status_uplink")?;
         let result = StatusUplink::try_from(val);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let status_uplink = match result {
             Ok(x) => x,
             Err(_) => {
@@ -69,6 +80,8 @@ impl UMmStatus {
     }
 
     /// Serialize this PDU into the given BitBuffer.
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buffer: &mut BitBuffer) -> Result<(), PduParseErr> {
         // PDU Type
         buffer.write_bits(MmPduTypeUl::UMmStatus.into_raw(), 4);
@@ -86,7 +99,11 @@ impl UMmStatus {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for UMmStatus`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for UMmStatus {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -97,12 +114,16 @@ impl fmt::Display for UMmStatus {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use tetra_core::debug;
 
     use super::*;
 
     #[test]
+    // Was: Prüft automatisch den Fall u Mobilitätsverwaltung Status.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_u_mm_status() {
         // Motorola MTH800. Hard to reproduce, but was emitted when EnergySavingMode is supplied in Location update but
         // the downlink response did not acknowledge it by setting the EnergySavingInformation

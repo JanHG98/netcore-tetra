@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 
 use tetra_core::typed_pdu_fields::delimiters;
@@ -8,6 +11,8 @@ use crate::mle::enums::mle_pdu_type_ul::MlePduTypeUl;
 
 /// U-CHANNEL-REQUEST PDU (ETSI EN 300 392-2, clause 18.4.1.4.9).
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für uchannel request in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct UChannelRequest {
     pub reason_for_the_channel_request: MleChannelRequestReason,
     pub requested_channel_class_identifiers: Vec<u8>,
@@ -15,7 +20,11 @@ pub struct UChannelRequest {
     pub reserved: Option<u8>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `UChannelRequest`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl UChannelRequest {
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buffer: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let pdu_type = buffer.read_field(3, "pdu_type")?;
         expect_pdu_type!(pdu_type, MlePduTypeUl::UChannelRequest)?;
@@ -30,6 +39,8 @@ impl UChannelRequest {
                 .read_field(3, "number_of_requested_channel_class_identifiers")?
                 as usize;
             let mut values = Vec::with_capacity(count);
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for _ in 0..count {
                 values.push(buffer.read_field(4, "channel_class_identifier")? as u8);
             }
@@ -43,6 +54,8 @@ impl UChannelRequest {
                 .read_field(3, "number_of_requested_channel_identifiers")?
                 as usize;
             let mut values = Vec::with_capacity(count);
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for _ in 0..count {
                 values.push(buffer.read_field(5, "channel_identifier")? as u8);
             }
@@ -69,6 +82,8 @@ impl UChannelRequest {
         })
     }
 
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buffer: &mut BitBuffer) -> Result<(), PduParseErr> {
         if self.requested_channel_class_identifiers.len() > 7 {
             return Err(PduParseErr::InvalidValue {
@@ -128,6 +143,8 @@ impl UChannelRequest {
         );
         if !self.requested_channel_class_identifiers.is_empty() {
             buffer.write_bits(self.requested_channel_class_identifiers.len() as u64, 3);
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for value in &self.requested_channel_class_identifiers {
                 buffer.write_bits(u64::from(*value), 4);
             }
@@ -139,6 +156,8 @@ impl UChannelRequest {
         );
         if !self.requested_channel_identifiers.is_empty() {
             buffer.write_bits(self.requested_channel_identifiers.len() as u64, 3);
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for value in &self.requested_channel_identifiers {
                 buffer.write_bits(u64::from(*value), 5);
             }
@@ -153,7 +172,11 @@ impl UChannelRequest {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for UChannelRequest`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for UChannelRequest {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,

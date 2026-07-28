@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Einlesen und Prüfen der TETRA-Konfiguration.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::{HashMap, HashSet};
 
 use serde::Deserialize;
@@ -7,6 +10,8 @@ use toml::Value;
 /// backend services.  The feature is intentionally independent of Internet
 /// access: only the configured Node Gateway and service-health matrix matter.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für cfg edge fallback in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgEdgeFallback {
     /// Enable automatic online/degraded/isolated/recovering transitions.
     pub enabled: bool,
@@ -43,6 +48,8 @@ pub struct CfgEdgeFallback {
 }
 
 #[derive(Debug, Default, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für cfg edge fallback dto in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgEdgeFallbackDto {
     pub enabled: Option<bool>,
     pub enter_after_secs: Option<u64>,
@@ -63,7 +70,11 @@ pub struct CfgEdgeFallbackDto {
     pub extra: HashMap<String, Value>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for CfgEdgeFallback`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for CfgEdgeFallback {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             enabled: true,
@@ -91,6 +102,8 @@ impl Default for CfgEdgeFallback {
     }
 }
 
+// Was: Diese Funktion wendet edge fallback patch.
+// Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
 pub fn apply_edge_fallback_patch(src: CfgEdgeFallbackDto) -> Result<CfgEdgeFallback, String> {
     if !src.extra.is_empty() {
         let mut keys: Vec<_> = src.extra.keys().cloned().collect();
@@ -101,6 +114,8 @@ pub fn apply_edge_fallback_patch(src: CfgEdgeFallbackDto) -> Result<CfgEdgeFallb
     let defaults = CfgEdgeFallback::default();
     let mut required_services = src.required_services.unwrap_or(defaults.required_services);
     required_services.retain(|name| !name.trim().is_empty());
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for name in &mut required_services {
         *name = name.trim().to_ascii_lowercase();
     }
@@ -112,6 +127,8 @@ pub fn apply_edge_fallback_patch(src: CfgEdgeFallbackDto) -> Result<CfgEdgeFallb
 
     let mut service_fallbacks = src.service_fallbacks.unwrap_or(defaults.service_fallbacks);
     let mut normalized = HashMap::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (name, mode) in service_fallbacks.drain() {
         let name = name.trim().to_ascii_lowercase();
         let mode = mode.trim().to_string();
@@ -170,6 +187,8 @@ pub fn apply_edge_fallback_patch(src: CfgEdgeFallbackDto) -> Result<CfgEdgeFallb
     })
 }
 
+// Was: Führt den Arbeitsschritt `default_service_fallbacks` für default Dienst fallbacks aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_service_fallbacks() -> HashMap<String, String> {
     [
         ("node-gateway", "local_edge_autonomy"),
@@ -195,6 +214,8 @@ fn default_service_fallbacks() -> HashMap<String, String> {
     .collect()
 }
 
+// Was: Führt den Arbeitsschritt `safe_service_name` für safe Dienst name aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn safe_service_name(value: &str) -> bool {
     !value.is_empty()
         && value.len() <= 64
@@ -203,6 +224,8 @@ fn safe_service_name(value: &str) -> bool {
             .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-')
 }
 
+// Was: Führt den Arbeitsschritt `non_empty` für non empty aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn non_empty(value: String, field: &str) -> Result<String, String> {
     let trimmed = value.trim();
     if trimmed.is_empty() {
@@ -213,10 +236,14 @@ fn non_empty(value: String, field: &str) -> Result<String, String> {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
     #[test]
+    // Was: Führt den Arbeitsschritt `defaults_cover_every_runtime_service` für defaults cover every Laufzeit Dienst aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn defaults_cover_every_runtime_service() {
         let cfg = CfgEdgeFallback::default();
         assert_eq!(cfg.service_fallbacks.len(), 17);
@@ -226,6 +253,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `rejects_required_service_without_fallback_mode` für rejects required Dienst without fallback mode aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rejects_required_service_without_fallback_mode() {
         let dto: CfgEdgeFallbackDto = toml::from_str(
             r#"

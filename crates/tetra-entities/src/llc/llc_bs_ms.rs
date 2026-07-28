@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::{HashMap, HashSet, VecDeque};
 
 use crate::{MessageQueue, TetraEntityTrait};
@@ -22,6 +25,8 @@ use tetra_pdus::llc::pdus::bl_udata::BlUdata;
 
 /// Struct that maintains state expected acknowledgement data for a transmitted message.
 /// Aka, we still expect an ack for this.
+// Was: Bündelt die zusammengehörigen Werte für expected in ack in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ExpectedInAck {
     /// Timeslot on which the original message was sent
     pub ts: u8,
@@ -52,6 +57,8 @@ pub struct ExpectedInAck {
 }
 
 /// Struct that maintains state for an ACK we still need to send back.
+// Was: Bündelt die zusammengehörigen Werte für scheduled out ack in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ScheduledOutAck {
     pub addr: TetraAddress,
     pub t_start: TdmaTime,
@@ -61,6 +68,8 @@ pub struct ScheduledOutAck {
     pub ts: u8,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für LLC-Verbindungsschicht in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct Llc {
     config: SharedConfig,
     dltime: TdmaTime,
@@ -79,7 +88,11 @@ pub struct Llc {
     link_send_seq: HashMap<u32, u8>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Llc`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Llc {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(config: SharedConfig) -> Self {
         Self {
             dltime: TdmaTime::default(),
@@ -98,7 +111,11 @@ impl Llc {
     /// TS2..4. Do not derive the ACK target from `dltime.t`: that is only the
     /// physical air timeslot and loses the carrier context, causing ACKs for
     /// carrier-2 calls to be emitted on carrier 1 TS2..4.
+    // Was: Diese Funktion plant outgoing ack.
+    // Warum: Zeitfenster und Ressourcen werden dadurch planbar statt zufällig vergeben.
     pub fn schedule_outgoing_ack(&mut self, dltime: TdmaTime, addr: TetraAddress, ns: u8, link_id: u32) {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let logical_ts = match link_id {
             2..=7 => link_id as u8,
             _ => dltime.t,
@@ -118,7 +135,11 @@ impl Llc {
     /// state here is still per-subscriber rather than per-(subscriber,timeslot) signalling path.
     /// If we ever need to distinguish concurrent basic-link signalling contexts for the same SSI,
     /// extend this matching to include the target link/timeslot.
+    // Was: Diese Funktion liest out ack seq if any.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     fn get_out_ack_seq_if_any(&mut self, addr: TetraAddress) -> Option<u8> {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for i in 0..self.scheduled_out_acks.len() {
             if self.scheduled_out_acks[i].addr.ssi == addr.ssi {
                 let n = self.scheduled_out_acks[i].nr;
@@ -131,6 +152,8 @@ impl Llc {
 
     /// Returns the next send sequence number V(S) for this link, then toggles it.
     /// Each link independently starts at 0 and alternates 0,1,0,1,...
+    // Was: Diese Funktion liest next send seq.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     fn get_next_send_seq(&mut self, addr: &TetraAddress) -> u8 {
         let vs = self.link_send_seq.entry(addr.ssi).or_insert(0);
         let ns = *vs;
@@ -139,7 +162,11 @@ impl Llc {
     }
 
     /// Returns and removes the expected ACK entry for the given SSI, if any
+    // Was: Führt den Arbeitsschritt `take_expected_ack_for_ssi` für take expected ack for TETRA-Teilnehmerkennung (SSI) aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn take_expected_ack_for_ssi(&mut self, ssi: u32) -> Option<ExpectedInAck> {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for i in 0..self.outbound_messages.len() {
             let msg = &self.outbound_messages[i];
             if msg.addr.ssi == ssi && msg.t_submitted_to_umac.is_some() {
@@ -151,6 +178,8 @@ impl Llc {
 
     /// Process incoming ACK per ETSI 22.3.2.3(k).
     /// Matches by SSI and N(R) so that retransmitted BL-DATA entries are matched correctly.
+    // Was: Diese Funktion verarbeitet incoming ack.
+    // Warum: Die einzelnen Verarbeitungsschritte bleiben damit gebündelt und leichter testbar.
     fn process_incoming_ack(&mut self, addr: TetraAddress, nr: u8) {
         // Get the expected ACK entry
         let Some(expected_ack) = self.take_expected_ack_for_ssi(addr.ssi) else {
@@ -193,8 +222,12 @@ impl Llc {
         // The expected_ack is confirmed as matched and goes out of scope here
     }
 
+    // Was: Führt den Arbeitsschritt `rx_tma_prim` für rx tma prim aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_tma_prim(&mut self, queue: &mut MessageQueue, message: SapMsg) {
         tracing::trace!("rx_tma_prim");
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match message.msg {
             SapMsgInner::TmaUnitdataInd(_) => {
                 self.rx_tma_unitdata_ind(queue, message);
@@ -209,6 +242,8 @@ impl Llc {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `rx_tla_tlunitdata_req_bl` für rx tla tlunitdata req bl aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_tla_tlunitdata_req_bl(&mut self, _queue: &mut MessageQueue, message: SapMsg) {
         tracing::trace!("rx_tla_tlunitdata_req_bl");
         let SapMsgInner::TlaTlUnitdataReqBl(mut prim) = message.msg else {
@@ -249,6 +284,8 @@ impl Llc {
     }
 
     /// Schedules a message that was not acked in time for a retransmission
+    // Was: Führt den Arbeitsschritt `submit_for_acknowledged_transmission` für submit for acknowledged transmission aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn submit_for_acknowledged_transmission(queue: &mut MessageQueue, ack: &mut ExpectedInAck, dltime: TdmaTime) {
         // Clone the sapmsg. Make sure we set (or for retransmission: reset) timers properly
         let sapmsg = ack.retransmission_buf.clone();
@@ -261,6 +298,8 @@ impl Llc {
     }
 
     /// See Clause 22.3.2.3 for Acknowledged data transmission in basic link
+    // Was: Führt den Arbeitsschritt `rx_tla_tldata_req_bl` für rx tla tldata req bl aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_tla_tldata_req_bl(&mut self, _queue: &mut MessageQueue, message: SapMsg) {
         tracing::trace!("rx_tla_tldata_req_bl");
         let SapMsgInner::TlaTlDataReqBl(mut prim) = message.msg else {
@@ -428,8 +467,12 @@ impl Llc {
         // a pending message waiting for an ack.
     }
 
+    // Was: Führt den Arbeitsschritt `rx_tla_prim` für rx tla prim aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_tla_prim(&mut self, queue: &mut MessageQueue, message: SapMsg) {
         tracing::trace!("rx_tla_prim");
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match &message.msg {
             SapMsgInner::TlaTlDataReqBl(_) => {
                 self.rx_tla_tldata_req_bl(queue, message);
@@ -443,6 +486,8 @@ impl Llc {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `rx_tma_report_ind` für rx tma report ind aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_tma_report_ind(&mut self, _queue: &mut MessageQueue, mut _message: SapMsg) {
         tracing::trace!("rx_tma_report_ind, ignoring");
     }
@@ -451,6 +496,8 @@ impl Llc {
     /// TMA-UNITDATA indication: this primitive shall be used by the MAC to deliver a received TM-SDU. This primitive
     /// may also be used with no TM-SDU if the MAC needs to inform the higher layers of a channel allocation received
     /// without an associated TM-SDU.
+    // Was: Führt den Arbeitsschritt `rx_tma_unitdata_ind` für rx tma unitdata ind aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_tma_unitdata_ind(&mut self, queue: &mut MessageQueue, mut message: SapMsg) {
         tracing::trace!("rx_tma_unitdata_ind");
 
@@ -476,6 +523,8 @@ impl Llc {
         };
 
         // Call handler function
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match pdu_type {
             // All Basic Link types can be handled by the same function
             LlcPduType::BlAdata
@@ -505,6 +554,8 @@ impl Llc {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `rx_tma_unitdata_ind_bl` für rx tma unitdata ind bl aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_tma_unitdata_ind_bl(&mut self, queue: &mut MessageQueue, mut message: SapMsg) {
         tracing::trace!("rx_tma_unitdata_ind_bl");
 
@@ -526,6 +577,8 @@ impl Llc {
             return;
         };
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let (has_fcs, ns, nr) = match pdu_type {
             LlcPduType::BlAdata | LlcPduType::BlAdataFcs => match BlAdata::from_bitbuf(&mut pdu) {
                 Ok(pdu) => {
@@ -678,6 +731,8 @@ impl Llc {
         queue.push_back(s);
     }
 
+    // Was: Führt den Arbeitsschritt `submit_retransmissions_to_umac` für submit retransmissions to UMAC-Funkzugriffssteuerung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn submit_retransmissions_to_umac(&mut self, queue: &mut MessageQueue) -> bool {
         let mut had_activity = false;
         let dltime = self.dltime;
@@ -687,6 +742,8 @@ impl Llc {
         //     tracing::error!("{}", Self::format_expected_ack_list(&self.outbound_messages));
         // }
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for ack in self.outbound_messages.iter_mut() {
             // First, check which have newly been txed, or discarded by Umac. If so, start t_umac_done.
             if ack.t_umac_done.is_none() && (ack.tx_reporter.is_transmitted() || ack.tx_reporter.is_discarded()) {
@@ -726,6 +783,8 @@ impl Llc {
 
         // Remove any expired entries
         if let Some(removals) = removals {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for ssi in removals {
                 // ssi was just collected from expected_acks above, so the entry exists.
                 // Use if-let rather than unwrap so a future refactor of the collection
@@ -739,6 +798,8 @@ impl Llc {
                     ack.addr.ssi,
                     ack.ns
                 );
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match ack.tx_reporter.get_state() {
                     TxState::Transmitted => ack.tx_reporter.mark_lost(),
                     TxState::Discarded => {
@@ -764,9 +825,13 @@ impl Llc {
         had_activity
     }
 
+    // Was: Führt den Arbeitsschritt `submit_free_messages_to_umac` für submit free messages to UMAC-Funkzugriffssteuerung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn submit_free_messages_to_umac(&mut self, queue: &mut MessageQueue) -> bool {
         let mut had_activity = false;
         let mut ssi_blocked: HashSet<u32> = HashSet::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for ack in self.outbound_messages.iter_mut() {
             // Check if already submitted to umac
             if ack.t_submitted_to_umac.is_some() {
@@ -809,8 +874,12 @@ impl Llc {
     }
 
     /// Pops all elements from the scheduled_out_acks queue, prepares BL-ACK messages, and send them down
+    // Was: Führt den Arbeitsschritt `submit_ack_replies_to_umac` für submit ack replies to UMAC-Funkzugriffssteuerung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn submit_ack_replies_to_umac(&mut self, queue: &mut MessageQueue) -> bool {
         let had_activity = !self.scheduled_out_acks.is_empty();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while let Some(ack) = self.scheduled_out_acks.pop_front() {
             tracing::debug!("auto-ack for ssi: {}, n: {}, ts: {}", ack.addr.ssi, ack.nr, ack.ts);
 
@@ -819,10 +888,14 @@ impl Llc {
             // reports logical TS5..TS7 for carrier 2 / air TS2..TS4, so keep the
             // logical ID here and include the secondary-carrier hint below.
             let steal = matches!(ack.ts, 2..=7);
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let ack_air_ts = match ack.ts {
                 5..=7 => ack.ts - 3,
                 _ => ack.ts,
             };
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let carrier_hint = match ack.ts {
                 5..=7 => Some(-2),
                 _ => None,
@@ -839,6 +912,8 @@ impl Llc {
             // We're sending an ACK for a received uplink message, however, we don't have that message here
             // Since DL is two slots ahead of UL, we will correct that. We now have the dltime for reception
             // of the original message.
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let chan_alloc = match steal {
                 true => {
                     let mut timeslots = [false; 4];
@@ -878,8 +953,12 @@ impl Llc {
     }
 
     /// Pops all elements from the scheduled_out_acks queue, prepares BL-ACK messages, and send them down
+    // Was: Führt den Arbeitsschritt `submit_udata_msgs_to_umac` für submit udata msgs to UMAC-Funkzugriffssteuerung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn submit_udata_msgs_to_umac(&mut self, queue: &mut MessageQueue) -> bool {
         let had_activity = !self.outbound_udata_messages.is_empty();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while let Some(msg) = self.outbound_udata_messages.pop_front() {
             tracing::debug!("submitting udata msg to umac: {:?}", msg.msg);
             queue.push_back(msg);
@@ -887,9 +966,13 @@ impl Llc {
         had_activity
     }
 
+    // Was: Führt den Arbeitsschritt `format_expected_ack_list` für format expected ack list aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn format_expected_ack_list(ack_list: &VecDeque<ExpectedInAck>) -> String {
         let mut ret = String::new();
         ret.push_str("Expected in acks:\n");
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for ack in ack_list {
             ret.push_str(&format!(
                 "  ssi: {}, n: {}, retransmissions: {}, t_first: {:?}, t_umac_done: {:?}, state: {:?}\n",
@@ -904,9 +987,13 @@ impl Llc {
         ret
     }
 
+    // Was: Führt den Arbeitsschritt `format_scheduled_ack_list` für format scheduled ack list aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn format_scheduled_ack_list(ack_list: &Vec<ScheduledOutAck>) -> String {
         let mut ret = String::new();
         ret.push_str("Scheduled out acks:\n");
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for ack in ack_list {
             ret.push_str(&format!("  t_start: {}, ssi: {}, n: {}\n", ack.t_start.t, ack.addr.ssi, ack.nr));
         }
@@ -914,19 +1001,29 @@ impl Llc {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `TetraEntityTrait for Llc`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl TetraEntityTrait for Llc {
+    // Was: Führt den Arbeitsschritt `entity` für entity aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn entity(&self) -> TetraEntity {
         TetraEntity::Llc
     }
 
+    // Was: Diese Funktion setzt Konfiguration.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     fn set_config(&mut self, config: SharedConfig) {
         self.config = config;
     }
 
+    // Was: Führt den Arbeitsschritt `rx_prim` für rx prim aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_prim(&mut self, queue: &mut MessageQueue, message: SapMsg) {
         tracing::debug!("rx_prim: {:?}", message);
         // tracing::debug!(ts=%message.dltime, "rx_prim: {:?}", message);
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match message.sap {
             Sap::TmaSap => {
                 self.rx_tma_prim(queue, message);
@@ -942,10 +1039,14 @@ impl TetraEntityTrait for Llc {
         }
     }
 
+    // Was: Diese Funktion bearbeitet start.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn tick_start(&mut self, _queue: &mut MessageQueue, ts: TdmaTime) {
         self.dltime = ts;
     }
 
+    // Was: Diese Funktion bearbeitet end.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn tick_end(&mut self, queue: &mut MessageQueue, _ts: TdmaTime) -> bool {
         let mut had_activity = false;
 

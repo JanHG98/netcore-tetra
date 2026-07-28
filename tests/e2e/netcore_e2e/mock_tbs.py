@@ -1,3 +1,6 @@
+# NETCORE-KOMMENTAR – Was: Enthält automatische Prüfungen für mock TETRA-Basisstation.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 from __future__ import annotations
 
 import json
@@ -12,10 +15,14 @@ from .websocket import WebSocketClient, WebSocketError
 PROTOCOL = "netcore-control-room-node-v1"
 
 
+# Was: Führt den Arbeitsschritt `now_iso` für now iso aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 
+# Was: Bündelt Daten und Verhalten für mock TETRA-Basisstation.
+# Warum: Zusammengehöriger Zustand und seine Operationen bleiben dadurch an einer klaren Stelle.
 @dataclass
 class MockTbs:
     url: str
@@ -44,13 +51,19 @@ class MockTbs:
     calls: dict[int, dict[str, Any]] = field(default_factory=dict, init=False)
     groups_by_issi: dict[int, set[int]] = field(default_factory=dict, init=False)
 
+    # Was: Führt den Arbeitsschritt `__enter__` für enter aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def __enter__(self) -> "MockTbs":
         self.start()
         return self
 
+    # Was: Führt den Arbeitsschritt `__exit__` für exit aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
         self.stop()
 
+    # Was: Diese Funktion startet den vorgesehenen Arbeitsschritt.
+    # Warum: Der Dienst oder Teilprozess wird so in einer festen und überprüfbaren Reihenfolge gestartet.
     def start(self) -> None:
         self.stop_event.clear()
         self.ws = WebSocketClient(self.url, subprotocol=PROTOCOL, timeout=8.0)
@@ -106,20 +119,28 @@ class MockTbs:
         self.heartbeat_thread = threading.Thread(target=self._heartbeats, name=f"mock-tbs-heartbeat-{self.node_id}", daemon=True)
         self.heartbeat_thread.start()
 
+    # Was: Diese Funktion stoppt den vorgesehenen Arbeitsschritt.
+    # Warum: Der Betrieb wird dadurch geordnet beendet und Ressourcen werden freigegeben.
     def stop(self) -> None:
         self.stop_event.set()
         if self.ws is not None:
             self.ws.close()
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for thread in (self.reader_thread, self.heartbeat_thread):
             if thread and thread.is_alive():
                 thread.join(timeout=1.0)
         self.ws = None
 
+    # Was: Diese Funktion sendet den vorgesehenen Arbeitsschritt.
+    # Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     def send(self, message: dict[str, Any]) -> None:
         if self.ws is None:
             raise WebSocketError("mock TBS is not connected")
         self.ws.send_binary(json.dumps(message, separators=(",", ":")).encode("utf-8"))
 
+    # Was: Führt den Arbeitsschritt `heartbeat` für heartbeat aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def heartbeat(self) -> None:
         self.seq += 1
         self.send(
@@ -134,6 +155,8 @@ class MockTbs:
             }
         )
 
+    # Was: Führt den Arbeitsschritt `telemetry` für Telemetrie aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def telemetry(self, event: dict[str, Any]) -> None:
         self.seq += 1
         self.send(
@@ -148,24 +171,34 @@ class MockTbs:
             }
         )
 
+    # Was: Diese Funktion registriert den vorgesehenen Arbeitsschritt.
+    # Warum: Die Zuordnung bleibt dadurch eindeutig und kann später sauber wieder entfernt werden.
     def register(self, issi: int) -> None:
         self.telemetry({"MsRegistration": {"issi": issi}})
 
+    # Was: Führt den Arbeitsschritt `deregister` für deregister aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def deregister(self, issi: int) -> None:
         self.telemetry({"MsDeregistration": {"issi": issi}})
 
+    # Was: Diese Funktion bindet groups.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def attach_groups(self, issi: int, gssis: list[int]) -> None:
         current = self.groups_by_issi.setdefault(issi, set())
         current.update(gssis)
         self.telemetry({"MsGroupAttach": {"issi": issi, "gssis": gssis}})
         self.telemetry({"MsGroupsSnapshot": {"issi": issi, "gssis": sorted(current)}})
 
+    # Was: Diese Funktion trennt groups.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def detach_groups(self, issi: int, gssis: list[int]) -> None:
         current = self.groups_by_issi.setdefault(issi, set())
         current.difference_update(gssis)
         self.telemetry({"MsGroupDetach": {"issi": issi, "gssis": gssis}})
         self.telemetry({"MsGroupsSnapshot": {"issi": issi, "gssis": sorted(current)}})
 
+    # Was: Diese Funktion startet Gruppe Ruf.
+    # Warum: Der Dienst oder Teilprozess wird so in einer festen und überprüfbaren Reihenfolge gestartet.
     def start_group_call(self, *, call_id: int, gssi: int, caller_issi: int, ts: int = 1, priority: int = 3) -> None:
         self.calls[call_id] = {"kind": "group", "gssi": gssi, "source_issi": caller_issi, "ts": ts}
         self.telemetry(
@@ -182,6 +215,8 @@ class MockTbs:
             }
         )
 
+    # Was: Führt den Arbeitsschritt `group_speaker` für Gruppe speaker aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def group_speaker(self, *, call_id: int, gssi: int, speaker_issi: int) -> None:
         self.telemetry(
             {
@@ -194,10 +229,14 @@ class MockTbs:
             }
         )
 
+    # Was: Führt den Arbeitsschritt `end_group_call` für end Gruppe Ruf aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def end_group_call(self, *, call_id: int, gssi: int) -> None:
         self.telemetry({"GroupCallEnded": {"call_id": call_id, "gssi": gssi}})
         self.calls.pop(call_id, None)
 
+    # Was: Führt den Arbeitsschritt `media_frame` für Audio- und Mediendaten Funkrahmen aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def media_frame(self, *, sequence: int, logical_ts: int = 1, payload: bytes | None = None) -> None:
         payload = payload if payload is not None else bytes((index + sequence) % 256 for index in range(35))
         if len(payload) != 35:
@@ -217,17 +256,29 @@ class MockTbs:
             }
         )
 
+    # Was: Führt den Arbeitsschritt `_heartbeats` für heartbeats aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def _heartbeats(self) -> None:
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         while not self.stop_event.wait(self.heartbeat_interval):
+            # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+            # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
             try:
                 self.heartbeat()
             except BaseException as error:
                 self.errors.append(f"heartbeat: {error}")
                 return
 
+    # Was: Führt den Arbeitsschritt `_reader` für reader aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def _reader(self) -> None:
         assert self.ws is not None
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         while not self.stop_event.is_set():
+            # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+            # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
             try:
                 frame = self.ws.recv()
             except (OSError, WebSocketError) as error:
@@ -241,12 +292,16 @@ class MockTbs:
                 continue
             if frame.opcode not in {0x1, 0x2}:
                 continue
+            # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+            # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
             try:
                 message = json.loads(frame.payload)
                 self._handle_downlink(message)
             except BaseException as error:
                 self.errors.append(f"decode/handle: {error}; payload={frame.payload[:300]!r}")
 
+    # Was: Diese Funktion verarbeitet Downlink (Netz zum Funkgerät).
+    # Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     def _handle_downlink(self, message: dict[str, Any]) -> None:
         kind = message.get("kind")
         if kind == "hello_ack":
@@ -272,6 +327,8 @@ class MockTbs:
         self._send_ack(envelope)
         self._send_command_response(envelope, command)
 
+    # Was: Diese Funktion sendet ack.
+    # Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     def _send_ack(self, envelope: dict[str, Any]) -> None:
         self.send(
             {
@@ -287,6 +344,8 @@ class MockTbs:
             }
         )
 
+    # Was: Diese Funktion sendet response.
+    # Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     def _send_response(self, envelope: dict[str, Any], response: dict[str, Any]) -> None:
         self.send(
             {
@@ -301,6 +360,8 @@ class MockTbs:
             }
         )
 
+    # Was: Diese Funktion sendet command response.
+    # Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     def _send_command_response(self, envelope: dict[str, Any], command: dict[str, Any]) -> None:
         if not command:
             return

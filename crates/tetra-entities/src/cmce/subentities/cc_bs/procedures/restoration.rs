@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use super::*;
 use crate::cmce::call_restore_runtime::{
     CallRestoreRequest, CallRestoreRuntimeError, GroupRestoreOrigin, RestoreCallKind,
@@ -6,6 +9,8 @@ use crate::cmce::call_restore_runtime::{
 use tetra_saps::common::MleFailCause;
 
 #[derive(Debug)]
+// Was: Listet die möglichen Varianten für MLE-Verbindungssteuerung Ruf Wiederherstellung decision auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub(in crate::cmce) enum MleCallRestoreDecision {
     Acknowledge {
         cmce_sdu: BitBuffer,
@@ -15,6 +20,8 @@ pub(in crate::cmce) enum MleCallRestoreDecision {
 }
 
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für restored Ruf in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct RestoredCall {
     old_call_id: u16,
     new_call_id: u16,
@@ -23,19 +30,29 @@ struct RestoredCall {
     chan_alloc: Option<CmceChanAllocReq>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `CcBsSubentity`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl CcBsSubentity {
+    // Was: Führt den Arbeitsschritt `call_restore_snapshot` für Ruf Wiederherstellung snapshot aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn call_restore_snapshot(&self) -> CallRestoreRuntimeSnapshot {
         self.call_restore.snapshot(self.dltime)
     }
 
+    // Was: Führt den Arbeitsschritt `install_call_restore_context` für install Ruf Wiederherstellung Kontext aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn install_call_restore_context(&mut self, context: CallRestoreContext) {
         self.call_restore.install_context(context);
     }
 
+    // Was: Diese Funktion entfernt Ruf Wiederherstellung Kontext.
+    // Warum: Das Entfernen bleibt damit vollständig und hinterlässt keinen widersprüchlichen Zustand.
     pub fn remove_call_restore_context(&mut self, call_id: u16) -> Option<CallRestoreContext> {
         self.call_restore.remove_context(call_id)
     }
 
+    // Was: Führt den Arbeitsschritt `export_call_restore_context` für export Ruf Wiederherstellung Kontext aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn export_call_restore_context(&self, call_id: u16) -> Option<CallRestoreContext> {
         if let Some(call) = self.active_calls.get(&call_id) {
             let circuit = self
@@ -43,6 +60,8 @@ impl CcBsSubentity {
                 .dl
                 .get(call.ts.saturating_sub(1) as usize)
                 .and_then(Option::as_ref);
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let origin = match &call.origin {
                 CallOrigin::Local { caller_addr } => GroupRestoreOrigin::Local {
                     caller: *caller_addr,
@@ -110,6 +129,8 @@ impl CcBsSubentity {
         self.call_restore.context(call_id).cloned()
     }
 
+    // Was: Diese Funktion verarbeitet MLE-Verbindungssteuerung Ruf Wiederherstellung.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     pub(in crate::cmce) fn handle_mle_call_restore(
         &mut self,
         queue: &mut MessageQueue,
@@ -121,6 +142,8 @@ impl CcBsSubentity {
         previous_location_area: Option<u16>,
         mut sdu: BitBuffer,
     ) -> MleCallRestoreDecision {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let pdu = match UCallRestore::from_bitbuf(&mut sdu) {
             Ok(pdu) => pdu,
             Err(error) => {
@@ -129,6 +152,8 @@ impl CcBsSubentity {
             }
         };
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.process_call_restore(
             queue,
             sender,
@@ -156,6 +181,8 @@ impl CcBsSubentity {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `fsm_on_u_call_restore` für fsm on u Ruf Wiederherstellung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce::subentities::cc_bs) fn fsm_on_u_call_restore(
         &mut self,
         queue: &mut MessageQueue,
@@ -166,6 +193,8 @@ impl CcBsSubentity {
         pdu: UCallRestore,
     ) {
         let old_call_id = pdu.call_identifier;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.process_call_restore(queue, sender, endpoint_id, link_id, None, None, None, pdu) {
             Ok(restored) => {
                 let sdu = Self::build_d_call_restore_extended(
@@ -215,6 +244,8 @@ impl CcBsSubentity {
     }
 
     #[allow(clippy::too_many_arguments)]
+    // Was: Diese Funktion verarbeitet Ruf Wiederherstellung.
+    // Warum: Die einzelnen Verarbeitungsschritte bleiben damit gebündelt und leichter testbar.
     fn process_call_restore(
         &mut self,
         queue: &mut MessageQueue,
@@ -239,6 +270,8 @@ impl CcBsSubentity {
             previous_mnc,
             previous_location_area,
         };
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let key = match self.call_restore.begin(request, self.dltime) {
             Ok(key) => key,
             Err(CallRestoreRuntimeError::DuplicateTerminal(key)) => {
@@ -322,6 +355,8 @@ impl CcBsSubentity {
             .mark_context_matched(key, context.kind(), self.dltime)
             .map_err(|_| RestoreRejectReason::InvalidState)?;
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let result = match context {
             CallRestoreContext::Group(context) => {
                 self.restore_group_call(queue, key, sender, pdu.request_to_transmit_send_data, context)
@@ -331,6 +366,8 @@ impl CcBsSubentity {
             }
         };
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match result {
             Ok(restored) => Ok(restored),
             Err(RestoreRejectReason::NoRadioResource) => {
@@ -358,6 +395,8 @@ impl CcBsSubentity {
         }
     }
 
+    // Was: Diese Funktion stellt Gruppe Ruf.
+    // Warum: Nach Verbindungsabbruch oder Neustart kann der vorherige Betriebszustand dadurch kontrolliert zurückkehren.
     fn restore_group_call(
         &mut self,
         queue: &mut MessageQueue,
@@ -429,6 +468,8 @@ impl CcBsSubentity {
                 },
             );
 
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let mut call = match context.origin.clone() {
                 GroupRestoreOrigin::Local { caller } => ActiveCall::new_local(
                     caller,
@@ -561,6 +602,8 @@ impl CcBsSubentity {
     }
 
     #[allow(clippy::too_many_arguments)]
+    // Was: Diese Funktion stellt individual Ruf.
+    // Warum: Nach Verbindungsabbruch oder Neustart kann der vorherige Betriebszustand dadurch kontrolliert zurückkehren.
     fn restore_individual_call(
         &mut self,
         queue: &mut MessageQueue,
@@ -703,6 +746,8 @@ impl CcBsSubentity {
                 (TransmissionGrant::Granted, false, false)
             } else {
                 let sender_had_floor = call.floor_holder == Some(sender.ssi);
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 let grant = match call.floor_holder {
                     Some(holder) if holder != sender.ssi => {
                         if request_to_transmit {
@@ -781,6 +826,8 @@ impl CcBsSubentity {
     /// Apply U-TX CEASED to a participant whose call restoration is waiting
     /// for a traffic bearer. Returns true when the PDU belonged to such a
     /// transaction and therefore must not be passed to active-call handling.
+    // Was: Diese Funktion verarbeitet queued Wiederherstellung tx ceased.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     pub(super) fn handle_queued_restore_tx_ceased(
         &mut self,
         sender: TetraAddress,
@@ -789,6 +836,8 @@ impl CcBsSubentity {
         let Some(key) = self.call_restore.queued_key_for_call(sender, call_id) else {
             return false;
         };
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self
             .call_restore
             .set_queued_transmission_request(key, false, self.dltime)
@@ -811,6 +860,8 @@ impl CcBsSubentity {
     /// Apply U-TX DEMAND while restoration is queued and acknowledge that the
     /// request remains queued. The actual bearer is delivered later with a
     /// second D-TX GRANTED carrying channel allocation.
+    // Was: Diese Funktion verarbeitet queued Wiederherstellung tx demand.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     pub(super) fn handle_queued_restore_tx_demand(
         &mut self,
         queue: &mut MessageQueue,
@@ -820,6 +871,8 @@ impl CcBsSubentity {
         let Some(key) = self.call_restore.queued_key_for_call(sender, call_id) else {
             return false;
         };
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let grant = match self
             .call_restore
             .set_queued_transmission_request(key, true, self.dltime)
@@ -849,8 +902,12 @@ impl CcBsSubentity {
         true
     }
 
+    // Was: Führt den Arbeitsschritt `drive_queued_call_restores` für drive queued Ruf restores aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(crate) fn drive_queued_call_restores(&mut self, queue: &mut MessageQueue) {
         let queued = self.call_restore.queued_transactions();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for transaction in queued {
             let Some(context) = self.call_restore.context(transaction.key.old_call_id).cloned() else {
                 let _ = self.call_restore.reject(
@@ -862,6 +919,8 @@ impl CcBsSubentity {
                 continue;
             };
 
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let result = match context {
                 CallRestoreContext::Group(context) => self.restore_group_call(
                     queue,
@@ -881,6 +940,8 @@ impl CcBsSubentity {
                 ),
             };
 
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match result {
                 Ok(restored) => {
                     self.send_restore_tx_granted(
@@ -901,6 +962,8 @@ impl CcBsSubentity {
         }
     }
 
+    // Was: Diese Funktion sendet timed out Wiederherstellung release.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     pub(crate) fn send_timed_out_restore_release(
         &self,
         queue: &mut MessageQueue,
@@ -911,12 +974,16 @@ impl CcBsSubentity {
         }
     }
 
+    // Was: Diese Funktion sendet Wiederherstellung tx granted.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_restore_tx_granted(
         &self,
         queue: &mut MessageQueue,
         transaction: &crate::cmce::call_restore_runtime::CallRestoreTransaction,
         restored: &RestoredCall,
     ) {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let transmitting_party = match transaction.kind {
             Some(RestoreCallKind::Group) => self
                 .active_calls
@@ -971,6 +1038,8 @@ impl CcBsSubentity {
         ));
     }
 
+    // Was: Diese Funktion sendet Wiederherstellung failure release.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_restore_failure_release(
         &self,
         queue: &mut MessageQueue,
@@ -993,6 +1062,8 @@ impl CcBsSubentity {
         ));
     }
 
+    // Was: Führt den Arbeitsschritt `reserve_restore_call_id` für reserve Wiederherstellung Ruf Kennung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn reserve_restore_call_id(&mut self, old_call_id: u16) -> u16 {
         if let Some(call_id) = self.call_restore.resolved_call_id(old_call_id) {
             return call_id;
@@ -1016,6 +1087,8 @@ impl CcBsSubentity {
         };
 
         let local_call_id = if in_use(old_call_id, self) {
+            // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+            // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
             loop {
                 let candidate = self.circuits.get_next_call_id();
                 if !in_use(candidate, self) {
@@ -1029,6 +1102,8 @@ impl CcBsSubentity {
         local_call_id
     }
 
+    // Was: Führt den Arbeitsschritt `install_restored_group_setup` für install restored Gruppe setup aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn install_restored_group_setup(&mut self, call_id: u16, context: &GroupCallRestoreContext) {
         let dest_addr = TetraAddress::new(context.dest_gssi, SsiType::Gssi);
         self.cached_setups.entry(call_id).or_insert_with(|| CachedSetup {
@@ -1066,6 +1141,8 @@ impl CcBsSubentity {
         });
     }
 
+    // Was: Führt den Arbeitsschritt `install_restored_individual_setup` für install restored individual setup aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn install_restored_individual_setup(
         &mut self,
         call_id: u16,
@@ -1106,6 +1183,8 @@ impl CcBsSubentity {
         });
     }
 
+    // Was: Diese Funktion stellt Dienst matches.
+    // Warum: Nach Verbindungsabbruch oder Neustart kann der vorherige Betriebszustand dadurch kontrolliert zurückkehren.
     fn restore_service_matches(
         context: &CallRestoreContext,
         basic_service: Option<&BasicServiceInformation>,
@@ -1120,6 +1199,8 @@ impl CcBsSubentity {
                 && !etee_encrypted
         };
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let (communication_type, circuit_mode_type, speech_service, etee_encrypted) = match context {
             CallRestoreContext::Group(context) => (
                 context.communication_type,
@@ -1147,7 +1228,11 @@ impl CcBsSubentity {
             && etee_encrypted == basic_service.encryption_flag
     }
 
+    // Was: Führt den Arbeitsschritt `mle_fail_cause_for_restore_reject` für MLE-Verbindungssteuerung fail cause for Wiederherstellung reject aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn mle_fail_cause_for_restore_reject(reason: RestoreRejectReason) -> MleFailCause {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match reason {
             RestoreRejectReason::NoRadioResource => MleFailCause::NeighbourCellEnquiryUnavailableOrTemporaryBreak,
             RestoreRejectReason::ParticipantMismatch | RestoreRejectReason::ServiceMismatch => {

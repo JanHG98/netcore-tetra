@@ -1,17 +1,30 @@
 #!/bin/sh
+# NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für netcore TETRA Datenpaket Gateway uninstall.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 set -eu
 
+# Was: Prüft die folgende Voraussetzung und führt den passenden Zweig aus.
+# Warum: Fehlende Rechte, Dateien oder Einstellungen sollen früh und verständlich behandelt werden.
 if [ "$(id -u)" -ne 0 ]; then
     echo "Run as root: sudo $0 [service-name]" >&2
     exit 1
 fi
 
+# Was: Diese Funktion sucht Dienst.
+# Warum: Die Suchlogik bleibt damit wiederverwendbar und muss nicht an mehreren Stellen kopiert werden.
 find_service() {
+    # Was: Prüft die folgende Voraussetzung und führt den passenden Zweig aus.
+    # Warum: Fehlende Rechte, Dateien oder Einstellungen sollen früh und verständlich behandelt werden.
     if [ "$#" -gt 0 ] && [ -n "$1" ]; then
         printf '%s\n' "$1"
         return
     fi
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung gilt.
+    # Warum: Gleichartige Installations- oder Prüfaufgaben werden dadurch vollständig abgearbeitet.
     for candidate in bluestation.service bluestation-bs.service tetra.service; do
+        # Was: Prüft die folgende Voraussetzung und führt den passenden Zweig aus.
+        # Warum: Fehlende Rechte, Dateien oder Einstellungen sollen früh und verständlich behandelt werden.
         if [ -e "/etc/systemd/system/${candidate}.d/20-packet-data-gateway.conf" ]; then
             printf '%s\n' "$candidate"
             return
@@ -24,12 +37,22 @@ find_service() {
 SERVICE=$(find_service "${1:-}")
 DROPIN="/etc/systemd/system/${SERVICE}.d/20-packet-data-gateway.conf"
 CLEANUP=/usr/local/libexec/netcore-tetra-packet-gateway-cleanup
+# Was: Prüft die folgende Voraussetzung und führt den passenden Zweig aus.
+# Warum: Fehlende Rechte, Dateien oder Einstellungen sollen früh und verständlich behandelt werden.
 if [ -x "$CLEANUP" ]; then
     "$CLEANUP" || true
 fi
+# Was: Entfernt nicht mehr benötigte Dateien oder alte Zustände.
+# Warum: Veraltete Reste könnten einen erneuten Start oder eine Neuinstallation verfälschen.
 rm -f "$DROPIN"
 rmdir "/etc/systemd/system/${SERVICE}.d" 2>/dev/null || true
+# Was: Entfernt nicht mehr benötigte Dateien oder alte Zustände.
+# Warum: Veraltete Reste könnten einen erneuten Start oder eine Neuinstallation verfälschen.
 rm -f "$CLEANUP"
+# Was: Steuert den zugehörigen systemd-Dienst.
+# Warum: Systemd soll Start, Stopp, Neustart und automatischen Boot des Dienstes zuverlässig verwalten.
 systemctl daemon-reload
+# Was: Steuert den zugehörigen systemd-Dienst.
+# Warum: Systemd soll Start, Stopp, Neustart und automatischen Boot des Dienstes zuverlässig verwalten.
 systemctl reset-failed "$SERVICE" >/dev/null 2>&1 || true
 echo "Removed packet-data systemd integration from $SERVICE."

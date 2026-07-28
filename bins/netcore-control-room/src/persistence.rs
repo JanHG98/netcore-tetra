@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für persistence.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::fs;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -11,10 +14,14 @@ use crate::config::PersistenceConfig;
 use crate::state::{CommandAuditEntry, EmergencyState, EventLogEntry, LocationState, SdsLogEntry};
 
 #[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für persistence handle in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PersistenceHandle {
     inner: Arc<Mutex<PersistenceInner>>,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für persistence inner in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct PersistenceInner {
     conn: Connection,
     persist_events: bool,
@@ -23,6 +30,8 @@ struct PersistenceInner {
 }
 
 #[derive(Debug, Default)]
+// Was: Bündelt die zusammengehörigen Werte für persistence bootstrap in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PersistenceBootstrap {
     pub events: Vec<EventLogEntry>,
     pub commands: Vec<CommandAuditEntry>,
@@ -32,6 +41,8 @@ pub struct PersistenceBootstrap {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für persisted TETRA-Kurznachricht (SDS) row in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PersistedSdsRow {
     pub node_id: String,
     pub station_name: Option<String>,
@@ -39,6 +50,8 @@ pub struct PersistedSdsRow {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für persisted location row in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PersistedLocationRow {
     pub node_id: String,
     pub station_name: Option<String>,
@@ -47,13 +60,19 @@ pub struct PersistedLocationRow {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für persisted emergency row in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PersistedEmergencyRow {
     pub node_id: String,
     pub station_name: Option<String>,
     pub emergency: EmergencyState,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `PersistenceHandle`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl PersistenceHandle {
+    // Was: Diese Funktion öffnet den vorgesehenen Arbeitsschritt.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn open(config: &PersistenceConfig) -> rusqlite::Result<Self> {
         if let Some(parent) = config.database_path.parent() {
             if !parent.as_os_str().is_empty() {
@@ -77,6 +96,8 @@ impl PersistenceHandle {
         })
     }
 
+    // Was: Diese Funktion lädt bootstrap.
+    // Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
     pub fn load_bootstrap(&self, history_limit: usize) -> rusqlite::Result<PersistenceBootstrap> {
         let inner = self.inner.lock().expect("persistence mutex poisoned");
         let limit = inner.load_recent_limit.min(history_limit).max(1);
@@ -89,6 +110,8 @@ impl PersistenceHandle {
         })
     }
 
+    // Was: Diese Funktion speichert Netzknoten hello.
+    // Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
     pub fn persist_node_hello(
         &self,
         node_id: &str,
@@ -111,6 +134,8 @@ impl PersistenceHandle {
         });
     }
 
+    // Was: Diese Funktion kennzeichnet Netzknoten disconnected.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn mark_node_disconnected(&self, node_id: &str, timestamp: &str) {
         self.with_conn("mark node disconnected", |conn| {
             conn.execute(
@@ -123,6 +148,8 @@ impl PersistenceHandle {
         });
     }
 
+    // Was: Diese Funktion speichert Ereignis.
+    // Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
     pub fn persist_event(&self, entry: &EventLogEntry) {
         let persist = {
             let inner = self.inner.lock().expect("persistence mutex poisoned");
@@ -143,6 +170,8 @@ impl PersistenceHandle {
         });
     }
 
+    // Was: Diese Funktion speichert command.
+    // Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
     pub fn persist_command(&self, entry: &CommandAuditEntry) {
         let target_entity = serde_json::to_string(&entry.target_entity).unwrap_or_else(|_| "null".to_string());
         let command = entry.command.to_string();
@@ -179,6 +208,8 @@ impl PersistenceHandle {
         });
     }
 
+    // Was: Diese Funktion speichert TETRA-Kurznachricht (SDS).
+    // Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
     pub fn persist_sds(&self, node_id: &str, station_name: Option<&str>, entry: &SdsLogEntry) {
         self.with_conn("persist sds", |conn| {
             conn.execute(
@@ -201,6 +232,8 @@ impl PersistenceHandle {
         });
     }
 
+    // Was: Diese Funktion speichert location.
+    // Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
     pub fn persist_location(&self, node_id: &str, station_name: Option<&str>, issi: u32, location: &LocationState) {
         self.with_conn("persist location", |conn| {
             conn.execute(
@@ -229,6 +262,8 @@ impl PersistenceHandle {
         });
     }
 
+    // Was: Diese Funktion speichert emergency.
+    // Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
     pub fn persist_emergency(&self, node_id: &str, station_name: Option<&str>, emergency: &EmergencyState) {
         self.with_conn("persist emergency", |conn| {
             conn.execute(
@@ -255,6 +290,8 @@ impl PersistenceHandle {
     }
 
 
+    // Was: Diese Funktion liefert users.
+    // Warum: Die Zusammenstellung der Einträge bleibt damit konsistent und wiederverwendbar.
     pub fn list_users(&self) -> rusqlite::Result<Vec<UserRecord>> {
         let inner = self.inner.lock().expect("persistence mutex poisoned");
         let mut stmt = inner.conn.prepare(
@@ -264,6 +301,8 @@ impl PersistenceHandle {
         stmt.query_map([], row_to_user)?.collect()
     }
 
+    // Was: Diese Funktion sucht Benutzer by username.
+    // Warum: Die Suchlogik bleibt damit wiederverwendbar und muss nicht an mehreren Stellen kopiert werden.
     pub fn find_user_by_username(&self, username: &str) -> rusqlite::Result<Option<StoredUserRecord>> {
         let inner = self.inner.lock().expect("persistence mutex poisoned");
         let mut stmt = inner.conn.prepare(
@@ -279,6 +318,8 @@ impl PersistenceHandle {
     }
 
     #[allow(clippy::too_many_arguments)]
+    // Was: Diese Funktion trägt Benutzer.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn insert_user(
         &self,
         id: &str,
@@ -301,6 +342,8 @@ impl PersistenceHandle {
         load_user_by_username(&inner.conn, username)?.ok_or(rusqlite::Error::QueryReturnedNoRows)
     }
 
+    // Was: Diese Funktion aktualisiert Benutzer.
+    // Warum: Bestehender Zustand wird dadurch kontrolliert und nach einheitlichen Regeln geändert.
     pub fn update_user(
         &self,
         username: &str,
@@ -322,6 +365,8 @@ impl PersistenceHandle {
         load_user_by_username(&inner.conn, username)
     }
 
+    // Was: Diese Funktion aktualisiert Benutzer password.
+    // Warum: Bestehender Zustand wird dadurch kontrolliert und nach einheitlichen Regeln geändert.
     pub fn update_user_password(&self, username: &str, password_salt: &str, password_hash: &str, now: &str) -> rusqlite::Result<Option<UserRecord>> {
         let inner = self.inner.lock().expect("persistence mutex poisoned");
         inner.conn.execute(
@@ -331,12 +376,16 @@ impl PersistenceHandle {
         load_user_by_username(&inner.conn, username)
     }
 
+    // Was: Diese Funktion löscht Benutzer.
+    // Warum: Das Entfernen wird dadurch kontrolliert durchgeführt und hinterlässt keine verwaisten Verweise.
     pub fn delete_user(&self, username: &str) -> rusqlite::Result<bool> {
         let inner = self.inner.lock().expect("persistence mutex poisoned");
         let affected = inner.conn.execute("DELETE FROM auth_users WHERE lower(username) = lower(?1)", params![username])?;
         Ok(affected > 0)
     }
 
+    // Was: Diese Funktion aktualisiert Benutzer last login.
+    // Warum: Bestehender Zustand wird dadurch kontrolliert und nach einheitlichen Regeln geändert.
     pub fn update_user_last_login(&self, username: &str, now: &str) {
         self.with_conn("update user last login", |conn| {
             conn.execute(
@@ -347,6 +396,8 @@ impl PersistenceHandle {
         });
     }
 
+    // Was: Führt den Arbeitsschritt `with_conn` für with conn aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn with_conn<F>(&self, label: &str, f: F)
     where
         F: FnOnce(&Connection) -> rusqlite::Result<()>,
@@ -361,6 +412,8 @@ impl PersistenceHandle {
     }
 }
 
+// Was: Führt den Arbeitsschritt `migrate` für migrate aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn migrate(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch(
         r#"
@@ -486,6 +539,8 @@ fn migrate(conn: &Connection) -> rusqlite::Result<()> {
     )
 }
 
+// Was: Diese Funktion lädt events.
+// Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
 fn load_events(conn: &Connection, limit: usize) -> rusqlite::Result<Vec<EventLogEntry>> {
     let mut stmt = conn.prepare(
         "SELECT timestamp, node_id, seq, event_type, event_json FROM events ORDER BY id DESC LIMIT ?1",
@@ -507,6 +562,8 @@ fn load_events(conn: &Connection, limit: usize) -> rusqlite::Result<Vec<EventLog
     Ok(rows)
 }
 
+// Was: Diese Funktion lädt commands.
+// Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
 fn load_commands(conn: &Connection, limit: usize) -> rusqlite::Result<Vec<CommandAuditEntry>> {
     let mut stmt = conn.prepare(
         "SELECT command_id, target_node_id, operator_id, issued_at, updated_at, status, \
@@ -539,6 +596,8 @@ fn load_commands(conn: &Connection, limit: usize) -> rusqlite::Result<Vec<Comman
     Ok(rows)
 }
 
+// Was: Diese Funktion lädt TETRA-Kurznachricht (SDS).
+// Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
 fn load_sds(conn: &Connection, limit: usize) -> rusqlite::Result<Vec<PersistedSdsRow>> {
     let mut stmt = conn.prepare(
         "SELECT node_id, station_name, timestamp, direction, source_issi, dest_issi, is_group, protocol_id, text \
@@ -567,6 +626,8 @@ fn load_sds(conn: &Connection, limit: usize) -> rusqlite::Result<Vec<PersistedSd
     Ok(rows)
 }
 
+// Was: Diese Funktion lädt locations.
+// Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
 fn load_locations(conn: &Connection) -> rusqlite::Result<Vec<PersistedLocationRow>> {
     let mut stmt = conn.prepare(
         "SELECT node_id, station_name, issi, latitude, longitude, source, updated_at, raw_text \
@@ -589,6 +650,8 @@ fn load_locations(conn: &Connection) -> rusqlite::Result<Vec<PersistedLocationRo
     .collect()
 }
 
+// Was: Diese Funktion lädt emergencies.
+// Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
 fn load_emergencies(conn: &Connection, limit: usize) -> rusqlite::Result<Vec<PersistedEmergencyRow>> {
     let mut stmt = conn.prepare(
         "SELECT node_id, station_name, source_issi, dest_ssi, active, raised_at, cleared_at \
@@ -615,6 +678,8 @@ fn load_emergencies(conn: &Connection, limit: usize) -> rusqlite::Result<Vec<Per
 }
 
 
+// Was: Diese Funktion lädt Benutzer by username.
+// Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
 fn load_user_by_username(conn: &Connection, username: &str) -> rusqlite::Result<Option<UserRecord>> {
     let mut stmt = conn.prepare(
         "SELECT id, username, display_name, role, enabled, created_at, updated_at, last_login_at, created_by \
@@ -628,6 +693,8 @@ fn load_user_by_username(conn: &Connection, username: &str) -> rusqlite::Result<
     }
 }
 
+// Was: Führt den Arbeitsschritt `row_to_user` für row to Benutzer aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn row_to_user(row: &rusqlite::Row<'_>) -> rusqlite::Result<UserRecord> {
     let role_raw: String = row.get(3)?;
     let enabled: i64 = row.get(4)?;
@@ -644,6 +711,8 @@ fn row_to_user(row: &rusqlite::Row<'_>) -> rusqlite::Result<UserRecord> {
     })
 }
 
+// Was: Führt den Arbeitsschritt `row_to_stored_user` für row to stored Benutzer aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn row_to_stored_user(row: &rusqlite::Row<'_>) -> rusqlite::Result<StoredUserRecord> {
     let role_raw: String = row.get(3)?;
     let enabled: i64 = row.get(4)?;
@@ -658,6 +727,8 @@ fn row_to_stored_user(row: &rusqlite::Row<'_>) -> rusqlite::Result<StoredUserRec
     })
 }
 
+// Was: Prüft, ob noisy Ereignis type zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
 fn is_noisy_event_type(event_type: &str) -> bool {
     matches!(
         event_type,
@@ -666,6 +737,8 @@ fn is_noisy_event_type(event_type: &str) -> bool {
 }
 
 #[allow(dead_code)]
+// Was: Führt den Arbeitsschritt `database_exists` für Datenbank exists aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn database_exists(path: &Path) -> bool {
     path.exists()
 }

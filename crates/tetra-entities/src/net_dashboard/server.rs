@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream, UdpSocket};
@@ -27,26 +30,44 @@ use crate::tpg2200::{build_sds_text_payload, build_tpg2200_callout_payload, form
 use tetra_config::bluestation::CfgBrew;
 use tetra_core::tetra_entities::TetraEntity;
 
+// Was: Vergibt für cmd sender einen fachlich verständlichen Typnamen.
+// Warum: Der Alias macht Signaturen lesbarer und hält technische Details aus dem aufrufenden Code heraus.
 type CmdSender = crossbeam_channel::Sender<ControlCommand>;
 
 #[cfg(feature = "recording")]
+// Was: Vergibt für dashboard Aufzeichnung handle einen fachlich verständlichen Typnamen.
+// Warum: Der Alias macht Signaturen lesbarer und hält technische Details aus dem aufrufenden Code heraus.
 type DashboardRecorderHandle = Option<RecorderHandle>;
 #[cfg(not(feature = "recording"))]
+// Was: Vergibt für dashboard Aufzeichnung handle einen fachlich verständlichen Typnamen.
+// Warum: Der Alias macht Signaturen lesbarer und hält technische Details aus dem aufrufenden Code heraus.
 type DashboardRecorderHandle = ();
 
 #[cfg(feature = "audio-player")]
+// Was: Vergibt für dashboard audio player handle einen fachlich verständlichen Typnamen.
+// Warum: Der Alias macht Signaturen lesbarer und hält technische Details aus dem aufrufenden Code heraus.
 type DashboardAudioPlayerHandle = Option<AudioPlayerHandle>;
 #[cfg(not(feature = "audio-player"))]
+// Was: Vergibt für dashboard audio player handle einen fachlich verständlichen Typnamen.
+// Warum: Der Alias macht Signaturen lesbarer und hält technische Details aus dem aufrufenden Code heraus.
 type DashboardAudioPlayerHandle = ();
 
 #[cfg(feature = "audio-player")]
+// Was: Vergibt für dashboard tts handle einen fachlich verständlichen Typnamen.
+// Warum: Der Alias macht Signaturen lesbarer und hält technische Details aus dem aufrufenden Code heraus.
 type DashboardTtsHandle = Option<TtsHandle>;
 #[cfg(not(feature = "audio-player"))]
+// Was: Vergibt für dashboard tts handle einen fachlich verständlichen Typnamen.
+// Warum: Der Alias macht Signaturen lesbarer und hält technische Details aus dem aufrufenden Code heraus.
 type DashboardTtsHandle = ();
 
 // Each WS connection registers a Sender here.
 // broadcast() sends to all of them; dead connections are pruned automatically.
+// Was: Vergibt für ws broadcast tx einen fachlich verständlichen Typnamen.
+// Warum: Der Alias macht Signaturen lesbarer und hält technische Details aus dem aufrufenden Code heraus.
 type WsBroadcastTx = crossbeam_channel::Sender<String>;
+// Was: Vergibt für ws clients einen fachlich verständlichen Typnamen.
+// Warum: Der Alias macht Signaturen lesbarer und hält technische Details aus dem aufrufenden Code heraus.
 type WsClients = Arc<Mutex<Vec<WsBroadcastTx>>>;
 
 // ---------------------------------------------------------------------------
@@ -54,37 +75,53 @@ type WsClients = Arc<Mutex<Vec<WsBroadcastTx>>>;
 // ---------------------------------------------------------------------------
 
 #[derive(Clone, PartialEq)]
+// Was: Listet die möglichen Varianten für update phase auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 enum UpdatePhase {
     Idle,
     Running,
     Done { success: bool },
 }
 
+// Was: Bündelt die zusammengehörigen Werte für update Zustand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct UpdateState {
     phase: UpdatePhase,
     log: String,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `UpdateState`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl UpdateState {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     fn new() -> Self {
         UpdateState {
             phase: UpdatePhase::Idle,
             log: String::new(),
         }
     }
+    // Was: Führt den Arbeitsschritt `append` für append aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn append(&mut self, line: &str) {
         self.log.push_str(line);
         self.log.push('\n');
     }
+    // Was: Diese Funktion startet den vorgesehenen Arbeitsschritt.
+    // Warum: Der Dienst oder Teilprozess wird so in einer festen und überprüfbaren Reihenfolge gestartet.
     fn start(&mut self) {
         self.phase = UpdatePhase::Running;
         self.log.clear();
     }
+    // Was: Führt den Arbeitsschritt `finish` für finish aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn finish(&mut self, success: bool) {
         self.phase = UpdatePhase::Done { success };
     }
 }
 
+// Was: Vergibt für shared update Zustand einen fachlich verständlichen Typnamen.
+// Warum: Der Alias macht Signaturen lesbarer und hält technische Details aus dem aufrufenden Code heraus.
 type SharedUpdateState = Arc<Mutex<UpdateState>>;
 
 /// In-memory session store for cookie-based authentication.
@@ -98,13 +135,19 @@ type SharedUpdateState = Arc<Mutex<UpdateState>>;
 /// Tokens are random 32-byte hex strings. They expire after 7 days of inactivity.
 /// The store is per-process (no on-disk persistence) — restarting FlowStation logs
 /// every session out. That's fine: the dashboard is typically a single-operator tool.
+// Was: Bündelt die zusammengehörigen Werte für Sitzung store in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SessionStore {
     sessions: HashMap<String, std::time::Instant>,
     /// Sessions older than this are pruned on access.
     ttl: std::time::Duration,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SessionStore`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SessionStore {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     fn new() -> Self {
         Self {
             sessions: HashMap::new(),
@@ -113,6 +156,8 @@ impl SessionStore {
     }
 
     /// Create a new session, return its token. Caller sets it as a cookie.
+    // Was: Diese Funktion erstellt den vorgesehenen Arbeitsschritt.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     fn create(&mut self) -> String {
         self.prune();
         let token = generate_session_token();
@@ -121,6 +166,8 @@ impl SessionStore {
     }
 
     /// Return true if the token is known and not expired. Refreshes last-seen on hit.
+    // Was: Diese Funktion prüft den vorgesehenen Arbeitsschritt.
+    // Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
     fn validate(&mut self, token: &str) -> bool {
         self.prune();
         if let Some(seen) = self.sessions.get_mut(token) {
@@ -130,10 +177,14 @@ impl SessionStore {
         false
     }
 
+    // Was: Führt den Arbeitsschritt `invalidate` für invalidate aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn invalidate(&mut self, token: &str) {
         self.sessions.remove(token);
     }
 
+    // Was: Führt den Arbeitsschritt `prune` für prune aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn prune(&mut self) {
         let now = std::time::Instant::now();
         let ttl = self.ttl;
@@ -141,6 +192,8 @@ impl SessionStore {
     }
 }
 
+// Was: Vergibt für shared Sitzung store einen fachlich verständlichen Typnamen.
+// Warum: Der Alias macht Signaturen lesbarer und hält technische Details aus dem aufrufenden Code heraus.
 type SharedSessionStore = Arc<Mutex<SessionStore>>;
 
 /// 32 bytes of entropy → 64-char hex string. Uses the OS RNG via `getrandom`-style
@@ -148,6 +201,8 @@ type SharedSessionStore = Arc<Mutex<SessionStore>>;
 /// not cryptographically perfect, but adequate for a session token on a LAN-only
 /// dashboard. Production-grade deployments behind a reverse proxy already get HTTPS
 /// hardening from the proxy layer.
+// Was: Diese Funktion erzeugt Sitzung Zugriffsschlüssel.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn generate_session_token() -> String {
     let mut bytes = [0u8; 32];
     if let Ok(mut f) = std::fs::File::open("/dev/urandom") {
@@ -161,11 +216,15 @@ fn generate_session_token() -> String {
             .unwrap_or(0);
         let pid = std::process::id() as u128;
         let mix = nanos.wrapping_mul(0x9e37_79b9_7f4a_7c15).wrapping_add(pid << 64);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (i, b) in bytes.iter_mut().enumerate() {
             *b = ((mix >> (i * 4)) & 0xff) as u8;
         }
     }
     let mut s = String::with_capacity(64);
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for b in &bytes {
         s.push_str(&format!("{:02x}", b));
     }
@@ -173,12 +232,18 @@ fn generate_session_token() -> String {
 }
 
 /// Extract `fs_session=<token>` from a Cookie header in the raw request.
+// Was: Diese Funktion liest und prüft Sitzung cookie.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_session_cookie(headers: &str) -> Option<String> {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for line in headers.lines() {
         let lower = line.to_ascii_lowercase();
         if let Some(rest) = lower.strip_prefix("cookie:") {
             // Use original (non-lowered) line for the value to preserve case in token.
             let value_line = &line["cookie:".len()..];
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for kv in value_line.split(';') {
                 let kv = kv.trim();
                 if let Some(token) = kv.strip_prefix("fs_session=") {
@@ -206,13 +271,19 @@ fn parse_session_cookie(headers: &str) -> Option<String> {
 /// Returns `Ok(path)` on success, or `Err(message)` listing all paths tried.
 /// The returned path is guaranteed to contain a `.git` entry (file or directory —
 /// `.git` can be a file in git worktrees).
+// Was: Diese Funktion ermittelt source dir.
+// Warum: Unklare oder indirekte Angaben werden so vor der weiteren Verarbeitung eindeutig gemacht.
 fn resolve_source_dir(override_dir: Option<&str>) -> Result<std::path::PathBuf, String> {
+    // Was: Prüft, ob git repo zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     fn is_git_repo(p: &std::path::Path) -> bool {
         // `.git` is a directory in normal clones, but a file in git worktrees,
         // so check for existence of either form.
         p.join(".git").exists()
     }
 
+    // Was: Prüft, ob acceptable path zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     fn is_acceptable_path(p: &std::path::Path) -> bool {
         // Reject filesystem root, single-character paths, /usr, /bin, etc.
         // These are never valid source directories and would just produce confusing errors.
@@ -234,6 +305,8 @@ fn resolve_source_dir(override_dir: Option<&str>) -> Result<std::path::PathBuf, 
     // 2. Walk up from the running binary path, up to 6 levels.
     if let Ok(exe) = std::env::current_exe() {
         let mut cur = exe.parent().map(|p| p.to_path_buf());
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for _ in 0..6 {
             let Some(p) = cur else { break };
             if !is_acceptable_path(&p) {
@@ -249,6 +322,8 @@ fn resolve_source_dir(override_dir: Option<&str>) -> Result<std::path::PathBuf, 
     }
 
     // 3. Well-known install paths.
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for candidate in &["/opt/tetra-bluestation", "/opt/flowstation", "/opt/tetra-bs", "/opt/tetra"] {
         let p = std::path::PathBuf::from(candidate);
         if is_git_repo(&p) {
@@ -289,10 +364,14 @@ fn resolve_source_dir(override_dir: Option<&str>) -> Result<std::path::PathBuf, 
 /// line (so a long `cargo build` shows live progress instead of looking hung — FH-BUG-035), and
 /// return the collected stdout on success. On spawn/exit failure it logs an error, marks the update
 /// `finish(false)`, and returns `None`.
+// Was: Führt den Arbeitsschritt `stream_cmd` für stream cmd aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn stream_cmd(update: &SharedUpdateState, mut cmd: std::process::Command, label: String) -> Option<String> {
     use std::io::{BufRead, BufReader};
     update.lock().unwrap().append(&label);
     cmd.stdout(std::process::Stdio::piped()).stderr(std::process::Stdio::piped());
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let mut child = match cmd.spawn() {
         Ok(c) => c,
         Err(e) => {
@@ -306,6 +385,8 @@ fn stream_cmd(update: &SharedUpdateState, mut cmd: std::process::Command, label:
     let err_handle = child.stderr.take().map(|err| {
         let u = std::sync::Arc::clone(update);
         std::thread::spawn(move || {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for line in BufReader::new(err).lines().map_while(Result::ok) {
                 u.lock().unwrap().append(&line);
             }
@@ -313,6 +394,8 @@ fn stream_cmd(update: &SharedUpdateState, mut cmd: std::process::Command, label:
     });
     let mut collected = String::new();
     if let Some(out) = child.stdout.take() {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for line in BufReader::new(out).lines().map_while(Result::ok) {
             update.lock().unwrap().append(&line);
             collected.push_str(&line);
@@ -322,6 +405,8 @@ fn stream_cmd(update: &SharedUpdateState, mut cmd: std::process::Command, label:
     if let Some(h) = err_handle {
         let _ = h.join();
     }
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match child.wait() {
         Ok(s) if s.success() => Some(collected),
         Ok(s) => {
@@ -343,6 +428,8 @@ fn stream_cmd(update: &SharedUpdateState, mut cmd: std::process::Command, label:
 /// (where rustup installs cargo), so `Command::new("cargo")` fails with ENOENT even though an
 /// interactive SSH shell finds it (FH-BUG-037). We resolve an absolute path from $CARGO, the user's
 /// home, and well-known install locations, falling back to a bare PATH lookup.
+// Was: Diese Funktion sucht cargo.
+// Warum: Die Suchlogik bleibt damit wiederverwendbar und muss nicht an mehreren Stellen kopiert werden.
 fn find_cargo() -> std::path::PathBuf {
     use std::path::{Path, PathBuf};
     if let Ok(c) = std::env::var("CARGO") {
@@ -358,6 +445,8 @@ fn find_cargo() -> std::path::PathBuf {
         }
     }
     // Root/system-owned locations only — safe to run as a possibly-privileged service identity.
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for cand in [
         "/usr/local/cargo/bin/cargo",
         "/root/.cargo/bin/cargo",
@@ -381,6 +470,8 @@ fn find_cargo() -> std::path::PathBuf {
 /// full HEAD hash. Returns `None` when the build embedded no usable hash (so we can't tell). This is
 /// the source of truth for "is the binary actually up to date" — comparing git HEAD vs origin alone
 /// wrongly reports success after a merge that landed but whose build then failed (FH-BUG-035/037).
+// Was: Führt den Arbeitsschritt `binary_built_from` für binary built from aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn binary_built_from(binary_git_hash: &str, repo_head: &str) -> Option<bool> {
     let h = binary_git_hash.strip_suffix("-modified").unwrap_or(binary_git_hash);
     if h.is_empty() || h == "unknown" {
@@ -399,7 +490,11 @@ fn binary_built_from(binary_git_hash: &str, repo_head: &str) -> Option<bool> {
 ///      (so a previously-failed build is not mistaken for "already up to date")
 ///   6. cargo build --release (cargo resolved explicitly; output streamed live)
 ///   7. systemctl restart <service>  (after short delay)
+// Was: Diese Funktion führt update.
+// Warum: Der Lebenszyklus des Dienstes bleibt so an einer zentralen Stelle steuerbar.
 fn run_update(update: SharedUpdateState, config_path: String, source_dir_override: Option<String>) {
+    // Was: Definiert das Makro `log`, das wiederkehrenden Rust-Code erzeugt.
+    // Warum: Gleichartige Strukturen werden dadurch nur einmal beschrieben und können nicht unbemerkt auseinanderlaufen.
     macro_rules! log {
         ($update:expr, $($arg:tt)*) => {{
             let line = format!($($arg)*);
@@ -411,6 +506,8 @@ fn run_update(update: SharedUpdateState, config_path: String, source_dir_overrid
     log!(update, "=== NetCore-Tetra OTA Update ===");
 
     // Step 1: resolve source directory. Bail out cleanly if we can't find a git repo.
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let src_dir = match resolve_source_dir(source_dir_override.as_deref()) {
         Ok(p) => p,
         Err(e) => {
@@ -423,6 +520,8 @@ fn run_update(update: SharedUpdateState, config_path: String, source_dir_overrid
     log!(update, "Source dir: {}", src_dir.display());
 
     /// Run a command, streaming stdout+stderr into the log; return collected stdout or None.
+    // Was: Diese Funktion führt cmd output.
+    // Warum: Der Lebenszyklus des Dienstes bleibt so an einer zentralen Stelle steuerbar.
     fn run_cmd_output(update: &SharedUpdateState, program: &str, args: &[&str], dir: &std::path::Path) -> Option<String> {
         let label = format!("$ {} {}", program, args.join(" "));
         tracing::info!("UPDATE: {}", label);
@@ -509,6 +608,8 @@ fn run_update(update: SharedUpdateState, config_path: String, source_dir_overrid
 
         // Backup config before touching anything.
         let backup_path = format!("{}.bak", config_path);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match std::fs::copy(&config_path, &backup_path) {
             Ok(_) => log!(update, "Config backed up → {}", backup_path),
             Err(e) => log!(update, "WARNING: config backup failed: {} (continuing)", e),
@@ -530,6 +631,8 @@ fn run_update(update: SharedUpdateState, config_path: String, source_dir_overrid
     let repo_head = if merged { remote_commit.as_str() } else { local_commit.as_str() };
     let binary_current = binary_built_from(tetra_core::GIT_HASH, repo_head);
     if !merged && binary_current != Some(false) {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match binary_current {
             Some(true) => log!(
                 update,
@@ -567,6 +670,8 @@ fn run_update(update: SharedUpdateState, config_path: String, source_dir_overrid
     // which would let a planted `rustc`/`cc` in the source tree run during the build.
     if cargo.is_absolute() {
         if let Some(bin) = cargo.parent().filter(|p| !p.as_os_str().is_empty()) {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let new_path = match std::env::var("PATH") {
                 Ok(p) if !p.is_empty() => format!("{}:{}", bin.display(), p),
                 _ => bin.display().to_string(),
@@ -585,6 +690,8 @@ fn run_update(update: SharedUpdateState, config_path: String, source_dir_overrid
     crate::service_control::schedule_service_action(crate::service_control::ServiceAction::Restart, std::time::Duration::from_secs(2));
 }
 
+// Was: Bündelt die zusammengehörigen Werte für dashboard server in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DashboardServer {
     pub state: DashboardState,
     clients: WsClients,
@@ -612,7 +719,11 @@ pub struct DashboardServer {
     ts_last_broadcast: std::sync::Mutex<HashMap<(u16, u8), std::time::Instant>>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `DashboardServer`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl DashboardServer {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(config_path: String) -> Self {
         Self {
             state: Arc::new(RwLock::new(DashboardStateInner::new(config_path.clone()))),
@@ -633,58 +744,80 @@ impl DashboardServer {
         }
     }
 
+    // Was: Diese Funktion setzt cmd sender.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_cmd_sender(&mut self, tx: CmdSender) {
         self.cmd_tx = Some(tx);
     }
 
+    // Was: Diese Funktion setzt echolink cmd sender.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_echolink_cmd_sender(&mut self, tx: EcholinkCmdSender) {
         self.echolink_cmd_tx = Some(tx);
     }
 
     #[cfg(feature = "recording")]
+    // Was: Diese Funktion setzt Aufzeichnung handle.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_recorder_handle(&mut self, handle: RecorderHandle) {
         self.recorder = Some(handle);
     }
 
     #[cfg(feature = "audio-player")]
+    // Was: Diese Funktion setzt audio player handle.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_audio_player_handle(&mut self, handle: AudioPlayerHandle) {
         self.audio_player = Some(handle);
     }
 
     #[cfg(feature = "audio-player")]
+    // Was: Diese Funktion setzt tts handle.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_tts_handle(&mut self, handle: TtsHandle) {
         self.tts = Some(handle);
     }
 
     /// Provide the SharedConfig so the dashboard can read live SDS queue state.
+    // Was: Diese Funktion setzt shared Konfiguration.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_shared_config(&mut self, cfg: tetra_config::bluestation::SharedConfig) {
         self.shared_config = Some(cfg);
     }
 
     /// Configure an explicit source directory for OTA updates.
+    // Was: Diese Funktion setzt source dir.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_source_dir(&mut self, source_dir: Option<String>) {
         self.source_dir_override = source_dir;
     }
 
     /// Configure HTTP Basic Auth credentials.
+    // Was: Diese Funktion setzt Anmeldung und Berechtigung.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_auth(&mut self, auth: Option<(String, String)>) {
         self.auth = auth;
     }
 
     /// Enable the anonymous read-only public overview (only effective when auth is set).
     /// Must be called BEFORE `start()`, which captures the flag into the server thread.
+    // Was: Diese Funktion setzt public overview.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_public_overview(&mut self, on: bool) {
         self.public_overview = on;
     }
 
     /// Mark that the stack started on the fallback config, with the reason why.
     /// The dashboard will display a persistent warning banner.
+    // Was: Diese Funktion setzt fallback Konfiguration.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_fallback_config(&self, reason: String) {
         let mut s = self.state.write().unwrap();
         s.fallback_config_active = true;
         s.fallback_config_reason = reason;
     }
 
+    // Was: Diese Funktion startet den vorgesehenen Arbeitsschritt.
+    // Warum: Der Dienst oder Teilprozess wird so in einer festen und überprüfbaren Reihenfolge gestartet.
     pub fn start(&mut self, bind: &str, port: u16) {
         let addr = format!("{}:{}", bind, port);
         let state = Arc::clone(&self.state);
@@ -714,6 +847,8 @@ impl DashboardServer {
                 // manual stop/start. Retrying lets it self-heal once the address appears. This
                 // loop runs only on the dashboard thread, so it can never block the PHY/main loop.
                 let listener = loop {
+                    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                     match TcpListener::bind(&addr) {
                         Ok(l) => {
                             tracing::info!("Dashboard listening on http://{}", addr);
@@ -729,6 +864,8 @@ impl DashboardServer {
                         }
                     }
                 };
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for stream in listener.incoming() {
                     let Ok(stream) = stream else { continue };
                     let state = Arc::clone(&state);
@@ -771,6 +908,8 @@ impl DashboardServer {
             .expect("failed to spawn dashboard thread");
     }
 
+    // Was: Diese Funktion verarbeitet Telemetrie.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     pub fn handle_telemetry(&self, event: TelemetryEvent) {
         let msg = event_to_ws_msg(&event);
         // Emergency banner add/remove broadcasts are transition-gated (only on enter/clear, not on
@@ -779,6 +918,8 @@ impl DashboardServer {
         let mut extra_broadcasts: Vec<String> = Vec::new();
         {
             let mut s = self.state.write().unwrap();
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match &event {
                 TelemetryEvent::MsRegistration { issi } => {
                     s.ms_map.insert(
@@ -807,6 +948,8 @@ impl DashboardServer {
                 }
                 TelemetryEvent::MsGroupAttach { issi, gssis } => {
                     if let Some(e) = s.ms_map.get_mut(issi) {
+                        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                         for g in gssis {
                             if !e.groups.contains(g) {
                                 e.groups.push(*g);
@@ -1202,6 +1345,8 @@ impl DashboardServer {
         if let Some(json) = msg {
             self.broadcast(&json);
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for json in extra_broadcasts {
             self.broadcast(&json);
         }
@@ -1225,6 +1370,8 @@ impl DashboardServer {
         }
     }
 
+    // Was: Diese Funktion legt log.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn push_log(&self, level: &str, msg: String) {
         let entry = {
             let mut s = self.state.write().unwrap();
@@ -1240,13 +1387,19 @@ impl DashboardServer {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `broadcast` für broadcast aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn broadcast(&self, msg: &str) {
         let mut clients = self.clients.lock().unwrap();
         clients.retain(|tx| tx.send(msg.to_owned()).is_ok());
     }
 }
 
+// Was: Führt den Arbeitsschritt `event_to_ws_msg` für Ereignis to ws msg aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn event_to_ws_msg(event: &TelemetryEvent) -> Option<String> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let v = match event {
         TelemetryEvent::MsRegistration { issi } => serde_json::json!({"type":"ms_registered","issi":issi}),
         TelemetryEvent::MsDeregistration { issi } => serde_json::json!({"type":"ms_deregistered","issi":issi}),
@@ -1495,7 +1648,11 @@ fn event_to_ws_msg(event: &TelemetryEvent) -> Option<String> {
 /// Kept for potential future use (e.g. an opt-in scripting endpoint). The dashboard
 /// now uses cookie-based sessions, so this is currently unreferenced.
 #[allow(dead_code)]
+// Was: Diese Funktion liest und prüft basic Anmeldung und Berechtigung.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_basic_auth(headers: &str) -> Option<(String, String)> {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for line in headers.lines() {
         let lower = line.to_lowercase();
         if lower.starts_with("authorization:") {
@@ -1516,11 +1673,15 @@ fn parse_basic_auth(headers: &str) -> Option<(String, String)> {
 
 /// Constant-time byte slice comparison to mitigate timing attacks.
 /// Returns true iff a == b in length and content.
+// Was: Führt den Arbeitsschritt `timing_safe_eq` für timing safe eq aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn timing_safe_eq(a: &[u8], b: &[u8]) -> bool {
     if a.len() != b.len() {
         return false;
     }
     let mut diff: u8 = 0;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (x, y) in a.iter().zip(b.iter()) {
         diff |= x ^ y;
     }
@@ -1530,6 +1691,8 @@ fn timing_safe_eq(a: &[u8], b: &[u8]) -> bool {
 /// Send an HTTP 401 Unauthorized response that triggers the browser's native
 /// Basic Auth dialog. Unused since the switch to cookie sessions.
 #[allow(dead_code)]
+// Was: Führt den Arbeitsschritt `http_response_401` für HTTP response 401 aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn http_response_401(mut stream: TcpStream) {
     let body = "Unauthorized";
     let resp = format!(
@@ -1547,6 +1710,8 @@ fn http_response_401(mut stream: TcpStream) {
 }
 
 /// Send a ControlCommand through the dashboard → CMCE channel, best-effort.
+// Was: Diese Funktion sendet Steuerung cmd.
+// Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
 fn send_control_cmd(cmd_tx: &Arc<Mutex<Option<CmdSender>>>, cmd: ControlCommand) {
     if let Ok(guard) = cmd_tx.lock() {
         if let Some(ref tx) = *guard {
@@ -1556,6 +1721,8 @@ fn send_control_cmd(cmd_tx: &Arc<Mutex<Option<CmdSender>>>, cmd: ControlCommand)
 }
 
 /// GET /api/sds-log — the persisted SDS Log as a JSON array, newest entry first.
+// Was: Diese Funktion stellt TETRA-Kurznachricht (SDS) log.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_sds_log(stream: TcpStream, state: &DashboardState) {
     let body = {
         let s = state.read().unwrap();
@@ -1566,6 +1733,8 @@ fn serve_sds_log(stream: TcpStream, state: &DashboardState) {
 }
 
 /// DELETE /api/sds-log — clear the persisted SDS Log.
+// Was: Diese Funktion stellt TETRA-Kurznachricht (SDS) log clear.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_sds_log_clear(stream: TcpStream, state: &DashboardState) {
     if let Ok(mut s) = state.write() {
         s.clear_sds_log();
@@ -1574,8 +1743,12 @@ fn serve_sds_log_clear(stream: TcpStream, state: &DashboardState) {
 }
 
 /// GET /api/dapnet-log — the persisted DAPNET Log as a JSON array, newest entry first.
+// Was: Diese Funktion stellt dapnet log.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_dapnet_log(stream: TcpStream, state: &DashboardState) {
     let body = {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match state.read() {
             Ok(s) => {
                 let list: Vec<_> = s.dapnet_log.iter().rev().cloned().collect();
@@ -1588,6 +1761,8 @@ fn serve_dapnet_log(stream: TcpStream, state: &DashboardState) {
 }
 
 /// DELETE /api/dapnet-log — clear the persisted DAPNET Log.
+// Was: Diese Funktion stellt dapnet log clear.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_dapnet_log_clear(stream: TcpStream, state: &DashboardState) {
     if let Ok(mut s) = state.write() {
         s.clear_dapnet_log();
@@ -1596,8 +1771,12 @@ fn serve_dapnet_log_clear(stream: TcpStream, state: &DashboardState) {
 }
 
 /// GET /api/meshcom-messages — the persisted MeshCom packet log as JSON, newest first.
+// Was: Diese Funktion stellt meshcom messages.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_meshcom_messages(stream: TcpStream, state: &DashboardState) {
     let body = {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match state.read() {
             Ok(s) => serde_json::to_string(&s.meshcom_messages).unwrap_or_else(|_| "[]".to_string()),
             Err(_) => "[]".to_string(),
@@ -1607,6 +1786,8 @@ fn serve_meshcom_messages(stream: TcpStream, state: &DashboardState) {
 }
 
 /// DELETE /api/meshcom-messages — clear the persisted MeshCom packet log.
+// Was: Diese Funktion stellt meshcom messages clear.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_meshcom_messages_clear(stream: TcpStream, state: &DashboardState) {
     if let Ok(mut s) = state.write() {
         s.clear_meshcom_messages();
@@ -1615,8 +1796,12 @@ fn serve_meshcom_messages_clear(stream: TcpStream, state: &DashboardState) {
 }
 
 /// GET /api/meshcom-nodes — the persisted MeshCom node directory as JSON, newest first.
+// Was: Diese Funktion stellt meshcom nodes.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_meshcom_nodes(stream: TcpStream, state: &DashboardState) {
     let body = {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match state.read() {
             Ok(s) => serde_json::to_string(&s.meshcom_nodes).unwrap_or_else(|_| "[]".to_string()),
             Err(_) => "[]".to_string(),
@@ -1626,6 +1811,8 @@ fn serve_meshcom_nodes(stream: TcpStream, state: &DashboardState) {
 }
 
 /// DELETE /api/meshcom-nodes — clear the persisted MeshCom node directory.
+// Was: Diese Funktion stellt meshcom nodes clear.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_meshcom_nodes_clear(stream: TcpStream, state: &DashboardState) {
     if let Ok(mut s) = state.write() {
         s.clear_meshcom_nodes();
@@ -1634,6 +1821,8 @@ fn serve_meshcom_nodes_clear(stream: TcpStream, state: &DashboardState) {
 }
 
 /// Serialize the current live SDS queue to JSON and serve it.
+// Was: Diese Funktion stellt live TETRA-Kurznachricht (SDS) list.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_live_sds_list(mut stream: TcpStream, cfg: &Option<tetra_config::bluestation::SharedConfig>) {
     let items: Vec<serde_json::Value> = cfg
         .as_ref()
@@ -1664,16 +1853,22 @@ fn serve_live_sds_list(mut stream: TcpStream, cfg: &Option<tetra_config::bluesta
     let _ = stream.write_all(body.as_bytes());
 }
 
+// Was: Diese Funktion fordert path.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn request_path(req_line: &str) -> Option<&str> {
     req_line.split_whitespace().nth(1)
 }
 
+// Was: Diese Funktion fordert Weiterleitung.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn request_route(req_line: &str) -> &str {
     request_path(req_line)
         .and_then(|path| path.split_once('?').map(|(route, _)| route).or(Some(path)))
         .unwrap_or("")
 }
 
+// Was: Führt den Arbeitsschritt `directory_proxy_route` für directory proxy Weiterleitung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn directory_proxy_route(req_line: &str) -> Option<&'static str> {
     let mut parts = req_line.split_whitespace();
     let method = parts.next().unwrap_or("");
@@ -1681,6 +1876,8 @@ fn directory_proxy_route(req_line: &str) -> Option<&'static str> {
         return None;
     }
     let route = request_route(req_line).trim_end_matches('/');
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match route {
         "/devices.json" | "/api/devices" => Some("devices"),
         "/api/basestations" => Some("basestations"),
@@ -1692,6 +1889,8 @@ fn directory_proxy_route(req_line: &str) -> Option<&'static str> {
     }
 }
 
+// Was: Führt den Arbeitsschritt `devices_json_candidates` für devices JSON-Daten candidates aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn devices_json_candidates(config_path: &str, source_dir_override: Option<&str>) -> Vec<std::path::PathBuf> {
     let mut candidates = Vec::new();
 
@@ -1723,12 +1922,16 @@ fn devices_json_candidates(config_path: &str, source_dir_override: Option<&str>)
     candidates
 }
 
+// Was: Diese Funktion stellt directory proxy request.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_directory_proxy_request(
     stream: TcpStream,
     config_path: &str,
     source_dir_override: Option<&str>,
     req_line: &str,
 ) {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match directory_proxy_route(req_line) {
         Some("devices") => serve_devices_json(stream, config_path, source_dir_override),
         Some("basestations") => serve_directory_raw_json(stream, config_path, "/api/basestations", "[]"),
@@ -1742,7 +1945,11 @@ fn serve_directory_proxy_request(
     }
 }
 
+// Was: Diese Funktion stellt directory raw JSON-Daten.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_directory_raw_json(stream: TcpStream, config_path: &str, directory_path: &str, fallback: &str) {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match crate::net_dashboard::radioid::fetch_path_from_config(config_path, directory_path) {
         Ok(Some(body)) => {
             let body = crate::net_dashboard::radioid::validate_json_or_empty(&body, fallback);
@@ -1758,7 +1965,11 @@ fn serve_directory_raw_json(stream: TcpStream, config_path: &str, directory_path
     }
 }
 
+// Was: Diese Funktion stellt devices JSON-Daten.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_devices_json(stream: TcpStream, config_path: &str, source_dir_override: Option<&str>) {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match crate::net_dashboard::radioid::fetch_path_from_config(config_path, "/api/devices") {
         Ok(Some(body)) => match crate::net_dashboard::radioid::normalize_devices_json(&body) {
             Ok(body) => {
@@ -1779,11 +1990,15 @@ fn serve_devices_json(stream: TcpStream, config_path: &str, source_dir_override:
         }
     }
 
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for path in devices_json_candidates(config_path, source_dir_override) {
         let Ok(body) = std::fs::read_to_string(&path) else {
             continue;
         };
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match crate::net_dashboard::radioid::normalize_devices_json(&body) {
             Ok(body) => {
                 tracing::debug!("Dashboard: serving devices.json from {}", path.display());
@@ -1802,6 +2017,8 @@ fn serve_devices_json(stream: TcpStream, config_path: &str, source_dir_override:
     http_json_response(stream, 200, "{}");
 }
 
+// Was: Prüft, ob tpg2200 action request zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
 fn is_tpg2200_action_request(req_line: &str) -> bool {
     let mut parts = req_line.split_whitespace();
     let method = parts.next().unwrap_or("");
@@ -1810,6 +2027,8 @@ fn is_tpg2200_action_request(req_line: &str) -> bool {
     matches!(method, "GET" | "POST") && route == "/api/action/tpg2200"
 }
 
+// Was: Führt den Arbeitsschritt `query_params` für query params aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn query_params(path: &str) -> HashMap<String, String> {
     let Some((_, query)) = path.split_once('?') else {
         return HashMap::new();
@@ -1826,13 +2045,19 @@ fn query_params(path: &str) -> HashMap<String, String> {
         .collect()
 }
 
+// Was: Führt den Arbeitsschritt `truncate_action_text` für truncate action text aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn truncate_action_text(text: &str, max: usize) -> (String, bool) {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match text.char_indices().nth(max) {
         Some((idx, _)) => (text[..idx].to_string(), true),
         None => (text.to_string(), false),
     }
 }
 
+// Was: Führt den Arbeitsschritt `next_tpg2200_action_incident` für next tpg2200 action incident aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn next_tpg2200_action_incident(cfg: &tetra_config::bluestation::SharedConfig, base: u16) -> u16 {
     let base = base.clamp(1, 256);
     let mut state = cfg.state_write();
@@ -1841,7 +2066,11 @@ fn next_tpg2200_action_incident(cfg: &tetra_config::bluestation::SharedConfig, b
     incident
 }
 
+// Was: Führt den Arbeitsschritt `query_u16` für query u16 aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn query_u16(params: &HashMap<String, String>, keys: &[&str], max: u16) -> Option<u16> {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for key in keys {
         if let Some(value) = params.get(*key) {
             if let Ok(parsed) = value.trim().parse::<u16>() {
@@ -1852,7 +2081,11 @@ fn query_u16(params: &HashMap<String, String>, keys: &[&str], max: u16) -> Optio
     None
 }
 
+// Was: Führt den Arbeitsschritt `query_u8` für query u8 aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn query_u8(params: &HashMap<String, String>, keys: &[&str], max: u8) -> Option<u8> {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for key in keys {
         if let Some(value) = params.get(*key) {
             if let Ok(parsed) = value.trim().parse::<u8>() {
@@ -1863,7 +2096,11 @@ fn query_u8(params: &HashMap<String, String>, keys: &[&str], max: u8) -> Option<
     None
 }
 
+// Was: Führt den Arbeitsschritt `query_tpg_ric` für query tpg ric aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn query_tpg_ric(params: &HashMap<String, String>, keys: &[&str]) -> Option<u32> {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for key in keys {
         if let Some(value) = params.get(*key) {
             if let Ok(parsed) = tetra_config::bluestation::parse_ric_route_key(value) {
@@ -1874,6 +2111,8 @@ fn query_tpg_ric(params: &HashMap<String, String>, keys: &[&str]) -> Option<u32>
     None
 }
 
+// Was: Führt den Arbeitsschritt `tpg2200_priority_for` für tpg2200 Priorität for aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn tpg2200_priority_for(
     default_priority: u8,
     issi_priorities: &BTreeMap<u32, u8>,
@@ -1893,6 +2132,8 @@ fn tpg2200_priority_for(
 ///
 /// Public-by-design ActionURL endpoint for phones that cannot hold the dashboard session cookie.
 /// The dedicated token is mandatory and configured in `[tpg2200_action]`.
+// Was: Diese Funktion stellt tpg2200 action url.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_tpg2200_action_url(
     stream: TcpStream,
     req_line: &str,
@@ -1939,6 +2180,8 @@ fn serve_tpg2200_action_url(
         tracing::warn!("TPG2200 ActionURL text truncated to {} chars", action.max_text_chars);
     }
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let tx = match cmd_tx.lock() {
         Ok(guard) => guard.clone(),
         Err(_) => None,
@@ -2010,6 +2253,8 @@ fn serve_tpg2200_action_url(
 
 
 #[cfg(feature = "recording")]
+// Was: Diese Funktion stellt recording request.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_recording_request(mut stream: TcpStream, req_line: &str, recorder: &DashboardRecorderHandle) {
     let route = request_route(req_line).trim_end_matches('/');
     let method = req_line.split_whitespace().next().unwrap_or("");
@@ -2066,9 +2311,13 @@ fn serve_recording_request(mut stream: TcpStream, req_line: &str, recorder: &Das
         return;
     }
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match (method, action) {
         ("GET", Some("audio")) => {
             drain_http_headers(&mut stream);
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match handle.audio_path(id) {
                 Ok(path) => serve_recording_audio(stream, &path, id),
                 Err(error) => http_json_response(stream, 404, &serde_json::json!({"error":error}).to_string()),
@@ -2076,6 +2325,8 @@ fn serve_recording_request(mut stream: TcpStream, req_line: &str, recorder: &Das
         }
         ("GET", Some("metadata")) | ("GET", None) => {
             drain_http_headers(&mut stream);
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match handle.find_recording(id) {
                 Some(item) => {
                     let body = serde_json::to_string(&item).unwrap_or_else(|_| "{}".to_string());
@@ -2086,6 +2337,8 @@ fn serve_recording_request(mut stream: TcpStream, req_line: &str, recorder: &Das
         }
         ("DELETE", None) => {
             drain_http_headers(&mut stream);
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match handle.delete_recording(id) {
                 Ok(()) => http_json_response(stream, 200, &serde_json::json!({"ok":true}).to_string()),
                 Err(error) => http_json_response(stream, 404, &serde_json::json!({"ok":false,"error":error}).to_string()),
@@ -2099,6 +2352,8 @@ fn serve_recording_request(mut stream: TcpStream, req_line: &str, recorder: &Das
 }
 
 #[cfg(not(feature = "recording"))]
+// Was: Diese Funktion stellt recording request.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_recording_request(mut stream: TcpStream, _req_line: &str, _recorder: &DashboardRecorderHandle) {
     drain_http_headers(&mut stream);
     http_json_response(
@@ -2109,7 +2364,11 @@ fn serve_recording_request(mut stream: TcpStream, _req_line: &str, _recorder: &D
 }
 
 #[cfg(feature = "recording")]
+// Was: Diese Funktion stellt recording audio.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_recording_audio(mut stream: TcpStream, path: &std::path::Path, id: &str) {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let mut file = match std::fs::File::open(path) {
         Ok(file) => file,
         Err(error) => {
@@ -2117,6 +2376,8 @@ fn serve_recording_audio(mut stream: TcpStream, path: &std::path::Path, id: &str
             return;
         }
     };
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let length = match file.metadata() {
         Ok(metadata) => metadata.len(),
         Err(error) => {
@@ -2135,6 +2396,8 @@ fn serve_recording_audio(mut stream: TcpStream, path: &std::path::Path, id: &str
 }
 
 #[cfg(feature = "audio-player")]
+// Was: Führt den Arbeitsschritt `audio_preview_header_value` für audio preview header value aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn audio_preview_header_value<'a>(headers: &'a str, name: &str) -> Option<&'a str> {
     headers.lines().skip(1).find_map(|line| {
         let (key, value) = line.split_once(':')?;
@@ -2143,6 +2406,8 @@ fn audio_preview_header_value<'a>(headers: &'a str, name: &str) -> Option<&'a st
 }
 
 #[cfg(feature = "audio-player")]
+// Was: Führt den Arbeitsschritt `audio_preview_range` für audio preview range aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn audio_preview_range(headers: &str, length: u64) -> Result<Option<(u64, u64)>, String> {
     let Some(value) = audio_preview_header_value(headers, "Range") else {
         return Ok(None);
@@ -2186,6 +2451,8 @@ fn audio_preview_range(headers: &str, length: u64) -> Result<Option<(u64, u64)>,
 }
 
 #[cfg(feature = "audio-player")]
+// Was: Diese Funktion stellt audio preview.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_audio_preview(
     mut stream: TcpStream,
     path: &std::path::Path,
@@ -2193,6 +2460,8 @@ fn serve_audio_preview(
     head_only: bool,
 ) {
     use std::io::{Seek, SeekFrom};
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let mut file = match std::fs::File::open(path) {
         Ok(file) => file,
         Err(error) => {
@@ -2200,6 +2469,8 @@ fn serve_audio_preview(
             return;
         }
     };
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let length = match file.metadata() {
         Ok(metadata) => metadata.len(),
         Err(error) => {
@@ -2207,6 +2478,8 @@ fn serve_audio_preview(
             return;
         }
     };
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let content_type = match path.extension().and_then(|ext| ext.to_str()).map(str::to_ascii_lowercase).as_deref() {
         Some("mp3") => "audio/mpeg",
         Some("wav") => "audio/wav",
@@ -2220,6 +2493,8 @@ fn serve_audio_preview(
         .map(|ch| if ch.is_ascii_alphanumeric() || matches!(ch, '.' | '-' | '_') { ch } else { '_' })
         .collect::<String>();
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let range = match audio_preview_range(request_headers, length) {
         Ok(range) => range,
         Err(error) => {
@@ -2235,6 +2510,8 @@ fn serve_audio_preview(
         }
     };
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let (status, start, end) = match range {
         Some((start, end)) => ("206 Partial Content", start, end),
         None if length > 0 => ("200 OK", 0, length - 1),
@@ -2258,6 +2535,8 @@ fn serve_audio_preview(
 }
 
 #[cfg(feature = "audio-player")]
+// Was: Diese Funktion stellt tts request.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_tts_request(
     mut stream: TcpStream,
     req_line: &str,
@@ -2292,6 +2571,8 @@ fn serve_tts_request(
 
     if method == "GET" && route == "/api/audio/tts/templates" {
         drain_http_headers(&mut stream);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match handle.templates() {
             Ok(templates) => {
                 let body = serde_json::json!({"templates": templates}).to_string();
@@ -2315,6 +2596,8 @@ fn serve_tts_request(
             return;
         };
         drain_http_headers(&mut stream);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match handle.preview_path(job_id) {
             Ok(path) => serve_audio_preview(stream, &path, request_headers, method == "HEAD"),
             Err(error) => http_json_response(stream, 404, &serde_json::json!({"error":error}).to_string()),
@@ -2324,6 +2607,8 @@ fn serve_tts_request(
 
     if method == "POST" && route == "/api/audio/tts/stop" {
         drain_http_headers(&mut stream);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match handle.stop() {
             Ok(()) => http_json_response(stream, 200, &serde_json::json!({"ok":true}).to_string()),
             Err(error) => http_json_response(stream, 503, &serde_json::json!({"ok":false,"error":error}).to_string()),
@@ -2338,6 +2623,8 @@ fn serve_tts_request(
         )
     {
         let body = read_http_body(&mut stream);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let request: serde_json::Value = match serde_json::from_slice(&body) {
             Ok(value) => value,
             Err(error) => {
@@ -2357,6 +2644,8 @@ fn serve_tts_request(
             } else {
                 handle.delete_template(id)
             };
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match result {
                 Ok(()) => http_json_response(stream, 200, &serde_json::json!({"ok":true}).to_string()),
                 Err(error) => http_json_response(
@@ -2373,6 +2662,8 @@ fn serve_tts_request(
             .get("target_id")
             .and_then(|value| value.as_u64())
             .and_then(|value| u32::try_from(value).ok());
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let (target_type, target_id) = match (target_type_raw, target_id_raw) {
             (None, None) => (None, None),
             (Some("group"), Some(id)) => (Some(AudioTargetType::Group), Some(id)),
@@ -2420,6 +2711,8 @@ fn serve_tts_request(
             target_id,
             auto_saved: false,
         };
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match handle.save_template(draft) {
             Ok(template) => http_json_response(
                 stream,
@@ -2437,6 +2730,8 @@ fn serve_tts_request(
 
     if method == "POST" && route == "/api/audio/tts/generate" {
         let body = read_http_body(&mut stream);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let request: serde_json::Value = match serde_json::from_slice(&body) {
             Ok(value) => value,
             Err(error) => {
@@ -2455,6 +2750,8 @@ fn serve_tts_request(
             .get("recording_name")
             .and_then(|value| value.as_str())
             .unwrap_or("");
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match handle.generate_preview(text, voice_id, speed, recording_name) {
             Ok(job_id) => http_json_response(
                 stream,
@@ -2475,6 +2772,8 @@ fn serve_tts_request(
 }
 
 #[cfg(not(feature = "audio-player"))]
+// Was: Diese Funktion stellt tts request.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_tts_request(
     mut stream: TcpStream,
     _req_line: &str,
@@ -2490,6 +2789,8 @@ fn serve_tts_request(
 }
 
 #[cfg(feature = "audio-player")]
+// Was: Diese Funktion stellt audio player request.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_audio_player_request(
     mut stream: TcpStream,
     req_line: &str,
@@ -2529,6 +2830,8 @@ fn serve_audio_player_request(
         let source_id = params.get("source").map(String::as_str).unwrap_or("local");
         let relative = params.get("path").map(String::as_str).unwrap_or("");
         drain_http_headers(&mut stream);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match handle.list_media(source_id, relative) {
             Ok(entries) => {
                 let body = serde_json::json!({"source": source_id, "path": relative, "entries": entries}).to_string();
@@ -2549,6 +2852,8 @@ fn serve_audio_player_request(
             return;
         };
         drain_http_headers(&mut stream);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match handle.preview_media_path(source_id, relative) {
             Ok(path) => serve_audio_preview(stream, &path, request_headers, method == "HEAD"),
             Err(error) => http_json_response(stream, 400, &serde_json::json!({"error":error}).to_string()),
@@ -2558,6 +2863,8 @@ fn serve_audio_player_request(
 
     if method == "POST" && route == "/api/audio/stop" {
         drain_http_headers(&mut stream);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match handle.stop() {
             Ok(()) => http_json_response(stream, 200, &serde_json::json!({"ok":true}).to_string()),
             Err(error) => http_json_response(stream, 503, &serde_json::json!({"ok":false,"error":error}).to_string()),
@@ -2567,6 +2874,8 @@ fn serve_audio_player_request(
 
     if method == "POST" && route == "/api/audio/play" {
         let body = read_http_body(&mut stream);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let request: serde_json::Value = match serde_json::from_slice(&body) {
             Ok(value) => value,
             Err(error) => {
@@ -2574,6 +2883,8 @@ fn serve_audio_player_request(
                 return;
             }
         };
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let target_type = match request.get("target_type").and_then(|value| value.as_str()) {
             Some("group") => AudioTargetType::Group,
             Some("individual") => AudioTargetType::Individual,
@@ -2588,6 +2899,8 @@ fn serve_audio_player_request(
         };
         let priority = request.get("priority").and_then(|value| value.as_u64()).and_then(|value| u8::try_from(value).ok());
         let source_type = request.get("source_type").and_then(|value| value.as_str()).unwrap_or("media");
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let result = match source_type {
             "media" => {
                 let Some(path) = request.get("path").and_then(|value| value.as_str()) else {
@@ -2608,6 +2921,8 @@ fn serve_audio_player_request(
                         http_json_response(stream, 503, &serde_json::json!({"ok":false,"error":"recording service unavailable"}).to_string());
                         return;
                     };
+                    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                     let path = match recorder.audio_path(id) {
                         Ok(path) => path,
                         Err(error) => {
@@ -2633,6 +2948,8 @@ fn serve_audio_player_request(
             }
             _ => Err("source_type must be media or recording".to_string()),
         };
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match result {
             Ok(job_id) => http_json_response(stream, 202, &serde_json::json!({"ok":true,"job_id":job_id}).to_string()),
             Err(error) => http_json_response(stream, 409, &serde_json::json!({"ok":false,"error":error}).to_string()),
@@ -2645,6 +2962,8 @@ fn serve_audio_player_request(
 }
 
 #[cfg(not(feature = "audio-player"))]
+// Was: Diese Funktion stellt audio player request.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_audio_player_request(
     mut stream: TcpStream,
     _req_line: &str,
@@ -2660,6 +2979,8 @@ fn serve_audio_player_request(
     );
 }
 
+// Was: Diese Funktion verarbeitet connection.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 fn handle_connection(
     mut stream: TcpStream,
     state: DashboardState,
@@ -2686,6 +3007,8 @@ fn handle_connection(
     {
         // peek for the request line (already works for routing)
         let mut peek_buf = [0u8; 4096];
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let n = match stream.peek(&mut peek_buf) {
             Ok(n) => n,
             Err(_) => return,
@@ -2727,6 +3050,8 @@ fn handle_connection(
 
         if is_login_page {
             let mut buf = BufReader::new(stream);
+            // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+            // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
             loop {
                 let mut line = String::new();
                 let _ = buf.read_line(&mut line);
@@ -2747,6 +3072,8 @@ fn handle_connection(
             // Body has form-encoded or JSON-encoded credentials.
             let mut buf = BufReader::new(stream);
             let mut content_length = 0usize;
+            // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+            // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
             loop {
                 let mut line = String::new();
                 let _ = buf.read_line(&mut line);
@@ -2796,6 +3123,8 @@ fn handle_connection(
                 }
             }
             let mut buf = BufReader::new(stream);
+            // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+            // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
             loop {
                 let mut line = String::new();
                 let _ = buf.read_line(&mut line);
@@ -2810,6 +3139,8 @@ fn handle_connection(
         // All other routes require a valid session.
         if !session_ok {
             let mut buf = BufReader::new(stream);
+            // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+            // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
             loop {
                 let mut line = String::new();
                 let _ = buf.read_line(&mut line);
@@ -2868,6 +3199,8 @@ fn handle_connection(
     } else if req_line.contains("POST /api/system/brightness") {
         // Set backlight brightness (FH-FEAT-008). Body: {"value": 0..=255}.
         let body = read_http_body(&mut stream);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let req: serde_json::Value = match serde_json::from_slice(&body) {
             Ok(v) => v,
             Err(e) => {
@@ -2881,6 +3214,8 @@ fn handle_connection(
             return;
         }
         tracing::info!("Dashboard: set backlight brightness {}", value);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let body = match crate::backlight::set_brightness(value as u32) {
             Ok(()) => serde_json::json!({ "ok": true }).to_string(),
             Err(e) => serde_json::json!({ "ok": false, "error": e.to_string() }).to_string(),
@@ -2890,6 +3225,8 @@ fn handle_connection(
         // NOTE: trailing space is load-bearing — without it `contains` would also swallow
         // `GET /api/system/brightness`. The frontend's `fetch('/api/system')` still matches.
         let mut buf = BufReader::new(stream);
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             let mut line = String::new();
             let _ = buf.read_line(&mut line);
@@ -2901,6 +3238,8 @@ fn handle_connection(
     } else if req_line.contains("POST /api/configs/activate") {
         let mut buf = BufReader::new(stream);
         let mut content_length = 0usize;
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             let mut line = String::new();
             let _ = buf.read_line(&mut line);
@@ -2921,6 +3260,8 @@ fn handle_connection(
         let mut body = vec![0u8; content_length.min(512 * 1024)];
         let _ = buf.read_exact(&mut body);
         let profile = String::from_utf8_lossy(&body).trim().to_string();
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match activate_config_profile(&config_path, &profile) {
             Ok(_) => {
                 tracing::info!("Dashboard: activated config profile '{}'", profile);
@@ -2930,6 +3271,8 @@ fn handle_connection(
         }
     } else if req_line.contains("GET /api/configs") {
         let mut buf = BufReader::new(stream);
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             let mut line = String::new();
             let _ = buf.read_line(&mut line);
@@ -2958,6 +3301,8 @@ fn handle_connection(
             .map(|n| n.to_string());
         let mut buf = BufReader::new(stream);
         let mut content_length = 0usize;
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             let mut line = String::new();
             let _ = buf.read_line(&mut line);
@@ -2977,6 +3322,8 @@ fn handle_connection(
         }
         let mut body = vec![0u8; content_length.min(512 * 1024)];
         let _ = buf.read_exact(&mut body);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match profile_name {
             None => http_response(buf.into_inner(), 400, "missing profile name"),
             Some(name) => match save_config_profile(&config_path, &name, &String::from_utf8_lossy(&body)) {
@@ -2996,6 +3343,8 @@ fn handle_connection(
         http_json_response(s, 200, "{}");
     } else if req_line.contains("GET /api/update/check") {
         let mut buf = BufReader::new(stream);
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             let mut line = String::new();
             let _ = buf.read_line(&mut line);
@@ -3006,6 +3355,8 @@ fn handle_connection(
         serve_update_check(buf.into_inner());
     } else if req_line.contains("GET /api/update/status") {
         let mut buf = BufReader::new(stream);
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             let mut line = String::new();
             let _ = buf.read_line(&mut line);
@@ -3016,6 +3367,8 @@ fn handle_connection(
         serve_update_status(buf.into_inner(), &update_state);
     } else if req_line.contains("POST /api/update") {
         let mut buf = BufReader::new(stream);
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             let mut line = String::new();
             let _ = buf.read_line(&mut line);
@@ -3042,6 +3395,8 @@ fn handle_connection(
         http_response(buf.into_inner(), 200, "OK");
     } else if req_line.contains("GET /api/config/backup") {
         let mut buf = BufReader::new(stream);
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             let mut line = String::new();
             let _ = buf.read_line(&mut line);
@@ -3053,6 +3408,8 @@ fn handle_connection(
         serve_config_get(buf.into_inner(), &backup_path);
     } else if req_line.contains("POST /api/config/restore") {
         let mut buf = BufReader::new(stream);
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             let mut line = String::new();
             let _ = buf.read_line(&mut line);
@@ -3061,6 +3418,8 @@ fn handle_connection(
             }
         }
         let backup_path = format!("{}.bak", config_path);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match std::fs::copy(&backup_path, &config_path) {
             Ok(_) => {
                 tracing::info!("Dashboard: config restored from backup");
@@ -3071,6 +3430,8 @@ fn handle_connection(
     } else if req_line.contains("POST /api/config") {
         let mut buf = BufReader::new(stream);
         let mut content_length = 0usize;
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             let mut line = String::new();
             let _ = buf.read_line(&mut line);
@@ -3096,6 +3457,8 @@ fn handle_connection(
         if let Err(e) = std::fs::copy(&config_path, &backup_path) {
             tracing::warn!("Dashboard: failed to write config backup: {}", e);
         }
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match std::fs::write(&config_path, body_str.as_ref()) {
             Ok(_) => http_response(buf.into_inner(), 200, "OK"),
             Err(e) => http_response(buf.into_inner(), 500, &e.to_string()),
@@ -3106,6 +3469,8 @@ fn handle_connection(
         serve_edge_fallback(s, &shared_config);
     } else if req_line.contains("GET /api/btsinfo") {
         let mut buf = BufReader::new(stream);
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             let mut line = String::new();
             let _ = buf.read_line(&mut line);
@@ -3138,6 +3503,8 @@ fn handle_connection(
         serve_snom_notify_post(inner, &shared_config, &config_path, &body_str);
     } else if req_line.contains("GET /api/whitelist") {
         let mut buf = BufReader::new(stream);
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             let mut line = String::new();
             let _ = buf.read_line(&mut line);
@@ -3149,6 +3516,8 @@ fn handle_connection(
     } else if req_line.contains("POST /api/whitelist") {
         let mut buf = BufReader::new(stream);
         let mut content_length = 0usize;
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             let mut line = String::new();
             let _ = buf.read_line(&mut line);
@@ -3172,6 +3541,8 @@ fn handle_connection(
         serve_whitelist_post(buf.into_inner(), &shared_config, &config_path, body_str.as_ref(), &cmd_tx);
     } else if req_line.contains("GET /api/wx") {
         let mut buf = BufReader::new(stream);
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             let mut line = String::new();
             let _ = buf.read_line(&mut line);
@@ -3183,6 +3554,8 @@ fn handle_connection(
     } else if req_line.contains("POST /api/wx") {
         let mut buf = BufReader::new(stream);
         let mut content_length = 0usize;
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             let mut line = String::new();
             let _ = buf.read_line(&mut line);
@@ -3291,6 +3664,8 @@ fn handle_connection(
         serve_geoalarm_post(inner, &shared_config, &config_path, &body_str);
     } else if req_line.contains("GET /api/config") {
         let mut buf = BufReader::new(stream);
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             let mut line = String::new();
             let _ = buf.read_line(&mut line);
@@ -3301,6 +3676,8 @@ fn handle_connection(
         serve_config_get(buf.into_inner(), &config_path);
     } else if req_line.contains("DELETE /api/sds-log") {
         let mut buf = BufReader::new(stream);
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             let mut line = String::new();
             let _ = buf.read_line(&mut line);
@@ -3312,6 +3689,8 @@ fn handle_connection(
     } else if req_line.contains("GET /api/sds-log") {
         // Return the persisted SDS Log (newest first) as JSON.
         let mut buf = BufReader::new(stream);
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             let mut line = String::new();
             let _ = buf.read_line(&mut line);
@@ -3323,6 +3702,8 @@ fn handle_connection(
     } else if req_line.contains("GET /api/live-sds") {
         // Return current live SDS queue as JSON.
         let mut buf = BufReader::new(stream);
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             let mut line = String::new();
             let _ = buf.read_line(&mut line);
@@ -3340,6 +3721,8 @@ fn handle_connection(
             .and_then(|s| s.parse().ok())
             .unwrap_or(0);
         let mut buf = BufReader::new(stream);
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             let mut line = String::new();
             let _ = buf.read_line(&mut line);
@@ -3356,6 +3739,8 @@ fn handle_connection(
     } else if req_line.contains("DELETE /api/live-sds") {
         // DELETE /api/live-sds  — clear all
         let mut buf = BufReader::new(stream);
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             let mut line = String::new();
             let _ = buf.read_line(&mut line);
@@ -3369,6 +3754,8 @@ fn handle_connection(
         // POST /api/live-sds  body: JSON { "text": "...", "protocol_id": 220, "source_issi": 16777215, "repeat_count": 0 }
         let mut buf = BufReader::new(stream);
         let mut content_length = 0usize;
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             let mut line = String::new();
             let _ = buf.read_line(&mut line);
@@ -3388,6 +3775,8 @@ fn handle_connection(
         }
         let mut body = vec![0u8; content_length.min(4096)];
         let _ = buf.read_exact(&mut body);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match serde_json::from_slice::<serde_json::Value>(&body) {
             Ok(v) => {
                 let text = v.get("text").and_then(|t| t.as_str()).unwrap_or("").trim().to_string();
@@ -3418,6 +3807,8 @@ fn handle_connection(
     // docs on what each operation does. Responses are JSON.
     } else if req_line.contains("GET /api/wifi/status") {
         drain_http_headers(&mut stream);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let body = match crate::wifi::status() {
             Ok(s) => serde_json::to_string(&serde_json::json!({"ok": true, "status": s})).unwrap_or_default(),
             Err(e) => serde_json::to_string(&serde_json::json!({"ok": false, "error": e})).unwrap_or_default(),
@@ -3425,6 +3816,8 @@ fn handle_connection(
         http_json_response(stream, 200, &body);
     } else if req_line.contains("GET /api/wifi/scan") {
         drain_http_headers(&mut stream);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let body = match crate::wifi::scan() {
             Ok(networks) => serde_json::to_string(&serde_json::json!({"ok": true, "networks": networks})).unwrap_or_default(),
             Err(e) => serde_json::to_string(&serde_json::json!({"ok": false, "error": e})).unwrap_or_default(),
@@ -3432,6 +3825,8 @@ fn handle_connection(
         http_json_response(stream, 200, &body);
     } else if req_line.contains("GET /api/wifi/saved") {
         drain_http_headers(&mut stream);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let body = match crate::wifi::list_saved() {
             Ok(profiles) => serde_json::to_string(&serde_json::json!({"ok": true, "profiles": profiles})).unwrap_or_default(),
             Err(e) => serde_json::to_string(&serde_json::json!({"ok": false, "error": e})).unwrap_or_default(),
@@ -3441,6 +3836,8 @@ fn handle_connection(
         // Body shape: {"ssid": "...", "psk": "...", "hidden": false} for a new
         // network, or {"uuid": "..."} to bring up a saved profile.
         let body = read_http_body(&mut stream);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let req: serde_json::Value = match serde_json::from_slice(&body) {
             Ok(v) => v,
             Err(e) => {
@@ -3460,6 +3857,8 @@ fn handle_connection(
             http_response(stream, 400, "missing uuid or ssid");
             return;
         };
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let body = match result {
             Ok(_) => serde_json::to_string(&serde_json::json!({"ok": true})).unwrap_or_default(),
             Err(e) => serde_json::to_string(&serde_json::json!({"ok": false, "error": e})).unwrap_or_default(),
@@ -3468,6 +3867,8 @@ fn handle_connection(
     } else if req_line.contains("POST /api/wifi/disconnect") {
         drain_http_headers(&mut stream);
         // Find the wireless device name and disconnect it. The body is empty.
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let iface = match crate::wifi::status() {
             Ok(s) if s.device_present => "wlan0".to_string(), // nmcli accepts any wifi dev name; wlan0 covers RPi
             _ => {
@@ -3476,6 +3877,8 @@ fn handle_connection(
             }
         };
         tracing::info!("Dashboard: disconnecting WiFi iface={}", iface);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let body = match crate::wifi::disconnect(&iface) {
             Ok(_) => serde_json::to_string(&serde_json::json!({"ok": true})).unwrap_or_default(),
             Err(e) => serde_json::to_string(&serde_json::json!({"ok": false, "error": e})).unwrap_or_default(),
@@ -3484,6 +3887,8 @@ fn handle_connection(
     } else if req_line.contains("POST /api/wifi/forget") {
         // Body: {"uuid": "..."}
         let body = read_http_body(&mut stream);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let req: serde_json::Value = match serde_json::from_slice(&body) {
             Ok(v) => v,
             Err(e) => {
@@ -3491,6 +3896,8 @@ fn handle_connection(
                 return;
             }
         };
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let uuid = match req.get("uuid").and_then(|v| v.as_str()) {
             Some(u) => u,
             None => {
@@ -3499,6 +3906,8 @@ fn handle_connection(
             }
         };
         tracing::info!("Dashboard: forgetting WiFi profile uuid={}", uuid);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let body = match crate::wifi::forget(uuid) {
             Ok(_) => serde_json::to_string(&serde_json::json!({"ok": true})).unwrap_or_default(),
             Err(e) => serde_json::to_string(&serde_json::json!({"ok": false, "error": e})).unwrap_or_default(),
@@ -3507,6 +3916,8 @@ fn handle_connection(
     } else if req_line.contains("POST /api/wifi/radio") {
         // Body: {"enabled": true|false}
         let body = read_http_body(&mut stream);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let req: serde_json::Value = match serde_json::from_slice(&body) {
             Ok(v) => v,
             Err(e) => {
@@ -3516,6 +3927,8 @@ fn handle_connection(
         };
         let enabled = req.get("enabled").and_then(|v| v.as_bool()).unwrap_or(true);
         tracing::info!("Dashboard: setting WiFi radio enabled={}", enabled);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let body = match crate::wifi::set_radio(enabled) {
             Ok(_) => serde_json::to_string(&serde_json::json!({"ok": true})).unwrap_or_default(),
             Err(e) => serde_json::to_string(&serde_json::json!({"ok": false, "error": e})).unwrap_or_default(),
@@ -3538,6 +3951,8 @@ fn handle_connection(
         serve_directory_proxy_request(stream, &config_path, source_dir_override.as_deref(), &req_line);
     } else {
         let mut buf = BufReader::new(stream);
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             let mut line = String::new();
             let _ = buf.read_line(&mut line);
@@ -3549,6 +3964,8 @@ fn handle_connection(
     }
 }
 
+// Was: Diese Funktion stellt Datenpaket data snapshot.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_packet_data_snapshot(stream: TcpStream, state: &DashboardState) {
     let snapshot = state.read().ok().and_then(|state| state.last_packet_data.clone());
     let body = serde_json::to_string(&serde_json::json!({
@@ -3559,6 +3976,8 @@ fn serve_packet_data_snapshot(stream: TcpStream, state: &DashboardState) {
     http_json_response(stream, 200, &body);
 }
 
+// Was: Diese Funktion verarbeitet ws.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 fn handle_ws(
     stream: TcpStream,
     state: DashboardState,
@@ -3574,6 +3993,8 @@ fn handle_ws(
     // the Upgrade request and was already verified against the session store.
     let callback = move |_req: &Request, res: Response| -> Result<Response, _> { Ok(res) };
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let mut ws = match accept_hdr(stream, callback) {
         Ok(w) => w,
         Err(e) => {
@@ -3625,8 +4046,12 @@ fn handle_ws(
 
     let _ = ws.get_ref().set_read_timeout(Some(std::time::Duration::from_millis(20)));
 
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
     loop {
         // Drain outbound broadcast messages first
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while let Ok(msg) = broadcast_rx.try_recv() {
             if ws.send(Message::Text(msg)).is_err() {
                 return;
@@ -3634,6 +4059,8 @@ fn handle_ws(
         }
 
         // Then check for inbound messages from browser
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match ws.read() {
             Ok(Message::Text(text)) => {
                 handle_ws_command(&text, &state, &cmd_tx, &update_state);
@@ -3650,6 +4077,8 @@ fn handle_ws(
     }
 }
 
+// Was: Diese Funktion verarbeitet ws command.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 fn handle_ws_command(text: &str, state: &DashboardState, cmd_tx: &Arc<Mutex<Option<CmdSender>>>, update_state: &SharedUpdateState) {
     let Ok(v) = serde_json::from_str::<serde_json::Value>(text) else {
         return;
@@ -3664,6 +4093,8 @@ fn handle_ws_command(text: &str, state: &DashboardState, cmd_tx: &Arc<Mutex<Opti
         false
     };
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match v.get("type").and_then(|t| t.as_str()) {
         Some("kick") => {
             let issi = v.get("issi").and_then(|i| i.as_u64()).unwrap_or(0) as u32;
@@ -3727,6 +4158,8 @@ fn handle_ws_command(text: &str, state: &DashboardState, cmd_tx: &Arc<Mutex<Opti
             if dest == 0 {
                 return;
             }
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let source_issi = match v.get("source_issi").and_then(|i| i.as_u64()) {
                 Some(0) | None => 4010001,
                 Some(source) => source.min(u32::MAX as u64) as u32,
@@ -3764,6 +4197,8 @@ fn handle_ws_command(text: &str, state: &DashboardState, cmd_tx: &Arc<Mutex<Opti
             let payload = if raw_hex.is_empty() {
                 build_tpg2200_callout_payload(tpg_ric, callout_id, priority, &alarm_text)
             } else {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match parse_hex_payload(raw_hex) {
                     Ok(payload) => payload,
                     Err(e) => {
@@ -3835,6 +4270,8 @@ fn handle_ws_command(text: &str, state: &DashboardState, cmd_tx: &Arc<Mutex<Opti
                 .and_then(|value| value.as_u64())
                 .unwrap_or(1)
                 .min(255) as u8;
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let transport = match v.get("transport").and_then(|value| value.as_str()) {
                 Some("sds_tl") | Some("84") | Some("0x84") => crate::legacy_wap::LegacyWapTransport::SdsTl,
                 _ => crate::legacy_wap::LegacyWapTransport::Wdp,
@@ -3842,6 +4279,8 @@ fn handle_ws_command(text: &str, state: &DashboardState, cmd_tx: &Arc<Mutex<Opti
             if dest == 0 || message.trim().is_empty() {
                 return;
             }
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let payload = match crate::legacy_wap::build_compact_wml_type4(
                 title,
                 message,
@@ -3924,9 +4363,13 @@ fn handle_ws_command(text: &str, state: &DashboardState, cmd_tx: &Arc<Mutex<Opti
     }
 }
 
+// Was: Diese Funktion stellt update Status.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_update_status(mut stream: TcpStream, update_state: &SharedUpdateState) {
     let (phase_str, success, log) = {
         let u = update_state.lock().unwrap();
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let phase_str = match &u.phase {
             UpdatePhase::Idle => "idle",
             UpdatePhase::Running => "running",
@@ -3953,6 +4396,8 @@ fn serve_update_status(mut stream: TcpStream, update_state: &SharedUpdateState) 
 /// GET /api/update/check — query GitHub for the latest release and report whether a newer
 /// version than the running build exists. Best-effort; on any failure returns
 /// check_failed=true so the dashboard simply hides the badge.
+// Was: Diese Funktion stellt update check.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_update_check(mut stream: TcpStream) {
     let result = crate::net_dashboard::update_check::check_for_update(tetra_core::STACK_VERSION);
     let body = result.to_json();
@@ -3966,10 +4411,14 @@ fn serve_update_check(mut stream: TcpStream) {
 
 /// GET /api/edge-fallback — current local-autonomy mode, backend service matrix,
 /// policy-cache age and durable replay-spool usage. This endpoint contains no secrets.
+// Was: Diese Funktion stellt edge fallback.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_edge_fallback(
     stream: TcpStream,
     shared_config: &Option<tetra_config::bluestation::SharedConfig>,
 ) {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let body = match shared_config {
         Some(cfg) => serde_json::to_string_pretty(&cfg.edge_fallback_snapshot())
             .unwrap_or_else(|error| serde_json::json!({"error": error.to_string()}).to_string()),
@@ -3988,10 +4437,16 @@ fn serve_edge_fallback(
 /// `enabled` is false when the list is empty (open network).
 /// GET /api/btsinfo — static cell + RF identity pulled from the running config, for the
 /// "TETRA BTS Details" card on the dashboard. Read-only; non-sensitive scalars only.
+// Was: Diese Funktion stellt bts info.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_bts_info(mut stream: TcpStream, shared_config: &Option<tetra_config::bluestation::SharedConfig>) {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let body = match shared_config {
         Some(cfg) => {
             // Whitelist status (runtime override beats config) — mirrors serve_whitelist_get.
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let wl = match cfg.state_read().issi_whitelist_override.clone() {
                 Some(l) => l,
                 None => cfg.config().security.issi_whitelist.clone(),
@@ -4004,6 +4459,8 @@ fn serve_bts_info(mut stream: TcpStream, shared_config: &Option<tetra_config::bl
             let tx = soapy.map(|s| s.dl_freq); // downlink = BS transmit
             let rx = soapy.map(|s| s.ul_freq); // uplink   = BS receive
             // Duplex shift expressed relative to TX (offset to add to TX to reach RX).
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let shift = match (tx, rx) {
                 (Some(t), Some(r)) => Some(r - t),
                 _ => None,
@@ -4035,6 +4492,8 @@ fn serve_bts_info(mut stream: TcpStream, shared_config: &Option<tetra_config::bl
 
 /// GET /api/dualcarrier — current Dual-Carrier ON/OFF state for the first-page toggle.
 /// Reads the switch + configured secondary carrier from the TOML, plus the running effective state.
+// Was: Diese Funktion stellt dual carrier get.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_dual_carrier_get(
     stream: TcpStream,
     shared_config: &Option<tetra_config::bluestation::SharedConfig>,
@@ -4063,6 +4522,8 @@ fn serve_dual_carrier_get(
 ///
 /// The secondary carrier is fixed at startup (PHY/SDR tuning and UMAC schedulers read it once), so
 /// this validates the resulting config, writes TOML, and schedules a controlled service restart.
+// Was: Diese Funktion stellt dual carrier post.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_dual_carrier_post(
     stream: TcpStream,
     _shared_config: &Option<tetra_config::bluestation::SharedConfig>,
@@ -4071,6 +4532,8 @@ fn serve_dual_carrier_post(
 ) {
     use crate::net_dashboard::dual_carrier;
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let req: serde_json::Value = match serde_json::from_str(body) {
         Ok(v) => v,
         Err(e) => return http_response(stream, 400, &format!("invalid JSON: {e}")),
@@ -4084,6 +4547,8 @@ fn serve_dual_carrier_post(
     // Enabling uses an explicit carrier from the request, otherwise the one already present in TOML.
     // Disabling does not rewrite the carrier number, so OFF remembers what ON should use next time.
     let secondary = if enabled {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let requested = match req.get("secondary_carrier").and_then(|v| v.as_u64()) {
             Some(n) if n > 4095 => {
                 return http_response(stream, 400, "secondary_carrier must be in 0..4095");
@@ -4091,6 +4556,8 @@ fn serve_dual_carrier_post(
             Some(n) => Some(n as u16),
             None => None,
         };
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match requested.or(current.secondary_carrier) {
             Some(n) => Some(n),
             None => {
@@ -4105,11 +4572,15 @@ fn serve_dual_carrier_post(
         None
     };
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let original = match std::fs::read_to_string(config_path) {
         Ok(s) => s,
         Err(e) => return http_response(stream, 500, &format!("cannot read config: {e}")),
     };
     let prospective = dual_carrier::compute_toml(&original, enabled, secondary);
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match tetra_config::bluestation::parsing::from_toml_str(&prospective) {
         Ok(cfg) => {
             if let Err(e) = cfg.validate() {
@@ -4146,7 +4617,11 @@ fn serve_dual_carrier_post(
 
 
 /// GET /api/asterisk/status — config + runtime status for the Asterisk SIP bridge.
+// Was: Diese Funktion stellt asterisk Status.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_asterisk_status(stream: TcpStream, shared_config: &Option<tetra_config::bluestation::SharedConfig>) {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let body = match shared_config {
         Some(cfg) => {
             let c = cfg.config();
@@ -4204,7 +4679,11 @@ fn serve_asterisk_status(stream: TcpStream, shared_config: &Option<tetra_config:
 }
 
 /// GET /api/brew/status — config + runtime status for all Brew backhaul servers.
+// Was: Diese Funktion stellt Brew-Verbindung Status.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_brew_status(stream: TcpStream, shared_config: &Option<tetra_config::bluestation::SharedConfig>) {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let body = match shared_config {
         Some(cfg) => {
             let c = cfg.config();
@@ -4253,7 +4732,11 @@ fn serve_brew_status(stream: TcpStream, shared_config: &Option<tetra_config::blu
     http_json_response(stream, 200, &body.to_string());
 }
 
+// Was: Führt den Arbeitsschritt `brew_status_json` für Brew-Verbindung Status JSON-Daten aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn brew_status_json(entity_key: &str, title: &str, entity: TetraEntity, brew: Option<&CfgBrew>, connected: bool) -> serde_json::Value {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match brew {
         Some(brew) => {
             let scheme = if brew.tls { "wss" } else { "ws" };
@@ -4291,6 +4774,8 @@ fn brew_status_json(entity_key: &str, title: &str, entity: TetraEntity, brew: Op
 }
 
 /// GET /api/snom-notify — return effective Snom XML NOTIFY settings.
+// Was: Diese Funktion stellt snom notify get.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_snom_notify_get(stream: TcpStream, shared_config: &Option<tetra_config::bluestation::SharedConfig>) {
     let snom = shared_config.as_ref().map(|cfg| cfg.effective_snom_notify()).unwrap_or_default();
     let password = snom.ami_password.as_ref();
@@ -4319,6 +4804,8 @@ fn serve_snom_notify_get(stream: TcpStream, shared_config: &Option<tetra_config:
 }
 
 /// POST /api/snom-notify — update Snom XML NOTIFY settings live and persist to config.toml.
+// Was: Diese Funktion stellt snom notify post.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_snom_notify_post(
     stream: TcpStream,
     shared_config: &Option<tetra_config::bluestation::SharedConfig>,
@@ -4327,6 +4814,8 @@ fn serve_snom_notify_post(
 ) {
     use tetra_config::bluestation::SnomNotifyRuntimeOverride;
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let json: serde_json::Value = match serde_json::from_str(body.trim()) {
         Ok(v) => v,
         Err(e) => {
@@ -4340,6 +4829,8 @@ fn serve_snom_notify_post(
     };
 
     let cur = cfg.effective_snom_notify();
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let dapnet_allowed_rics = match dapnet_ric_set_from_json(&json, "dapnet_allowed_rics", &cur.dapnet_allowed_rics) {
         Ok(rics) => rics,
         Err(err) => {
@@ -4347,6 +4838,8 @@ fn serve_snom_notify_post(
             return;
         }
     };
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let sds_allowed_issis = match snom_issi_set_from_json(&json, "sds_allowed_issis", &cur.sds_allowed_issis) {
         Ok(issis) => issis,
         Err(err) => {
@@ -4434,6 +4927,8 @@ fn serve_snom_notify_post(
     http_response(stream, 200, "OK");
 }
 
+// Was: Führt den Arbeitsschritt `snom_non_empty_or` für snom non empty or aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn snom_non_empty_or(value: String, fallback: &str) -> String {
     let trimmed = value.trim();
     if trimmed.is_empty() {
@@ -4443,10 +4938,16 @@ fn snom_non_empty_or(value: String, fallback: &str) -> String {
     }
 }
 
+// Was: Diese Funktion stellt whitelist get.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_whitelist_get(mut stream: TcpStream, shared_config: &Option<tetra_config::bluestation::SharedConfig>) {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let (list, source): (Vec<u32>, &str) = match shared_config {
         Some(cfg) => {
             let override_list = cfg.state_read().issi_whitelist_override.clone();
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match override_list {
                 Some(l) => (l, "override"),
                 None => (cfg.config().security.issi_whitelist.clone(), "config"),
@@ -4472,6 +4973,8 @@ fn serve_whitelist_get(mut stream: TcpStream, shared_config: &Option<tetra_confi
 /// POST /api/whitelist — set the whitelist. Body: JSON array `[1,2,3]` or
 /// `{"issi_whitelist":[1,2,3]}`. Applies immediately via the StackState override AND
 /// rewrites the TOML so it survives a restart. An empty list = open network.
+// Was: Diese Funktion stellt whitelist post.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_whitelist_post(
     stream: TcpStream,
     shared_config: &Option<tetra_config::bluestation::SharedConfig>,
@@ -4481,6 +4984,8 @@ fn serve_whitelist_post(
 ) {
     use crate::net_dashboard::whitelist;
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let list = match whitelist::parse_whitelist_body(body) {
         Ok(l) => l,
         Err(e) => {
@@ -4516,6 +5021,8 @@ fn serve_whitelist_post(
                 .filter(|issi| !list.contains(issi))
                 .collect()
         };
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for issi in to_kick {
             tracing::info!("Dashboard: whitelist change — kicking non-whitelisted ISSI {}", issi);
             send_control_cmd(cmd_tx, ControlCommand::KickMs { issi });
@@ -4540,7 +5047,11 @@ fn serve_whitelist_post(
 // ---------------------------------------------------------------------------
 
 /// GET /api/wx — return the effective WX service settings as JSON.
+// Was: Diese Funktion stellt wx get.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_wx_get(mut stream: TcpStream, shared_config: &Option<tetra_config::bluestation::SharedConfig>) {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let wx = match shared_config {
         Some(cfg) => cfg.effective_wx_service(),
         None => tetra_config::bluestation::CfgWxService::default(),
@@ -4565,9 +5076,13 @@ fn serve_wx_get(mut stream: TcpStream, shared_config: &Option<tetra_config::blue
 
 /// POST /api/wx — update WX service settings. Body: JSON object with the same fields as
 /// GET. Applies immediately via the StackState override AND rewrites the TOML.
+// Was: Diese Funktion stellt wx post.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_wx_post(stream: TcpStream, shared_config: &Option<tetra_config::bluestation::SharedConfig>, config_path: &str, body: &str) {
     use tetra_config::bluestation::WxRuntimeOverride;
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let json: serde_json::Value = match serde_json::from_str(body.trim()) {
         Ok(v) => v,
         Err(e) => {
@@ -4634,6 +5149,8 @@ fn serve_wx_post(stream: TcpStream, shared_config: &Option<tetra_config::bluesta
 }
 
 /// Read an HTTP POST body off `stream`, returning the stream plus the body as a UTF-8 string.
+// Was: Diese Funktion liest post body.
+// Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
 fn read_post_body(mut stream: TcpStream) -> (TcpStream, String) {
     let body = read_http_body(&mut stream);
     let s = String::from_utf8_lossy(&body).into_owned();
@@ -4642,6 +5159,8 @@ fn read_post_body(mut stream: TcpStream) -> (TcpStream, String) {
 
 /// Resolve the bot token to use for a verify/detect/test/save request: a freshly-typed token from
 /// the body (never the masked placeholder, which contains '…'), else the currently-saved one.
+// Was: Führt den Arbeitsschritt `telegram_resolve_token` für telegram resolve Zugriffsschlüssel aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn telegram_resolve_token(json: &serde_json::Value, shared_config: &Option<tetra_config::bluestation::SharedConfig>) -> String {
     if let Some(t) = json.get("bot_token").and_then(|v| v.as_str()) {
         let t = t.trim();
@@ -4649,6 +5168,8 @@ fn telegram_resolve_token(json: &serde_json::Value, shared_config: &Option<tetra
             return t.to_string();
         }
     }
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match shared_config {
         Some(cfg) => cfg.effective_telegram().bot_token.as_ref().to_string(),
         None => String::new(),
@@ -4659,13 +5180,19 @@ fn telegram_resolve_token(json: &serde_json::Value, shared_config: &Option<tetra
 /// token is `<bot-id>:<auth>` with no whitespace or control characters — rejecting anything else
 /// keeps the token safe inside the config TOML (a stray newline would corrupt the file) and inside
 /// the API URL path.
+// Was: Führt den Arbeitsschritt `telegram_token_acceptable` für telegram Zugriffsschlüssel acceptable aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn telegram_token_acceptable(t: &str) -> bool {
     t.is_empty() || (t.contains(':') && t.chars().all(|c| !c.is_whitespace() && !c.is_control()))
 }
 
 /// GET /api/telegram — return the effective Telegram settings as JSON. The token is masked and is
 /// never echoed in the clear; `token_set` tells the UI whether one is stored.
+// Was: Diese Funktion stellt telegram get.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_telegram_get(stream: TcpStream, shared_config: &Option<tetra_config::bluestation::SharedConfig>) {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let tg = match shared_config {
         Some(cfg) => cfg.effective_telegram(),
         None => tetra_config::bluestation::CfgTelegram::default(),
@@ -4694,9 +5221,13 @@ fn serve_telegram_get(stream: TcpStream, shared_config: &Option<tetra_config::bl
 
 /// POST /api/telegram — save Telegram settings. Applies immediately via the StackState override
 /// AND rewrites the TOML. The token is only changed when a fresh (non-masked) one is supplied.
+// Was: Diese Funktion stellt telegram post.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_telegram_post(stream: TcpStream, shared_config: &Option<tetra_config::bluestation::SharedConfig>, config_path: &str, body: &str) {
     use tetra_config::bluestation::TelegramRuntimeOverride;
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let json: serde_json::Value = match serde_json::from_str(body.trim()) {
         Ok(v) => v,
         Err(e) => {
@@ -4717,6 +5248,8 @@ fn serve_telegram_post(stream: TcpStream, shared_config: &Option<tetra_config::b
         http_response(stream, 400, "Invalid token: no spaces or control characters, and must contain ':'.");
         return;
     }
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let chat_ids = match json.get("chat_ids").and_then(|v| v.as_array()) {
         Some(arr) => arr.iter().filter_map(|v| v.as_i64()).collect::<Vec<i64>>(),
         None => cur.chat_ids.clone(),
@@ -4730,6 +5263,8 @@ fn serve_telegram_post(stream: TcpStream, shared_config: &Option<tetra_config::b
         return;
     }
     let brew_register_issi_whitelist =
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match snom_issi_set_from_json(&json, "brew_register_issi_whitelist", &cur.brew_register_issi_whitelist) {
             Ok(v) => v,
             Err(e) => {
@@ -4738,6 +5273,8 @@ fn serve_telegram_post(stream: TcpStream, shared_config: &Option<tetra_config::b
             }
         };
     let brew_register_issi_blacklist =
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match snom_issi_set_from_json(&json, "brew_register_issi_blacklist", &cur.brew_register_issi_blacklist) {
             Ok(v) => v,
             Err(e) => {
@@ -4781,23 +5318,35 @@ fn serve_telegram_post(stream: TcpStream, shared_config: &Option<tetra_config::b
     http_response(stream, 200, "OK");
 }
 
+// Was: Führt den Arbeitsschritt `dapnet_resolve_secret` für dapnet resolve secret aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn dapnet_resolve_secret(json: &serde_json::Value, key: &str, current: &str) -> String {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match json.get(key).and_then(|v| v.as_str()) {
         Some(v) if !v.contains('…') => v.trim().to_string(),
         _ => current.to_string(),
     }
 }
 
+// Was: Führt den Arbeitsschritt `dapnet_text_acceptable` für dapnet text acceptable aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn dapnet_text_acceptable(s: &str) -> bool {
     s.chars().all(|c| !c.is_control())
 }
 
+// Was: Legt den festen Wert `DAPNET_API_TEXT_MAX_CHARS` für dapnet API-Schnittstelle text max chars fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const DAPNET_API_TEXT_MAX_CHARS: usize = 80;
 
+// Was: Führt den Arbeitsschritt `dapnet_as_bool` für dapnet as bool aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn dapnet_as_bool(json: &serde_json::Value, key: &str, default: bool) -> bool {
     json.get(key).and_then(|x| x.as_bool()).unwrap_or(default)
 }
 
+// Was: Führt den Arbeitsschritt `dapnet_as_u32` für dapnet as u32 aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn dapnet_as_u32(json: &serde_json::Value, key: &str, default: u32) -> u32 {
     json.get(key)
         .and_then(|x| x.as_u64())
@@ -4805,6 +5354,8 @@ fn dapnet_as_u32(json: &serde_json::Value, key: &str, default: u32) -> u32 {
         .unwrap_or(default)
 }
 
+// Was: Führt den Arbeitsschritt `dapnet_as_tpg_ric` für dapnet as tpg ric aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn dapnet_as_tpg_ric(json: &serde_json::Value, key: &str, default: u32) -> u32 {
     json.get(key)
         .and_then(|x| {
@@ -4815,10 +5366,14 @@ fn dapnet_as_tpg_ric(json: &serde_json::Value, key: &str, default: u32) -> u32 {
         .unwrap_or(default)
 }
 
+// Was: Führt den Arbeitsschritt `dapnet_as_u64` für dapnet as u64 aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn dapnet_as_u64(json: &serde_json::Value, key: &str, default: u64) -> u64 {
     json.get(key).and_then(|x| x.as_u64()).unwrap_or(default)
 }
 
+// Was: Führt den Arbeitsschritt `dapnet_as_u16` für dapnet as u16 aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn dapnet_as_u16(json: &serde_json::Value, key: &str, default: u16) -> u16 {
     json.get(key)
         .and_then(|x| x.as_u64())
@@ -4826,6 +5381,8 @@ fn dapnet_as_u16(json: &serde_json::Value, key: &str, default: u16) -> u16 {
         .unwrap_or(default)
 }
 
+// Was: Führt den Arbeitsschritt `dapnet_as_f64` für dapnet as f64 aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn dapnet_as_f64(json: &serde_json::Value, key: &str, default: f64) -> f64 {
     json.get(key)
         .and_then(|x| x.as_f64().or_else(|| x.as_str().and_then(|s| s.trim().parse::<f64>().ok())))
@@ -4833,10 +5390,14 @@ fn dapnet_as_f64(json: &serde_json::Value, key: &str, default: f64) -> f64 {
         .unwrap_or(default)
 }
 
+// Was: Führt den Arbeitsschritt `dapnet_as_usize` für dapnet as usize aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn dapnet_as_usize(json: &serde_json::Value, key: &str, default: usize) -> usize {
     json.get(key).and_then(|x| x.as_u64()).map(|n| n.max(1) as usize).unwrap_or(default)
 }
 
+// Was: Führt den Arbeitsschritt `dapnet_as_string` für dapnet as string aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn dapnet_as_string(json: &serde_json::Value, key: &str, default: &str) -> String {
     json.get(key)
         .and_then(|x| x.as_str())
@@ -4844,22 +5405,32 @@ fn dapnet_as_string(json: &serde_json::Value, key: &str, default: &str) -> Strin
         .unwrap_or_else(|| default.to_string())
 }
 
+// Was: Führt den Arbeitsschritt `dapnet_ric_routes_as_json` für dapnet ric routes as JSON-Daten aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn dapnet_ric_routes_as_json(routes: &BTreeMap<u32, u32>) -> serde_json::Value {
     let mut map = serde_json::Map::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (ric, issi) in routes {
         map.insert(tetra_config::bluestation::format_ric_route_key(*ric), serde_json::json!(issi));
     }
     serde_json::Value::Object(map)
 }
 
+// Was: Führt den Arbeitsschritt `tpg_ric_priority_map_as_json` für tpg ric Priorität map as JSON-Daten aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn tpg_ric_priority_map_as_json(routes: &BTreeMap<u32, u8>) -> serde_json::Value {
     let mut map = serde_json::Map::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (ric, priority) in routes {
         map.insert(format!("0x{ric:08X}"), serde_json::json!(priority));
     }
     serde_json::Value::Object(map)
 }
 
+// Was: Führt den Arbeitsschritt `dapnet_ric_set_as_json` für dapnet ric set as JSON-Daten aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn dapnet_ric_set_as_json(rics: &BTreeSet<u32>) -> serde_json::Value {
     serde_json::Value::Array(
         rics.iter()
@@ -4868,6 +5439,8 @@ fn dapnet_ric_set_as_json(rics: &BTreeSet<u32>) -> serde_json::Value {
     )
 }
 
+// Was: Führt den Arbeitsschritt `dapnet_parse_ric_json_value` für dapnet parse ric JSON-Daten value aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn dapnet_parse_ric_json_value(value: &serde_json::Value, label: &str) -> Result<u32, String> {
     if let Some(s) = value.as_str() {
         return tetra_config::bluestation::parse_ric_route_key(s);
@@ -4880,23 +5453,33 @@ fn dapnet_parse_ric_json_value(value: &serde_json::Value, label: &str) -> Result
     Err(format!("{label}: RIC must be a string or positive integer"))
 }
 
+// Was: Führt den Arbeitsschritt `dapnet_ric_set_from_json` für dapnet ric set from JSON-Daten aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn dapnet_ric_set_from_json(json: &serde_json::Value, key: &str, current: &BTreeSet<u32>) -> Result<BTreeSet<u32>, String> {
     let Some(value) = json.get(key) else {
         return Ok(current.clone());
     };
     let mut rics = BTreeSet::new();
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match value {
         serde_json::Value::Array(items) => {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for item in items {
                 rics.insert(dapnet_parse_ric_json_value(item, key)?);
             }
         }
         serde_json::Value::String(text) => {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for line_raw in text.lines() {
                 let line = line_raw.split('#').next().unwrap_or("").trim();
                 if line.is_empty() {
                     continue;
                 }
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for part in line.split(|c: char| c == ',' || c.is_whitespace()) {
                     let part = part.trim();
                     if part.is_empty() {
@@ -4911,6 +5494,8 @@ fn dapnet_ric_set_from_json(json: &serde_json::Value, key: &str, current: &BTree
     Ok(rics)
 }
 
+// Was: Führt den Arbeitsschritt `dapnet_ric_routes_from_json_key` für dapnet ric routes from JSON-Daten key aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn dapnet_ric_routes_from_json_key(
     json: &serde_json::Value,
     key: &str,
@@ -4920,8 +5505,12 @@ fn dapnet_ric_routes_from_json_key(
         return Ok(current.clone());
     };
     let mut routes = BTreeMap::new();
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match value {
         serde_json::Value::Object(map) => {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for (raw_ric, raw_issi) in map {
                 let ric = tetra_config::bluestation::parse_ric_route_key(raw_ric)?;
                 let Some(issi) = raw_issi.as_u64() else {
@@ -4934,6 +5523,8 @@ fn dapnet_ric_routes_from_json_key(
             }
         }
         serde_json::Value::String(text) => {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for line in text.lines() {
                 let line = line.trim();
                 if line.is_empty() || line.starts_with('#') {
@@ -4958,10 +5549,14 @@ fn dapnet_ric_routes_from_json_key(
     Ok(routes)
 }
 
+// Was: Führt den Arbeitsschritt `dapnet_ric_routes_from_json` für dapnet ric routes from JSON-Daten aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn dapnet_ric_routes_from_json(json: &serde_json::Value, current: &BTreeMap<u32, u32>) -> Result<BTreeMap<u32, u32>, String> {
     dapnet_ric_routes_from_json_key(json, "ric_issi_routes", current)
 }
 
+// Was: Führt den Arbeitsschritt `tpg_ric_priority_map_from_json_key` für tpg ric Priorität map from JSON-Daten key aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn tpg_ric_priority_map_from_json_key(
     json: &serde_json::Value,
     key: &str,
@@ -4971,8 +5566,12 @@ fn tpg_ric_priority_map_from_json_key(
         return Ok(current.clone());
     };
     let mut routes = BTreeMap::new();
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match value {
         serde_json::Value::Object(map) => {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for (raw_ric, raw_priority) in map {
                 let ric = tetra_config::bluestation::parse_ric_route_key(raw_ric)?;
                 let Some(priority) = raw_priority.as_u64() else {
@@ -4985,6 +5584,8 @@ fn tpg_ric_priority_map_from_json_key(
             }
         }
         serde_json::Value::String(text) => {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for line in text.lines() {
                 let line = line.trim();
                 if line.is_empty() || line.starts_with('#') {
@@ -5009,7 +5610,11 @@ fn tpg_ric_priority_map_from_json_key(
     Ok(routes)
 }
 
+// Was: Führt den Arbeitsschritt `dapnet_validate_route_conflicts` für dapnet Prüfung Weiterleitung conflicts aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn dapnet_validate_route_conflicts(issi_routes: &BTreeMap<u32, u32>, gssi_routes: &BTreeMap<u32, u32>) -> Result<(), String> {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for ric in issi_routes.keys() {
         if gssi_routes.contains_key(ric) {
             return Err(format!(
@@ -5023,7 +5628,11 @@ fn dapnet_validate_route_conflicts(issi_routes: &BTreeMap<u32, u32>, gssi_routes
 
 /// GET /api/dapnet — return effective DAPNET settings as JSON. Secrets are masked and are never
 /// echoed in the clear.
+// Was: Diese Funktion stellt dapnet get.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_dapnet_get(stream: TcpStream, shared_config: &Option<tetra_config::bluestation::SharedConfig>) {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let (dapnet, runtime) = match shared_config {
         Some(cfg) => (cfg.effective_dapnet(), cfg.state_read().dapnet_status.clone()),
         None => (
@@ -5094,9 +5703,13 @@ fn serve_dapnet_get(stream: TcpStream, shared_config: &Option<tetra_config::blue
 /// POST /api/dapnet — update DAPNET settings. Applies immediately through StackState override
 /// and rewrites `[dapnet]` in config.toml. Secrets are changed only when a fresh, non-masked
 /// value is supplied.
+// Was: Diese Funktion stellt dapnet post.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_dapnet_post(stream: TcpStream, shared_config: &Option<tetra_config::bluestation::SharedConfig>, config_path: &str, body: &str) {
     use tetra_config::bluestation::DapnetRuntimeOverride;
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let json: serde_json::Value = match serde_json::from_str(body.trim()) {
         Ok(v) => v,
         Err(e) => {
@@ -5112,6 +5725,8 @@ fn serve_dapnet_post(stream: TcpStream, shared_config: &Option<tetra_config::blu
     let cur = cfg.effective_dapnet();
     let password = dapnet_resolve_secret(&json, "password", cur.password.as_ref());
     let rwth_core_authkey = dapnet_resolve_secret(&json, "rwth_core_authkey", cur.rwth_core_authkey.as_ref());
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let ric_issi_routes = match dapnet_ric_routes_from_json(&json, &cur.ric_issi_routes) {
         Ok(routes) => routes,
         Err(err) => {
@@ -5119,6 +5734,8 @@ fn serve_dapnet_post(stream: TcpStream, shared_config: &Option<tetra_config::blu
             return;
         }
     };
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let ric_gssi_routes = match dapnet_ric_routes_from_json_key(&json, "ric_gssi_routes", &cur.ric_gssi_routes) {
         Ok(routes) => routes,
         Err(err) => {
@@ -5130,6 +5747,8 @@ fn serve_dapnet_post(stream: TcpStream, shared_config: &Option<tetra_config::blu
         http_response(stream, 400, &format!("Invalid DAPNET RIC route: {err}"));
         return;
     }
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let sds_allowed_rics = match dapnet_ric_set_from_json(&json, "sds_allowed_rics", &cur.sds_allowed_rics) {
         Ok(rics) => rics,
         Err(err) => {
@@ -5137,6 +5756,8 @@ fn serve_dapnet_post(stream: TcpStream, shared_config: &Option<tetra_config::blu
             return;
         }
     };
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let callout_allowed_rics = match dapnet_ric_set_from_json(&json, "callout_allowed_rics", &cur.callout_allowed_rics) {
         Ok(rics) => rics,
         Err(err) => {
@@ -5144,6 +5765,8 @@ fn serve_dapnet_post(stream: TcpStream, shared_config: &Option<tetra_config::blu
             return;
         }
     };
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let telegram_allowed_rics = match dapnet_ric_set_from_json(&json, "telegram_allowed_rics", &cur.telegram_allowed_rics) {
         Ok(rics) => rics,
         Err(err) => {
@@ -5151,6 +5774,8 @@ fn serve_dapnet_post(stream: TcpStream, shared_config: &Option<tetra_config::blu
             return;
         }
     };
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let callout_issi_priorities = match issi_priority_map_from_json(&json, "callout_issi_priorities", &cur.callout_issi_priorities) {
         Ok(routes) => routes,
         Err(err) => {
@@ -5159,6 +5784,8 @@ fn serve_dapnet_post(stream: TcpStream, shared_config: &Option<tetra_config::blu
         }
     };
     let callout_tpg_ric_priorities =
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match tpg_ric_priority_map_from_json_key(&json, "callout_tpg_ric_priorities", &cur.callout_tpg_ric_priorities) {
             Ok(routes) => routes,
             Err(err) => {
@@ -5247,7 +5874,11 @@ fn serve_dapnet_post(stream: TcpStream, shared_config: &Option<tetra_config::blu
 }
 
 /// GET /api/meshcom — return effective MeshCom settings and runtime status as JSON.
+// Was: Diese Funktion stellt meshcom get.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_meshcom_get(stream: TcpStream, shared_config: &Option<tetra_config::bluestation::SharedConfig>) {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let (meshcom, runtime) = match shared_config {
         Some(cfg) => (cfg.effective_meshcom(), cfg.state_read().meshcom_status.clone()),
         None => (
@@ -5344,9 +5975,13 @@ fn serve_meshcom_get(stream: TcpStream, shared_config: &Option<tetra_config::blu
 
 /// POST /api/meshcom — update MeshCom UDP settings. Applies immediately through StackState
 /// override and rewrites `[meshcom]` in config.toml.
+// Was: Diese Funktion stellt meshcom post.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_meshcom_post(stream: TcpStream, shared_config: &Option<tetra_config::bluestation::SharedConfig>, config_path: &str, body: &str) {
     use tetra_config::bluestation::{CfgMeshcomDto, MeshcomRuntimeOverride, apply_meshcom_patch};
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let json: serde_json::Value = match serde_json::from_str(body.trim()) {
         Ok(v) => v,
         Err(e) => {
@@ -5360,6 +5995,8 @@ fn serve_meshcom_post(stream: TcpStream, shared_config: &Option<tetra_config::bl
     };
 
     let cur = cfg.effective_meshcom();
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let sds_allowed_sources = match meshcom_source_list_from_json(&json, "sds_allowed_sources", &cur.sds_allowed_sources) {
         Ok(v) => v,
         Err(err) => {
@@ -5367,6 +6004,8 @@ fn serve_meshcom_post(stream: TcpStream, shared_config: &Option<tetra_config::bl
             return;
         }
     };
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let sip_allowed_sources = match meshcom_source_list_from_json(&json, "sip_allowed_sources", &cur.sip_allowed_sources) {
         Ok(v) => v,
         Err(err) => {
@@ -5374,6 +6013,8 @@ fn serve_meshcom_post(stream: TcpStream, shared_config: &Option<tetra_config::bl
             return;
         }
     };
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let telegram_allowed_sources = match meshcom_source_list_from_json(&json, "telegram_allowed_sources", &cur.telegram_allowed_sources) {
         Ok(v) => v,
         Err(err) => {
@@ -5403,6 +6044,8 @@ fn serve_meshcom_post(stream: TcpStream, shared_config: &Option<tetra_config::bl
         telegram_allowed_sources,
         extra: HashMap::new(),
     };
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let normalized = match apply_meshcom_patch(dto) {
         Ok(cfg) => cfg,
         Err(err) => {
@@ -5473,7 +6116,11 @@ fn serve_meshcom_post(stream: TcpStream, shared_config: &Option<tetra_config::bl
 }
 
 /// GET /api/geoalarm — return effective GeoAlarm settings and runtime status as JSON.
+// Was: Diese Funktion stellt geoalarm get.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_geoalarm_get(stream: TcpStream, shared_config: &Option<tetra_config::bluestation::SharedConfig>) {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let (geoalarm, runtime) = match shared_config {
         Some(cfg) => (cfg.effective_geoalarm(), cfg.state_read().geoalarm_status.clone()),
         None => (
@@ -5559,9 +6206,13 @@ fn serve_geoalarm_get(stream: TcpStream, shared_config: &Option<tetra_config::bl
 
 /// POST /api/geoalarm — update GeoAlarm settings. Applies immediately through StackState
 /// override and rewrites `[geoalarm]` in config.toml.
+// Was: Diese Funktion stellt geoalarm post.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_geoalarm_post(stream: TcpStream, shared_config: &Option<tetra_config::bluestation::SharedConfig>, config_path: &str, body: &str) {
     use tetra_config::bluestation::{CfgGeoalarmDto, GeoalarmRuntimeOverride, apply_geoalarm_patch};
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let json: serde_json::Value = match serde_json::from_str(body.trim()) {
         Ok(v) => v,
         Err(e) => {
@@ -5575,6 +6226,8 @@ fn serve_geoalarm_post(stream: TcpStream, shared_config: &Option<tetra_config::b
     };
 
     let cur = cfg.effective_geoalarm();
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let tetra_issi_whitelist = match snom_issi_set_from_json(&json, "tetra_issi_whitelist", &cur.tetra_issi_whitelist) {
         Ok(v) => v,
         Err(err) => {
@@ -5582,6 +6235,8 @@ fn serve_geoalarm_post(stream: TcpStream, shared_config: &Option<tetra_config::b
             return;
         }
     };
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let tetra_issi_blacklist = match snom_issi_set_from_json(&json, "tetra_issi_blacklist", &cur.tetra_issi_blacklist) {
         Ok(v) => v,
         Err(err) => {
@@ -5589,6 +6244,8 @@ fn serve_geoalarm_post(stream: TcpStream, shared_config: &Option<tetra_config::b
             return;
         }
     };
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let meshcom_source_whitelist = match meshcom_source_list_from_json(&json, "meshcom_source_whitelist", &cur.meshcom_source_whitelist) {
         Ok(v) => v,
         Err(err) => {
@@ -5596,6 +6253,8 @@ fn serve_geoalarm_post(stream: TcpStream, shared_config: &Option<tetra_config::b
             return;
         }
     };
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let meshcom_source_blacklist = match meshcom_source_list_from_json(&json, "meshcom_source_blacklist", &cur.meshcom_source_blacklist) {
         Ok(v) => v,
         Err(err) => {
@@ -5604,6 +6263,8 @@ fn serve_geoalarm_post(stream: TcpStream, shared_config: &Option<tetra_config::b
         }
     };
     let telegram_tetra_issi_whitelist =
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match snom_issi_set_from_json(&json, "telegram_tetra_issi_whitelist", &cur.telegram_tetra_issi_whitelist) {
             Ok(v) => v,
             Err(err) => {
@@ -5612,6 +6273,8 @@ fn serve_geoalarm_post(stream: TcpStream, shared_config: &Option<tetra_config::b
             }
         };
     let telegram_tetra_issi_blacklist =
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match snom_issi_set_from_json(&json, "telegram_tetra_issi_blacklist", &cur.telegram_tetra_issi_blacklist) {
             Ok(v) => v,
             Err(err) => {
@@ -5620,6 +6283,8 @@ fn serve_geoalarm_post(stream: TcpStream, shared_config: &Option<tetra_config::b
             }
         };
     let telegram_meshcom_source_whitelist =
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match meshcom_source_list_from_json(&json, "telegram_meshcom_source_whitelist", &cur.telegram_meshcom_source_whitelist) {
             Ok(v) => v,
             Err(err) => {
@@ -5628,6 +6293,8 @@ fn serve_geoalarm_post(stream: TcpStream, shared_config: &Option<tetra_config::b
             }
         };
     let telegram_meshcom_source_blacklist =
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match meshcom_source_list_from_json(&json, "telegram_meshcom_source_blacklist", &cur.telegram_meshcom_source_blacklist) {
             Ok(v) => v,
             Err(err) => {
@@ -5635,6 +6302,8 @@ fn serve_geoalarm_post(stream: TcpStream, shared_config: &Option<tetra_config::b
                 return;
             }
         };
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let tpg2200_issi_priorities = match issi_priority_map_from_json(&json, "tpg2200_issi_priorities", &cur.tpg2200_issi_priorities) {
         Ok(v) => v,
         Err(err) => {
@@ -5642,6 +6311,8 @@ fn serve_geoalarm_post(stream: TcpStream, shared_config: &Option<tetra_config::b
             return;
         }
     };
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let tpg2200_ric_priorities = match tpg_ric_priority_map_from_json_key(&json, "tpg2200_ric_priorities", &cur.tpg2200_ric_priorities) {
         Ok(v) => v,
         Err(err) => {
@@ -5698,6 +6369,8 @@ fn serve_geoalarm_post(stream: TcpStream, shared_config: &Option<tetra_config::b
         telegram_prefix: dapnet_as_string(&json, "telegram_prefix", &cur.telegram_prefix),
         extra: HashMap::new(),
     };
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let normalized = match apply_geoalarm_patch(dto) {
         Ok(cfg) => cfg,
         Err(err) => {
@@ -5785,12 +6458,16 @@ fn serve_geoalarm_post(stream: TcpStream, shared_config: &Option<tetra_config::b
 }
 
 /// POST /api/meshcom/send — send one MeshCom text message through the configured UDP target.
+// Was: Diese Funktion stellt meshcom send.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_meshcom_send(
     stream: TcpStream,
     shared_config: &Option<tetra_config::bluestation::SharedConfig>,
     dashboard_state: &DashboardState,
     body: &str,
 ) {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let json: serde_json::Value = match serde_json::from_str(body.trim()) {
         Ok(v) => v,
         Err(e) => {
@@ -5849,6 +6526,8 @@ fn serve_meshcom_send(
         socket.set_broadcast(meshcom.allow_broadcast)?;
         socket.send_to(wire.as_bytes(), &target)
     });
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match result {
         Ok(bytes) => {
             let ts = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
@@ -5886,6 +6565,8 @@ fn serve_meshcom_send(
                         snr: None,
                     },
                 );
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 while state.meshcom_status.messages.len() > meshcom.max_messages {
                     state.meshcom_status.messages.pop();
                 }
@@ -5929,7 +6610,11 @@ fn serve_meshcom_send(
 }
 
 /// GET /api/echolink — return effective EchoLink settings and runtime status as JSON.
+// Was: Diese Funktion stellt echolink get.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_echolink_get(stream: TcpStream, shared_config: &Option<tetra_config::bluestation::SharedConfig>) {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let (echolink, runtime) = match shared_config {
         Some(cfg) => (cfg.effective_echolink(), cfg.state_read().echolink_status.clone()),
         None => (
@@ -5985,6 +6670,8 @@ fn serve_echolink_get(stream: TcpStream, shared_config: &Option<tetra_config::bl
 }
 
 /// GET /api/echolink/directory — return the last downloaded EchoLink directory list.
+// Was: Diese Funktion stellt echolink directory.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_echolink_directory(stream: TcpStream, shared_config: &Option<tetra_config::bluestation::SharedConfig>) {
     let runtime = shared_config
         .as_ref()
@@ -6015,9 +6702,13 @@ fn serve_echolink_directory(stream: TcpStream, shared_config: &Option<tetra_conf
 
 /// POST /api/echolink — update EchoLink settings. Applies immediately through StackState override
 /// and rewrites `[echolink]` in config.toml.
+// Was: Diese Funktion stellt echolink post.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_echolink_post(stream: TcpStream, shared_config: &Option<tetra_config::bluestation::SharedConfig>, config_path: &str, body: &str) {
     use tetra_config::bluestation::{CfgEcholinkDto, EcholinkRuntimeOverride, apply_echolink_patch};
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let json: serde_json::Value = match serde_json::from_str(body.trim()) {
         Ok(v) => v,
         Err(e) => {
@@ -6059,6 +6750,8 @@ fn serve_echolink_post(stream: TcpStream, shared_config: &Option<tetra_config::b
         max_session_secs: dapnet_as_u64(&json, "max_session_secs", cur.max_session_secs),
         extra: HashMap::new(),
     };
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let normalized = match apply_echolink_patch(dto) {
         Ok(cfg) => cfg,
         Err(err) => {
@@ -6128,6 +6821,8 @@ fn serve_echolink_post(stream: TcpStream, shared_config: &Option<tetra_config::b
     http_response(stream, 200, "OK");
 }
 
+// Was: Diese Funktion stellt echolink connect.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_echolink_connect(
     stream: TcpStream,
     shared_config: &Option<tetra_config::bluestation::SharedConfig>,
@@ -6154,23 +6849,31 @@ fn serve_echolink_connect(
         http_json_response(stream, 503, "{\"ok\":false,\"error\":\"EchoLink worker is unavailable\"}");
         return;
     };
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match tx.send(EcholinkCommand::Connect { target }) {
         Ok(()) => http_json_response(stream, 200, "{\"ok\":true}"),
         Err(e) => http_json_response(stream, 503, &serde_json::json!({"ok":false,"error":e.to_string()}).to_string()),
     }
 }
 
+// Was: Diese Funktion stellt echolink disconnect.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_echolink_disconnect(stream: TcpStream, cmd_tx: &Arc<Mutex<Option<EcholinkCmdSender>>>) {
     let Some(tx) = cmd_tx.lock().ok().and_then(|g| g.clone()) else {
         http_json_response(stream, 503, "{\"ok\":false,\"error\":\"EchoLink worker is unavailable\"}");
         return;
     };
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match tx.send(EcholinkCommand::Disconnect) {
         Ok(()) => http_json_response(stream, 200, "{\"ok\":true}"),
         Err(e) => http_json_response(stream, 503, &serde_json::json!({"ok":false,"error":e.to_string()}).to_string()),
     }
 }
 
+// Was: Führt den Arbeitsschritt `echolink_string_list` für echolink string list aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn echolink_string_list(json: &serde_json::Value, key: &str, default: &[String]) -> Vec<String> {
     if let Some(arr) = json.get(key).and_then(|v| v.as_array()) {
         return arr
@@ -6190,6 +6893,8 @@ fn echolink_string_list(json: &serde_json::Value, key: &str, default: &[String])
     default.to_vec()
 }
 
+// Was: Führt den Arbeitsschritt `echolink_u32_list` für echolink u32 list aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn echolink_u32_list(json: &serde_json::Value, key: &str, default: &[u32]) -> Vec<u32> {
     if let Some(arr) = json.get(key).and_then(|v| v.as_array()) {
         return arr
@@ -6212,33 +6917,49 @@ fn echolink_u32_list(json: &serde_json::Value, key: &str, default: &[u32]) -> Ve
     default.to_vec()
 }
 
+// Was: Führt den Arbeitsschritt `snom_string_list` für snom string list aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn snom_string_list(json: &serde_json::Value, key: &str, default: &[String]) -> Vec<String> {
     echolink_string_list(json, key, default)
 }
 
+// Was: Führt den Arbeitsschritt `meshcom_source_list_as_json` für meshcom source list as JSON-Daten aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn meshcom_source_list_as_json(values: &BTreeSet<String>) -> serde_json::Value {
     serde_json::Value::Array(values.iter().map(|value| serde_json::Value::String(value.clone())).collect())
 }
 
+// Was: Führt den Arbeitsschritt `issi_set_as_json` für Teilnehmerkennung (ISSI) set as JSON-Daten aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn issi_set_as_json(values: &BTreeSet<u32>) -> serde_json::Value {
     serde_json::Value::Array(values.iter().map(|value| serde_json::json!(*value)).collect())
 }
 
+// Was: Führt den Arbeitsschritt `issi_priority_map_as_json` für Teilnehmerkennung (ISSI) Priorität map as JSON-Daten aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn issi_priority_map_as_json(values: &BTreeMap<u32, u8>) -> serde_json::Value {
     let mut map = serde_json::Map::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (issi, priority) in values {
         map.insert(issi.to_string(), serde_json::json!(priority));
     }
     serde_json::Value::Object(map)
 }
 
+// Was: Führt den Arbeitsschritt `issi_priority_map_from_json` für Teilnehmerkennung (ISSI) Priorität map from JSON-Daten aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn issi_priority_map_from_json(json: &serde_json::Value, key: &str, current: &BTreeMap<u32, u8>) -> Result<BTreeMap<u32, u8>, String> {
     let Some(value) = json.get(key) else {
         return Ok(current.clone());
     };
     let mut out = BTreeMap::new();
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match value {
         serde_json::Value::Object(map) => {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for (raw_issi, raw_priority) in map {
                 let issi = raw_issi
                     .trim()
@@ -6257,6 +6978,8 @@ fn issi_priority_map_from_json(json: &serde_json::Value, key: &str, current: &BT
             }
         }
         serde_json::Value::String(text) => {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for line in text.lines() {
                 let line = line.trim();
                 if line.is_empty() || line.starts_with('#') {
@@ -6287,13 +7010,19 @@ fn issi_priority_map_from_json(json: &serde_json::Value, key: &str, current: &BT
     Ok(out)
 }
 
+// Was: Führt den Arbeitsschritt `meshcom_source_list_from_json` für meshcom source list from JSON-Daten aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn meshcom_source_list_from_json(json: &serde_json::Value, key: &str, current: &BTreeSet<String>) -> Result<Vec<String>, String> {
     let Some(value) = json.get(key) else {
         return Ok(current.iter().cloned().collect());
     };
     let mut out = Vec::new();
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match value {
         serde_json::Value::Array(items) => {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for item in items {
                 let Some(text) = item.as_str() else {
                     return Err(format!("{key}: source entries must be strings"));
@@ -6309,12 +7038,18 @@ fn meshcom_source_list_from_json(json: &serde_json::Value, key: &str, current: &
     Ok(out)
 }
 
+// Was: Diese Funktion legt meshcom source parts.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn push_meshcom_source_parts(key: &str, text: &str, out: &mut Vec<String>) -> Result<(), String> {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for line_raw in text.lines() {
         let line = line_raw.split('#').next().unwrap_or("").trim();
         if line.is_empty() {
             continue;
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for part in line.split(|c: char| c == ',' || c.is_whitespace()) {
             let part = part.trim();
             if part.is_empty() {
@@ -6329,13 +7064,19 @@ fn push_meshcom_source_parts(key: &str, text: &str, out: &mut Vec<String>) -> Re
     Ok(())
 }
 
+// Was: Führt den Arbeitsschritt `snom_issi_set_from_json` für snom Teilnehmerkennung (ISSI) set from JSON-Daten aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn snom_issi_set_from_json(json: &serde_json::Value, key: &str, current: &BTreeSet<u32>) -> Result<BTreeSet<u32>, String> {
     let Some(value) = json.get(key) else {
         return Ok(current.clone());
     };
     let mut out = BTreeSet::new();
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match value {
         serde_json::Value::Array(items) => {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for item in items {
                 let issi = if let Some(n) = item.as_u64() {
                     n
@@ -6351,6 +7092,8 @@ fn snom_issi_set_from_json(json: &serde_json::Value, key: &str, current: &BTreeS
             }
         }
         serde_json::Value::String(text) => {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for part in text.split(|c: char| c == ',' || c.is_whitespace()) {
                 let part = part.trim();
                 if part.is_empty() {
@@ -6368,6 +7111,8 @@ fn snom_issi_set_from_json(json: &serde_json::Value, key: &str, current: &BTreeS
     Ok(out)
 }
 
+// Was: Führt den Arbeitsschritt `echolink_routes_from_json` für echolink routes from JSON-Daten aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn echolink_routes_from_json(json: &serde_json::Value, default: &BTreeMap<String, String>) -> HashMap<String, String> {
     let Some(v) = json.get("routes") else {
         return default.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
@@ -6390,7 +7135,11 @@ fn echolink_routes_from_json(json: &serde_json::Value, default: &BTreeMap<String
     default.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
 }
 
+// Was: Führt den Arbeitsschritt `dapnet_string_list` für dapnet string list aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn dapnet_string_list(json: &serde_json::Value, keys: &[&str]) -> Vec<String> {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for key in keys {
         if let Some(arr) = json.get(*key).and_then(|v| v.as_array()) {
             return arr
@@ -6411,6 +7160,8 @@ fn dapnet_string_list(json: &serde_json::Value, keys: &[&str]) -> Vec<String> {
     Vec::new()
 }
 
+// Was: Führt den Arbeitsschritt `normalize_dapnet_api_url` für normalize dapnet API-Schnittstelle url aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn normalize_dapnet_api_url(api_url: &str) -> String {
     let mut url = api_url.trim().trim_end_matches('/').to_string();
     if let Some(rest) = url.strip_prefix("https://www.hampager.de") {
@@ -6429,6 +7180,8 @@ fn normalize_dapnet_api_url(api_url: &str) -> String {
     url
 }
 
+// Was: Diese Funktion erstellt dapnet Ruf payload.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
 fn build_dapnet_call_payload(text: &str, callsigns: Vec<String>, groups: Vec<String>, emergency: bool) -> serde_json::Value {
     serde_json::json!({
         "text": text,
@@ -6438,6 +7191,8 @@ fn build_dapnet_call_payload(text: &str, callsigns: Vec<String>, groups: Vec<Str
     })
 }
 
+// Was: Diese Funktion legt dapnet log and broadcast.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn push_dapnet_log_and_broadcast(
     state: &DashboardState,
     clients: &WsClients,
@@ -6479,6 +7234,8 @@ fn push_dapnet_log_and_broadcast(
 }
 
 /// POST /api/dapnet/send — send one outbound DAPNET message through the configured Hampager API.
+// Was: Diese Funktion stellt dapnet send.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_dapnet_send(
     stream: TcpStream,
     shared_config: &Option<tetra_config::bluestation::SharedConfig>,
@@ -6486,6 +7243,8 @@ fn serve_dapnet_send(
     clients: &WsClients,
     body: &str,
 ) {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let json: serde_json::Value = match serde_json::from_str(body.trim()) {
         Ok(v) => v,
         Err(e) => {
@@ -6541,6 +7300,8 @@ fn serve_dapnet_send(
     let emergency = json.get("emergency").and_then(|v| v.as_bool()).unwrap_or(false);
     let req_body = build_dapnet_call_payload(&text, callsigns, groups, emergency);
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let client = match reqwest::blocking::Client::builder()
         .timeout(std::time::Duration::from_secs(15))
         .build()
@@ -6559,6 +7320,8 @@ fn serve_dapnet_send(
     if !dapnet.username.trim().is_empty() {
         request = request.basic_auth(dapnet.username.trim().to_string(), Some(dapnet.password.as_ref().to_string()));
     }
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match request.send() {
         Ok(resp) => {
             let status = resp.status();
@@ -6608,6 +7371,8 @@ fn serve_dapnet_send(
 }
 
 /// POST /api/telegram/verify — validate the token via getMe and return the bot @username.
+// Was: Diese Funktion stellt telegram verify.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_telegram_verify(stream: TcpStream, shared_config: &Option<tetra_config::bluestation::SharedConfig>, body: &str) {
     let json: serde_json::Value = serde_json::from_str(body.trim()).unwrap_or(serde_json::Value::Null);
     let token = telegram_resolve_token(&json, shared_config);
@@ -6616,6 +7381,8 @@ fn serve_telegram_verify(stream: TcpStream, shared_config: &Option<tetra_config:
         return;
     }
     let client = crate::net_telegram::TelegramClient::new();
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match client.get_me(&token) {
         Ok(info) => {
             let body = format!(
@@ -6632,6 +7399,8 @@ fn serve_telegram_verify(stream: TcpStream, shared_config: &Option<tetra_config:
 }
 
 /// POST /api/telegram/detect — return the chats that recently messaged the bot (getUpdates).
+// Was: Diese Funktion stellt telegram detect.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_telegram_detect(stream: TcpStream, shared_config: &Option<tetra_config::bluestation::SharedConfig>, body: &str) {
     let json: serde_json::Value = serde_json::from_str(body.trim()).unwrap_or(serde_json::Value::Null);
     let token = telegram_resolve_token(&json, shared_config);
@@ -6640,6 +7409,8 @@ fn serve_telegram_detect(stream: TcpStream, shared_config: &Option<tetra_config:
         return;
     }
     let client = crate::net_telegram::TelegramClient::new();
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match client.get_updates(&token) {
         Ok(chats) => {
             let items = chats
@@ -6665,6 +7436,8 @@ fn serve_telegram_detect(stream: TcpStream, shared_config: &Option<tetra_config:
 }
 
 /// POST /api/telegram/test — send a test alert to the configured (or body-supplied) chats.
+// Was: Diese Funktion stellt telegram test.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_telegram_test(stream: TcpStream, shared_config: &Option<tetra_config::bluestation::SharedConfig>, body: &str) {
     let json: serde_json::Value = serde_json::from_str(body.trim()).unwrap_or(serde_json::Value::Null);
     let Some(cfg) = shared_config else {
@@ -6673,6 +7446,8 @@ fn serve_telegram_test(stream: TcpStream, shared_config: &Option<tetra_config::b
     };
     let token = telegram_resolve_token(&json, shared_config);
     let tg = cfg.effective_telegram();
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let chat_ids: Vec<i64> = match json.get("chat_ids").and_then(|v| v.as_array()) {
         Some(arr) => arr.iter().filter_map(|v| v.as_i64()).collect(),
         None => tg.chat_ids.clone(),
@@ -6690,7 +7465,11 @@ fn serve_telegram_test(stream: TcpStream, shared_config: &Option<tetra_config::b
     let client = crate::net_telegram::TelegramClient::new();
     let mut sent = 0u32;
     let mut errors: Vec<String> = Vec::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for id in &chat_ids {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match client.send_message_html(&token, *id, &html) {
             Ok(_) => sent += 1,
             Err(e) => errors.push(format!("{id}: {e}")),
@@ -6706,6 +7485,8 @@ fn serve_telegram_test(stream: TcpStream, shared_config: &Option<tetra_config::b
     http_json_response(stream, 200, &body);
 }
 
+// Was: Diese Funktion stellt system info.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_system_info(mut stream: TcpStream, config_path: &str) {
     let hostname = std::process::Command::new("hostname")
         .output()
@@ -6752,6 +7533,8 @@ fn serve_system_info(mut stream: TcpStream, config_path: &str) {
 
     // CPU load — /proc/stat first line: user nice system idle iowait irq softirq
     // Take a 100ms sample for a meaningful reading
+    // Was: Diese Funktion liest cpu stat.
+    // Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
     fn read_cpu_stat() -> Option<(u64, u64)> {
         let s = std::fs::read_to_string("/proc/stat").ok()?;
         let line = s.lines().next()?;
@@ -6780,6 +7563,8 @@ fn serve_system_info(mut stream: TcpStream, config_path: &str) {
         .map(|s| {
             let mut total = 0u64;
             let mut available = 0u64;
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for line in s.lines() {
                 if line.starts_with("MemTotal:") {
                     total = line.split_whitespace().nth(1).and_then(|n| n.parse().ok()).unwrap_or(0);
@@ -6817,6 +7602,8 @@ fn serve_system_info(mut stream: TcpStream, config_path: &str) {
     // include /usr/local/bin where SoapySDR sometimes lands.
     let soapy_info = (|| -> String {
         let candidates = ["SoapySDRUtil", "/usr/bin/SoapySDRUtil", "/usr/local/bin/SoapySDRUtil"];
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for bin in &candidates {
             // First: does the binary respond to --info at all? That's the canonical
             // "is it installed?" check (`--info` is in every SoapySDR release and
@@ -6914,6 +7701,8 @@ fn serve_system_info(mut stream: TcpStream, config_path: &str) {
     let _ = stream.write_all(body.as_bytes());
 }
 
+// Was: Diese Funktion stellt Konfiguration list.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_config_list(mut stream: TcpStream, config_path: &str) {
     let active_name = std::path::Path::new(config_path)
         .file_name()
@@ -6936,6 +7725,8 @@ fn serve_config_list(mut stream: TcpStream, config_path: &str) {
             })
             .collect();
         names.sort();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for name in names {
             profiles.push(serde_json::json!({
                 "name": name,
@@ -6954,6 +7745,8 @@ fn serve_config_list(mut stream: TcpStream, config_path: &str) {
 }
 
 /// Read a specific config profile and serve its content as plain text.
+// Was: Diese Funktion stellt Konfiguration profile get.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_config_profile_get(stream: TcpStream, config_path: &str, profile_name: &str) {
     if profile_name.contains('/') || profile_name.contains('\\') || profile_name.contains("..") {
         return http_response(stream, 400, "invalid profile name");
@@ -6969,6 +7762,8 @@ fn serve_config_profile_get(stream: TcpStream, config_path: &str, profile_name: 
 /// Save content to a specific config profile (not the active config).
 /// The active config is identified by config_path; writing to it is rejected
 /// (use POST /api/config for that).
+// Was: Diese Funktion speichert Konfiguration profile.
+// Warum: Die Speicherung wird dadurch einheitlich durchgeführt und Fehler gehen nicht unbemerkt verloren.
 fn save_config_profile(config_path: &str, profile_name: &str, content: &str) -> Result<(), String> {
     if profile_name.contains('/') || profile_name.contains('\\') || profile_name.contains("..") {
         return Err("invalid profile name".to_string());
@@ -6995,7 +7790,11 @@ fn save_config_profile(config_path: &str, profile_name: &str, content: &str) -> 
 /// already-public scalars from the dashboard's own state — never SharedConfig/StackState, and never
 /// ISSIs/GSSIs, the whitelist, SDS contents or the log ring. The read lock is the dashboard's own
 /// RwLock (the same one the WS snapshot takes), held only long enough to copy a handful of counts.
+// Was: Diese Funktion stellt public snapshot.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_public_snapshot(stream: TcpStream, state: &DashboardState) {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let body = match state.read() {
         Ok(s) => {
             let active_calls = s.calls.len();
@@ -7020,6 +7819,8 @@ fn serve_public_snapshot(stream: TcpStream, state: &DashboardState) {
 }
 
 /// Copy selected profile over the active config_path, preserving a backup.
+// Was: Diese Funktion aktiviert Konfiguration profile.
+// Warum: Die Zustandsänderung bleibt damit kontrolliert und für alle Aufrufer gleich.
 fn activate_config_profile(config_path: &str, profile_name: &str) -> Result<(), String> {
     // Security: profile_name must be a plain filename with no path separators
     if profile_name.contains('/') || profile_name.contains('\\') || profile_name.contains("..") {
@@ -7047,6 +7848,8 @@ fn activate_config_profile(config_path: &str, profile_name: &str) -> Result<(), 
         .map_err(|e| format!("failed to copy profile: {}", e))
 }
 
+// Was: Diese Funktion stellt html.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_html(mut stream: TcpStream) {
     let body = DASHBOARD_HTML.replace("{{STACK_VERSION}}", tetra_core::STACK_VERSION);
     let body = body.as_bytes();
@@ -7058,7 +7861,11 @@ fn serve_html(mut stream: TcpStream) {
     let _ = stream.write_all(body);
 }
 
+// Was: Diese Funktion stellt Konfiguration get.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_config_get(mut stream: TcpStream, config_path: &str) {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match std::fs::read_to_string(config_path) {
         Ok(content) => {
             let body = content.as_bytes();
@@ -7073,6 +7880,8 @@ fn serve_config_get(mut stream: TcpStream, config_path: &str) {
     }
 }
 
+// Was: Führt den Arbeitsschritt `http_response` für HTTP response aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn http_response(mut stream: TcpStream, code: u16, body: &str) {
     let status = if code == 200 { "OK" } else { "Error" };
     let resp = format!(
@@ -7087,6 +7896,8 @@ fn http_response(mut stream: TcpStream, code: u16, body: &str) {
 
 /// Like `http_response` but serves JSON. Used by the WiFi management endpoints
 /// which all return structured `{"ok": ..., ...}` payloads.
+// Was: Führt den Arbeitsschritt `http_json_response` für HTTP JSON-Daten response aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn http_json_response(mut stream: TcpStream, code: u16, body: &str) {
     let status = if code == 200 { "OK" } else { "Error" };
     let resp = format!(
@@ -7103,12 +7914,16 @@ fn http_json_response(mut stream: TcpStream, code: u16, body: &str) {
 /// for GET-style endpoints that don't read a body — we still need to clear
 /// the headers off the stream before responding, otherwise some clients
 /// reuse the connection and get confused.
+// Was: Diese Funktion arbeitet HTTP headers.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn drain_http_headers(stream: &mut TcpStream) {
     // We read byte-by-byte to find the \r\n\r\n delimiter. This is slower
     // than BufReader-line reads but doesn't consume bytes past the headers,
     // which matters for POST handlers that need to keep reading the body.
     let mut prev3 = [0u8; 3];
     let mut byte = [0u8; 1];
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
     loop {
         if stream.read(&mut byte).unwrap_or(0) == 0 {
             break;
@@ -7124,6 +7939,8 @@ fn drain_http_headers(stream: &mut TcpStream) {
 /// Read an HTTP request body from the stream. Returns the body bytes.
 /// We read headers first to extract Content-Length, then read exactly that
 /// many bytes. Returns an empty vec if Content-Length is missing or 0.
+// Was: Diese Funktion liest HTTP body.
+// Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
 fn read_http_body(stream: &mut TcpStream) -> Vec<u8> {
     // Read headers line-by-line. We can't use BufReader here because we'd
     // lose buffered bytes when we drop it; instead read one byte at a time
@@ -7132,6 +7949,8 @@ fn read_http_body(stream: &mut TcpStream) -> Vec<u8> {
     let mut header_buf = Vec::with_capacity(512);
     let mut byte = [0u8; 1];
     let mut prev3 = [0u8; 3];
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
     loop {
         if stream.read(&mut byte).unwrap_or(0) == 0 {
             return Vec::new();
@@ -7144,6 +7963,8 @@ fn read_http_body(stream: &mut TcpStream) -> Vec<u8> {
     }
     let header_str = String::from_utf8_lossy(&header_buf);
     let mut content_length = 0usize;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for line in header_str.lines() {
         let lower = line.to_lowercase();
         if let Some(rest) = lower.strip_prefix("content-length:") {
@@ -7164,6 +7985,8 @@ fn read_http_body(stream: &mut TcpStream) -> Vec<u8> {
 /// Parse a login POST body. Accepts both `application/x-www-form-urlencoded`
 /// (user=...&password=...) and a minimal JSON shape `{"user":"...","password":"..."}`.
 /// This makes the endpoint trivially usable from both an HTML form and fetch().
+// Was: Diese Funktion liest und prüft login body.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_login_body(body: &str) -> (String, String) {
     let trimmed = body.trim();
     // JSON shape: look for "user":"..." and "password":"..." anywhere in the string.
@@ -7176,11 +7999,15 @@ fn parse_login_body(body: &str) -> (String, String) {
     // Form-encoded.
     let mut user = String::new();
     let mut pass = String::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for pair in trimmed.split('&') {
         let mut it = pair.splitn(2, '=');
         let k = it.next().unwrap_or("");
         let v = it.next().unwrap_or("");
         let decoded = url_decode(v);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match k {
             "user" | "username" => user = decoded,
             "password" | "pass" => pass = decoded,
@@ -7190,6 +8017,8 @@ fn parse_login_body(body: &str) -> (String, String) {
     (user, pass)
 }
 
+// Was: Führt den Arbeitsschritt `json_field` für JSON-Daten field aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn json_field(s: &str, key: &str) -> Option<String> {
     let needle = format!("\"{}\"", key);
     let idx = s.find(&needle)?;
@@ -7201,11 +8030,17 @@ fn json_field(s: &str, key: &str) -> Option<String> {
     Some(rest[..end].to_string())
 }
 
+// Was: Führt den Arbeitsschritt `url_decode` für url Dekodierung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn url_decode(s: &str) -> String {
     let bytes = s.as_bytes();
     let mut out = Vec::with_capacity(bytes.len());
     let mut i = 0;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while i < bytes.len() {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match bytes[i] {
             b'+' => {
                 out.push(b' ');
@@ -7231,6 +8066,8 @@ fn url_decode(s: &str) -> String {
     String::from_utf8(out).unwrap_or_default()
 }
 
+// Was: Führt den Arbeitsschritt `http_redirect` für HTTP redirect aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn http_redirect(mut stream: TcpStream, location: &str) {
     let resp = format!(
         "HTTP/1.1 302 Found\r\nLocation: {}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
@@ -7239,6 +8076,8 @@ fn http_redirect(mut stream: TcpStream, location: &str) {
     let _ = stream.write_all(resp.as_bytes());
 }
 
+// Was: Diese Funktion stellt login success.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_login_success(mut stream: TcpStream, token: &str) {
     // Two cookies:
     //   fs_session: HttpOnly — the actual session token, inaccessible to JS.
@@ -7260,6 +8099,8 @@ fn serve_login_success(mut stream: TcpStream, token: &str) {
     let _ = stream.write_all(resp.as_bytes());
 }
 
+// Was: Diese Funktion stellt logout.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_logout(mut stream: TcpStream) {
     // Expire both cookies immediately; client navigates to /login next.
     let resp = "HTTP/1.1 302 Found\r\n\
@@ -7271,6 +8112,8 @@ fn serve_logout(mut stream: TcpStream) {
     let _ = stream.write_all(resp.as_bytes());
 }
 
+// Was: Diese Funktion stellt login page.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_login_page(mut stream: TcpStream) {
     let body = crate::net_dashboard::html::LOGIN_HTML;
     let header = format!(
@@ -7285,6 +8128,8 @@ fn serve_login_page(mut stream: TcpStream) {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::{
         DashboardServer, binary_built_from, build_dapnet_call_payload, dapnet_ric_routes_from_json, dapnet_ric_routes_from_json_key,
@@ -7300,6 +8145,8 @@ mod tests {
     /// and v1 is learned lazily from a v1 group call. A confirmed v1 must never be downgraded by a
     /// later 0-reporting (re)connect.
     #[test]
+    // Was: Führt den Arbeitsschritt `brew_version_is_monotonic_across_reconnects` für Brew-Verbindung version is monotonic across reconnects aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn brew_version_is_monotonic_across_reconnects() {
         let server = DashboardServer::new("/tmp/fs_brew_ver_test_config.toml".to_string());
         let v = || server.state.read().unwrap().brew_version;
@@ -7329,6 +8176,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall binary built from.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_binary_built_from() {
         let head = "fcac34e2778658fd8a2c6767d54f6da6feaaa5fc";
         // Binary built from this commit (8-char abbrev) -> up to date.
@@ -7343,6 +8192,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `tpg2200_callout_id_and_priority_bytes_are_direct_fields` für tpg2200 callout Kennung and Priorität bytes are und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn tpg2200_callout_id_and_priority_bytes_are_direct_fields() {
         assert_eq!(tpg2200_callout_id_byte(0), 0x00);
         assert_eq!(tpg2200_callout_id_byte(1), 0x01);
@@ -7358,6 +8209,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Diese Funktion liest und prüft hex payload accepts common separators and prefixes.
+    // Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     fn parse_hex_payload_accepts_common_separators_and_prefixes() {
         assert_eq!(
             parse_hex_payload("C3 00,0x09;0D:10-21").unwrap(),
@@ -7369,6 +8222,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Diese Funktion erstellt tpg2200 callout payload matches known alarm shape.
+    // Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
     fn build_tpg2200_callout_payload_matches_known_alarm_shape() {
         assert_eq!(
             build_tpg2200_callout_payload(default_tpg2200_ric(), 0x11, 0x0F, "ALARM"),
@@ -7382,6 +8237,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `tpg2200_action_request_matches_exact_route_only` für tpg2200 action request matches exact Weiterleitung only aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn tpg2200_action_request_matches_exact_route_only() {
         assert!(is_tpg2200_action_request("GET /api/action/tpg2200?token=abc HTTP/1.1"));
         assert!(is_tpg2200_action_request("POST /api/action/tpg2200?token=abc HTTP/1.1"));
@@ -7390,6 +8247,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `tpg2200_action_query_and_text_helpers_are_snom_friendly` für tpg2200 action query and text helpers are und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn tpg2200_action_query_and_text_helpers_are_snom_friendly() {
         let params = query_params("/api/action/tpg2200?token=a%2Bb&text=Hello+World");
         assert_eq!(params.get("token").map(String::as_str), Some("a+b"));
@@ -7400,6 +8259,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `dapnet_api_url_normalizes_known_hampager_variants` für dapnet API-Schnittstelle url normalizes known hampager variants aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn dapnet_api_url_normalizes_known_hampager_variants() {
         assert_eq!(
             normalize_dapnet_api_url("https://www.hampager.de/api/messages"),
@@ -7416,6 +8277,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `dapnet_call_payload_uses_hampager_call_format` für dapnet Ruf payload uses hampager Ruf format aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn dapnet_call_payload_uses_hampager_call_format() {
         let payload = build_dapnet_call_payload("Probe", vec!["DJ2TH".to_string()], vec!["dl-all".to_string()], false);
         assert_eq!(payload["text"], "Probe");
@@ -7427,6 +8290,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `dapnet_ric_routes_parse_decimal_and_hex_keys` für dapnet ric routes parse decimal and hex und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn dapnet_ric_routes_parse_decimal_and_hex_keys() {
         let json = serde_json::json!({
             "ric_issi_routes": {
@@ -7440,6 +8305,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `dapnet_group_routes_and_ric_filters_parse` für dapnet Gruppe routes and ric filters parse aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn dapnet_group_routes_and_ric_filters_parse() {
         let json = serde_json::json!({
             "ric_gssi_routes": {

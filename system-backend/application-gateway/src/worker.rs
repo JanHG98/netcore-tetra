@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Anwendungsdienste wie TTS und externe Integrationen.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::BTreeMap;
 use std::fs;
 use std::io::Read;
@@ -17,6 +20,8 @@ use crate::model::{
 };
 use crate::state::SharedGateway;
 
+// Was: Diese Funktion startet Hintergrundverarbeitung.
+// Warum: Länger laufende Arbeit blockiert dadurch nicht den aufrufenden Ablauf.
 pub fn spawn_worker(
     config: ApplicationGatewayConfig,
     gateway: SharedGateway,
@@ -31,6 +36,8 @@ pub fn spawn_worker(
             tracing::error!("Application Gateway cannot construct HTTP client");
             return;
         };
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             run_cycle(&config, &gateway, &client, 32);
             thread::sleep(Duration::from_millis(config.runtime.worker_interval_ms));
@@ -38,12 +45,16 @@ pub fn spawn_worker(
     })
 }
 
+// Was: Diese Funktion führt cycle.
+// Warum: Der Lebenszyklus des Dienstes bleibt so an einer zentralen Stelle steuerbar.
 pub fn run_cycle(
     config: &ApplicationGatewayConfig,
     gateway: &SharedGateway,
     client: &Client,
     max_deliveries: usize,
 ) {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for connector in gateway.connectors_due_probe() {
         let outcome = probe_connector(client, &connector);
         if let Err(error) = gateway.record_probe(outcome) {
@@ -51,7 +62,11 @@ pub fn run_cycle(
         }
     }
 
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for _ in 0..max_deliveries {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let claimed = match gateway.claim_due_delivery() {
             Ok(Some(claimed)) => claimed,
             Ok(None) => break,
@@ -68,10 +83,14 @@ pub fn run_cycle(
     }
 }
 
+// Was: Prüft automatisch den Fall connector.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 pub fn test_connector(client: &Client, connector: &ConnectorRecord) -> ConnectorProbeOutcome {
     probe_connector(client, connector)
 }
 
+// Was: Diese Funktion erstellt client.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
 pub fn build_client() -> Result<Client, String> {
     Client::builder()
         .connect_timeout(Duration::from_secs(5))
@@ -81,6 +100,8 @@ pub fn build_client() -> Result<Client, String> {
         .map_err(|error| error.to_string())
 }
 
+// Was: Führt den Arbeitsschritt `probe_connector` für probe connector aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn probe_connector(client: &Client, connector: &ConnectorRecord) -> ConnectorProbeOutcome {
     let started = Instant::now();
     let Some(endpoint) = connector.health_endpoint.as_ref() else {
@@ -97,6 +118,8 @@ fn probe_connector(client: &Client, connector: &ConnectorRecord) -> ConnectorPro
         .timeout(Duration::from_millis(connector.timeout_ms))
         .header(USER_AGENT, "NetCore-Tetra Application-Gateway-Probe/1")
         .send();
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match response {
         Ok(response) => ConnectorProbeOutcome {
             connector_id: connector.connector_id.clone(),
@@ -119,11 +142,15 @@ fn probe_connector(client: &Client, connector: &ConnectorRecord) -> ConnectorPro
     }
 }
 
+// Was: Diese Funktion sendet delivery.
+// Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
 fn send_delivery(
     config: &ApplicationGatewayConfig,
     client: &Client,
     claimed: ClaimedDelivery,
 ) -> DeliveryOutcome {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let result = match claimed.connector.kind.as_str() {
         "piper_tts" => send_piper(config, client, &claimed),
         "telegram_bot" => send_telegram(config, client, &claimed),
@@ -135,6 +162,8 @@ fn send_delivery(
         | "geoalarm_http" | "generic_webhook" => send_generic(config, client, &claimed),
         other => Err(format!("unsupported connector kind {other}")),
     };
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match result {
         Ok(outcome) => outcome,
         Err(error) => DeliveryOutcome {
@@ -149,6 +178,8 @@ fn send_delivery(
     }
 }
 
+// Was: Diese Funktion sendet generic.
+// Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
 fn send_generic(
     config: &ApplicationGatewayConfig,
     client: &Client,
@@ -173,6 +204,8 @@ fn send_generic(
         "priority": claimed.delivery.priority,
         "connector_kind": claimed.connector.kind,
     });
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let request = match method.as_str() {
         "PUT" => client.put(&endpoint),
         "PATCH" => client.patch(&endpoint),
@@ -191,6 +224,8 @@ fn send_generic(
     response_outcome(config, response)
 }
 
+// Was: Diese Funktion sendet telegram.
+// Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
 fn send_telegram(
     config: &ApplicationGatewayConfig,
     client: &Client,
@@ -225,6 +260,8 @@ fn send_telegram(
     response_outcome(config, response)
 }
 
+// Was: Diese Funktion sendet TETRA-Kurznachricht (SDS).
+// Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
 fn send_sds(
     config: &ApplicationGatewayConfig,
     client: &Client,
@@ -299,6 +336,8 @@ fn send_sds(
     response_outcome(config, response)
 }
 
+// Was: Diese Funktion sendet snom.
+// Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
 fn send_snom(
     config: &ApplicationGatewayConfig,
     client: &Client,
@@ -323,6 +362,8 @@ fn send_snom(
     response_outcome(config, response)
 }
 
+// Was: Diese Funktion sendet weather.
+// Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
 fn send_weather(
     config: &ApplicationGatewayConfig,
     client: &Client,
@@ -346,6 +387,8 @@ fn send_weather(
     response_outcome(config, response)
 }
 
+// Was: Diese Funktion sendet piper.
+// Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
 fn send_piper(
     config: &ApplicationGatewayConfig,
     client: &Client,
@@ -421,6 +464,8 @@ fn send_piper(
     })
 }
 
+// Was: Führt den Arbeitsschritt `response_outcome` für response outcome aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn response_outcome(
     config: &ApplicationGatewayConfig,
     mut response: Response,
@@ -456,6 +501,8 @@ fn response_outcome(
     })
 }
 
+// Was: Diese Funktion wendet Anmeldung und Berechtigung.
+// Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
 fn apply_auth(
     mut request: RequestBuilder,
     connector: &ConnectorRecord,
@@ -477,14 +524,20 @@ fn apply_auth(
     request
 }
 
+// Was: Führt den Arbeitsschritt `endpoint_with_secrets` für endpoint with secrets aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn endpoint_with_secrets(endpoint: &str, secrets: &BTreeMap<String, String>) -> String {
     let mut endpoint = endpoint.to_string();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (name, value) in secrets {
         endpoint = endpoint.replace(&format!("{{{name}}}"), value);
     }
     endpoint
 }
 
+// Was: Führt den Arbeitsschritt `delivery_text` für delivery text aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn delivery_text(delivery: &DeliveryRecord) -> String {
     delivery
         .payload
@@ -495,10 +548,14 @@ fn delivery_text(delivery: &DeliveryRecord) -> String {
         .unwrap_or_else(|| delivery.payload.to_string())
 }
 
+// Was: Führt den Arbeitsschritt `setting_u32` für setting u32 aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn setting_u32(settings: &BTreeMap<String, String>, key: &str, fallback: u32) -> u32 {
     settings.get(key).and_then(|value| value.parse().ok()).unwrap_or(fallback)
 }
 
+// Was: Führt den Arbeitsschritt `setting_bool` für setting bool aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn setting_bool(settings: &BTreeMap<String, String>, key: &str, fallback: bool) -> bool {
     settings
         .get(key)
@@ -510,10 +567,14 @@ fn setting_bool(settings: &BTreeMap<String, String>, key: &str, fallback: bool) 
         .unwrap_or(fallback)
 }
 
+// Was: Führt den Arbeitsschritt `value_u32` für value u32 aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn value_u32(payload: &Value, key: &str, fallback: u32) -> u32 {
     payload.get(key).and_then(Value::as_u64).map(|value| value as u32).unwrap_or(fallback)
 }
 
+// Was: Diese Funktion prüft wav.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_wav(path: &Path) -> Result<(), String> {
     let bytes = fs::read(path).map_err(|error| format!("cannot read {}: {error}", path.display()))?;
     if bytes.len() < 44 || &bytes[0..4] != b"RIFF" || &bytes[8..12] != b"WAVE" {
@@ -522,11 +583,15 @@ fn validate_wav(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
+// Was: Führt den Arbeitsschritt `sha256_hex` für sha256 hex aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn sha256_hex(bytes: &[u8]) -> String {
     let digest = Sha256::digest(bytes);
     digest.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
+// Was: Führt den Arbeitsschritt `xml_escape` für xml escape aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn xml_escape(value: &str) -> String {
     value
         .replace('&', "&amp;")

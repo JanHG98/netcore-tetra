@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::VecDeque;
 
 use tetra_core::{Direction, TdmaTime, TimeslotAllocator, TimeslotOwner, frames, multiframes};
@@ -7,21 +10,31 @@ use tetra_saps::{
     lcmc::CallId,
 };
 
+// Was: Legt den festen Wert `D_SETUP_REPEATS` für d setup repeats fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const D_SETUP_REPEATS: i32 = 1;
+// Was: Legt den festen Wert `LATE_ENTRY_INTERVAL_TIMESLOTS` für late entry interval timeslots fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const LATE_ENTRY_INTERVAL_TIMESLOTS: i32 = multiframes!(5);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für circuit err auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum CircuitErr {
     NoCircuitFree,
     CircuitAlreadyInUse,
     CircuitNotActive,
 }
 
+// Was: Listet die möglichen Varianten für circuit mgr cmd auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum CircuitMgrCmd {
     SendDSetup(CallId, u8, u8), // call id, usage number, timeslot
     SendClose(CallId, CmceCircuit),
 }
 
+// Was: Bündelt die zusammengehörigen Werte für circuit mgr in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CircuitMgr {
     pub dltime: TdmaTime,
 
@@ -39,7 +52,11 @@ pub struct CircuitMgr {
     pub next_usage_number: u8,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `CircuitMgr`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl CircuitMgr {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new() -> Self {
         Self {
             dltime: TdmaTime::default(),
@@ -62,7 +79,11 @@ impl CircuitMgr {
 
     /// Checks if a circuit is active on the given timeslot
     /// Returns (dl_active, ul_active)
+    // Was: Prüft, ob active zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     pub fn is_active(&self, ts: u8) -> (bool, bool) {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match &self.dl[ts as usize - 1] {
             Some(dl) => {
                 if dl.direction == Direction::Both {
@@ -77,7 +98,11 @@ impl CircuitMgr {
 
     /// Checks if a circuit is active on the given timeslot and direction
     /// Direction must be Dl or Ul
+    // Was: Prüft, ob active dir zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     pub fn is_active_dir(&self, ts: u8, dir: Direction) -> bool {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match dir {
             Direction::Dl => self.dl[ts as usize - 1].is_some(),
             Direction::Ul => {
@@ -103,6 +128,8 @@ impl CircuitMgr {
     }
 
     /// Gets the usage number of an active circuit, (Option<dl_usage>, Option<ul_usage>)
+    // Was: Diese Funktion liest usage.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     pub fn get_usage(&self, ts: u8) -> (Option<u8>, Option<u8>) {
         let (dl_usage, dl_is_both) = if let Some(dl) = &self.dl[ts as usize - 1] {
             (Some(dl.usage), dl.direction == Direction::Both)
@@ -125,6 +152,8 @@ impl CircuitMgr {
         (dl_usage, ul_usage)
     }
 
+    // Was: Diese Funktion liest next Ruf Kennung.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     pub fn get_next_call_id(&mut self) -> CallId {
         let call_id = self.next_call_identifier;
         self.next_call_identifier += 1;
@@ -134,6 +163,8 @@ impl CircuitMgr {
         call_id
     }
 
+    // Was: Diese Funktion liest next usage number.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     pub fn get_next_usage_number(&mut self) -> u8 {
         let usage = self.next_usage_number;
         self.next_usage_number += 1;
@@ -144,10 +175,16 @@ impl CircuitMgr {
     }
 
     /// Finds a free timeslot for the given direction (Ul, Dl or Both)
+    // Was: Diese Funktion liest free ts.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     fn get_free_ts(&self, dir: Direction) -> Result<u8, CircuitErr> {
         // TODO FIXME we may do a bit smarter allocation here
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for ts in 2..=4 {
             let (dl_active, ul_active) = self.is_active(ts);
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match (dir, dl_active, ul_active) {
                 (Direction::Dl, false, _) => return Ok(ts),
                 (Direction::Ul, false, false) => return Ok(ts),
@@ -165,6 +202,8 @@ impl CircuitMgr {
         Err(CircuitErr::NoCircuitFree)
     }
 
+    // Was: Diese Funktion weist circuit.
+    // Warum: Knapp vorhandene Ressourcen werden dadurch nachvollziehbar und konfliktfrei vergeben.
     pub fn allocate_circuit(
         &mut self,
         dir: Direction,
@@ -199,6 +238,8 @@ impl CircuitMgr {
     ///
     /// Uses single-carrier capacity for backward compatibility. Runtime CMCE code that knows
     /// whether a secondary carrier is enabled should call `allocate_circuit_with_capacity`.
+    // Was: Diese Funktion weist circuit with allocator.
+    // Warum: Knapp vorhandene Ressourcen werden dadurch nachvollziehbar und konfliktfrei vergeben.
     pub fn allocate_circuit_with_allocator(
         &mut self,
         dir: Direction,
@@ -217,6 +258,8 @@ impl CircuitMgr {
         )
     }
 
+    // Was: Diese Funktion weist circuit with capacity.
+    // Warum: Knapp vorhandene Ressourcen werden dadurch nachvollziehbar und konfliktfrei vergeben.
     pub fn allocate_circuit_with_capacity(
         &mut self,
         dir: Direction,
@@ -254,6 +297,8 @@ impl CircuitMgr {
     }
 
     /// Allocate an additional circuit for an existing call id using the centralized allocator.
+    // Was: Diese Funktion weist circuit for Ruf with allocator.
+    // Warum: Knapp vorhandene Ressourcen werden dadurch nachvollziehbar und konfliktfrei vergeben.
     pub fn allocate_circuit_for_call_with_allocator(
         &mut self,
         call_id: CallId,
@@ -274,6 +319,8 @@ impl CircuitMgr {
         )
     }
 
+    // Was: Diese Funktion weist circuit for Ruf with capacity.
+    // Warum: Knapp vorhandene Ressourcen werden dadurch nachvollziehbar und konfliktfrei vergeben.
     pub fn allocate_circuit_for_call_with_capacity(
         &mut self,
         call_id: CallId,
@@ -308,7 +355,11 @@ impl CircuitMgr {
     /// Closes any active circuits for given timeslot and direction.
     /// Returns the CmceCircuit
     /// When direction is Both, closes both directions
+    // Was: Diese Funktion schließt circuit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn close_circuit(&mut self, dir: Direction, ts: u8) -> Result<CmceCircuit, CircuitErr> {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match dir {
             Direction::Dl | Direction::Both => {
                 self.tx_data[ts as usize - 1].clear();
@@ -329,6 +380,8 @@ impl CircuitMgr {
     /// Creates a new circuit on the given direction and timeslot
     /// This channel should be free, if not, warnings will be issued and existing circuit will be closed first
     /// Consumes the circuit but returns a reference
+    // Was: Diese Funktion öffnet circuit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn open_circuit(&mut self, dir: Direction, circuit: CmceCircuit) -> Result<&CmceCircuit, CircuitErr> {
         // Sanity check, close circuit and issue warning if exists
         let ts = circuit.ts;
@@ -340,6 +393,8 @@ impl CircuitMgr {
             return Err(CircuitErr::CircuitAlreadyInUse);
         }
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match dir {
             Direction::Dl | Direction::Both => {
                 if !self.tx_data[ts as usize - 1].is_empty() {
@@ -358,6 +413,8 @@ impl CircuitMgr {
     }
 
     /// Put a block in the queue for transmission on an associated channel
+    // Was: Führt den Arbeitsschritt `put_block` für put block aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn put_block(&mut self, ts: u8, block: Vec<u8>) -> Result<(), CircuitErr> {
         if !self.is_active_dir(ts, Direction::Dl) {
             Err(CircuitErr::CircuitNotActive)
@@ -368,6 +425,8 @@ impl CircuitMgr {
     }
 
     /// Take a to-be-transmitted block from the queue
+    // Was: Führt den Arbeitsschritt `take_block` für take block aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn take_block(&mut self, ts: u8) -> Result<Option<Vec<u8>>, CircuitErr> {
         if !self.is_active_dir(ts, Direction::Dl) {
             return Err(CircuitErr::CircuitNotActive);
@@ -382,7 +441,11 @@ impl CircuitMgr {
     /// they are released by normal call signalling (U-DISCONNECT / CALL_RELEASE).
     /// ETSI EN 300 392-2 §14.9: call timeout does not apply to FDX individual calls.
     /// Active calls are cleaned up earlier by CMCE hangtime/release logic.
+    // Was: Diese Funktion schließt expired circuits.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn close_expired_circuits(&mut self, mut tasks: Option<Vec<CircuitMgrCmd>>) -> Option<Vec<CircuitMgrCmd>> {
+        // Was: Legt den festen Wert `CIRCUIT_EXPIRY_TIMESLOTS` für circuit expiry timeslots fest.
+        // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
         const CIRCUIT_EXPIRY_TIMESLOTS: i32 = 6 * 60 * 18 * 4; // 6 minutes for simplex
 
         let mut to_close: Vec<_> = self
@@ -402,7 +465,11 @@ impl CircuitMgr {
                 .filter(|circuit| circuit.ts_created.age(self.dltime) > CIRCUIT_EXPIRY_TIMESLOTS)
                 .map(|circuit| (circuit.direction, circuit.ts, circuit.call_id)),
         );
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (dir, ts, call_id) in to_close {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match self.close_circuit(dir, ts) {
                 Ok(circuit) => {
                     tasks.get_or_insert_with(Vec::new).push(CircuitMgrCmd::SendClose(call_id, circuit));
@@ -421,6 +488,8 @@ impl CircuitMgr {
         tasks
     }
 
+    // Was: Diese Funktion bearbeitet start.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn tick_start(&mut self, dltime: TdmaTime) -> Option<Vec<CircuitMgrCmd>> {
         self.dltime = dltime;
         let mut tasks = None;
@@ -431,6 +500,8 @@ impl CircuitMgr {
 
             // Next, go through channels, see if D-SETUPs need to be sent
             // Late entry: resend D-SETUP every 5 seconds
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for circuit in self.dl.iter() {
                 if let Some(circuit) = circuit {
                     let age = circuit.ts_created.age(dltime);
@@ -459,6 +530,8 @@ impl CircuitMgr {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
@@ -467,6 +540,8 @@ mod tests {
     /// The CMCE rewrite dropped the `simplex_duplex` filter, force-closing duplex voice
     /// calls after 6 minutes; this verifies the exemption is restored.
     #[test]
+    // Was: Führt den Arbeitsschritt `duplex_circuit_not_closed_after_six_minutes` für duplex circuit not closed after six minutes aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn duplex_circuit_not_closed_after_six_minutes() {
         let mut mgr = CircuitMgr::new();
         // Initialise the manager clock to a t==1 slot (close_expired_circuits only runs then).

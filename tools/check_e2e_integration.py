@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für check e2e integration.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 from __future__ import annotations
 
 import json
@@ -76,6 +79,8 @@ EXPECTED_SCENARIOS = {
 }
 
 
+# Was: Diese Funktion führt den vorgesehenen Arbeitsschritt.
+# Warum: Der Lebenszyklus des Dienstes bleibt so an einer zentralen Stelle steuerbar.
 def run(command: list[str], errors: list[str]) -> None:
     env = os.environ.copy()
     env["PYTHONDONTWRITEBYTECODE"] = "1"
@@ -85,13 +90,19 @@ def run(command: list[str], errors: list[str]) -> None:
         errors.append(f"command failed ({' '.join(command)}): {detail}")
 
 
+# Was: Startet das Programm, lädt die benötigten Einstellungen und übergibt an den eigentlichen Dienstablauf.
+# Warum: Ein klarer Einstiegspunkt hält Startreihenfolge, Fehlerausgabe und geordnetes Beenden zusammen.
 def main() -> int:
     errors: list[str] = []
 
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for relative in REQUIRED_FILES:
         if not (ROOT / relative).is_file():
             errors.append(f"missing {relative}")
 
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for relative in EXECUTABLE_FILES:
         path = ROOT / relative
         if path.is_file() and not path.stat().st_mode & 0o111:
@@ -114,6 +125,8 @@ def main() -> int:
         with plan_path.open("rb") as handle:
             plan = tomllib.load(handle)
         declared: set[str] = set()
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for profile in plan.get("profiles", {}).values():
             declared.update(str(value) for value in profile.get("scenarios", []))
         if declared != EXPECTED_SCENARIOS:
@@ -122,15 +135,23 @@ def main() -> int:
         if not fault.get("destructive") or not fault.get("requires_ssh"):
             errors.append("fault profile must be marked destructive and requires_ssh")
 
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for relative in ("tests/e2e/on_air_evidence.schema.json", "tests/e2e/on_air_template.json"):
         path = ROOT / relative
         if path.is_file():
+            # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+            # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
             try:
                 json.loads(path.read_text(encoding="utf-8"))
             except Exception as error:
                 errors.append(f"invalid JSON {relative}: {error}")
 
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for path in (ROOT / "tests/e2e").rglob("*.py"):
+        # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+        # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
         try:
             compile(path.read_text(encoding="utf-8"), str(path), "exec")
         except SyntaxError as error:
@@ -160,5 +181,7 @@ def main() -> int:
     return 0
 
 
+# Was: Startet den Programmablauf nur dann, wenn diese Datei direkt ausgeführt wird.
+# Warum: Beim Import als Modul sollen nur Funktionen bereitstehen und keine Nebenwirkungen automatisch starten.
 if __name__ == "__main__":
     raise SystemExit(main())

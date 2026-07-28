@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! Brew worker thread: transport-agnostic message loop for Brew protocol exchange
 //!
 //! Generic over any [`NetworkTransport`] implementation (WebSocket, QUIC, TCP, etc.).
@@ -21,6 +24,8 @@ use super::protocol::*;
 
 /// Events the Brew worker sends to the BrewEntity
 #[derive(Debug)]
+// Was: Listet die möglichen Varianten für Brew-Verbindung Ereignis auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum BrewEvent {
     /// Successfully connected to TetraPack server
     Connected { server_version: u8 },
@@ -103,6 +108,8 @@ pub enum BrewEvent {
 
 /// Commands the BrewEntity sends to the worker
 #[derive(Debug)]
+// Was: Listet die möglichen Varianten für Brew-Verbindung command auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum BrewCommand {
     /// Register a subscriber (ISSI)
     RegisterSubscriber { issi: u32 },
@@ -191,6 +198,8 @@ pub enum BrewCommand {
 
 /// Pending SDS header data (from CALL_STATE_SHORT_TRANSFER), awaiting matching FRAME_TYPE_SDS_TRANSFER
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für pending TETRA-Kurznachricht (SDS) in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct PendingSds {
     source: u32,
     destination: u32,
@@ -201,6 +210,8 @@ struct PendingSds {
 ///
 /// Runs in a separate thread. Communicates with [`super::entity::BrewEntity`] via
 /// crossbeam channels ([`BrewEvent`] and [`BrewCommand`]).
+// Was: Bündelt die zusammengehörigen Werte für Brew-Verbindung Hintergrundverarbeitung in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct BrewWorker<T: NetworkTransport> {
     log_label: String,
     config: SharedConfig,
@@ -217,7 +228,11 @@ pub struct BrewWorker<T: NetworkTransport> {
     pending_sds: HashMap<Uuid, PendingSds>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `BrewWorker<T>`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl<T: NetworkTransport> BrewWorker<T> {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(
         log_label: String,
         config: SharedConfig,
@@ -238,16 +253,24 @@ impl<T: NetworkTransport> BrewWorker<T> {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `log_label` für log label aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn log_label(&self) -> &str {
         &self.log_label
     }
 
     /// Main worker entry point — runs until disconnect or fatal error
+    // Was: Diese Funktion führt den vorgesehenen Arbeitsschritt.
+    // Warum: Der Lebenszyklus des Dienstes bleibt so an einer zentralen Stelle steuerbar.
     pub fn run(&mut self) {
         tracing::info!("[{}] BrewWorker: starting", self.log_label());
 
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             // Attempt connection via transport
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match self.transport.connect() {
                 Ok(()) => {
                     tracing::info!("[{}] BrewWorker: transport connected", self.log_label());
@@ -269,6 +292,8 @@ impl<T: NetworkTransport> BrewWorker<T> {
             }
 
             // Run the message loop until error or clean shutdown
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match self.message_loop() {
                 Ok(()) => {
                     tracing::info!("[{}] BrewWorker: connection closed normally", self.log_label());
@@ -289,7 +314,11 @@ impl<T: NetworkTransport> BrewWorker<T> {
     }
 
     /// Graceful teardown: DEAFFILIATE → DEREGISTER → transport disconnect
+    // Was: Führt den Arbeitsschritt `graceful_teardown` für graceful teardown aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn graceful_teardown(&mut self) {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (issi, groups) in &self.subscriber_groups {
             if !groups.is_empty() {
                 let mut group_list: Vec<u32> = groups.iter().copied().collect();
@@ -318,7 +347,11 @@ impl<T: NetworkTransport> BrewWorker<T> {
     }
 
     /// Main message processing loop (transport-agnostic)
+    // Was: Führt den Arbeitsschritt `message_loop` für Nachricht loop aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn message_loop(&mut self) -> Result<(), String> {
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             let now = Instant::now();
 
@@ -336,6 +369,8 @@ impl<T: NetworkTransport> BrewWorker<T> {
 
             // ── Receive incoming messages from transport ──
             let messages = self.transport.receive_reliable();
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for msg in messages {
                 self.handle_incoming_binary(&msg.payload);
             }
@@ -346,7 +381,11 @@ impl<T: NetworkTransport> BrewWorker<T> {
             }
 
             // ── Check for commands from the BrewEntity ──
+            // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+            // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
             loop {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 let cmd = match self.command_receiver.try_recv() {
                     Ok(cmd) => cmd,
                     Err(crossbeam_channel::TryRecvError::Empty) => break,
@@ -360,6 +399,8 @@ impl<T: NetworkTransport> BrewWorker<T> {
                         return Ok(());
                     }
                 };
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match cmd {
                     BrewCommand::RegisterSubscriber { issi } => {
                         let already_registered = self.subscriber_groups.contains_key(&issi);
@@ -391,6 +432,8 @@ impl<T: NetworkTransport> BrewWorker<T> {
                     }
                     BrewCommand::AffiliateGroups { issi, groups } => {
                         let entry = self.subscriber_groups.entry(issi).or_insert_with(HashSet::new);
+                        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                         for gssi in &groups {
                             entry.insert(*gssi);
                         }
@@ -408,6 +451,8 @@ impl<T: NetworkTransport> BrewWorker<T> {
                     }
                     BrewCommand::DeaffiliateGroups { issi, groups } => {
                         if let Some(entry) = self.subscriber_groups.get_mut(&issi) {
+                            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                             for gssi in &groups {
                                 entry.remove(gssi);
                             }
@@ -641,7 +686,11 @@ impl<T: NetworkTransport> BrewWorker<T> {
     }
 
     /// Parse an incoming binary Brew message and forward as event
+    // Was: Diese Funktion verarbeitet incoming binary.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_incoming_binary(&mut self, data: &[u8]) {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match parse_brew_message(data) {
             Ok(msg) => match msg {
                 BrewMessage::CallControl(cc) => self.handle_call_control(cc),
@@ -689,7 +738,11 @@ impl<T: NetworkTransport> BrewWorker<T> {
     }
 
     /// Handle a parsed call control message
+    // Was: Diese Funktion verarbeitet Ruf Steuerung.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_call_control(&mut self, cc: BrewCallControlMessage) {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match cc.call_state {
             CALL_STATE_GROUP_TX => {
                 if let BrewCallPayload::GroupTransmission(gt) = cc.payload {
@@ -898,7 +951,11 @@ impl<T: NetworkTransport> BrewWorker<T> {
     }
 
     /// Handle a parsed voice/data frame
+    // Was: Diese Funktion verarbeitet Funkrahmen.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_frame(&mut self, frame: BrewFrameMessage) {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match frame.frame_type {
             FRAME_TYPE_TRAFFIC_CHANNEL => {
                 // Forward ACELP voice frame to entity

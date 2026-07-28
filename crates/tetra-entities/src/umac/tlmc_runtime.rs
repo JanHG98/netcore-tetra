@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! Runtime state machine for the merged TLC/TMC service access point.
 //!
 //! TLMC is a local management interface between MLE and layer 2.  It does not
@@ -25,6 +28,8 @@ use tetra_saps::tlmc::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für tlmc Laufzeit error auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum TlmcRuntimeError {
     InvalidConfiguration(&'static str),
     OperationBusy(&'static str),
@@ -35,8 +40,14 @@ pub enum TlmcRuntimeError {
     NoPendingSelection,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for TlmcRuntimeError`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for TlmcRuntimeError {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self {
             Self::InvalidConfiguration(reason) => write!(f, "invalid TLMC configuration: {reason}"),
             Self::OperationBusy(operation) => write!(f, "TLMC operation already active: {operation}"),
@@ -49,10 +60,14 @@ impl fmt::Display for TlmcRuntimeError {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `std::error::Error for TlmcRuntimeError {}`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl std::error::Error for TlmcRuntimeError {}
 
 /// Read-only operational view for diagnostics and the future TBS WebUI.
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für tlmc Laufzeit snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlmcRuntimeSnapshot {
     pub scan_state: TlmcScanState,
     pub selection_state: TlmcSelectionState,
@@ -66,6 +81,8 @@ pub struct TlmcRuntimeSnapshot {
 }
 
 #[derive(Debug, Clone, Default)]
+// Was: Bündelt die zusammengehörigen Werte für tlmc Laufzeit in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlmcRuntime {
     configuration: TlmcConfigureReq,
     endpoint_resources: HashMap<EndpointId, LowerLayerResourceAvailability>,
@@ -82,11 +99,17 @@ pub struct TlmcRuntime {
     last_monitor: HashMap<RfChannelNumber, TlmcMonitorInd>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `TlmcRuntime`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl TlmcRuntime {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new() -> Self {
         Self::default()
     }
 
+    // Was: Diese Funktion erzeugt den vorgesehenen Arbeitsschritt.
+    // Warum: Die Oberfläche und andere Dienste erhalten dadurch eine in sich stimmige Momentaufnahme.
     pub fn snapshot(&self) -> TlmcRuntimeSnapshot {
         let mut monitored_channels: Vec<_> = self.monitored_channels.keys().copied().collect();
         monitored_channels.sort_by_key(|channel| channel.0);
@@ -114,40 +137,58 @@ impl TlmcRuntime {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `configuration` für configuration aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn configuration(&self) -> &TlmcConfigureReq {
         &self.configuration
     }
 
+    // Was: Führt den Arbeitsschritt `current_cell` für current cell aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn current_cell(&self) -> Option<&CellIdentity> {
         self.current_cell.as_ref()
     }
 
+    // Was: Führt den Arbeitsschritt `scan_state` für scan Zustand aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn scan_state(&self) -> &TlmcScanState {
         &self.scan_state
     }
 
+    // Was: Führt den Arbeitsschritt `selection_state` für selection Zustand aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn selection_state(&self) -> &TlmcSelectionState {
         &self.selection_state
     }
 
+    // Was: Führt den Arbeitsschritt `pending_scan` für pending scan aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn pending_scan(&self) -> Option<&TlmcScanReq> {
         self.pending_scan.as_ref()
     }
 
+    // Was: Führt den Arbeitsschritt `pending_cell_read` für pending cell read aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn pending_cell_read(&self) -> Option<&TlmcCellReadReq> {
         self.pending_cell_read.as_ref()
     }
 
+    // Was: Führt den Arbeitsschritt `pending_select` für pending select aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn pending_select(&self) -> Option<&TlmcSelectReq> {
         self.pending_select.as_ref()
     }
 
+    // Was: Diese Funktion wendet configure.
+    // Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
     pub fn apply_configure(&mut self, request: TlmcConfigureReq) -> Result<TlmcConfigureConf, TlmcRuntimeError> {
         Self::validate_configure(&request)?;
         Self::merge_configure(&mut self.configuration, request);
         Ok(Self::configure_confirmation(&self.configuration))
     }
 
+    // Was: Diese Funktion prüft configure.
+    // Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
     fn validate_configure(request: &TlmcConfigureReq) -> Result<(), TlmcRuntimeError> {
         if let Some(distribution) = request.distribution_on_18th_frame {
             if !(1..=4).contains(&distribution.timeslot) {
@@ -174,7 +215,11 @@ impl TlmcRuntime {
         Ok(())
     }
 
+    // Was: Diese Funktion führt configure.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn merge_configure(current: &mut TlmcConfigureReq, update: TlmcConfigureReq) {
+        // Was: Definiert das Makro `merge_option`, das wiederkehrenden Rust-Code erzeugt.
+        // Warum: Gleichartige Strukturen werden dadurch nur einmal beschrieben und können nicht unbemerkt auseinanderlaufen.
         macro_rules! merge_option {
             ($field:ident) => {
                 if update.$field.is_some() {
@@ -209,6 +254,8 @@ impl TlmcRuntime {
         merge_option!(link_performance_information);
     }
 
+    // Was: Führt den Arbeitsschritt `configure_confirmation` für configure confirmation aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn configure_confirmation(configuration: &TlmcConfigureReq) -> TlmcConfigureConf {
         TlmcConfigureConf {
             threshold_values: configuration.threshold_values.clone(),
@@ -232,6 +279,8 @@ impl TlmcRuntime {
     }
 
     /// Record an edge-triggered lower-layer resource transition.
+    // Was: Führt den Arbeitsschritt `resource_transition` für resource transition aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn resource_transition(
         &mut self,
         endpoint_id: EndpointId,
@@ -249,22 +298,32 @@ impl TlmcRuntime {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `record_measurement` für Datensatz measurement aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn record_measurement(&mut self, measurement: MeasurementReport) -> TlmcMeasurementInd {
         self.last_measurement = Some(measurement.clone());
         TlmcMeasurementInd { measurement }
     }
 
+    // Was: Diese Funktion setzt monitor list.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_monitor_list(&mut self, request: TlmcMonitorListReq) {
         self.monitored_channels.clear();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for channel in request.channels {
             self.monitored_channels.insert(channel.channel_number, channel);
         }
     }
 
+    // Was: Prüft, ob monitored zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     pub fn is_monitored(&self, channel_number: RfChannelNumber) -> bool {
         self.monitored_channels.contains_key(&channel_number)
     }
 
+    // Was: Führt den Arbeitsschritt `record_monitor` für Datensatz monitor aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn record_monitor(
         &mut self,
         channel_number: RfChannelNumber,
@@ -285,17 +344,25 @@ impl TlmcRuntime {
         Ok(indication)
     }
 
+    // Was: Diese Funktion setzt assessment list.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_assessment_list(&mut self, request: TlmcAssessmentListReq) {
         self.assessment_classes.clear();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for class in request.classes {
             self.assessment_classes.insert(class.label, class);
         }
     }
 
+    // Was: Führt den Arbeitsschritt `record_assessment` für Datensatz assessment aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn record_assessment(
         &self,
         assessments: Vec<ChannelClassMeasurement>,
     ) -> Result<TlmcAssessmentInd, TlmcRuntimeError> {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for assessment in &assessments {
             if !self.assessment_classes.contains_key(&assessment.label) {
                 return Err(TlmcRuntimeError::ChannelClassNotRequested(assessment.label));
@@ -304,6 +371,8 @@ impl TlmcRuntime {
         Ok(TlmcAssessmentInd { assessments })
     }
 
+    // Was: Führt den Arbeitsschritt `begin_scan` für begin scan aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn begin_scan(&mut self, request: TlmcScanReq) -> Result<(), TlmcRuntimeError> {
         if self.pending_scan.is_some() {
             return Err(TlmcRuntimeError::OperationBusy("scan"));
@@ -320,6 +389,8 @@ impl TlmcRuntime {
         Ok(())
     }
 
+    // Was: Führt den Arbeitsschritt `complete_scan` für complete scan aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn complete_scan(
         &mut self,
         request_id: ScanRequestId,
@@ -373,6 +444,8 @@ impl TlmcRuntime {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `record_scan_report` für Datensatz scan report aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn record_scan_report(
         &mut self,
         request_id: Option<ScanRequestId>,
@@ -390,6 +463,8 @@ impl TlmcRuntime {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `begin_cell_read` für begin cell read aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn begin_cell_read(&mut self, request: TlmcCellReadReq) -> Result<(), TlmcRuntimeError> {
         if self.pending_cell_read.is_some() {
             return Err(TlmcRuntimeError::OperationBusy("cell read"));
@@ -398,6 +473,8 @@ impl TlmcRuntime {
         Ok(())
     }
 
+    // Was: Führt den Arbeitsschritt `complete_cell_read` für complete cell read aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn complete_cell_read(
         &mut self,
         request_id: ScanRequestId,
@@ -419,6 +496,8 @@ impl TlmcRuntime {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `begin_select` für begin select aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn begin_select(&mut self, request: TlmcSelectReq) -> Result<(), TlmcRuntimeError> {
         if self.pending_select.is_some() || self.pending_select_indication.is_some() {
             return Err(TlmcRuntimeError::OperationBusy("selection"));
@@ -433,6 +512,8 @@ impl TlmcRuntime {
         Ok(())
     }
 
+    // Was: Führt den Arbeitsschritt `complete_select` für complete select aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn complete_select(
         &mut self,
         channel_number: RfChannelNumber,
@@ -485,6 +566,8 @@ impl TlmcRuntime {
         })
     }
 
+    // Was: Diese Funktion empfängt select indication.
+    // Warum: Eingehende Daten werden so geordnet geprüft, bevor sie weiterverteilt werden.
     pub fn receive_select_indication(&mut self, indication: TlmcSelectInd) -> Result<(), TlmcRuntimeError> {
         if self.pending_select.is_some() || self.pending_select_indication.is_some() {
             return Err(TlmcRuntimeError::OperationBusy("selection indication"));
@@ -509,6 +592,8 @@ impl TlmcRuntime {
         Ok(())
     }
 
+    // Was: Führt den Arbeitsschritt `respond_select` für respond select aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn respond_select(&mut self, response: TlmcSelectResp) -> Result<(), TlmcRuntimeError> {
         let indication = self
             .pending_select_indication
@@ -545,12 +630,16 @@ impl TlmcRuntime {
         Ok(())
     }
 
+    // Was: Führt den Arbeitsschritt `channel_change_handle` für Kanal change handle aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn channel_change_handle(&self) -> Option<ChannelChangeHandle> {
         self.pending_select_indication
             .as_ref()
             .and_then(|indication| indication.channel_change_handle)
     }
 
+    // Was: Führt den Arbeitsschritt `candidate_from_select_request` für candidate from select request aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn candidate_from_select_request(request: &TlmcSelectReq) -> CellCandidate {
         CellCandidate {
             identity: None,
@@ -571,6 +660,8 @@ impl TlmcRuntime {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
     use tetra_saps::common::{
@@ -578,6 +669,8 @@ mod tests {
         ModulationMode, ScanningMeasurementMethod, SelectionCause,
     };
 
+    // Was: Führt den Arbeitsschritt `channel_info` für Kanal info aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn channel_info() -> ChannelInformation {
         ChannelInformation {
             modulation: ModulationMode::PhaseModulation,
@@ -587,6 +680,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `configure_merges_partial_updates_and_reports_resource_edges` für configure merges partial updates and reports resource und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn configure_merges_partial_updates_and_reports_resource_edges() {
         let mut runtime = TlmcRuntime::new();
         let confirmation = runtime
@@ -615,6 +710,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `scan_and_selection_have_correlated_lifecycles` für scan and selection have correlated lifecycles aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn scan_and_selection_have_correlated_lifecycles() {
         let mut runtime = TlmcRuntime::new();
         runtime
@@ -672,6 +769,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `monitor_requires_an_explicit_monitor_list` für monitor requires an explicit monitor list aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn monitor_requires_an_explicit_monitor_list() {
         let mut runtime = TlmcRuntime::new();
         assert!(matches!(

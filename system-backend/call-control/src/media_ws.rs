@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Rufaufbau, Rufzustände und Rufwiederherstellung.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::net::TcpStream;
 use std::time::Duration;
 
@@ -7,9 +10,15 @@ use tungstenite::{Message, accept_hdr};
 
 use crate::state::SharedCalls;
 
+// Was: Legt den festen Wert `MEDIA_EVENT_PROTOCOL_VERSION` für Audio- und Mediendaten Ereignis protocol version fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const MEDIA_EVENT_PROTOCOL_VERSION: &str = "netcore-call-control-media-v1";
+// Was: Legt den festen Wert `MEDIA_EVENT_PATH` für Audio- und Mediendaten Ereignis path fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const MEDIA_EVENT_PATH: &str = "/ws/media";
 
+// Was: Führt den Arbeitsschritt `reject_websocket` für reject websocket aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn reject_websocket(status: StatusCode, message: &str) -> ErrorResponse {
     tungstenite::http::Response::builder()
         .status(status)
@@ -20,6 +29,8 @@ fn reject_websocket(status: StatusCode, message: &str) -> ErrorResponse {
         .expect("valid websocket rejection response")
 }
 
+// Was: Diese Funktion verarbeitet Audio- und Mediendaten websocket.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 pub fn handle_media_websocket(stream: TcpStream, calls: SharedCalls) {
     let peer = stream.peer_addr().ok();
     let callback = move |request: &Request, mut response: Response| {
@@ -64,6 +75,8 @@ pub fn handle_media_websocket(stream: TcpStream, calls: SharedCalls) {
         Ok(response)
     };
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let mut socket = match accept_hdr(stream, callback) {
         Ok(socket) => socket,
         Err(error) => {
@@ -77,9 +90,15 @@ pub fn handle_media_websocket(stream: TcpStream, calls: SharedCalls) {
     let receiver = calls.subscribe_media();
 
     tracing::info!(?peer, "Media Switch subscribed to Call Control events");
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
     loop {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match receiver.recv_timeout(Duration::from_secs(10)) {
             Ok(event) => {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 let payload = match serde_json::to_string(&event) {
                     Ok(payload) => payload,
                     Err(error) => {

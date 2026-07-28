@@ -1,8 +1,15 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für grundlegende TETRA-Datentypen und Hilfsfunktionen.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 // Placeholder type
+// Was: Vergibt für todo einen fachlich verständlichen Typnamen.
+// Warum: Der Alias macht Signaturen lesbarer und hält technische Details aus dem aufrufenden Code heraus.
 pub type Todo = i32;
 
 // SAPs as defined in the standard
 #[derive(Debug, Copy, Clone, PartialEq)]
+// Was: Listet die möglichen Varianten für sap auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum Sap {
     TpSap,  // Phy/LMAC
     TpcSap, // Phy/LMAC mgmt

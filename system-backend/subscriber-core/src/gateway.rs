@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Teilnehmerdaten, Berechtigungen und Registrierung.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::sync::mpsc::Receiver;
 use std::thread;
 use std::time::Duration;
@@ -11,6 +14,8 @@ use crate::config::SubscriberCoreConfig;
 use crate::protocol::{BACKEND_PROTOCOL_VERSION, BackendEvent, BackendRequest};
 use crate::state::SharedSubscribers;
 
+// Was: Diese Funktion startet Gateway Hintergrundverarbeitung.
+// Warum: Länger laufende Arbeit blockiert dadurch nicht den aufrufenden Ablauf.
 pub fn spawn_gateway_worker(
     config: SubscriberCoreConfig,
     subscribers: SharedSubscribers,
@@ -19,12 +24,18 @@ pub fn spawn_gateway_worker(
     thread::spawn(move || run_gateway_worker(config, subscribers, rx))
 }
 
+// Was: Diese Funktion führt Gateway Hintergrundverarbeitung.
+// Warum: Der Lebenszyklus des Dienstes bleibt so an einer zentralen Stelle steuerbar.
 fn run_gateway_worker(
     config: SubscriberCoreConfig,
     subscribers: SharedSubscribers,
     rx: Receiver<BackendRequest>,
 ) {
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
     loop {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match connect_gateway(&config) {
             Ok(mut socket) => {
                 subscribers.gateway_connected();
@@ -38,6 +49,8 @@ fn run_gateway_worker(
     }
 }
 
+// Was: Diese Funktion verbindet Gateway.
+// Warum: Der Verbindungsaufbau wird dadurch zentral überwacht und kann sauber fehlschlagen.
 fn connect_gateway(
     config: &SubscriberCoreConfig,
 ) -> Result<WebSocket<MaybeTlsStream<std::net::TcpStream>>, String> {
@@ -60,13 +73,21 @@ fn connect_gateway(
     Ok(socket)
 }
 
+// Was: Führt den Arbeitsschritt `connected_loop` für connected loop aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn connected_loop(
     socket: &mut WebSocket<MaybeTlsStream<std::net::TcpStream>>,
     subscribers: &SharedSubscribers,
     rx: &Receiver<BackendRequest>,
 ) -> Result<(), String> {
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
     loop {
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match rx.try_recv() {
                 Ok(request) => send_request(socket, &request)?,
                 Err(std::sync::mpsc::TryRecvError::Empty) => break,
@@ -76,6 +97,8 @@ fn connected_loop(
             }
         }
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match socket.read() {
             Ok(Message::Text(text)) => {
                 handle_event(socket, subscribers, serde_json::from_str(text.as_str()))?;
@@ -96,24 +119,32 @@ fn connected_loop(
             Err(error) => return Err(format!("node gateway read failed: {error}")),
         }
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for request in subscribers.expire_syncs() {
             send_request(socket, &request)?;
         }
     }
 }
 
+// Was: Diese Funktion verarbeitet Ereignis.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 fn handle_event(
     socket: &mut WebSocket<MaybeTlsStream<std::net::TcpStream>>,
     subscribers: &SharedSubscribers,
     event: Result<BackendEvent, serde_json::Error>,
 ) -> Result<(), String> {
     let event = event.map_err(|error| format!("invalid node gateway event: {error}"))?;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for request in subscribers.handle_backend_event(event) {
         send_request(socket, &request)?;
     }
     Ok(())
 }
 
+// Was: Diese Funktion sendet request.
+// Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
 fn send_request(
     socket: &mut WebSocket<MaybeTlsStream<std::net::TcpStream>>,
     request: &BackendRequest,

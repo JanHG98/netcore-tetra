@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! Linux TUN gateway for general IPv4 packet data over TETRA SNDCP.
 //!
 //! SNDCP transports network-layer N-PDUs, therefore TUN (raw IP) is the
@@ -17,14 +20,28 @@ use std::time::Duration;
 use crossbeam_channel::{bounded, Receiver, Sender, TryRecvError, TrySendError};
 use tetra_config::bluestation::{CfgPacketDataGateway, PacketGatewayFirewallBackend, PacketGatewayNatMode};
 
+// Was: Legt den festen Wert `MAX_IPV4_PACKET` für max ipv4 Datenpaket fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const MAX_IPV4_PACKET: usize = 65_535;
+// Was: Legt den festen Wert `WORKER_IDLE` für Hintergrundverarbeitung idle fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const WORKER_IDLE: Duration = Duration::from_millis(2);
+// Was: Legt den festen Wert `NFT_TABLE` für nft table fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const NFT_TABLE: &str = "netcore_tetra";
+// Was: Legt den festen Wert `IPT_FILTER_CHAIN` für ipt filter chain fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const IPT_FILTER_CHAIN: &str = "NETCORE_TETRA_FWD";
+// Was: Legt den festen Wert `IPT_NAT_CHAIN` für ipt nat chain fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const IPT_NAT_CHAIN: &str = "NETCORE_TETRA_NAT";
+// Was: Legt den festen Wert `SYSCTL_STATE_PATH` für sysctl Zustand path fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const SYSCTL_STATE_PATH: &str = "/run/netcore-tetra/packet-gateway-sysctls";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für Datenpaket Gateway Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PacketGatewayConfig {
     pub interface_name: String,
     pub gateway_address: Ipv4Addr,
@@ -40,7 +57,11 @@ pub struct PacketGatewayConfig {
     pub channel_capacity: usize,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `PacketGatewayConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl PacketGatewayConfig {
+    // Was: Wandelt Eingangsdaten in cell um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_cell(cfg: &CfgPacketDataGateway, gateway_address: Ipv4Addr, negotiated_mtu: usize) -> Self {
         let negotiated = negotiated_mtu.min(u16::MAX as usize) as u16;
         let mtu = cfg.mtu.unwrap_or(negotiated).min(negotiated).max(68);
@@ -60,12 +81,16 @@ impl PacketGatewayConfig {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `network_cidr` für network cidr aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn network_cidr(&self) -> String {
         let address = u32::from(self.gateway_address);
         let mask = if self.prefix_len == 0 { 0 } else { u32::MAX << (32 - self.prefix_len) };
         format!("{}/{}", Ipv4Addr::from(address & mask), self.prefix_len)
     }
 
+    // Was: Diese Funktion prüft den vorgesehenen Arbeitsschritt.
+    // Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
     fn validate(&self) -> Result<(), GatewayError> {
         validate_interface_name(&self.interface_name)?;
         if !(1..=30).contains(&self.prefix_len) {
@@ -82,6 +107,8 @@ impl PacketGatewayConfig {
 }
 
 #[derive(Debug)]
+// Was: Listet die möglichen Varianten für Gateway error auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum GatewayError {
     UnsupportedPlatform,
     InvalidConfig(String),
@@ -92,11 +119,17 @@ pub enum GatewayError {
     ChannelFull,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `From<io::Error> for GatewayError`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl From<io::Error> for GatewayError {
+    // Was: Wandelt Eingangsdaten in den vorgesehenen Arbeitsschritt um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn from(value: io::Error) -> Self { Self::Io(value) }
 }
 
 #[derive(Debug, Clone, Copy, Default)]
+// Was: Bündelt die zusammengehörigen Werte für Gateway stats snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GatewayStatsSnapshot {
     pub packets_from_mobile: u64,
     pub bytes_from_mobile: u64,
@@ -109,6 +142,8 @@ pub struct GatewayStatsSnapshot {
 }
 
 #[derive(Default)]
+// Was: Bündelt die zusammengehörigen Werte für Gateway stats in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct GatewayStats {
     packets_from_mobile: AtomicU64,
     bytes_from_mobile: AtomicU64,
@@ -120,15 +155,25 @@ struct GatewayStats {
     running: AtomicBool,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für running guard in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct RunningGuard(Arc<GatewayStats>);
 
+// Was: Implementiert das zugehörige Verhalten für `Drop for RunningGuard`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Drop for RunningGuard {
+    // Was: Führt den Arbeitsschritt `drop` für drop aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn drop(&mut self) {
         self.0.running.store(false, Ordering::Release);
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `GatewayStats`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl GatewayStats {
+    // Was: Diese Funktion erzeugt den vorgesehenen Arbeitsschritt.
+    // Warum: Die Oberfläche und andere Dienste erhalten dadurch eine in sich stimmige Momentaufnahme.
     fn snapshot(&self) -> GatewayStatsSnapshot {
         GatewayStatsSnapshot {
             packets_from_mobile: self.packets_from_mobile.load(Ordering::Relaxed),
@@ -143,6 +188,8 @@ impl GatewayStats {
     }
 }
 
+// Was: Bündelt die zusammengehörigen Werte für Datenpaket Gateway in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PacketGateway {
     inject_tx: Sender<Vec<u8>>,
     egress_rx: Receiver<Vec<u8>>,
@@ -151,7 +198,11 @@ pub struct PacketGateway {
     join: Option<JoinHandle<()>>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `PacketGateway`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl PacketGateway {
+    // Was: Diese Funktion startet den vorgesehenen Arbeitsschritt.
+    // Warum: Länger laufende Arbeit blockiert dadurch nicht den aufrufenden Ablauf.
     pub fn spawn(config: PacketGatewayConfig) -> Result<Self, GatewayError> {
         config.validate()?;
         if !cfg!(target_os = "linux") {
@@ -171,6 +222,8 @@ impl PacketGateway {
                 tracing::error!("SNDCP packet gateway stopped: {:?}", error);
             }
         })?;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match startup_rx.recv_timeout(Duration::from_secs(10)) {
             Ok(Ok(())) => Ok(Self { inject_tx, egress_rx, stop_tx, stats, join: Some(join) }),
             Ok(Err(error)) => {
@@ -186,7 +239,11 @@ impl PacketGateway {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `inject_from_mobile` für inject from mobile aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn inject_from_mobile(&self, packet: Vec<u8>) -> Result<(), GatewayError> {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.inject_tx.try_send(packet) {
             Ok(()) => Ok(()),
             Err(TrySendError::Full(_)) => {
@@ -197,7 +254,11 @@ impl PacketGateway {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `try_packet_to_mobile` für try Datenpaket to mobile aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn try_packet_to_mobile(&self) -> Result<Option<Vec<u8>>, GatewayError> {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.egress_rx.try_recv() {
             Ok(packet) => Ok(Some(packet)),
             Err(TryRecvError::Empty) => Ok(None),
@@ -205,17 +266,27 @@ impl PacketGateway {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `stats` für stats aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn stats(&self) -> GatewayStatsSnapshot { self.stats.snapshot() }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Drop for PacketGateway`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Drop for PacketGateway {
+    // Was: Führt den Arbeitsschritt `drop` für drop aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn drop(&mut self) {
         let _ = self.stop_tx.try_send(());
         if let Some(join) = self.join.take() { let _ = join.join(); }
     }
 }
 
+// Was: Führt den Arbeitsschritt `format_gateway_error` für format Gateway error aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn format_gateway_error(error: &GatewayError) -> String {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match error {
         GatewayError::UnsupportedPlatform => "unsupported platform".to_string(),
         GatewayError::InvalidConfig(value) => format!("invalid configuration: {value}"),
@@ -229,6 +300,8 @@ fn format_gateway_error(error: &GatewayError) -> String {
     }
 }
 
+// Was: Führt den Arbeitsschritt `worker_main` für Hintergrundverarbeitung main aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn worker_main(
     config: PacketGatewayConfig,
     inject_rx: Receiver<Vec<u8>>,
@@ -249,6 +322,8 @@ fn worker_main(
 
     'worker: loop {
         if stop_rx.try_recv().is_ok() { break; }
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             if pending_inject.is_none() {
                 pending_inject = match inject_rx.try_recv() {
@@ -258,6 +333,8 @@ fn worker_main(
                 };
             }
             let Some(packet) = pending_inject.as_ref() else { break; };
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match tun.write(packet) {
                 Ok(written) if written == packet.len() => {
                     let packet = pending_inject.take().expect("pending packet existed");
@@ -279,11 +356,17 @@ fn worker_main(
                 }
             }
         }
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match tun.read(&mut read_buffer) {
                 Ok(0) => break,
                 Ok(length) => {
                     let packet = read_buffer[..length].to_vec();
+                    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                     match egress_tx.try_send(packet) {
                         Ok(()) => {
                             stats.packets_to_mobile.fetch_add(1, Ordering::Relaxed);
@@ -309,11 +392,21 @@ fn worker_main(
 }
 
 #[cfg(target_os = "linux")]
+// Was: Diese Funktion öffnet virtuelle TUN-Netzwerkschnittstelle.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn open_tun(name: &str) -> Result<File, GatewayError> {
     use std::os::fd::AsRawFd;
+    // Was: Legt den festen Wert `TUNSETIFF` für tunsetiff fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const TUNSETIFF: libc::c_ulong = 0x4004_54ca;
+    // Was: Legt den festen Wert `IFF_TUN` für iff virtuelle TUN-Netzwerkschnittstelle fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const IFF_TUN: libc::c_short = 0x0001;
+    // Was: Legt den festen Wert `IFF_NO_PI` für iff no pi fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const IFF_NO_PI: libc::c_short = 0x1000;
+    // Was: Legt den festen Wert `IFNAMSIZ` für ifnamsiz fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const IFNAMSIZ: usize = 16;
 
     let file = OpenOptions::new().read(true).write(true).open("/dev/net/tun")?;
@@ -343,9 +436,13 @@ fn open_tun(name: &str) -> Result<File, GatewayError> {
 }
 
 #[cfg(not(target_os = "linux"))]
+// Was: Diese Funktion öffnet virtuelle TUN-Netzwerkschnittstelle.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn open_tun(_name: &str) -> Result<File, GatewayError> { Err(GatewayError::UnsupportedPlatform) }
 
 #[cfg(target_os = "linux")]
+// Was: Diese Funktion setzt nonblocking.
+// Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
 fn set_nonblocking(file: &File) -> Result<(), GatewayError> {
     use std::os::fd::AsRawFd;
     let flags = unsafe { libc::fcntl(file.as_raw_fd(), libc::F_GETFL) };
@@ -357,8 +454,12 @@ fn set_nonblocking(file: &File) -> Result<(), GatewayError> {
 }
 
 #[cfg(not(target_os = "linux"))]
+// Was: Diese Funktion setzt nonblocking.
+// Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
 fn set_nonblocking(_file: &File) -> Result<(), GatewayError> { Err(GatewayError::UnsupportedPlatform) }
 
+// Was: Diese Funktion prüft interface name.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_interface_name(value: &str) -> Result<(), GatewayError> {
     if value.is_empty() || value.len() > 15 || !value.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'-' | b'.')) {
         return Err(GatewayError::InvalidConfig(format!("unsafe interface name {value:?}")));
@@ -367,6 +468,8 @@ fn validate_interface_name(value: &str) -> Result<(), GatewayError> {
 }
 
 #[derive(Debug, Clone)]
+// Was: Listet die möglichen Varianten für applied firewall auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 enum AppliedFirewall {
     None,
     Nftables,
@@ -374,23 +477,33 @@ enum AppliedFirewall {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für ipt rule in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct IptRule {
     table: Option<&'static str>,
     chain: &'static str,
     spec: Vec<String>,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für network configuration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct NetworkConfiguration {
     config: PacketGatewayConfig,
     applied_firewall: AppliedFirewall,
     sysctls: Vec<(String, String)>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `NetworkConfiguration`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl NetworkConfiguration {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     fn new(config: PacketGatewayConfig) -> Self {
         Self { config, applied_firewall: AppliedFirewall::None, sysctls: Vec::new() }
     }
 
+    // Was: Diese Funktion wendet den vorgesehenen Arbeitsschritt.
+    // Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
     fn apply(&mut self) -> Result<(), GatewayError> {
         restore_persisted_sysctls()?;
         run("ip", &["link", "set", "dev", &self.config.interface_name, "mtu", &self.config.mtu.to_string(), "up"])?;
@@ -407,6 +520,8 @@ impl NetworkConfiguration {
         Ok(())
     }
 
+    // Was: Diese Funktion setzt sysctl.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     fn set_sysctl(&mut self, path: &str, value: &str) -> Result<(), GatewayError> {
         let previous = fs::read_to_string(path)?.trim().to_string();
         if previous == value {
@@ -425,6 +540,8 @@ impl NetworkConfiguration {
         Ok(())
     }
 
+    // Was: Diese Funktion speichert sysctl Zustand.
+    // Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
     fn persist_sysctl_state(&self) -> Result<(), GatewayError> {
         let path = std::path::Path::new(SYSCTL_STATE_PATH);
         let Some(parent) = path.parent() else {
@@ -432,6 +549,8 @@ impl NetworkConfiguration {
         };
         fs::create_dir_all(parent)?;
         if self.sysctls.is_empty() {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match fs::remove_file(path) {
                 Ok(()) => {}
                 Err(error) if error.kind() == io::ErrorKind::NotFound => {}
@@ -441,6 +560,8 @@ impl NetworkConfiguration {
         }
         let temporary = path.with_extension("tmp");
         let mut contents = String::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (sysctl, previous) in &self.sysctls {
             contents.push_str(sysctl);
             contents.push('\t');
@@ -452,12 +573,18 @@ impl NetworkConfiguration {
         Ok(())
     }
 
+    // Was: Diese Funktion wendet firewall.
+    // Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
     fn apply_firewall(&mut self) -> Result<(), GatewayError> {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let external = match self.config.external_interface.clone() {
             Some(value) => value,
             None => detect_default_interface()?,
         };
         validate_interface_name(&external)?;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let backend = match self.config.firewall_backend {
             PacketGatewayFirewallBackend::Auto => {
                 if command_exists("nft") { PacketGatewayFirewallBackend::Nftables }
@@ -466,6 +593,8 @@ impl NetworkConfiguration {
             }
             other => other,
         };
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match backend {
             PacketGatewayFirewallBackend::Nftables => self.apply_nftables(&external),
             PacketGatewayFirewallBackend::Iptables => self.apply_iptables(&external),
@@ -474,6 +603,8 @@ impl NetworkConfiguration {
         }
     }
 
+    // Was: Diese Funktion wendet nftables.
+    // Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
     fn apply_nftables(&mut self, external: &str) -> Result<(), GatewayError> {
         let _ = run_allow_failure("nft", &["delete", "table", "ip", NFT_TABLE]);
         run("nft", &["add", "table", "ip", NFT_TABLE])?;
@@ -501,6 +632,8 @@ impl NetworkConfiguration {
         Ok(())
     }
 
+    // Was: Diese Funktion wendet iptables.
+    // Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
     fn apply_iptables(&mut self, external: &str) -> Result<(), GatewayError> {
         let nat_enabled = self.config.nat_mode == PacketGatewayNatMode::Masquerade;
         cleanup_iptables_chains(true);
@@ -539,7 +672,11 @@ impl NetworkConfiguration {
         Ok(())
     }
 
+    // Was: Diese Funktion räumt den vorgesehenen Arbeitsschritt.
+    // Warum: Zurückgelassene Ressourcen würden sonst spätere Starts oder Verbindungen stören.
     fn cleanup(&mut self) {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match std::mem::replace(&mut self.applied_firewall, AppliedFirewall::None) {
             AppliedFirewall::None => {}
             AppliedFirewall::Nftables => { let _ = run_allow_failure("nft", &["delete", "table", "ip", NFT_TABLE]); }
@@ -547,6 +684,8 @@ impl NetworkConfiguration {
                 cleanup_iptables_chains(true);
             }
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (path, previous) in self.sysctls.drain(..).rev() {
             let _ = fs::write(path, format!("{previous}\n"));
         }
@@ -554,17 +693,27 @@ impl NetworkConfiguration {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Drop for NetworkConfiguration`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Drop for NetworkConfiguration {
+    // Was: Führt den Arbeitsschritt `drop` für drop aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn drop(&mut self) { self.cleanup(); }
 }
 
+// Was: Diese Funktion stellt persisted sysctls.
+// Warum: Nach Verbindungsabbruch oder Neustart kann der vorherige Betriebszustand dadurch kontrolliert zurückkehren.
 fn restore_persisted_sysctls() -> Result<(), GatewayError> {
     let path = std::path::Path::new(SYSCTL_STATE_PATH);
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let contents = match fs::read_to_string(path) {
         Ok(contents) => contents,
         Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(()),
         Err(error) => return Err(GatewayError::Io(error)),
     };
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for line in contents.lines() {
         let Some((sysctl, previous)) = line.split_once('\t') else { continue; };
         if sysctl.starts_with("/proc/sys/net/") {
@@ -575,9 +724,15 @@ fn restore_persisted_sysctls() -> Result<(), GatewayError> {
     Ok(())
 }
 
+// Was: Diese Funktion räumt iptables chains.
+// Warum: Zurückgelassene Ressourcen würden sonst spätere Starts oder Verbindungen stören.
 fn cleanup_iptables_chains(include_nat: bool) {
     let forward_jump = IptRule { table: None, chain: "FORWARD", spec: vec!["-j".into(), IPT_FILTER_CHAIN.into()] };
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for _ in 0..16 {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match iptables_rule_exists(&forward_jump) {
             Ok(true) => { let _ = iptables_mutate("-D", &forward_jump); }
             _ => break,
@@ -588,7 +743,11 @@ fn cleanup_iptables_chains(include_nat: bool) {
 
     if include_nat {
         let nat_jump = IptRule { table: Some("nat"), chain: "POSTROUTING", spec: vec!["-j".into(), IPT_NAT_CHAIN.into()] };
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for _ in 0..16 {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match iptables_rule_exists(&nat_jump) {
                 Ok(true) => { let _ = iptables_mutate("-D", &nat_jump); }
                 _ => break,
@@ -599,12 +758,18 @@ fn cleanup_iptables_chains(include_nat: bool) {
     }
 }
 
+// Was: Führt den Arbeitsschritt `command_exists` für command exists aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn command_exists(program: &str) -> bool {
     Command::new(program).arg("--version").stdout(Stdio::null()).stderr(Stdio::null()).status().is_ok()
 }
 
+// Was: Führt den Arbeitsschritt `detect_default_interface` für detect default interface aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn detect_default_interface() -> Result<String, GatewayError> {
     let routes = fs::read_to_string("/proc/net/route")?;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for line in routes.lines().skip(1) {
         let fields = line.split_whitespace().collect::<Vec<_>>();
         if fields.len() >= 4 && fields[1] == "00000000" {
@@ -618,6 +783,8 @@ fn detect_default_interface() -> Result<String, GatewayError> {
     Err(GatewayError::InvalidConfig("could not detect default-route interface".into()))
 }
 
+// Was: Diese Funktion führt den vorgesehenen Arbeitsschritt.
+// Warum: Der Lebenszyklus des Dienstes bleibt so an einer zentralen Stelle steuerbar.
 fn run(program: &str, args: &[&str]) -> Result<(), GatewayError> {
     let output = Command::new(program).args(args).output().map_err(GatewayError::Io)?;
     if output.status.success() { return Ok(()); }
@@ -629,6 +796,8 @@ fn run(program: &str, args: &[&str]) -> Result<(), GatewayError> {
     })
 }
 
+// Was: Diese Funktion führt allow failure.
+// Warum: Der Lebenszyklus des Dienstes bleibt so an einer zentralen Stelle steuerbar.
 fn run_allow_failure(program: &str, args: &[&str]) -> bool {
     matches!(
         Command::new(program).args(args).stdout(Stdio::null()).stderr(Stdio::null()).status(),
@@ -636,6 +805,8 @@ fn run_allow_failure(program: &str, args: &[&str]) -> bool {
     )
 }
 
+// Was: Führt den Arbeitsschritt `iptables_args` für iptables args aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn iptables_args(action: &str, rule: &IptRule) -> Vec<String> {
     let mut args = Vec::new();
     if let Some(table) = rule.table { args.extend(["-t".to_string(), table.to_string()]); }
@@ -645,6 +816,8 @@ fn iptables_args(action: &str, rule: &IptRule) -> Vec<String> {
     args
 }
 
+// Was: Führt den Arbeitsschritt `iptables_rule_exists` für iptables rule exists aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn iptables_rule_exists(rule: &IptRule) -> Result<bool, GatewayError> {
     let args = iptables_args("-C", rule);
     let refs = args.iter().map(String::as_str).collect::<Vec<_>>();
@@ -652,6 +825,8 @@ fn iptables_rule_exists(rule: &IptRule) -> Result<bool, GatewayError> {
     Ok(status.success())
 }
 
+// Was: Führt den Arbeitsschritt `iptables_mutate` für iptables mutate aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn iptables_mutate(action: &str, rule: &IptRule) -> Result<(), GatewayError> {
     let args = iptables_args(action, rule);
     let refs = args.iter().map(String::as_str).collect::<Vec<_>>();
@@ -659,10 +834,14 @@ fn iptables_mutate(action: &str, rule: &IptRule) -> Result<(), GatewayError> {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
     #[test]
+    // Was: Führt den Arbeitsschritt `network_cidr_uses_gateway_prefix` für network cidr uses Gateway prefix aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn network_cidr_uses_gateway_prefix() {
         let cfg = PacketGatewayConfig {
             interface_name: "ntetra0".into(), gateway_address: Ipv4Addr::new(10, 23, 4, 1), prefix_len: 24,
@@ -674,6 +853,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `iptables_nat_table_precedes_action` für iptables nat table precedes action aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn iptables_nat_table_precedes_action() {
         let rule = IptRule { table: Some("nat"), chain: "POSTROUTING", spec: vec!["-j".into(), IPT_NAT_CHAIN.into()] };
         assert_eq!(iptables_args("-I", &rule)[..4].join(" "), "-t nat -I POSTROUTING");

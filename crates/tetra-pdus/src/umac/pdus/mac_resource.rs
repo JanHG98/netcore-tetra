@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 use std::panic;
 
@@ -10,6 +13,8 @@ use crate::umac::{
 
 /// Clause 21.4.3.1 MAC-RESOURCE
 #[derive(Debug, Clone, Default)]
+// Was: Bündelt die zusammengehörigen Werte für MAC-Funkzugriffssteuerung resource in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MacResource {
     /// 1 bit, designates if SDU is followed by fill bits to obtain 8-bit alignment.
     /// May be initially set to 0 and updated through MacResource::update_len_and_fill_ind
@@ -52,7 +57,11 @@ pub struct MacResource {
     pub chan_alloc_element: Option<ChanAllocElement>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `MacResource`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl MacResource {
+    // Was: Führt den Arbeitsschritt `null_pdu` für null Protokollnachricht (PDU) aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn null_pdu() -> Self {
         MacResource {
             fill_bits: false,
@@ -69,6 +78,8 @@ impl MacResource {
         }
     }
 
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buf: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let mut s = MacResource {
             fill_bits: false,
@@ -102,6 +113,8 @@ impl MacResource {
             value: bits,
         })?;
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match addr_type {
             MacResourceAddrType::NullPdu => {
                 // Other fields don't carry meaning in null PDU, so for clarity we set them to defaults
@@ -186,6 +199,8 @@ impl MacResource {
         Ok(s)
     }
 
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buf: &mut BitBuffer) {
         assert!(self.length_ind > 0, "length_ind must be set before writing MacResource PDU");
 
@@ -240,6 +255,8 @@ impl MacResource {
 
         // Write address type and fields
         buf.write_bits(addr_type as u64, 3);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match addr_type {
             MacResourceAddrType::NullPdu => {}
             MacResourceAddrType::Ssi | MacResourceAddrType::Ussi | MacResourceAddrType::Smi => {
@@ -288,10 +305,14 @@ impl MacResource {
         }
     }
 
+    // Was: Prüft, ob null Protokollnachricht (PDU) zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     pub fn is_null_pdu(&self) -> bool {
         self.addr.is_none() && self.event_label.is_none() && self.usage_marker.is_none()
     }
 
+    // Was: Führt den Arbeitsschritt `compute_header_len` für compute header len aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn compute_header_len(&self) -> usize {
         let mut ret = 16;
         if self.is_null_pdu() {
@@ -326,6 +347,8 @@ impl MacResource {
 
     /// Updates the length_ind and fill_bits fields based on the computed header lenght and provided SDU length
     /// Returns the number of fill bits that need to be added to the PDU
+    // Was: Diese Funktion aktualisiert len and fill ind.
+    // Warum: Bestehender Zustand wird dadurch kontrolliert und nach einheitlichen Regeln geändert.
     pub fn update_len_and_fill_ind(&mut self, sdu_len: usize) -> usize {
         let hdr_len = self.compute_header_len();
         let total_len = hdr_len + sdu_len;
@@ -338,7 +361,11 @@ impl MacResource {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for MacResource`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for MacResource {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -373,6 +400,8 @@ impl fmt::Display for MacResource {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
 
     use tetra_core::debug;
@@ -380,6 +409,8 @@ mod tests {
     use super::*;
 
     #[test]
+    // Was: Prüft automatisch den Fall MAC-Funkzugriffssteuerung resource with chanalloc.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_mac_resource_with_chanalloc() {
         debug::setup_logging_verbose();
 

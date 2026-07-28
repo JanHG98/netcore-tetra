@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use tetra_core::{SsiType, TdmaTime, TetraAddress, tetra_entities::TetraEntity};
 use tetra_entities::cmce::call_restore_runtime::{
     CALL_RESTORE_TRANSACTION_TIMEOUT_SLOTS, CallRestoreContext, CallRestoreRequest,
@@ -10,10 +13,14 @@ use tetra_saps::control::enums::{
     circuit_mode_type::CircuitModeType, communication_type::CommunicationType,
 };
 
+// Was: Führt den Arbeitsschritt `issi` für Teilnehmerkennung (ISSI) aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn issi(value: u32) -> TetraAddress {
     TetraAddress::new(value, SsiType::Issi)
 }
 
+// Was: Führt den Arbeitsschritt `group_context` für Gruppe Kontext aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn group_context(call_id: u16) -> CallRestoreContext {
     CallRestoreContext::Group(GroupCallRestoreContext {
         call_id,
@@ -32,6 +39,8 @@ fn group_context(call_id: u16) -> CallRestoreContext {
     })
 }
 
+// Was: Führt den Arbeitsschritt `individual_context` für individual Kontext aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn individual_context(call_id: u16) -> CallRestoreContext {
     CallRestoreContext::Individual(IndividualCallRestoreContext {
         call_id,
@@ -54,6 +63,8 @@ fn individual_context(call_id: u16) -> CallRestoreContext {
     })
 }
 
+// Was: Diese Funktion fordert den vorgesehenen Arbeitsschritt.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn request(subscriber: TetraAddress, call_id: u16) -> CallRestoreRequest {
     CallRestoreRequest {
         subscriber,
@@ -69,6 +80,8 @@ fn request(subscriber: TetraAddress, call_id: u16) -> CallRestoreRequest {
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `group_restore_tracks_context_resource_and_floor` für Gruppe Wiederherstellung tracks Kontext resource and floor aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn group_restore_tracks_context_resource_and_floor() {
     let mut runtime = CallRestoreRuntime::new();
     runtime.install_context(group_context(77));
@@ -94,6 +107,8 @@ fn group_restore_tracks_context_resource_and_floor() {
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `individual_restore_preserves_other_floor_holder` für individual Wiederherstellung preserves other floor holder aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn individual_restore_preserves_other_floor_holder() {
     let mut runtime = CallRestoreRuntime::new();
     runtime.install_context(individual_context(88));
@@ -121,6 +136,8 @@ fn individual_restore_preserves_other_floor_holder() {
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `replay_is_idempotent_and_pending_duplicate_is_rejected` für replay is idempotent and pending duplicate is und weitere Angaben aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn replay_is_idempotent_and_pending_duplicate_is_rejected() {
     let mut runtime = CallRestoreRuntime::new();
     let now = TdmaTime::default();
@@ -144,6 +161,8 @@ fn replay_is_idempotent_and_pending_duplicate_is_rejected() {
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `unanswered_restore_times_out_and_is_visible_to_webui_snapshot` für unanswered Wiederherstellung times out and is visible und weitere Angaben aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn unanswered_restore_times_out_and_is_visible_to_webui_snapshot() {
     let mut runtime = CallRestoreRuntime::new();
     let now = TdmaTime::default();
@@ -157,6 +176,8 @@ fn unanswered_restore_times_out_and_is_visible_to_webui_snapshot() {
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `queued_restore_replays_then_completes_when_a_bearer_is_allocated` für queued Wiederherstellung replays then completes when a und weitere Angaben aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn queued_restore_replays_then_completes_when_a_bearer_is_allocated() {
     let mut runtime = CallRestoreRuntime::new();
     runtime.install_context(group_context(120));
@@ -202,6 +223,8 @@ fn queued_restore_replays_then_completes_when_a_bearer_is_allocated() {
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `queued_restore_tx_request_can_be_cancelled_and_requeued_by_old_or_new_call_id` für queued Wiederherstellung tx request can be cancelled und weitere Angaben aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn queued_restore_tx_request_can_be_cancelled_and_requeued_by_old_or_new_call_id() {
     let mut runtime = CallRestoreRuntime::new();
     runtime.install_context(group_context(140));

@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Metriken, Protokolle und Betriebsüberwachung.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -17,6 +20,8 @@ use crate::protocol::{
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für target Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TargetRecord {
     pub target_id: String,
     pub display_name: String,
@@ -43,7 +48,11 @@ pub struct TargetRecord {
     pub updated_at: DateTime<Utc>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `TargetRecord`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl TargetRecord {
+    // Was: Wandelt Eingangsdaten in Konfiguration um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn from_config(value: &TargetConfig, now: DateTime<Utc>) -> Self {
         Self {
             target_id: value.target_id.clone(),
@@ -74,6 +83,8 @@ impl TargetRecord {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für metric point input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MetricPointInput {
     pub name: String,
     pub labels: BTreeMap<String, String>,
@@ -82,12 +93,16 @@ pub struct MetricPointInput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für metric sample in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MetricSample {
     pub timestamp: DateTime<Utc>,
     pub value: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für metric series in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MetricSeries {
     pub series_id: String,
     pub target_id: String,
@@ -100,6 +115,8 @@ pub struct MetricSeries {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für alert rule Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct AlertRuleRecord {
     pub rule_id: String,
     pub name: String,
@@ -117,7 +134,11 @@ pub struct AlertRuleRecord {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
+// Was: Implementiert das zugehörige Verhalten für `AlertRuleRecord`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl AlertRuleRecord {
+    // Was: Wandelt Eingangsdaten in Konfiguration um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn from_config(value: &AlertRuleConfig, now: DateTime<Utc>) -> Self {
         Self {
             rule_id: value.rule_id.clone(),
@@ -140,6 +161,8 @@ impl AlertRuleRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für alert Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct AlertRecord {
     pub alert_id: String,
     pub fingerprint: String,
@@ -171,6 +194,8 @@ pub struct AlertRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für silence Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SilenceRecord {
     pub silence_id: String,
     pub comment: String,
@@ -188,6 +213,8 @@ pub struct SilenceRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für log Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LogRecord {
     pub log_id: String,
     pub timestamp: DateTime<Utc>,
@@ -202,6 +229,8 @@ pub struct LogRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für trace span in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TraceSpan {
     pub trace_id: String,
     pub span_id: String,
@@ -216,6 +245,8 @@ pub struct TraceSpan {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für audit Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct AuditRecord {
     pub sequence: u64,
     pub timestamp: DateTime<Utc>,
@@ -229,6 +260,8 @@ pub struct AuditRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für diagnostic Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DiagnosticRecord {
     pub diagnostic_id: String,
     pub state: String,
@@ -243,6 +276,8 @@ pub struct DiagnosticRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für stack component in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct StackComponent {
     pub component: String,
     pub endpoint: String,
@@ -253,6 +288,8 @@ pub struct StackComponent {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für stack probe in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct StackProbe {
     pub component: String,
     pub endpoint: String,
@@ -264,6 +301,8 @@ pub struct StackProbe {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für persistent Zustand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct PersistentState {
     targets: HashMap<String, TargetRecord>,
     series: HashMap<String, MetricSeries>,
@@ -279,7 +318,11 @@ struct PersistentState {
     started_at: DateTime<Utc>,
     last_maintenance_at: Option<DateTime<Utc>>,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for PersistentState`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for PersistentState {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             targets: HashMap::new(),
@@ -300,6 +343,8 @@ impl Default for PersistentState {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für observability Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ObservabilityStatus {
     pub ready: bool,
     pub security_mode: String,
@@ -322,12 +367,18 @@ pub struct ObservabilityStatus {
 }
 
 #[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für shared observability in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SharedObservability {
     config: ObservabilityConfig,
     inner: Arc<Mutex<PersistentState>>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SharedObservability`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SharedObservability {
+    // Was: Diese Funktion lädt den vorgesehenen Arbeitsschritt.
+    // Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
     pub fn load(config: ObservabilityConfig) -> Result<Self, Box<dyn std::error::Error>> {
         let mut state = if config.storage.state_path.is_file() {
             serde_json::from_slice::<PersistentState>(&fs::read(&config.storage.state_path)?)?
@@ -335,12 +386,18 @@ impl SharedObservability {
             PersistentState::default()
         };
         let now = Utc::now();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for target in &config.targets {
             state.targets.entry(target.target_id.clone()).or_insert_with(|| TargetRecord::from_config(target, now));
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for rule in &config.alert_rules {
             state.rules.entry(rule.rule_id.clone()).or_insert_with(|| AlertRuleRecord::from_config(rule, now));
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (component, endpoint) in [
             ("prometheus", config.stack.prometheus_url.clone()),
             ("grafana", config.stack.grafana_url.clone()),
@@ -357,6 +414,8 @@ impl SharedObservability {
         Ok(shared)
     }
 
+    // Was: Führt den Arbeitsschritt `status` für Status aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn status(&self) -> ObservabilityStatus {
         let state = self.lock();
         let enabled: Vec<&TargetRecord> = state.targets.values().filter(|target| target.enabled).collect();
@@ -383,6 +442,8 @@ impl SharedObservability {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `targets_for_scrape` für targets for scrape aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn targets_for_scrape(&self) -> Vec<TargetRecord> {
         let state = self.lock();
         let mut values: Vec<_> = state.targets.values().filter(|target| target.enabled).cloned().collect();
@@ -390,6 +451,8 @@ impl SharedObservability {
         values
     }
 
+    // Was: Führt den Arbeitsschritt `targets` für targets aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn targets(&self) -> Vec<TargetRecord> {
         let state = self.lock();
         let mut values: Vec<_> = state.targets.values().cloned().collect();
@@ -397,10 +460,14 @@ impl SharedObservability {
         values
     }
 
+    // Was: Führt den Arbeitsschritt `target` für target aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn target(&self, target_id: &str) -> Option<TargetRecord> {
         self.lock().targets.get(target_id).cloned()
     }
 
+    // Was: Diese Funktion erstellt target.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     pub fn create_target(&self, input: TargetCreateInput) -> Result<TargetRecord, String> {
         validate_target_input(&input)?;
         let mut state = self.lock();
@@ -424,10 +491,14 @@ impl SharedObservability {
         Ok(record)
     }
 
+    // Was: Führt den Arbeitsschritt `target_action` für target action aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn target_action(&self, target_id: &str, action: &str, input: ActionInput) -> Result<TargetRecord, String> {
         let mut state = self.lock();
         let now = Utc::now();
         let record = state.targets.get_mut(target_id).ok_or_else(|| format!("target {target_id} not found"))?;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match action {
             "enable" => record.enabled = true,
             "disable" => record.enabled = false,
@@ -441,6 +512,8 @@ impl SharedObservability {
         Ok(result)
     }
 
+    // Was: Diese Funktion löscht target.
+    // Warum: Das Entfernen wird dadurch kontrolliert durchgeführt und hinterlässt keine verwaisten Verweise.
     pub fn delete_target(&self, target_id: &str, input: ActionInput) -> Result<(), String> {
         let mut state = self.lock();
         if state.targets.remove(target_id).is_none() { return Err(format!("target {target_id} not found")); }
@@ -449,6 +522,8 @@ impl SharedObservability {
         drop(state); self.persist().map_err(|error| error.to_string())
     }
 
+    // Was: Führt den Arbeitsschritt `record_scrape` für Datensatz scrape aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn record_scrape(&self, result: ScrapeResult) -> Result<(), Box<dyn std::error::Error>> {
         let mut state = self.lock();
         let service;
@@ -494,6 +569,8 @@ impl SharedObservability {
         insert_point(&mut state, &self.config, &result.target_id, &service, MetricPointInput {
             name: "netcore_observability_target_response_ms".to_string(), labels, value: result.response_ms, timestamp: result.timestamp,
         });
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for point in result.metrics { insert_point(&mut state, &self.config, &result.target_id, &service, point); }
         let count = state.series.values().filter(|series| series.target_id == result.target_id).count();
         if let Some(target) = state.targets.get_mut(&result.target_id) { target.series_count = count; }
@@ -503,6 +580,8 @@ impl SharedObservability {
         self.persist()
     }
 
+    // Was: Führt den Arbeitsschritt `record_stack_probe` für Datensatz stack probe aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn record_stack_probe(&self, probe: StackProbe) {
         let mut state = self.lock();
         let component = state.stack.entry(probe.component.clone()).or_insert(StackComponent {
@@ -516,6 +595,8 @@ impl SharedObservability {
         component.last_error = probe.last_error;
     }
 
+    // Was: Führt den Arbeitsschritt `stack` für stack aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn stack(&self) -> Vec<StackComponent> {
         let state = self.lock();
         let mut values: Vec<_> = state.stack.values().cloned().collect();
@@ -523,9 +604,13 @@ impl SharedObservability {
         values
     }
 
+    // Was: Führt den Arbeitsschritt `metric_catalog` für metric catalog aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn metric_catalog(&self) -> Vec<Value> {
         let state = self.lock();
         let mut by_name: BTreeMap<String, (usize, DateTime<Utc>)> = BTreeMap::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for series in state.series.values() {
             let entry = by_name.entry(series.name.clone()).or_insert((0, series.last_at));
             entry.0 += 1;
@@ -534,6 +619,8 @@ impl SharedObservability {
         by_name.into_iter().map(|(name, (series, last_at))| json!({"name":name,"series":series,"last_at":last_at})).collect()
     }
 
+    // Was: Führt den Arbeitsschritt `series` für series aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn series(&self, metric: Option<&str>, target_id: Option<&str>, service: Option<&str>, limit: usize) -> Vec<MetricSeries> {
         let state = self.lock();
         let mut values: Vec<_> = state.series.values().filter(|series| {
@@ -546,12 +633,16 @@ impl SharedObservability {
         values
     }
 
+    // Was: Führt den Arbeitsschritt `rules` für rules aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn rules(&self) -> Vec<AlertRuleRecord> {
         let state = self.lock();
         let mut values: Vec<_> = state.rules.values().cloned().collect();
         values.sort_by(|a, b| a.rule_id.cmp(&b.rule_id)); values
     }
 
+    // Was: Diese Funktion erstellt rule.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     pub fn create_rule(&self, input: RuleInput) -> Result<AlertRuleRecord, String> {
         validate_rule_input(&input)?;
         let mut state = self.lock();
@@ -565,6 +656,8 @@ impl SharedObservability {
         drop(state); self.persist().map_err(|error| error.to_string())?; Ok(record)
     }
 
+    // Was: Diese Funktion aktualisiert rule.
+    // Warum: Bestehender Zustand wird dadurch kontrolliert und nach einheitlichen Regeln geändert.
     pub fn update_rule(&self, rule_id: &str, input: RuleInput) -> Result<AlertRuleRecord, String> {
         validate_rule_input(&input)?;
         let mut state = self.lock();
@@ -577,9 +670,13 @@ impl SharedObservability {
         drop(state); self.persist().map_err(|error| error.to_string())?; Ok(record)
     }
 
+    // Was: Führt den Arbeitsschritt `rule_action` für rule action aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn rule_action(&self, rule_id: &str, action: &str, input: ActionInput) -> Result<AlertRuleRecord, String> {
         let mut state = self.lock();
         let record = state.rules.get_mut(rule_id).ok_or_else(|| format!("rule {rule_id} not found"))?;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match action { "enable" => record.enabled = true, "disable" => record.enabled = false, _ => return Err(format!("unsupported rule action {action}")) }
         record.updated_at = Utc::now();
         let output = record.clone();
@@ -588,10 +685,14 @@ impl SharedObservability {
         drop(state); self.persist().map_err(|error| error.to_string())?; Ok(output)
     }
 
+    // Was: Diese Funktion löscht rule.
+    // Warum: Das Entfernen wird dadurch kontrolliert durchgeführt und hinterlässt keine verwaisten Verweise.
     pub fn delete_rule(&self, rule_id: &str, input: ActionInput) -> Result<(), String> {
         let mut state = self.lock();
         if state.rules.remove(rule_id).is_none() { return Err(format!("rule {rule_id} not found")); }
         let now = Utc::now();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for alert in state.alerts.values_mut().filter(|alert| alert.rule_id == rule_id && alert.state != "resolved") {
             alert.state = "resolved".to_string(); alert.resolved_at = Some(now); alert.updated_at = now;
         }
@@ -599,6 +700,8 @@ impl SharedObservability {
         drop(state); self.persist().map_err(|error| error.to_string())
     }
 
+    // Was: Führt den Arbeitsschritt `alerts` für alerts aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn alerts(&self, state_filter: Option<&str>, severity: Option<&str>, service: Option<&str>, limit: usize) -> Vec<AlertRecord> {
         let state = self.lock();
         let mut values: Vec<_> = state.alerts.values().filter(|alert| {
@@ -609,10 +712,14 @@ impl SharedObservability {
         values.sort_by(|a, b| b.updated_at.cmp(&a.updated_at)); values.truncate(limit); values
     }
 
+    // Was: Führt den Arbeitsschritt `alert_action` für alert action aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn alert_action(&self, alert_id: &str, action: &str, input: ActionInput) -> Result<AlertRecord, String> {
         let mut state = self.lock();
         let now = Utc::now();
         let alert = state.alerts.get_mut(alert_id).ok_or_else(|| format!("alert {alert_id} not found"))?;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match action {
             "acknowledge" => { alert.acknowledged = true; alert.acknowledged_at = Some(now); alert.acknowledged_by = Some(actor(input.actor.clone())); alert.acknowledgement_note = input.reason.clone(); }
             "unacknowledge" => { alert.acknowledged = false; alert.acknowledged_at = None; alert.acknowledged_by = None; alert.acknowledgement_note = None; }
@@ -625,11 +732,15 @@ impl SharedObservability {
         drop(state); self.persist().map_err(|error| error.to_string())?; Ok(output)
     }
 
+    // Was: Führt den Arbeitsschritt `silences` für silences aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn silences(&self) -> Vec<SilenceRecord> {
         let state = self.lock(); let mut values: Vec<_> = state.silences.values().cloned().collect();
         values.sort_by(|a, b| b.created_at.cmp(&a.created_at)); values
     }
 
+    // Was: Diese Funktion erstellt silence.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     pub fn create_silence(&self, input: SilenceInput) -> Result<SilenceRecord, String> {
         if input.duration_secs == 0 || input.duration_secs > 365 * 24 * 3600 { return Err("duration_secs must be between 1 and 31536000".to_string()); }
         if input.comment.trim().is_empty() { return Err("silence comment must not be empty".to_string()); }
@@ -641,6 +752,8 @@ impl SharedObservability {
         drop(state); self.persist().map_err(|error| error.to_string())?; Ok(record)
     }
 
+    // Was: Führt den Arbeitsschritt `expire_silence` für expire silence aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn expire_silence(&self, silence_id: &str, input: ActionInput) -> Result<SilenceRecord, String> {
         let mut state = self.lock(); let now = Utc::now();
         let silence = state.silences.get_mut(silence_id).ok_or_else(|| format!("silence {silence_id} not found"))?;
@@ -650,9 +763,13 @@ impl SharedObservability {
         drop(state); self.persist().map_err(|error| error.to_string())?; Ok(output)
     }
 
+    // Was: Führt den Arbeitsschritt `ingest_logs` für ingest logs aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn ingest_logs(&self, input: LogIngestInput) -> Result<usize, String> {
         if !self.config.collection.ingest_logs { return Err("log ingestion is disabled".to_string()); }
         let mut state = self.lock(); let now = Utc::now(); let mut accepted = 0usize;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for item in input.records {
             if item.service.trim().is_empty() || item.message.trim().is_empty() { continue; }
             let timestamp = item.timestamp.as_deref().and_then(parse_datetime).unwrap_or(now);
@@ -663,6 +780,8 @@ impl SharedObservability {
         drop(state); self.persist().map_err(|error| error.to_string())?; Ok(accepted)
     }
 
+    // Was: Führt den Arbeitsschritt `logs` für logs aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn logs(&self, service: Option<&str>, level: Option<&str>, contains: Option<&str>, trace_id: Option<&str>, limit: usize) -> Vec<LogRecord> {
         let state = self.lock(); let needle = contains.map(|value| value.to_ascii_lowercase());
         let mut values: Vec<_> = state.logs.iter().filter(|record| {
@@ -674,9 +793,13 @@ impl SharedObservability {
         values.sort_by(|a, b| b.timestamp.cmp(&a.timestamp)); values.truncate(limit); values
     }
 
+    // Was: Führt den Arbeitsschritt `ingest_traces` für ingest traces aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn ingest_traces(&self, input: TraceIngestInput) -> Result<usize, String> {
         if !self.config.collection.ingest_traces { return Err("trace ingestion is disabled".to_string()); }
         let mut state = self.lock(); let now = Utc::now(); let mut accepted = 0usize;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for item in input.spans {
             if item.trace_id.trim().is_empty() || item.span_id.trim().is_empty() || item.service.trim().is_empty() { continue; }
             let started_at = item.started_at.as_deref().and_then(parse_datetime).unwrap_or(now);
@@ -687,6 +810,8 @@ impl SharedObservability {
         drop(state); self.persist().map_err(|error| error.to_string())?; Ok(accepted)
     }
 
+    // Was: Führt den Arbeitsschritt `traces` für traces aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn traces(&self, service: Option<&str>, trace_id: Option<&str>, status: Option<&str>, limit: usize) -> Vec<TraceSpan> {
         let state = self.lock(); let mut values: Vec<_> = state.traces.iter().filter(|span| {
             service.map(|value| span.service == value).unwrap_or(true)
@@ -696,14 +821,20 @@ impl SharedObservability {
         values.sort_by(|a, b| b.started_at.cmp(&a.started_at)); values.truncate(limit); values
     }
 
+    // Was: Führt den Arbeitsschritt `audit` für audit aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn audit(&self, limit: usize) -> Vec<AuditRecord> {
         let state = self.lock(); let mut values = state.audit.clone(); values.sort_by(|a,b| b.sequence.cmp(&a.sequence)); values.truncate(limit); values
     }
 
+    // Was: Führt den Arbeitsschritt `diagnostics` für diagnostics aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn diagnostics(&self) -> Vec<DiagnosticRecord> {
         let state = self.lock(); let mut values: Vec<_> = state.diagnostics.values().cloned().collect(); values.sort_by(|a,b| b.created_at.cmp(&a.created_at)); values
     }
 
+    // Was: Diese Funktion erstellt diagnostic.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     pub fn create_diagnostic(&self, input: DiagnosticInput) -> Result<DiagnosticRecord, String> {
         let id = Uuid::new_v4().to_string(); let now = Utc::now(); let actor_name = actor(input.actor.clone());
         {
@@ -714,6 +845,8 @@ impl SharedObservability {
         let result = self.build_diagnostic(&id, &input);
         let mut state = self.lock();
         let record = state.diagnostics.get_mut(&id).ok_or_else(|| "diagnostic record disappeared".to_string())?;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match result {
             Ok((path, sha256, size)) => { record.state = "ready".to_string(); record.archive_path = Some(path); record.sha256 = Some(sha256); record.size_bytes = Some(size); record.completed_at = Some(Utc::now()); }
             Err(error) => { record.state = "failed".to_string(); record.last_error = Some(error.clone()); record.completed_at = Some(Utc::now()); }
@@ -724,6 +857,8 @@ impl SharedObservability {
         drop(state); self.persist().map_err(|error| error.to_string())?; Ok(output)
     }
 
+    // Was: Diese Funktion erstellt diagnostic.
+    // Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
     fn build_diagnostic(&self, id: &str, input: &DiagnosticInput) -> Result<(PathBuf, String, u64), String> {
         fs::create_dir_all(&self.config.storage.diagnostic_dir).map_err(|error| error.to_string())?;
         let max_records = input.max_records.unwrap_or(1_000).clamp(10, 10_000);
@@ -758,6 +893,8 @@ impl SharedObservability {
         Ok((archive_path, sha256, size))
     }
 
+    // Was: Führt den Arbeitsschritt `diagnostic_file` für diagnostic file aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn diagnostic_file(&self, diagnostic_id: &str) -> Result<(String, Vec<u8>), String> {
         let state = self.lock(); let record = state.diagnostics.get(diagnostic_id).ok_or_else(|| format!("diagnostic {diagnostic_id} not found"))?;
         let path = record.archive_path.as_ref().ok_or_else(|| "diagnostic is not ready".to_string())?;
@@ -765,17 +902,23 @@ impl SharedObservability {
         fs::read(path).map(|bytes| (name, bytes)).map_err(|error| error.to_string())
     }
 
+    // Was: Führt den Arbeitsschritt `maintenance` für maintenance aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn maintenance(&self, actor_name: Option<String>) -> Result<ObservabilityStatus, Box<dyn std::error::Error>> {
         let mut state = self.lock(); let now = Utc::now();
         let metric_cutoff = now - Duration::seconds(self.config.retention.metric_retention_secs as i64);
         let log_cutoff = now - Duration::seconds(self.config.retention.log_retention_secs as i64);
         let trace_cutoff = now - Duration::seconds(self.config.retention.trace_retention_secs as i64);
         let audit_cutoff = now - Duration::seconds(self.config.retention.audit_retention_secs as i64);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for series in state.series.values_mut() { series.samples.retain(|sample| sample.timestamp >= metric_cutoff); }
         state.series.retain(|_, series| !series.samples.is_empty());
         state.logs.retain(|record| record.timestamp >= log_cutoff);
         state.traces.retain(|span| span.started_at >= trace_cutoff);
         state.audit.retain(|record| record.timestamp >= audit_cutoff);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for silence in state.silences.values_mut() {
             if silence.active && silence.ends_at <= now { silence.active = false; silence.expired_at = Some(now); }
         }
@@ -784,6 +927,8 @@ impl SharedObservability {
         let status = self.status_from_state(&state); drop(state); self.persist()?; Ok(status)
     }
 
+    // Was: Führt den Arbeitsschritt `backup` für backup aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn backup(&self, actor_name: Option<String>) -> Result<Value, String> {
         self.persist().map_err(|error| error.to_string())?;
         if let Some(parent) = self.config.storage.backup_path.parent() { fs::create_dir_all(parent).map_err(|error| error.to_string())?; }
@@ -794,15 +939,21 @@ impl SharedObservability {
         Ok(json!({"path":self.config.storage.backup_path,"size_bytes":size,"created_at":Utc::now()}))
     }
 
+    // Was: Führt den Arbeitsschritt `export` für export aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn export(&self) -> Value {
         let state = self.lock();
         json!({"format":"netcore-observability-export-v1","exported_at":Utc::now(),"status":self.status_from_state(&state),"targets":state.targets,"stack":state.stack,"rules":state.rules,"alerts":state.alerts,"silences":state.silences,"metric_catalog":metric_catalog_from_state(&state),"diagnostics":state.diagnostics,"audit":state.audit})
     }
 
+    // Was: Führt den Arbeitsschritt `metrics` für Messwerte aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn metrics(&self) -> String {
         let state = self.lock(); let status = self.status_from_state(&state); let mut output = String::new();
         output.push_str("# HELP netcore_observability_ready Whether the NMS management plane is ready\n# TYPE netcore_observability_ready gauge\n");
         output.push_str(&format!("netcore_observability_ready {}\n", if status.ready {1} else {0}));
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (name, value) in [
             ("netcore_observability_targets_total", status.targets_total as f64),
             ("netcore_observability_targets_up", status.targets_up as f64),
@@ -815,6 +966,8 @@ impl SharedObservability {
             ("netcore_observability_alerts_unacknowledged", status.alerts_unacknowledged as f64),
             ("netcore_observability_active_silences", status.active_silences as f64),
         ] { output.push_str(&format!("# TYPE {name} gauge\n{name} {value}\n")); }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for target in state.targets.values() {
             output.push_str(&format!("netcore_observability_target_up{{target_id=\"{}\",service=\"{}\"}} {}\n", escape_label(&target.target_id), escape_label(&target.service), if target.live {1} else {0}));
             output.push_str(&format!("netcore_observability_target_ready{{target_id=\"{}\",service=\"{}\"}} {}\n", escape_label(&target.target_id), escape_label(&target.service), if target.ready {1} else {0}));
@@ -823,29 +976,41 @@ impl SharedObservability {
         output
     }
 
+    // Was: Führt den Arbeitsschritt `status_from_state` für Status from Zustand aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn status_from_state(&self, state: &PersistentState) -> ObservabilityStatus {
         let enabled: Vec<&TargetRecord> = state.targets.values().filter(|target| target.enabled).collect();
         let firing: Vec<&AlertRecord> = state.alerts.values().filter(|alert| alert.state == "firing").collect();
         ObservabilityStatus { ready: true, security_mode: self.config.security.mode.clone(), warning: self.config.security.warning_banner.clone(), started_at: state.started_at, targets_total: enabled.len(), targets_up: enabled.iter().filter(|target| target.live).count(), targets_ready: enabled.iter().filter(|target| target.ready).count(), series: state.series.len(), samples: state.series.values().map(|series| series.samples.len()).sum(), logs: state.logs.len(), traces: state.traces.len(), alerts_firing: firing.len(), alerts_pending: state.alerts.values().filter(|alert| alert.state == "pending").count(), alerts_unacknowledged: firing.iter().filter(|alert| !alert.acknowledged && !alert.silenced).count(), active_silences: state.silences.values().filter(|silence| silence.active).count(), stack_ready: state.stack.values().filter(|component| component.ready).count(), stack_total: state.stack.len(), last_maintenance_at: state.last_maintenance_at }
     }
 
+    // Was: Diese Funktion speichert den vorgesehenen Arbeitsschritt.
+    // Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
     fn persist(&self) -> Result<(), Box<dyn std::error::Error>> {
         let state = self.lock(); let bytes = serde_json::to_vec_pretty(&*state)?; drop(state);
         write_atomic(&self.config.storage.state_path, &bytes)?; Ok(())
     }
 
+    // Was: Führt den Arbeitsschritt `lock` für lock aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn lock(&self) -> std::sync::MutexGuard<'_, PersistentState> {
         self.inner.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 }
 
+// Was: Diese Funktion prüft target input.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_target_input(input: &TargetCreateInput) -> Result<(), String> {
     if input.target_id.trim().is_empty() || input.display_name.trim().is_empty() || input.service.trim().is_empty() { return Err("target_id, display_name and service are required".to_string()); }
     if !input.base_url.starts_with("http://") { return Err("base_url must use http:// in open_lab".to_string()); }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for path in [input.metrics_path.as_deref(), input.live_path.as_deref(), input.ready_path.as_deref()].into_iter().flatten() { if !path.starts_with('/') { return Err("target paths must start with /".to_string()); } }
     Ok(())
 }
 
+// Was: Diese Funktion prüft rule input.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_rule_input(input: &RuleInput) -> Result<(), String> {
     if input.rule_id.trim().is_empty() || input.name.trim().is_empty() || input.metric.trim().is_empty() { return Err("rule_id, name and metric are required".to_string()); }
     if !matches!(input.comparator.as_str(), ">" | ">=" | "<" | "<=" | "==" | "!=") { return Err("comparator must be one of > >= < <= == !=".to_string()); }
@@ -853,10 +1018,14 @@ fn validate_rule_input(input: &RuleInput) -> Result<(), String> {
     Ok(())
 }
 
+// Was: Führt den Arbeitsschritt `rule_from_input` für rule from input aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn rule_from_input(rule_id: String, input: RuleInput, now: DateTime<Utc>) -> AlertRuleRecord {
     AlertRuleRecord { rule_id, name: input.name, description: input.description.unwrap_or_default(), metric: input.metric, comparator: input.comparator, threshold: input.threshold, for_secs: input.for_secs.unwrap_or(0), severity: input.severity.to_ascii_lowercase(), service: input.service, target_id: input.target_id, enabled: input.enabled.unwrap_or(true), labels: input.labels, annotations: input.annotations, created_at: now, updated_at: now }
 }
 
+// Was: Diese Funktion trägt point.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn insert_point(state: &mut PersistentState, config: &ObservabilityConfig, target_id: &str, service: &str, point: MetricPointInput) {
     let series_id = series_id(target_id, &point.name, &point.labels);
     if !state.series.contains_key(&series_id) && state.series.len() >= config.retention.max_series { return; }
@@ -865,15 +1034,23 @@ fn insert_point(state: &mut PersistentState, config: &ObservabilityConfig, targe
     if series.samples.len() > config.retention.max_samples_per_series { let remove = series.samples.len() - config.retention.max_samples_per_series; series.samples.drain(0..remove); }
 }
 
+// Was: Führt den Arbeitsschritt `series_id` für series Kennung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn series_id(target_id: &str, name: &str, labels: &BTreeMap<String, String>) -> String {
     let labels = labels.iter().map(|(key,value)| format!("{key}={value}")).collect::<Vec<_>>().join(",");
     format!("{target_id}|{name}|{labels}")
 }
 
+// Was: Führt den Arbeitsschritt `evaluate_rules` für evaluate rules aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn evaluate_rules(state: &mut PersistentState) {
     let now = Utc::now(); let rules: Vec<_> = state.rules.values().filter(|rule| rule.enabled).cloned().collect(); let series: Vec<_> = state.series.values().cloned().collect();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for rule in rules {
         let matching: Vec<_> = series.iter().filter(|item| item.name == rule.metric && rule.service.as_deref().map(|value| item.service == value).unwrap_or(true) && rule.target_id.as_deref().map(|value| item.target_id == value).unwrap_or(true)).cloned().collect();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for item in matching {
             let fingerprint = format!("{}|{}", rule.rule_id, item.series_id);
             let condition = compare(item.last_value, &rule.comparator, rule.threshold);
@@ -900,12 +1077,16 @@ fn evaluate_rules(state: &mut PersistentState) {
     }
 }
 
+// Was: Führt den Arbeitsschritt `refresh_silence` für refresh silence aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn refresh_silence(state: &mut PersistentState, alert_id: &str) {
     let Some(snapshot) = state.alerts.get(alert_id).cloned() else { return; };
     let ids: Vec<String> = state.silences.values().filter(|silence| silence_matches(silence, &snapshot)).map(|silence| silence.silence_id.clone()).collect();
     if let Some(alert) = state.alerts.get_mut(alert_id) { alert.silenced = !ids.is_empty(); alert.silence_ids = ids; }
 }
 
+// Was: Führt den Arbeitsschritt `silence_matches` für silence matches aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn silence_matches(silence: &SilenceRecord, alert: &AlertRecord) -> bool {
     if !silence.active || silence.starts_at > Utc::now() || silence.ends_at <= Utc::now() { return false; }
     if silence.rule_id.as_deref().map(|value| alert.rule_id == value).unwrap_or(true)
@@ -917,33 +1098,55 @@ fn silence_matches(silence: &SilenceRecord, alert: &AlertRecord) -> bool {
     false
 }
 
+// Was: Führt den Arbeitsschritt `compare` für compare aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn compare(value: f64, comparator: &str, threshold: f64) -> bool {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match comparator { ">" => value > threshold, ">=" => value >= threshold, "<" => value < threshold, "<=" => value <= threshold, "==" => (value-threshold).abs() < f64::EPSILON, "!=" => (value-threshold).abs() >= f64::EPSILON, _ => false }
 }
 
+// Was: Führt den Arbeitsschritt `trim_limits` für trim limits aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn trim_limits(state: &mut PersistentState, config: &ObservabilityConfig) {
     trim_front(&mut state.logs, config.retention.max_logs); trim_front(&mut state.traces, config.retention.max_spans); trim_front(&mut state.audit, config.retention.max_audit_records);
     if state.alerts.len() > config.retention.max_alerts {
         let mut ids: Vec<_> = state.alerts.values().filter(|alert| alert.state == "resolved").map(|alert| (alert.updated_at, alert.alert_id.clone())).collect(); ids.sort_by_key(|value| value.0);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (_, id) in ids.into_iter().take(state.alerts.len() - config.retention.max_alerts) { state.alerts.remove(&id); }
     }
 }
 
+// Was: Führt den Arbeitsschritt `trim_front` für trim front aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn trim_front<T>(values: &mut Vec<T>, max: usize) { if values.len() > max { let remove = values.len() - max; values.drain(0..remove); } }
 
+// Was: Führt den Arbeitsschritt `audit` für audit aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn audit(state: &mut PersistentState, actor: String, category: &str, action: &str, object_type: &str, object_id: &str, result: &str, detail: Value) {
     state.sequence += 1; state.audit.push(AuditRecord { sequence: state.sequence, timestamp: Utc::now(), actor, category: category.to_string(), action: action.to_string(), object_type: object_type.to_string(), object_id: object_id.to_string(), result: result.to_string(), detail });
 }
 
+// Was: Führt den Arbeitsschritt `actor` für actor aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn actor(value: Option<String>) -> String { value.filter(|value| !value.trim().is_empty()).unwrap_or_else(|| "open-lab".to_string()) }
+// Was: Diese Funktion liest und prüft datetime.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_datetime(value: &str) -> Option<DateTime<Utc>> { DateTime::parse_from_rfc3339(value).ok().map(|value| value.with_timezone(&Utc)) }
+// Was: Führt den Arbeitsschritt `escape_label` für escape label aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn escape_label(value: &str) -> String { value.replace('\\', "\\\\").replace('"', "\\\"").replace('\n', "\\n") }
 
+// Was: Führt den Arbeitsschritt `metric_catalog_from_state` für metric catalog from Zustand aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn metric_catalog_from_state(state: &PersistentState) -> Vec<Value> {
     let mut by_name: BTreeMap<String, (usize, DateTime<Utc>)> = BTreeMap::new(); for series in state.series.values() { let entry = by_name.entry(series.name.clone()).or_insert((0,series.last_at)); entry.0 += 1; if series.last_at > entry.1 { entry.1 = series.last_at; } }
     by_name.into_iter().map(|(name,(series,last_at))| json!({"name":name,"series":series,"last_at":last_at})).collect()
 }
 
+// Was: Diese Funktion schreibt atomic.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(parent) = path.parent() { fs::create_dir_all(parent)?; }
     let temporary = path.with_extension(format!("tmp-{}", Uuid::new_v4())); fs::write(&temporary, bytes)?; fs::rename(temporary, path)?; Ok(())

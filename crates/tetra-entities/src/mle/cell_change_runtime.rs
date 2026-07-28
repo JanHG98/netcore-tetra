@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! Infrastructure-side MLE cell-change transaction runtime.
 //!
 //! The runtime owns the local state between an uplink U-PREPARE,
@@ -29,9 +32,13 @@ use tetra_saps::{
 
 /// Upper bound for a local cell-change decision.  432 slots are about 6.12 s
 /// and deliberately match the robustness window used by the TLPD foundation.
+// Was: Legt den festen Wert `CELL_CHANGE_TRANSACTION_TIMEOUT_SLOTS` für cell change transaction timeout slots fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const CELL_CHANGE_TRANSACTION_TIMEOUT_SLOTS: i32 = 432;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für MLE-Verbindungssteuerung cell change phase auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum MleCellChangePhase {
     PrepareReceived,
     PrepareDeferred,
@@ -45,6 +52,8 @@ pub enum MleCellChangePhase {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für cell change transaction in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct CellChangeTransaction {
     subscriber: TetraAddress,
     endpoint_id: EndpointId,
@@ -64,6 +73,8 @@ struct CellChangeTransaction {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+// Was: Bündelt die zusammengehörigen Werte für MLE-Verbindungssteuerung cell change transaction snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MleCellChangeTransactionSnapshot {
     pub subscriber: TetraAddress,
     pub endpoint_id: EndpointId,
@@ -84,6 +95,8 @@ pub struct MleCellChangeTransactionSnapshot {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für MLE-Verbindungssteuerung cell change counters in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MleCellChangeCounters {
     pub prepares_received: u64,
     pub prepare_grants: u64,
@@ -99,6 +112,8 @@ pub struct MleCellChangeCounters {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+// Was: Bündelt die zusammengehörigen Werte für MLE-Verbindungssteuerung cell change Laufzeit snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MleCellChangeRuntimeSnapshot {
     pub transactions: Vec<MleCellChangeTransactionSnapshot>,
     pub counters: MleCellChangeCounters,
@@ -106,6 +121,8 @@ pub struct MleCellChangeRuntimeSnapshot {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für MLE-Verbindungssteuerung cell change outbound in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MleCellChangeOutbound {
     pub subscriber: TetraAddress,
     pub endpoint_id: EndpointId,
@@ -118,6 +135,8 @@ pub struct MleCellChangeOutbound {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für MLE-Verbindungssteuerung cell change error auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum MleCellChangeError {
     UnknownTransaction(TetraAddress),
     InvalidPhase {
@@ -129,20 +148,30 @@ pub enum MleCellChangeError {
 }
 
 #[derive(Debug, Default)]
+// Was: Bündelt die zusammengehörigen Werte für MLE-Verbindungssteuerung cell change Laufzeit in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MleCellChangeRuntime {
     transactions: HashMap<TetraAddress, CellChangeTransaction>,
     counters: MleCellChangeCounters,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `MleCellChangeRuntime`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl MleCellChangeRuntime {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new() -> Self {
         Self::default()
     }
 
+    // Was: Führt den Arbeitsschritt `record_parse_error` für Datensatz parse error aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn record_parse_error(&mut self) {
         self.counters.parse_errors = self.counters.parse_errors.saturating_add(1);
     }
 
+    // Was: Führt den Arbeitsschritt `observe_prepare` für observe prepare aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn observe_prepare(
         &mut self,
         subscriber: TetraAddress,
@@ -172,6 +201,8 @@ impl MleCellChangeRuntime {
         self.transactions.insert(subscriber, transaction);
     }
 
+    // Was: Führt den Arbeitsschritt `observe_restore` für observe Wiederherstellung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn observe_restore(
         &mut self,
         subscriber: TetraAddress,
@@ -201,6 +232,8 @@ impl MleCellChangeRuntime {
         self.transactions.insert(subscriber, transaction);
     }
 
+    // Was: Führt den Arbeitsschritt `observe_channel_request` für observe Kanal request aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn observe_channel_request(
         &mut self,
         subscriber: TetraAddress,
@@ -231,6 +264,8 @@ impl MleCellChangeRuntime {
         self.transactions.insert(subscriber, transaction);
     }
 
+    // Was: Diese Funktion verarbeitet Steuerung.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     pub fn handle_control(
         &mut self,
         control: MleCellChangeControl,
@@ -243,11 +278,15 @@ impl MleCellChangeRuntime {
         result
     }
 
+    // Was: Diese Funktion verarbeitet Steuerung inner.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_control_inner(
         &mut self,
         control: MleCellChangeControl,
         now: TdmaTime,
     ) -> Result<MleCellChangeOutbound, MleCellChangeError> {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match control {
             MleCellChangeControl::GrantPrepare {
                 subscriber,
@@ -349,6 +388,8 @@ impl MleCellChangeRuntime {
     }
 
     /// Expire local transactions and generate deterministic negative responses.
+    // Was: Diese Funktion bearbeitet den vorgesehenen Arbeitsschritt.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn tick(&mut self, now: TdmaTime) -> Vec<MleCellChangeOutbound> {
         let expired: Vec<(TetraAddress, MleCellChangePhase)> = self
             .transactions
@@ -366,6 +407,8 @@ impl MleCellChangeRuntime {
             .collect();
 
         let mut outbound = Vec::with_capacity(expired.len());
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (subscriber, phase) in expired {
             let Some(transaction) = self.transactions.get_mut(&subscriber) else {
                 continue;
@@ -375,6 +418,8 @@ impl MleCellChangeRuntime {
             transaction.updated_at = now;
             self.counters.timeouts = self.counters.timeouts.saturating_add(1);
 
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let encoded = match phase {
                 MleCellChangePhase::PrepareReceived | MleCellChangePhase::PrepareDeferred => {
                     Self::encode_d_prepare_fail(
@@ -401,6 +446,8 @@ impl MleCellChangeRuntime {
         outbound
     }
 
+    // Was: Diese Funktion erzeugt den vorgesehenen Arbeitsschritt.
+    // Warum: Die Oberfläche und andere Dienste erhalten dadurch eine in sich stimmige Momentaufnahme.
     pub fn snapshot(&self, now: TdmaTime) -> MleCellChangeRuntimeSnapshot {
         let mut transactions: Vec<_> = self
             .transactions
@@ -432,6 +479,8 @@ impl MleCellChangeRuntime {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `transaction_for_phase` für transaction for phase aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn transaction_for_phase(
         &mut self,
         subscriber: TetraAddress,
@@ -452,6 +501,8 @@ impl MleCellChangeRuntime {
         Ok(transaction)
     }
 
+    // Was: Führt den Arbeitsschritt `outbound` für outbound aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn outbound(
         subscriber: TetraAddress,
         route: (EndpointId, LinkId),
@@ -460,6 +511,8 @@ impl MleCellChangeRuntime {
         Self::outbound_with_allocation(subscriber, route, pdu, None)
     }
 
+    // Was: Führt den Arbeitsschritt `outbound_with_allocation` für outbound with allocation aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn outbound_with_allocation(
         subscriber: TetraAddress,
         route: (EndpointId, LinkId),
@@ -475,6 +528,8 @@ impl MleCellChangeRuntime {
         }
     }
 
+    // Was: Diese Funktion kodiert d new cell.
+    // Warum: Alle Gegenstellen erhalten dadurch dasselbe erwartete Protokollformat.
     fn encode_d_new_cell(
         command: MleChannelCommandValid,
         sdu: Option<BitBuffer>,
@@ -490,6 +545,8 @@ impl MleCellChangeRuntime {
         Ok(buffer)
     }
 
+    // Was: Diese Funktion kodiert d prepare fail.
+    // Warum: Alle Gegenstellen erhalten dadurch dasselbe erwartete Protokollformat.
     fn encode_d_prepare_fail(
         cause: MleFailCause,
         sdu: Option<BitBuffer>,
@@ -505,6 +562,8 @@ impl MleCellChangeRuntime {
         Ok(buffer)
     }
 
+    // Was: Diese Funktion kodiert d Wiederherstellung ack.
+    // Warum: Alle Gegenstellen erhalten dadurch dasselbe erwartete Protokollformat.
     fn encode_d_restore_ack(sdu: BitBuffer) -> Result<BitBuffer, MleCellChangeError> {
         let mut buffer = BitBuffer::new_autoexpand(64);
         DRestoreAck { sdu: Some(sdu) }
@@ -514,6 +573,8 @@ impl MleCellChangeRuntime {
         Ok(buffer)
     }
 
+    // Was: Diese Funktion kodiert d Wiederherstellung fail.
+    // Warum: Alle Gegenstellen erhalten dadurch dasselbe erwartete Protokollformat.
     fn encode_d_restore_fail(cause: MleFailCause) -> Result<BitBuffer, MleCellChangeError> {
         let mut buffer = BitBuffer::new_autoexpand(16);
         DRestoreFail { fail_cause: cause }
@@ -523,6 +584,8 @@ impl MleCellChangeRuntime {
         Ok(buffer)
     }
 
+    // Was: Diese Funktion kodiert d Kanal response.
+    // Warum: Alle Gegenstellen erhalten dadurch dasselbe erwartete Protokollformat.
     fn encode_d_channel_response(
         response: MleChannelResponseType,
         reason: MleChannelRequestReason,

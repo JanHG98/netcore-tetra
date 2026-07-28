@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für check Mobilitätsverwaltung Mobilität.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 """Dependency-free structural checks for SWMI Mobility 1 Package C."""
 
 from pathlib import Path
@@ -7,6 +10,8 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 
 
+# Was: Führt den Arbeitsschritt `require` für require aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def require(path: str, needles: list[str]) -> None:
     text = (ROOT / path).read_text(encoding="utf-8")
     missing = [needle for needle in needles if needle not in text]
@@ -14,6 +19,8 @@ def require(path: str, needles: list[str]) -> None:
         raise AssertionError(f"{path}: missing {missing}")
 
 
+# Was: Startet das Programm, lädt die benötigten Einstellungen und übergibt an den eigentlichen Dienstablauf.
+# Warum: Ein klarer Einstiegspunkt hält Startreihenfolge, Fehlerausgabe und geordnetes Beenden zusammen.
 def main() -> int:
     require(
         "crates/tetra-entities/src/mm/mobility_runtime.rs",
@@ -63,6 +70,8 @@ def main() -> int:
     if "unimplemented!()" in reject_text:
         raise AssertionError("D-LOCATION-UPDATE-REJECT parser still contains unimplemented!()")
 
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for path in [
         "crates/tetra-pdus/tests/test_mm_mobility_pdus.rs",
         "crates/tetra-entities/tests/test_mm_mobility_runtime.rs",
@@ -84,7 +93,11 @@ def main() -> int:
     return 0
 
 
+# Was: Startet den Programmablauf nur dann, wenn diese Datei direkt ausgeführt wird.
+# Warum: Beim Import als Modul sollen nur Funktionen bereitstehen und keine Nebenwirkungen automatisch starten.
 if __name__ == "__main__":
+    # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+    # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
     try:
         raise SystemExit(main())
     except (AssertionError, OSError) as error:

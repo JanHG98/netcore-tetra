@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 
 use tetra_core::expect_pdu_type;
@@ -13,6 +16,8 @@ use crate::mm::enums::type34_elem_id_ul::MmType34ElemIdUl;
 /// TEI is a 60-bit hardware identifier unique to each physical terminal (analogous to IMEI in GSM).
 /// Response to: D-LOCATION UPDATE COMMAND (implicit TEI request)
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für utei provide in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct UTeiProvide {
     /// Mandatory, 60 bits: Terminal Equipment Identity (hardware identifier)
     pub tei: u64,
@@ -20,8 +25,12 @@ pub struct UTeiProvide {
     pub proprietary: Option<Type3FieldGeneric>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `UTeiProvide`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl UTeiProvide {
     /// Parse from BitBuffer
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buffer: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let pdu_type = buffer.read_field(4, "pdu_type")?;
         expect_pdu_type!(pdu_type, MmPduTypeUl::UTeiProvide)?;
@@ -45,6 +54,8 @@ impl UTeiProvide {
     }
 
     /// Serialize this PDU into the given BitBuffer.
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buffer: &mut BitBuffer) -> Result<(), PduParseErr> {
         // PDU Type
         buffer.write_bits(MmPduTypeUl::UTeiProvide.into_raw(), 4);
@@ -68,12 +79,18 @@ impl UTeiProvide {
     }
 
     /// Format TEI as a hex string for display (e.g. "0x1A2B3C4D5E6F")
+    // Was: Führt den Arbeitsschritt `tei_hex` für tei hex aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn tei_hex(&self) -> String {
         format!("0x{:015X}", self.tei)
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for UTeiProvide`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for UTeiProvide {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -86,6 +103,8 @@ impl fmt::Display for UTeiProvide {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use tetra_core::debug;
 
@@ -94,6 +113,8 @@ mod tests {
     /// Build a minimal U-TEI-PROVIDE bitstring manually and verify round-trip parsing.
     /// PDU type (4 bits) = 1001 (9), TEI (60 bits), o-bit = 0
     #[test]
+    // Was: Prüft automatisch den Fall u tei provide minimal.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_u_tei_provide_minimal() {
         debug::setup_logging_verbose();
 

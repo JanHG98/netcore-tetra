@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für die Verbindung zwischen Basisstationen und Backend-Diensten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::io::{BufRead, BufReader, Write};
 use std::net::{TcpStream, ToSocketAddrs};
 use std::thread;
@@ -6,6 +9,8 @@ use std::time::Duration;
 use crate::config::{NodeGatewayConfig, ServiceTargetConfig};
 use crate::state::SharedGateway;
 
+// Was: Diese Funktion startet Dienst monitor.
+// Warum: Länger laufende Arbeit blockiert dadurch nicht den aufrufenden Ablauf.
 pub fn spawn_service_monitor(gateway: SharedGateway, config: NodeGatewayConfig) {
     if !config.service_monitor.enabled || config.service_monitor.targets.is_empty() {
         tracing::warn!("backend service monitor disabled or has no targets; connected TBS nodes will remain in conservative fallback mode");
@@ -14,8 +19,12 @@ pub fn spawn_service_monitor(gateway: SharedGateway, config: NodeGatewayConfig) 
     let _ = thread::Builder::new()
         .name("node-gateway-service-monitor".to_string())
         .spawn(move || loop {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for target in &config.service_monitor.targets {
                 let result = probe(target, config.service_monitor.timeout_ms);
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match result {
                     Ok(message) => gateway.record_service_probe(&target.name, true, Some(message)),
                     Err(error) => gateway.record_service_probe(&target.name, false, Some(error)),
@@ -26,6 +35,8 @@ pub fn spawn_service_monitor(gateway: SharedGateway, config: NodeGatewayConfig) 
         });
 }
 
+// Was: Führt den Arbeitsschritt `probe` für probe aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn probe(target: &ServiceTargetConfig, timeout_ms: u64) -> Result<String, String> {
     let (host, port, path) = parse_http_url(&target.url)?;
     let timeout = Duration::from_millis(timeout_ms);
@@ -37,7 +48,11 @@ fn probe(target: &ServiceTargetConfig, timeout_ms: u64) -> Result<String, String
         return Err("DNS/resolve returned no address".to_string());
     }
     let mut last_error = None;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for address in addresses {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match TcpStream::connect_timeout(&address, timeout) {
             Ok(mut stream) => {
                 let _ = stream.set_read_timeout(Some(timeout));
@@ -64,6 +79,8 @@ fn probe(target: &ServiceTargetConfig, timeout_ms: u64) -> Result<String, String
     Err(format!("connect failed: {}", last_error.unwrap_or_else(|| "unknown error".to_string())))
 }
 
+// Was: Diese Funktion liest und prüft HTTP url.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_http_url(url: &str) -> Result<(String, u16, String), String> {
     let rest = url.strip_prefix("http://").ok_or_else(|| "only http:// URLs are supported in open_lab".to_string())?;
     let (authority, path) = rest.split_once('/').map(|(a, p)| (a, format!("/{p}"))).unwrap_or((rest, "/".to_string()));
@@ -76,10 +93,14 @@ fn parse_http_url(url: &str) -> Result<(String, u16, String), String> {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
     #[test]
+    // Was: Führt den Arbeitsschritt `parses_explicit_open_lab_url` für parses explicit open lab url aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn parses_explicit_open_lab_url() {
         assert_eq!(
             parse_http_url("http://10.0.20.17:8150/health/ready").unwrap(),

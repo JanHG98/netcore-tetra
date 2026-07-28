@@ -1,3 +1,8 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+// Was: Bindet das Untermodul common in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod common;
 
 use tetra_config::bluestation::StackMode;
@@ -20,6 +25,8 @@ use crate::common::ComponentTest;
 /// Register a terminal in MM by submitting a minimal U-LOCATION-UPDATE-DEMAND
 /// (RoamingLocationUpdating) as if it arrived from `issi`. After this the MS is "known" and
 /// eligible for DGNA.
+// Was: Diese Funktion registriert terminal.
+// Warum: Die Zuordnung bleibt dadurch eindeutig und kann später sauber wieder entfernt werden.
 fn register_terminal(test: &mut ComponentTest, issi: u32) {
     let demand = ULocationUpdateDemand {
         location_update_type: LocationUpdateType::RoamingLocationUpdating,
@@ -58,7 +65,11 @@ fn register_terminal(test: &mut ComponentTest, issi: u32) {
 }
 
 /// Pull the first D-ATTACH/DETACH GROUP IDENTITY out of a batch of captured MLE messages, if any.
+// Was: Diese Funktion sucht attach detach.
+// Warum: Die Suchlogik bleibt damit wiederverwendbar und muss nicht an mehreren Stellen kopiert werden.
 fn find_attach_detach(msgs: &[SapMsg]) -> Option<(u32, DAttachDetachGroupIdentity)> {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for m in msgs {
         if let SapMsgInner::LmmMleUnitdataReq(ref req) = m.msg {
             let mut sdu = BitBuffer::from_bitstr(&req.sdu.to_bitstr());
@@ -73,8 +84,12 @@ fn find_attach_detach(msgs: &[SapMsg]) -> Option<(u32, DAttachDetachGroupIdentit
 /// Pull the addressed ISSI of the first D-LOCATION-UPDATE-COMMAND in a batch of captured MLE
 /// messages, if any. Matched on the 4-bit MM downlink PDU-type discriminator (the PDU's own
 /// `from_bitbuf` decoder is an unimplemented stub — only the encoder MM uses is wired up).
+// Was: Diese Funktion sucht location update command.
+// Warum: Die Suchlogik bleibt damit wiederverwendbar und muss nicht an mehreren Stellen kopiert werden.
 fn find_location_update_command(msgs: &[SapMsg]) -> Option<u32> {
     let want = MmPduTypeDl::DLocationUpdateCommand.into_raw();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for m in msgs {
         if let SapMsgInner::LmmMleUnitdataReq(ref req) = m.msg {
             let mut sdu = BitBuffer::from_bitstr(&req.sdu.to_bitstr());
@@ -87,6 +102,8 @@ fn find_location_update_command(msgs: &[SapMsg]) -> Option<u32> {
 }
 
 /// Feed MM an uplink RSSI sample for `issi`, as UMAC does on every random-access/PTT burst.
+// Was: Führt den Arbeitsschritt `submit_uplink_rssi` für submit Uplink (Funkgerät zum Netz) rssi aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn submit_uplink_rssi(test: &mut ComponentTest, issi: u32) {
     test.submit_message(SapMsg {
         sap: Sap::Control,
@@ -102,8 +119,12 @@ fn submit_uplink_rssi(test: &mut ComponentTest, issi: u32) {
 /// recovery on by default and no allowlist, a single RSSI sample yields a D-LOCATION-UPDATE-COMMAND
 /// addressed to that ISSI.
 #[test]
+// Was: Prüft automatisch den Fall reactive recovery commands unknown Teilnehmerkennung (ISSI) on Uplink (Funkgerät zum Netz).
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_reactive_recovery_commands_unknown_issi_on_uplink() {
     debug::setup_logging_verbose();
+    // Was: Legt den festen Wert `GHOST_ISSI` für ghost Teilnehmerkennung (ISSI) fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const GHOST_ISSI: u32 = 2260301;
 
     let mut test = ComponentTest::new(StackMode::Bs, Some(TdmaTime::default()));
@@ -122,8 +143,12 @@ fn test_reactive_recovery_commands_unknown_issi_on_uplink() {
 
 /// A radio MM already knows must NOT be reactively commanded: its uplink RSSI is normal traffic.
 #[test]
+// Was: Prüft automatisch den Fall reactive recovery skips known Teilnehmerkennung (ISSI).
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_reactive_recovery_skips_known_issi() {
     debug::setup_logging_verbose();
+    // Was: Legt den festen Wert `KNOWN_ISSI` für known Teilnehmerkennung (ISSI) fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const KNOWN_ISSI: u32 = 2260570;
 
     let mut test = ComponentTest::new(StackMode::Bs, Some(TdmaTime::default()));
@@ -149,8 +174,12 @@ fn test_reactive_recovery_skips_known_issi() {
 /// Rate limiting: a burst of uplink samples from the same ghost (a single PTT yields several RSSI
 /// updates) must key only ONE COMMAND while it re-registers — the cooldown suppresses the rest.
 #[test]
+// Was: Prüft automatisch den Fall reactive recovery rate limits repeat bursts.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_reactive_recovery_rate_limits_repeat_bursts() {
     debug::setup_logging_verbose();
+    // Was: Legt den festen Wert `GHOST_ISSI` für ghost Teilnehmerkennung (ISSI) fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const GHOST_ISSI: u32 = 2260999;
 
     let mut test = ComponentTest::new(StackMode::Bs, Some(TdmaTime::default()));
@@ -178,9 +207,15 @@ fn test_reactive_recovery_rate_limits_repeat_bursts() {
 /// D-ATTACH/DETACH GROUP IDENTITY (attach, ack requested) to the targeted terminal AND record the
 /// affiliation in the shared subscriber registry so local group calls/SDS route to it.
 #[test]
+// Was: Prüft automatisch den Fall dgna assign emits attach Gruppe identity and und weitere Angaben.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_dgna_assign_emits_attach_group_identity_and_affiliates() {
     debug::setup_logging_verbose();
+    // Was: Legt den festen Wert `TEST_ISSI` für test Teilnehmerkennung (ISSI) fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const TEST_ISSI: u32 = 2260571;
+    // Was: Legt den festen Wert `TEST_GSSI` für test Gruppenkennung (GSSI) fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const TEST_GSSI: u32 = 100;
 
     let mut test = ComponentTest::new(StackMode::Bs, Some(TdmaTime::default()));
@@ -235,9 +270,15 @@ fn test_dgna_assign_emits_attach_group_identity_and_affiliates() {
 
 /// DGNA deassign of a previously-assigned group emits a detach and removes the affiliation.
 #[test]
+// Was: Prüft automatisch den Fall dgna deassign emits detach and deaffiliates.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_dgna_deassign_emits_detach_and_deaffiliates() {
     debug::setup_logging_verbose();
+    // Was: Legt den festen Wert `TEST_ISSI` für test Teilnehmerkennung (ISSI) fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const TEST_ISSI: u32 = 2260572;
+    // Was: Legt den festen Wert `TEST_GSSI` für test Gruppenkennung (GSSI) fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const TEST_GSSI: u32 = 101;
 
     let mut test = ComponentTest::new(StackMode::Bs, Some(TdmaTime::default()));
@@ -303,9 +344,15 @@ fn test_dgna_deassign_emits_detach_and_deaffiliates() {
 /// delivered to CMCE must be forwarded to MM, which then pushes the D-ATTACH/DETACH GROUP IDENTITY
 /// over the air — exactly the path a real dashboard click takes.
 #[test]
+// Was: Prüft automatisch den Fall dgna from CMCE-Rufsteuerung Steuerung reaches Mobilitätsverwaltung and und weitere Angaben.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_dgna_from_cmce_control_reaches_mm_and_emits_pdu() {
     debug::setup_logging_verbose();
+    // Was: Legt den festen Wert `TEST_ISSI` für test Teilnehmerkennung (ISSI) fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const TEST_ISSI: u32 = 2260575;
+    // Was: Legt den festen Wert `TEST_GSSI` für test Gruppenkennung (GSSI) fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const TEST_GSSI: u32 = 20;
 
     let mut test = ComponentTest::new(StackMode::Bs, Some(TdmaTime::default()));
@@ -355,6 +402,8 @@ fn test_dgna_from_cmce_control_reaches_mm_and_emits_pdu() {
 
 /// DGNA aimed at an unregistered terminal is refused: nothing is sent over the air.
 #[test]
+// Was: Prüft automatisch den Fall dgna to unregistered Teilnehmerkennung (ISSI) is refused.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_dgna_to_unregistered_issi_is_refused() {
     debug::setup_logging_verbose();
     let mut test = ComponentTest::new(StackMode::Bs, Some(TdmaTime::default()));
@@ -379,6 +428,8 @@ fn test_dgna_to_unregistered_issi_is_refused() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall u Mobilitätsverwaltung Status energy saving.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_u_mm_status_energy_saving() {
     // Motorola requesting power management (ChangeOfEnergySavingModeRequest)
     debug::setup_logging_verbose();
@@ -431,6 +482,8 @@ fn test_u_mm_status_energy_saving() {
 /// emitted at load), and the startup sweep replays a D-LOCATION-UPDATE-COMMAND to each cached
 /// ISSI — addressed by ISSI with handle 0, paced one per TDMA frame, round-robin.
 #[test]
+// Was: Prüft automatisch den Fall restart recovery loads and replays.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_restart_recovery_loads_and_replays() {
     // Config with recovery enabled and 1 COMMAND per frame.
     let mut config = ComponentTest::get_default_test_config(StackMode::Bs);
@@ -466,6 +519,8 @@ fn test_restart_recovery_loads_and_replays() {
     // Every emitted PDU during a recovery-only run is a D-LOCATION-UPDATE-COMMAND. Collect the
     // target ISSIs and confirm the handle is 0 (the handle is inert; MLE routes by ISSI).
     let mut targets: Vec<u32> = Vec::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for m in &msgs {
         if let SapMsgInner::LmmMleUnitdataReq(ref req) = m.msg {
             assert_eq!(req.handle, 0, "recovery COMMAND must be addressed with handle 0");
@@ -490,6 +545,8 @@ fn test_restart_recovery_loads_and_replays() {
 
 /// A cached ISSI not allowed by the access-control whitelist must NOT be replayed to.
 #[test]
+// Was: Prüft automatisch den Fall restart recovery honours whitelist.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_restart_recovery_honours_whitelist() {
     let mut config = ComponentTest::get_default_test_config(StackMode::Bs);
     config.recovery.enabled = true;
@@ -517,6 +574,8 @@ fn test_restart_recovery_honours_whitelist() {
     let msgs = test.dump_sinks();
 
     let mut targets: Vec<u32> = Vec::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for m in &msgs {
         if let SapMsgInner::LmmMleUnitdataReq(ref req) = m.msg {
             targets.push(req.address.ssi);
@@ -537,9 +596,15 @@ fn test_restart_recovery_honours_whitelist() {
 /// Applying a restrictive revision also forces already-registered unauthorized radios through
 /// the normal MM deregistration/re-registration path when requested.
 #[test]
+// Was: Prüft automatisch den Fall central Teilnehmer policy supports deny all and und weitere Angaben.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_central_subscriber_policy_supports_deny_all_and_disconnects_removed_issis() {
     debug::setup_logging_verbose();
+    // Was: Legt den festen Wert `ALLOWED` für allowed fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const ALLOWED: u32 = 2260701;
+    // Was: Legt den festen Wert `REMOVED` für removed fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const REMOVED: u32 = 2260702;
 
     let mut test = ComponentTest::new(StackMode::Bs, Some(TdmaTime::default()));

@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use tetra_core::{BitBuffer, SsiType, TdmaTime, TetraAddress};
 use tetra_entities::mle::cell_change_runtime::{
     CELL_CHANGE_TRANSACTION_TIMEOUT_SLOTS, MleCellChangeError, MleCellChangePhase,
@@ -21,10 +24,14 @@ use tetra_saps::lcmc::{
     fields::chan_alloc_req::CmceChanAllocReq,
 };
 
+// Was: Führt den Arbeitsschritt `subscriber` für Teilnehmer aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn subscriber(issi: u32) -> TetraAddress {
     TetraAddress::new(issi, SsiType::Issi)
 }
 
+// Was: Führt den Arbeitsschritt `target_cell` für target cell aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn target_cell() -> CellIdentity {
     CellIdentity {
         mcc: 262,
@@ -37,6 +44,8 @@ fn target_cell() -> CellIdentity {
 }
 
 #[test]
+// Was: Diese Funktion bereitet can be granted deferred and rejected.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn prepare_can_be_granted_deferred_and_rejected() {
     let mut runtime = MleCellChangeRuntime::new();
     let address = subscriber(3001);
@@ -98,6 +107,8 @@ fn prepare_can_be_granted_deferred_and_rejected() {
 }
 
 #[test]
+// Was: Diese Funktion stellt acknowledgement and failure use the learned local und weitere Angaben.
+// Warum: Nach Verbindungsabbruch oder Neustart kann der vorherige Betriebszustand dadurch kontrolliert zurückkehren.
 fn restore_acknowledgement_and_failure_use_the_learned_local_route() {
     let mut runtime = MleCellChangeRuntime::new();
     let now = TdmaTime::default();
@@ -178,6 +189,8 @@ fn restore_acknowledgement_and_failure_use_the_learned_local_route() {
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `channel_request_response_and_invalid_transition_are_accounted` für Kanal request response and invalid transition are und weitere Angaben aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn channel_request_response_and_invalid_transition_are_accounted() {
     let mut runtime = MleCellChangeRuntime::new();
     let address = subscriber(3004);
@@ -225,6 +238,8 @@ fn channel_request_response_and_invalid_transition_are_accounted() {
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `pending_transactions_receive_deterministic_timeout_responses` für pending transactions receive deterministic timeout responses aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn pending_transactions_receive_deterministic_timeout_responses() {
     let mut runtime = MleCellChangeRuntime::new();
     let now = TdmaTime::default();

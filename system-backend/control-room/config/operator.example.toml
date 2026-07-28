@@ -1,14 +1,37 @@
+# NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Leitstellenfunktionen und Bedienoberflächen.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 # NetCore Control Room Operator profile config
 # Username only. Passwords are entered in the UI or supplied to the CLI via env/--password-file.
 
+# Was: Öffnet den Konfigurationsabschnitt `profiles.default`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [profiles.default]
+# Was: Setzt die Einstellung `api` für profiles default.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 api = "http://10.0.1.25:9010"
+# Was: Setzt die Einstellung `default_node` für profiles default.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 default_node = "SRV-M_TBS-01"
+# Was: Setzt die Einstellung `operator_id` für profiles default.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 operator_id = "jan"
+# Was: Setzt die Einstellung `username` für profiles default.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 username = "jan"
 
+# Was: Öffnet den Konfigurationsabschnitt `profiles.event`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [profiles.event]
+# Was: Setzt die Einstellung `api` für profiles Ereignis.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 api = "http://10.0.1.25:9010"
+# Was: Setzt die Einstellung `default_node` für profiles Ereignis.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 default_node = "SRV-M_TBS-01"
+# Was: Setzt die Einstellung `operator_id` für profiles Ereignis.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 operator_id = "event-lst"
+# Was: Setzt die Einstellung `username` für profiles Ereignis.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 username = "event"

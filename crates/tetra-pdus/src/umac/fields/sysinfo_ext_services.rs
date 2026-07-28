@@ -1,9 +1,14 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 
 use tetra_core::{BitBuffer, assert_warn, pdu_parse_error::PduParseErr};
 
 /// Clause 21.4.4.1 SYSINFO Table 21.67 Extended Services and Part 7 Clause A.8.77 Security Information Element
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für sysinfo extended services in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SysinfoExtendedServices {
     // 1
     pub auth_required: bool,
@@ -33,7 +38,11 @@ pub struct SysinfoExtendedServices {
     pub section_data: u8,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SysinfoExtendedServices`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SysinfoExtendedServices {
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buf: &mut BitBuffer, aie_enabled: bool) -> Result<Self, PduParseErr> {
         // Read 3 bits from Security Information Element
         let auth_required = buf.read_field(1, "auth_required")? != 0;
@@ -88,6 +97,8 @@ impl SysinfoExtendedServices {
         })
     }
 
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buf: &mut BitBuffer) {
         assert!(
             !(self.class2_supported && self.class3_supported),
@@ -119,7 +130,11 @@ impl SysinfoExtendedServices {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for SysinfoExtendedServices`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for SysinfoExtendedServices {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // preserve the original assertion
         assert!(

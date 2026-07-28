@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für die Audioverteilung zwischen Basisstationen und Rufen.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::sync::mpsc::Receiver;
 use std::thread;
 use std::time::Duration;
@@ -11,12 +14,16 @@ use crate::config::MediaSwitchConfig;
 use crate::protocol::{BACKEND_PROTOCOL_VERSION, BackendEvent, BackendRequest};
 use crate::state::SharedMedia;
 
+// Was: Diese Funktion startet Gateway Hintergrundverarbeitung.
+// Warum: Länger laufende Arbeit blockiert dadurch nicht den aufrufenden Ablauf.
 pub fn spawn_gateway_worker(
     config: MediaSwitchConfig,
     media: SharedMedia,
     rx: Receiver<BackendRequest>,
 ) -> thread::JoinHandle<()> {
     thread::spawn(move || loop {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match connect_gateway(&config) {
             Ok(mut socket) => {
                 tracing::info!(
@@ -38,6 +45,8 @@ pub fn spawn_gateway_worker(
     })
 }
 
+// Was: Diese Funktion verbindet Gateway.
+// Warum: Der Verbindungsaufbau wird dadurch zentral überwacht und kann sauber fehlschlagen.
 fn connect_gateway(
     config: &MediaSwitchConfig,
 ) -> Result<WebSocket<MaybeTlsStream<std::net::TcpStream>>, String> {
@@ -71,17 +80,27 @@ fn connect_gateway(
     Ok(socket)
 }
 
+// Was: Führt den Arbeitsschritt `connected_loop` für connected loop aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn connected_loop(
     socket: &mut WebSocket<MaybeTlsStream<std::net::TcpStream>>,
     media: &SharedMedia,
     rx: &Receiver<BackendRequest>,
 ) -> Result<(), String> {
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
     loop {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for request in media.drain_due_frames() {
             send_request(socket, &request)?;
         }
 
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match rx.try_recv() {
                 Ok(request) => send_request(socket, &request)?,
                 Err(std::sync::mpsc::TryRecvError::Empty) => break,
@@ -91,6 +110,8 @@ fn connected_loop(
             }
         }
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match socket.read() {
             Ok(Message::Text(text)) => {
                 handle_event(media, serde_json::from_str(text.as_str()))?;
@@ -114,6 +135,8 @@ fn connected_loop(
     }
 }
 
+// Was: Diese Funktion verarbeitet Ereignis.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 fn handle_event(
     media: &SharedMedia,
     event: Result<BackendEvent, serde_json::Error>,
@@ -123,6 +146,8 @@ fn handle_event(
     Ok(())
 }
 
+// Was: Diese Funktion sendet request.
+// Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
 fn send_request(
     socket: &mut WebSocket<MaybeTlsStream<std::net::TcpStream>>,
     request: &BackendRequest,

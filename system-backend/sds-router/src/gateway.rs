@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Weiterleitung von SDS- und Statusnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::sync::mpsc::Receiver;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -11,6 +14,8 @@ use crate::config::SdsRouterConfig;
 use crate::protocol::{BACKEND_PROTOCOL_VERSION, BackendEvent, BackendRequest};
 use crate::state::SharedSdsRouter;
 
+// Was: Diese Funktion startet Gateway Hintergrundverarbeitung.
+// Warum: Länger laufende Arbeit blockiert dadurch nicht den aufrufenden Ablauf.
 pub fn spawn_gateway_worker(
     config: SdsRouterConfig,
     router: SharedSdsRouter,
@@ -19,12 +24,18 @@ pub fn spawn_gateway_worker(
     thread::spawn(move || run_gateway_worker(config, router, rx))
 }
 
+// Was: Diese Funktion führt Gateway Hintergrundverarbeitung.
+// Warum: Der Lebenszyklus des Dienstes bleibt so an einer zentralen Stelle steuerbar.
 fn run_gateway_worker(
     config: SdsRouterConfig,
     router: SharedSdsRouter,
     rx: Receiver<BackendRequest>,
 ) {
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
     loop {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match connect_gateway(&config) {
             Ok(mut socket) => {
                 router.gateway_connected();
@@ -38,6 +49,8 @@ fn run_gateway_worker(
     }
 }
 
+// Was: Diese Funktion verbindet Gateway.
+// Warum: Der Verbindungsaufbau wird dadurch zentral überwacht und kann sauber fehlschlagen.
 fn connect_gateway(
     config: &SdsRouterConfig,
 ) -> Result<WebSocket<MaybeTlsStream<std::net::TcpStream>>, String> {
@@ -63,14 +76,22 @@ fn connect_gateway(
     Ok(socket)
 }
 
+// Was: Führt den Arbeitsschritt `connected_loop` für connected loop aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn connected_loop(
     socket: &mut WebSocket<MaybeTlsStream<std::net::TcpStream>>,
     router: &SharedSdsRouter,
     rx: &Receiver<BackendRequest>,
 ) -> Result<(), String> {
     let mut last_tick = Instant::now();
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
     loop {
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match rx.try_recv() {
                 Ok(request) => send_request(socket, &request)?,
                 Err(std::sync::mpsc::TryRecvError::Empty) => break,
@@ -80,6 +101,8 @@ fn connected_loop(
             }
         }
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match socket.read() {
             Ok(Message::Text(text)) => {
                 handle_event(socket, router, serde_json::from_str(text.as_str()))?;
@@ -100,6 +123,8 @@ fn connected_loop(
         }
 
         if last_tick.elapsed() >= Duration::from_millis(500) {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for request in router.tick() {
                 send_request(socket, &request)?;
             }
@@ -108,18 +133,24 @@ fn connected_loop(
     }
 }
 
+// Was: Diese Funktion verarbeitet Ereignis.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 fn handle_event(
     socket: &mut WebSocket<MaybeTlsStream<std::net::TcpStream>>,
     router: &SharedSdsRouter,
     event: Result<BackendEvent, serde_json::Error>,
 ) -> Result<(), String> {
     let event = event.map_err(|error| format!("invalid node gateway event: {error}"))?;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for request in router.handle_backend_event(event) {
         send_request(socket, &request)?;
     }
     Ok(())
 }
 
+// Was: Diese Funktion sendet request.
+// Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
 fn send_request(
     socket: &mut WebSocket<MaybeTlsStream<std::net::TcpStream>>,
     request: &BackendRequest,

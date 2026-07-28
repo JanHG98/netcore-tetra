@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Einlesen und Prüfen der TETRA-Konfiguration.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use serde::Deserialize;
 use std::collections::HashMap;
 
@@ -6,6 +9,8 @@ use toml::Value;
 
 /// Text coding scheme for Home Mode Display SDS payload.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+// Was: Listet die möglichen Varianten für home mode display TETRA-Kurznachricht (SDS) text coding scheme auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum HomeModeDisplaySdsTextCodingScheme {
     /// ISO-8859-1 8-bit Latin alphabet
     LATIN,
@@ -15,6 +20,8 @@ pub enum HomeModeDisplaySdsTextCodingScheme {
 
 /// Compiled Home Mode Display configuration (present when `[cell_info.home_mode_display]` exists).
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für cfg home mode display in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgHomeModeDisplay {
     /// ISSI used as the source address of the broadcast SDS.
     pub source_issi: u32,
@@ -30,6 +37,8 @@ pub struct CfgHomeModeDisplay {
 
 /// Serde DTO for `[cell_info.home_mode_display]` config block.
 #[derive(Default, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für home mode display dto in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct HomeModeDisplayDto {
     pub source_issi: Option<u32>,
     #[serde(alias = "interval_frames")]
@@ -42,6 +51,8 @@ pub struct HomeModeDisplayDto {
 
 /// Compiled configuration for the opt-in WAP-over-SNDCP IPv4 service.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für cfg WAP-Dienst IP-Daten in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgWapIp {
     pub enabled: bool,
     pub address: std::net::Ipv4Addr,
@@ -72,7 +83,11 @@ pub struct CfgWapIp {
     pub strict_source_address: bool,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for CfgWapIp`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for CfgWapIp {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             enabled: false,
@@ -102,8 +117,12 @@ impl Default for CfgWapIp {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `CfgWapIp`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl CfgWapIp {
     /// Parse the configured three-octet pool prefix.
+    // Was: Führt den Arbeitsschritt `pool_prefix_octets` für pool prefix octets aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn pool_prefix_octets(&self) -> Option<[u8; 3]> {
         let parts: Vec<_> = self.dynamic_pool_prefix.split('.').collect();
         if parts.len() != 3 {
@@ -117,6 +136,8 @@ impl CfgWapIp {
 /// leave packet data advertised while the gateway silently uses a default.
 #[derive(Debug, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
+// Was: Bündelt die zusammengehörigen Werte für WAP-Dienst IP-Daten dto in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct WapIpDto {
     pub enabled: Option<bool>,
     pub address: Option<std::net::Ipv4Addr>,
@@ -147,6 +168,8 @@ pub struct WapIpDto {
 /// Host firewall backend used for the managed packet-data forwarding rules.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
+// Was: Listet die möglichen Varianten für Datenpaket Gateway firewall Hintergrunddienst auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum PacketGatewayFirewallBackend {
     Auto,
     Nftables,
@@ -157,6 +180,8 @@ pub enum PacketGatewayFirewallBackend {
 /// IPv4 source-NAT mode for traffic leaving the TETRA subscriber subnet.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
+// Was: Listet die möglichen Varianten für Datenpaket Gateway nat mode auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum PacketGatewayNatMode {
     Disabled,
     Masquerade,
@@ -165,6 +190,8 @@ pub enum PacketGatewayNatMode {
 /// Linux TUN/IP gateway above SNDCP. The radio bearer carries raw IPv4 N-PDUs;
 /// the kernel provides normal routing, TCP/UDP/ICMP, conntrack and optional NAT.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für cfg Datenpaket data Gateway in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgPacketDataGateway {
     pub enabled: bool,
     pub interface_name: String,
@@ -202,7 +229,11 @@ pub struct CfgPacketDataGateway {
     pub automatic_filter_max_bindings: usize,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for CfgPacketDataGateway`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for CfgPacketDataGateway {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             enabled: false,
@@ -236,6 +267,8 @@ impl Default for CfgPacketDataGateway {
 
 #[derive(Debug, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
+// Was: Bündelt die zusammengehörigen Werte für Datenpaket data Gateway dto in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PacketDataGatewayDto {
     pub enabled: Option<bool>,
     pub interface_name: Option<String>,
@@ -266,6 +299,8 @@ pub struct PacketDataGatewayDto {
 
 /// Service details for a neighbor cell — mirrors BsServiceDetails but for config parsing.
 #[derive(Debug, Clone, Default, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für cfg Basisstation Dienst details in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgBsServiceDetails {
     #[serde(default)]
     pub registration: bool,
@@ -294,6 +329,8 @@ pub struct CfgBsServiceDetails {
 /// Configuration for a single CA neighbor cell, included in D-NWRK-BROADCAST.
 /// Per ETSI EN 300 392-2 clause 18.5.17 / Table 18.64.
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für cfg neighbor cell ca in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgNeighborCellCa {
     /// 5 bits — cell identifier within the CA cluster (0-31)
     pub cell_identifier_ca: u8,
@@ -329,6 +366,8 @@ pub struct CfgNeighborCellCa {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für cfg cell info in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgCellInfo {
     // 2 bits, from 18.4.2.1 D-MLE-SYNC
     pub neighbor_cell_broadcast: u8,
@@ -441,14 +480,20 @@ pub struct CfgCellInfo {
     pub release_group_on_same_speaker_retake: bool,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `CfgCellInfo`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl CfgCellInfo {
     /// One predicate controls both capability advertisement and runtime acceptance.
+    // Was: Führt den Arbeitsschritt `wap_ip_sndcp_profile_enabled` für WAP-Dienst IP-Daten SNDCP-Paketdaten profile enabled aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn wap_ip_sndcp_profile_enabled(&self) -> bool {
         self.sndcp_service && (self.wap_ip.enabled || self.packet_data_gateway.enabled)
     }
 }
 
 #[derive(Default, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für cell info dto in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CellInfoDto {
     pub main_carrier: u16,
     pub secondary_carrier: Option<u16>,
@@ -528,6 +573,8 @@ pub struct CellInfoDto {
     pub extra: HashMap<String, Value>,
 }
 
+// Was: Führt den Arbeitsschritt `cell_dto_to_cfg` für cell dto to cfg aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn cell_dto_to_cfg(ci: CellInfoDto) -> CfgCellInfo {
     CfgCellInfo {
         main_carrier: ci.main_carrier,
@@ -693,6 +740,8 @@ pub fn cell_dto_to_cfg(ci: CellInfoDto) -> CfgCellInfo {
 /// Default local SSI ranges are defined as 0-90 (inclusive), which fits the TetraPack configuration.
 /// This helps prevent excessive flows of unroutable traffic to TetraPack, and can be overridden
 /// by users if needed.
+// Was: Führt den Arbeitsschritt `default_tetrapack_local_ranges` für default tetrapack local ranges aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_tetrapack_local_ranges() -> SortedDisjointSsiRanges {
     SortedDisjointSsiRanges::from_vec_ssirange(vec![SsiRange::new(0, 90)])
 }
@@ -701,6 +750,8 @@ fn default_tetrapack_local_ranges() -> SortedDisjointSsiRanges {
 
 /// A single SDS status code → action mapping for remote control via U-STATUS.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für cfg TETRA-Kurznachricht (SDS) command entry in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgSdsCommandEntry {
     /// Pre-coded status value that triggers this action.
     pub status_code: u16,
@@ -711,18 +762,24 @@ pub struct CfgSdsCommandEntry {
 /// Remote control via SDS U-STATUS PDUs sent to ISSI 9999.
 /// Only ISSIs listed in `authorized_issis` can trigger commands.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für cfg TETRA-Kurznachricht (SDS) command Steuerung in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgSdsCommandControl {
     pub authorized_issis: Vec<u32>,
     pub commands: Vec<CfgSdsCommandEntry>,
 }
 
 #[derive(Default, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Kurznachricht (SDS) command entry dto in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SdsCommandEntryDto {
     pub status_code: u16,
     pub action: String,
 }
 
 #[derive(Default, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Kurznachricht (SDS) command Steuerung dto in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SdsCommandControlDto {
     #[serde(default)]
     pub authorized_issis: Vec<u32>,

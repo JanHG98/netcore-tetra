@@ -1,19 +1,30 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::fs::{File, OpenOptions};
 use std::io::{self, BufWriter, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 
 use crate::net_audio::TETRA_PCM_SAMPLE_RATE;
 
+// Was: Legt den festen Wert `WAV_HEADER_LEN` für wav header len fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const WAV_HEADER_LEN: u64 = 44;
 
 /// Streaming 8-kHz mono PCM WAV writer. The RIFF/data lengths are patched when finalized.
+// Was: Bündelt die zusammengehörigen Werte für pcm wav writer in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PcmWavWriter {
     writer: BufWriter<File>,
     part_path: PathBuf,
     samples_written: u64,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `PcmWavWriter`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl PcmWavWriter {
+    // Was: Diese Funktion erstellt den vorgesehenen Arbeitsschritt.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     pub fn create(part_path: PathBuf) -> io::Result<Self> {
         if let Some(parent) = part_path.parent() {
             std::fs::create_dir_all(parent)?;
@@ -28,12 +39,16 @@ impl PcmWavWriter {
         })
     }
 
+    // Was: Diese Funktion schreibt samples.
+    // Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
     pub fn write_samples(&mut self, samples: &[i16]) -> io::Result<()> {
         let new_total = self.samples_written.saturating_add(samples.len() as u64);
         let data_bytes = new_total.saturating_mul(2);
         if data_bytes > u32::MAX as u64 {
             return Err(io::Error::new(io::ErrorKind::InvalidData, "WAV data exceeds RIFF 32-bit size limit"));
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for sample in samples {
             self.writer.write_all(&sample.to_le_bytes())?;
         }
@@ -41,14 +56,20 @@ impl PcmWavWriter {
         Ok(())
     }
 
+    // Was: Führt den Arbeitsschritt `samples_written` für samples written aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn samples_written(&self) -> u64 {
         self.samples_written
     }
 
+    // Was: Führt den Arbeitsschritt `part_path` für part path aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn part_path(&self) -> &Path {
         &self.part_path
     }
 
+    // Was: Führt den Arbeitsschritt `finalize` für finalize aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn finalize(mut self, final_path: &Path) -> io::Result<u64> {
         self.writer.flush()?;
         let data_bytes = self.samples_written.saturating_mul(2);
@@ -61,6 +82,8 @@ impl PcmWavWriter {
     }
 }
 
+// Was: Diese Funktion schreibt header.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 fn write_header<W: Write>(writer: &mut W, data_bytes: u64) -> io::Result<()> {
     let data_len = u32::try_from(data_bytes).map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "WAV too large"))?;
     let riff_len = 36u32
@@ -82,6 +105,8 @@ fn write_header<W: Write>(writer: &mut W, data_bytes: u64) -> io::Result<()> {
     Ok(())
 }
 
+// Was: Führt den Arbeitsschritt `patch_header` für patch header aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn patch_header(file: &mut File, data_bytes: u64) -> io::Result<()> {
     let data_len = u32::try_from(data_bytes).map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "WAV too large"))?;
     let riff_len = 36u32
@@ -96,6 +121,8 @@ fn patch_header(file: &mut File, data_bytes: u64) -> io::Result<()> {
 }
 
 /// Repair a `.wav.part` left by an unclean shutdown and rename it to the supplied final path.
+// Was: Diese Funktion stellt part.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn recover_part(part_path: &Path, final_path: &Path) -> io::Result<u64> {
     let mut file = OpenOptions::new().read(true).write(true).open(part_path)?;
     let len = file.metadata()?.len();
@@ -115,10 +142,14 @@ pub fn recover_part(part_path: &Path, final_path: &Path) -> io::Result<u64> {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
     #[test]
+    // Was: Führt den Arbeitsschritt `writes_valid_pcm_header` für writes valid pcm header aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn writes_valid_pcm_header() {
         let dir = std::env::temp_dir().join(format!("netcore-wav-test-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);

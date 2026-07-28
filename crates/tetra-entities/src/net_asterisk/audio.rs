@@ -1,18 +1,31 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use crate::net_audio::TetraSpeechCodec;
 
+// Was: Legt den festen Wert `PCMU_PAYLOAD_TYPE` für pcmu payload type fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub(crate) const PCMU_PAYLOAD_TYPE: u8 = 0;
 
+// Was: Bündelt die zusammengehörigen Werte für asterisk audio transcoder in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub(crate) struct AsteriskAudioTranscoder {
     codec: TetraSpeechCodec,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `AsteriskAudioTranscoder`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl AsteriskAudioTranscoder {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub(crate) fn new() -> Option<Self> {
         Some(Self {
             codec: TetraSpeechCodec::new()?,
         })
     }
 
+    // Was: Diese Funktion dekodiert tmd to pcmu.
+    // Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
     pub(crate) fn decode_tmd_to_pcmu(&mut self, acelp: &[u8]) -> Option<Vec<u8>> {
         Some(
             self.codec
@@ -24,12 +37,16 @@ impl AsteriskAudioTranscoder {
         )
     }
 
+    // Was: Diese Funktion kodiert pcmu to tmd.
+    // Warum: Alle Gegenstellen erhalten dadurch dasselbe erwartete Protokollformat.
     pub(crate) fn encode_pcmu_to_tmd(&mut self, payload: &[u8]) -> Vec<Vec<u8>> {
         let pcm: Vec<i16> = payload.iter().map(|&sample| ulaw_to_linear(sample)).collect();
         self.codec.encoder.push_pcm(&pcm)
     }
 }
 
+// Was: Führt den Arbeitsschritt `rtp_payload` für rtp payload aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub(crate) fn rtp_payload(packet: &[u8]) -> Option<(u8, &[u8])> {
     if packet.len() < 12 || packet[0] >> 6 != 2 {
         return None;
@@ -68,7 +85,11 @@ pub(crate) fn rtp_payload(packet: &[u8]) -> Option<(u8, &[u8])> {
     Some((payload_type, &packet[offset..end]))
 }
 
+// Was: Führt den Arbeitsschritt `ulaw_to_linear` für ulaw to linear aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn ulaw_to_linear(sample: u8) -> i16 {
+    // Was: Legt den festen Wert `BIAS` für bias fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const BIAS: i16 = 0x84;
 
     let sample = !sample;
@@ -79,9 +100,17 @@ fn ulaw_to_linear(sample: u8) -> i16 {
     if sample & 0x80 != 0 { BIAS - value } else { value - BIAS }
 }
 
+// Was: Führt den Arbeitsschritt `linear_to_ulaw` für linear to ulaw aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn linear_to_ulaw(sample: i16) -> u8 {
+    // Was: Legt den festen Wert `BIAS` für bias fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const BIAS: i32 = 0x84;
+    // Was: Legt den festen Wert `CLIP` für clip fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const CLIP: i32 = 32635;
+    // Was: Legt den festen Wert `SEG_END` für seg end fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const SEG_END: [i32; 8] = [0xff, 0x1ff, 0x3ff, 0x7ff, 0xfff, 0x1fff, 0x3fff, 0x7fff];
 
     let mut pcm = sample as i32;
@@ -100,11 +129,15 @@ fn linear_to_ulaw(sample: i16) -> u8 {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
     use crate::net_audio::TETRA_PCM_SAMPLES_PER_BLOCK;
 
     #[test]
+    // Was: Führt den Arbeitsschritt `rtp_payload_skips_extension_and_padding` für rtp payload skips extension and padding aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rtp_payload_skips_extension_and_padding() {
         let packet = [
             0b1011_0000,
@@ -138,6 +171,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `a_tetra_block_is_sixty_milliseconds` für a TETRA block is sixty milliseconds aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn a_tetra_block_is_sixty_milliseconds() {
         assert_eq!(TETRA_PCM_SAMPLES_PER_BLOCK, 480);
     }

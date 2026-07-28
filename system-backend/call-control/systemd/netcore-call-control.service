@@ -1,21 +1,62 @@
+# NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Rufaufbau, Rufzustände und Rufwiederherstellung.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+# Was: Beginnt den Abschnitt `Unit`.
+# Warum: Zusammengehörige Start-, Laufzeit- oder Installationswerte bleiben dadurch geordnet.
 [Unit]
+# Was: Beschreibt den Dienst für systemd und Administratoren.
+# Warum: Statusausgaben zeigen dadurch sofort, wofür die Einheit zuständig ist.
 Description=NetCore Call Control
+# Was: Legt die Startreihenfolge gegenüber anderen Einheiten fest.
+# Warum: Abhängige Netzwerk- oder Systemfunktionen müssen zuerst verfügbar sein.
 After=network-online.target
+# Was: Nennt Einheiten, die gemeinsam gestartet werden sollen.
+# Warum: Zusammengehörige Dienste stehen dadurch beim Start möglichst vollständig bereit.
 Wants=network-online.target
 
+# Was: Beginnt den Abschnitt `Service`.
+# Warum: Zusammengehörige Start-, Laufzeit- oder Installationswerte bleiben dadurch geordnet.
 [Service]
+# Was: Legt fest, wie systemd den Startzustand des Prozesses bewertet.
+# Warum: Systemd kann dadurch korrekt erkennen, wann die Einheit als gestartet gilt.
 Type=simple
+# Was: Legt das Betriebssystemkonto des Dienstes fest.
+# Warum: Der Prozess erhält dadurch nur die vorgesehenen Dateirechte und Berechtigungen.
 User=netcore
+# Was: Legt die Betriebssystemgruppe des Dienstes fest.
+# Warum: Gemeinsam benötigte Ressourcen können dadurch kontrolliert freigegeben werden.
 Group=netcore
+# Was: Legt den eigentlichen Startbefehl des Dienstes fest.
+# Warum: Systemd kann den Prozess dadurch mit einem eindeutigen und reproduzierbaren Kommando starten.
 ExecStart=/usr/local/bin/netcore-call-control --config /etc/netcore/call-control.toml
+# Was: Bestimmt das Neustartverhalten nach einem Prozessende.
+# Warum: Der Dienst kann sich dadurch entsprechend seiner Betriebsanforderung selbst erholen.
 Restart=on-failure
+# Was: Legt die Wartezeit vor einem Neustart fest.
+# Warum: Eine kurze Pause verhindert schnelle Endlosschleifen bei dauerhaftem Fehler.
 RestartSec=3
+# Was: Setzt `NoNewPrivileges` im Abschnitt `Service`.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit der Dienst auf jedem System gleich und nachvollziehbar arbeitet.
 NoNewPrivileges=true
+# Was: Setzt `PrivateTmp` im Abschnitt `Service`.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit der Dienst auf jedem System gleich und nachvollziehbar arbeitet.
 PrivateTmp=true
+# Was: Setzt `ProtectSystem` im Abschnitt `Service`.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit der Dienst auf jedem System gleich und nachvollziehbar arbeitet.
 ProtectSystem=strict
+# Was: Setzt `ProtectHome` im Abschnitt `Service`.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit der Dienst auf jedem System gleich und nachvollziehbar arbeitet.
 ProtectHome=true
+# Was: Setzt `ReadWritePaths` im Abschnitt `Service`.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit der Dienst auf jedem System gleich und nachvollziehbar arbeitet.
 ReadWritePaths=/var/lib/netcore-call-control
+# Was: Übergibt eine Umgebungsvariable an den Dienst.
+# Warum: Laufzeiteinstellungen bleiben dadurch außerhalb der Binärdatei konfigurierbar.
 Environment=RUST_LOG=netcore_call_control=info
 
+# Was: Beginnt den Abschnitt `Install`.
+# Warum: Zusammengehörige Start-, Laufzeit- oder Installationswerte bleiben dadurch geordnet.
 [Install]
+# Was: Legt fest, an welches systemd-Ziel die Einheit bei Aktivierung angehängt wird.
+# Warum: Der Dienst startet dadurch automatisch in der vorgesehenen Betriebsphase.
 WantedBy=multi-user.target

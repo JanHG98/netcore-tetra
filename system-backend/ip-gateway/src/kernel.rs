@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für die Kopplung von TETRA-Paketdaten an IP-Netze.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::io::Write;
 use std::process::{Command, Stdio};
 
@@ -6,10 +9,16 @@ use serde::Serialize;
 use crate::config::{IpGatewayConfig, MODE_AUTHORITATIVE};
 use crate::state::{FirewallRule, KernelStateSnapshot, NatRule, RouteRule};
 
+// Was: Legt den festen Wert `FILTER_TABLE` für filter table fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const FILTER_TABLE: &str = "netcore_ip_gateway";
+// Was: Legt den festen Wert `NAT_TABLE` für nat table fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const NAT_TABLE: &str = "netcore_ip_gateway_nat";
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für kernel plan in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct KernelPlan {
     pub mode: String,
     pub authoritative: bool,
@@ -19,6 +28,8 @@ pub struct KernelPlan {
     pub warnings: Vec<String>,
 }
 
+// Was: Diese Funktion erstellt plan.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
 pub fn build_plan(config: &IpGatewayConfig, snapshot: &KernelStateSnapshot) -> KernelPlan {
     let mut commands = vec![
         format!(
@@ -39,6 +50,8 @@ pub fn build_plan(config: &IpGatewayConfig, snapshot: &KernelStateSnapshot) -> K
     if config.routing.enable_ipv4_forwarding {
         commands.push("sysctl -w net.ipv4.ip_forward=1".to_string());
     }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for route in snapshot.routes.iter().filter(|route| route.enabled) {
         commands.push(format_route_command("replace", route, &config.interface.name));
     }
@@ -66,6 +79,8 @@ pub fn build_plan(config: &IpGatewayConfig, snapshot: &KernelStateSnapshot) -> K
     }
 }
 
+// Was: Führt den Arbeitsschritt `reconcile` für reconcile aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn reconcile(
     config: &IpGatewayConfig,
     snapshot: &KernelStateSnapshot,
@@ -106,6 +121,8 @@ pub fn reconcile(
     }
 
     if let Some(previous) = previous {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for old_route in previous.routes.iter().filter(|route| route.enabled) {
             let current = snapshot
                 .routes
@@ -122,6 +139,8 @@ pub fn reconcile(
             }
         }
     }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for route in snapshot.routes.iter().filter(|route| route.enabled) {
         run_route("replace", route, &config.interface.name)?;
     }
@@ -134,6 +153,8 @@ pub fn reconcile(
     Ok(plan)
 }
 
+// Was: Diese Funktion führt Weiterleitung.
+// Warum: Der Lebenszyklus des Dienstes bleibt so an einer zentralen Stelle steuerbar.
 fn run_route(action: &str, route: &RouteRule, default_interface: &str) -> Result<(), String> {
     let mut arguments = vec!["route".to_string(), action.to_string(), route.destination.clone()];
     if let Some(gateway) = &route.gateway {
@@ -155,6 +176,8 @@ fn run_route(action: &str, route: &RouteRule, default_interface: &str) -> Result
     run("ip", &refs)
 }
 
+// Was: Führt den Arbeitsschritt `format_route_command` für format Weiterleitung command aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn format_route_command(action: &str, route: &RouteRule, default_interface: &str) -> String {
     let mut command = format!("ip route {action} {}", route.destination);
     if let Some(gateway) = &route.gateway {
@@ -170,11 +193,15 @@ fn format_route_command(action: &str, route: &RouteRule, default_interface: &str
     command
 }
 
+// Was: Diese Funktion erzeugt nft.
+// Warum: Darstellung und Fachdaten bleiben dadurch voneinander getrennt.
 fn render_nft(config: &IpGatewayConfig, snapshot: &KernelStateSnapshot) -> String {
     let mut output = String::new();
     if config.firewall.enabled {
         output.push_str(&format!("table inet {FILTER_TABLE} {{\n"));
         output.push_str("  chain input {\n    type filter hook input priority 0; policy accept;\n");
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for blocked in &snapshot.blocked_addresses {
             output.push_str(&format!(
                 "    iifname \"{}\" ip saddr {} drop comment \"operator block\"\n",
@@ -223,6 +250,8 @@ fn render_nft(config: &IpGatewayConfig, snapshot: &KernelStateSnapshot) -> Strin
                 "drop"
             }
         ));
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for blocked in &snapshot.blocked_addresses {
             output.push_str(&format!(
                 "    ip saddr {} drop comment \"operator block\"\n    ip daddr {} drop comment \"operator block\"\n",
@@ -260,6 +289,8 @@ fn render_nft(config: &IpGatewayConfig, snapshot: &KernelStateSnapshot) -> Strin
     if config.nat.enabled {
         output.push_str(&format!("table ip {NAT_TABLE} {{\n"));
         output.push_str("  chain prerouting {\n    type nat hook prerouting priority dstnat; policy accept;\n");
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for rule in snapshot
             .nat_rules
             .iter()
@@ -278,6 +309,8 @@ fn render_nft(config: &IpGatewayConfig, snapshot: &KernelStateSnapshot) -> Strin
                 config.interface.network
             ));
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for rule in snapshot
             .nat_rules
             .iter()
@@ -292,6 +325,8 @@ fn render_nft(config: &IpGatewayConfig, snapshot: &KernelStateSnapshot) -> Strin
     output
 }
 
+// Was: Diese Funktion erzeugt firewall rules.
+// Warum: Darstellung und Fachdaten bleiben dadurch voneinander getrennt.
 fn render_firewall_rules(output: &mut String, chain: &str, snapshot: &KernelStateSnapshot) {
     let mut rules: Vec<&FirewallRule> = snapshot
         .firewall_rules
@@ -299,6 +334,8 @@ fn render_firewall_rules(output: &mut String, chain: &str, snapshot: &KernelStat
         .filter(|rule| rule.enabled && rule.chain == chain)
         .collect();
     rules.sort_by_key(|rule| rule.priority);
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for rule in rules {
         output.push_str("    ");
         if let Some(interface) = &rule.in_interface {
@@ -313,6 +350,8 @@ fn render_firewall_rules(output: &mut String, chain: &str, snapshot: &KernelStat
         if let Some(destination) = &rule.destination_cidr {
             output.push_str(&format!("ip daddr {destination} "));
         }
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match rule.protocol.as_str() {
             "tcp" | "udp" => {
                 output.push_str(&format!("{} ", rule.protocol));
@@ -337,6 +376,8 @@ fn render_firewall_rules(output: &mut String, chain: &str, snapshot: &KernelStat
     }
 }
 
+// Was: Diese Funktion erzeugt nat rule.
+// Warum: Darstellung und Fachdaten bleiben dadurch voneinander getrennt.
 fn render_nat_rule(rule: &NatRule, config: &IpGatewayConfig) -> String {
     let mut output = String::new();
     if let Some(interface) = &rule.out_interface {
@@ -359,6 +400,8 @@ fn render_nat_rule(rule: &NatRule, config: &IpGatewayConfig) -> String {
             output.push_str(&format!("dport {port} "));
         }
     }
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match rule.kind.as_str() {
         "masquerade" => output.push_str("masquerade"),
         "snat" => {
@@ -379,6 +422,8 @@ fn render_nat_rule(rule: &NatRule, config: &IpGatewayConfig) -> String {
     output
 }
 
+// Was: Diese Funktion wendet nft.
+// Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
 fn apply_nft(ruleset: &str) -> Result<(), String> {
     let mut child = Command::new("nft")
         .args(["-f", "-"])
@@ -406,6 +451,8 @@ fn apply_nft(ruleset: &str) -> Result<(), String> {
     }
 }
 
+// Was: Diese Funktion führt den vorgesehenen Arbeitsschritt.
+// Warum: Der Lebenszyklus des Dienstes bleibt so an einer zentralen Stelle steuerbar.
 fn run(program: &str, arguments: &[&str]) -> Result<(), String> {
     let output = Command::new(program)
         .args(arguments)
@@ -423,6 +470,8 @@ fn run(program: &str, arguments: &[&str]) -> Result<(), String> {
     }
 }
 
+// Was: Führt den Arbeitsschritt `nft_escape` für nft escape aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn nft_escape(value: &str) -> String {
     value.replace('\\', "_").replace('"', "_")
 }

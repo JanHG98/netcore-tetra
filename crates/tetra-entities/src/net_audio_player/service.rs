@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::fs;
 use std::path::{Component, Path, PathBuf};
 use std::process::Command;
@@ -12,6 +15,8 @@ use super::types::{
 };
 
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für live Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct LiveStatus {
     state: AudioPlayerState,
     job_id: Option<String>,
@@ -30,7 +35,11 @@ struct LiveStatus {
     last_error: Option<String>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for LiveStatus`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for LiveStatus {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             state: AudioPlayerState::Idle,
@@ -53,6 +62,8 @@ impl Default for LiveStatus {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für Audio- und Mediendaten root in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct MediaRoot {
     id: String,
     name: String,
@@ -61,6 +72,8 @@ struct MediaRoot {
     cache_before_decode: bool,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für audio player shared in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct AudioPlayerShared {
     config: CfgAudioPlayer,
     local_root: PathBuf,
@@ -73,11 +86,17 @@ struct AudioPlayerShared {
 }
 
 #[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für audio player handle in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct AudioPlayerHandle {
     inner: Arc<AudioPlayerShared>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `AudioPlayerHandle`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl AudioPlayerHandle {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub(crate) fn new(
         mut config: CfgAudioPlayer,
         command_tx: crossbeam_channel::Sender<AudioPlayerCommand>,
@@ -90,6 +109,8 @@ impl AudioPlayerHandle {
             .map_err(|e| format!("cannot canonicalize {}: {e}", local_root.display()))?;
 
         let configured_cache = PathBuf::from(&config.cache_directory);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let (cache_root, startup_warning) = match prepare_writable_cache(&configured_cache) {
             Ok(path) => (path, None),
             Err(primary_error) => {
@@ -99,7 +120,11 @@ impl AudioPlayerHandle {
                 ];
                 let mut failures = Vec::new();
                 let mut selected = None;
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for candidate in candidates {
+                    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                     match prepare_writable_cache(&candidate) {
                         Ok(path) => {
                             selected = Some(path);
@@ -135,6 +160,8 @@ impl AudioPlayerHandle {
             source_type: "local",
             cache_before_decode: false,
         });
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for share in &config.shares {
             media_roots.push(MediaRoot {
                 id: share.id.clone(),
@@ -159,22 +186,32 @@ impl AudioPlayerHandle {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `config` für Konfiguration aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn config(&self) -> &CfgAudioPlayer {
         &self.inner.config
     }
 
+    // Was: Führt den Arbeitsschritt `root` für root aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn root(&self) -> &Path {
         &self.inner.local_root
     }
 
+    // Was: Führt den Arbeitsschritt `cache_root` für Zwischenspeicher root aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn cache_root(&self) -> &Path {
         &self.inner.cache_root
     }
 
+    // Was: Führt den Arbeitsschritt `startup_warning` für startup warning aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn startup_warning(&self) -> Option<&str> {
         self.inner.startup_warning.as_deref()
     }
 
+    // Was: Führt den Arbeitsschritt `status` für Status aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn status(&self) -> AudioPlayerStatus {
         let live = self.inner.live.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         AudioPlayerStatus {
@@ -201,6 +238,8 @@ impl AudioPlayerHandle {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `media_sources` für Audio- und Mediendaten sources aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn media_sources(&self) -> Vec<MediaSourceInfo> {
         self.inner
             .media_roots
@@ -226,12 +265,16 @@ impl AudioPlayerHandle {
             .collect()
     }
 
+    // Was: Diese Funktion liefert Audio- und Mediendaten.
+    // Warum: Die Zusammenstellung der Einträge bleibt damit konsistent und wiederverwendbar.
     pub fn list_media(&self, source_id: &str, relative: &str) -> Result<Vec<MediaEntry>, String> {
         let root = self.find_media_root(source_id)?;
         let canonical_root = canonical_media_root(root)?;
         let directory = resolve_directory(&canonical_root, relative)?;
         let relative_base = directory.strip_prefix(&canonical_root).map_err(|e| e.to_string())?;
         let mut entries = Vec::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for entry in fs::read_dir(&directory).map_err(|e| format!("cannot read {}: {e}", directory.display()))? {
             let entry = entry.map_err(|e| e.to_string())?;
             let file_type = entry.file_type().map_err(|e| e.to_string())?;
@@ -282,6 +325,8 @@ impl AudioPlayerHandle {
     /// The returned path is guaranteed to stay below the configured media root,
     /// to reference a regular WAV/MP3 file, and to respect the same maximum
     /// source-file size used by radio dispatch.
+    // Was: Führt den Arbeitsschritt `preview_media_path` für preview Audio- und Mediendaten path aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn preview_media_path(&self, source_id: &str, relative_path: &str) -> Result<PathBuf, String> {
         let root = self.find_media_root(source_id)?;
         let canonical_root = canonical_media_root(root)?;
@@ -301,6 +346,8 @@ impl AudioPlayerHandle {
         Ok(path)
     }
 
+    // Was: Führt den Arbeitsschritt `play_media` für play Audio- und Mediendaten aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn play_media(
         &self,
         source_id: &str,
@@ -331,6 +378,8 @@ impl AudioPlayerHandle {
         )
     }
 
+    // Was: Führt den Arbeitsschritt `play_recording` für play recording aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn play_recording(
         &self,
         path: PathBuf,
@@ -357,6 +406,8 @@ impl AudioPlayerHandle {
         )
     }
 
+    // Was: Führt den Arbeitsschritt `play_resolved` für play resolved aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn play_resolved(
         &self,
         source: ResolvedAudioSource,
@@ -406,6 +457,8 @@ impl AudioPlayerHandle {
         Ok(job_id)
     }
 
+    // Was: Diese Funktion stoppt den vorgesehenen Arbeitsschritt.
+    // Warum: Der Betrieb wird dadurch geordnet beendet und Ressourcen werden freigegeben.
     pub fn stop(&self) -> Result<(), String> {
         self.inner
             .command_tx
@@ -413,6 +466,8 @@ impl AudioPlayerHandle {
             .map_err(|_| "audio-player entity is not running".to_string())
     }
 
+    // Was: Diese Funktion kennzeichnet preparing.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(crate) fn mark_preparing(
         &self,
         job_id: String,
@@ -437,11 +492,15 @@ impl AudioPlayerHandle {
         };
     }
 
+    // Was: Diese Funktion setzt Zustand.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub(crate) fn set_state(&self, state: AudioPlayerState) {
         let mut live = self.inner.live.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         live.state = state;
     }
 
+    // Was: Diese Funktion kennzeichnet prepared.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(crate) fn mark_prepared(&self, duration_ms: u64, total_blocks: usize) {
         let mut live = self.inner.live.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         live.duration_ms = duration_ms;
@@ -450,6 +509,8 @@ impl AudioPlayerHandle {
         live.sent_blocks = 0;
     }
 
+    // Was: Diese Funktion kennzeichnet Audio- und Mediendaten ready.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(crate) fn mark_media_ready(&self, call_id: u16, ts: u8) {
         let mut live = self.inner.live.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         live.call_id = Some(call_id);
@@ -457,17 +518,23 @@ impl AudioPlayerHandle {
         live.state = AudioPlayerState::Playing;
     }
 
+    // Was: Diese Funktion kennzeichnet progress.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(crate) fn mark_progress(&self, sent_blocks: usize) {
         let mut live = self.inner.live.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         live.sent_blocks = sent_blocks;
         live.position_ms = (sent_blocks as u64 * 60).min(live.duration_ms);
     }
 
+    // Was: Diese Funktion kennzeichnet idle.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(crate) fn mark_idle(&self) {
         let mut live = self.inner.live.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         *live = LiveStatus::default();
     }
 
+    // Was: Diese Funktion kennzeichnet failed.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(crate) fn mark_failed(&self, error: impl Into<String>) {
         let error = error.into();
         tracing::error!("AudioPlayer: {}", error);
@@ -478,6 +545,8 @@ impl AudioPlayerHandle {
         live.timeslot = None;
     }
 
+    // Was: Diese Funktion sucht Audio- und Mediendaten root.
+    // Warum: Die Suchlogik bleibt damit wiederverwendbar und muss nicht an mehreren Stellen kopiert werden.
     fn find_media_root(&self, source_id: &str) -> Result<&MediaRoot, String> {
         let source_id = source_id.trim();
         self.inner
@@ -489,6 +558,8 @@ impl AudioPlayerHandle {
 }
 
 
+// Was: Diese Funktion bereitet writable Zwischenspeicher.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn prepare_writable_cache(path: &Path) -> Result<PathBuf, String> {
     fs::create_dir_all(path).map_err(|e| format!("cannot create {}: {e}", path.display()))?;
     let canonical = path
@@ -504,10 +575,14 @@ fn prepare_writable_cache(path: &Path) -> Result<PathBuf, String> {
     Ok(canonical)
 }
 
+// Was: Diese Funktion räumt stale Zwischenspeicher.
+// Warum: Zurückgelassene Ressourcen würden sonst spätere Starts oder Verbindungen stören.
 fn cleanup_stale_cache(root: &Path) {
     let Ok(entries) = fs::read_dir(root) else {
         return;
     };
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for entry in entries.flatten() {
         let Ok(file_type) = entry.file_type() else {
             continue;
@@ -529,6 +604,8 @@ fn cleanup_stale_cache(root: &Path) {
     }
 }
 
+// Was: Führt den Arbeitsschritt `canonical_media_root` für canonical Audio- und Mediendaten root aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn canonical_media_root(root: &MediaRoot) -> Result<PathBuf, String> {
     let canonical = root
         .configured_path
@@ -544,6 +621,8 @@ fn canonical_media_root(root: &MediaRoot) -> Result<PathBuf, String> {
     Ok(canonical)
 }
 
+// Was: Diese Funktion ermittelt directory.
+// Warum: Unklare oder indirekte Angaben werden so vor der weiteren Verarbeitung eindeutig gemacht.
 fn resolve_directory(root: &Path, relative: &str) -> Result<PathBuf, String> {
     let relative = safe_relative_path(relative)?;
     let path = root.join(relative);
@@ -554,6 +633,8 @@ fn resolve_directory(root: &Path, relative: &str) -> Result<PathBuf, String> {
     Ok(canonical)
 }
 
+// Was: Diese Funktion ermittelt Audio- und Mediendaten file.
+// Warum: Unklare oder indirekte Angaben werden so vor der weiteren Verarbeitung eindeutig gemacht.
 fn resolve_media_file(root: &Path, relative: &str) -> Result<PathBuf, String> {
     let relative = safe_relative_path(relative)?;
     let path = root.join(relative);
@@ -572,10 +653,16 @@ fn resolve_media_file(root: &Path, relative: &str) -> Result<PathBuf, String> {
     Ok(canonical)
 }
 
+// Was: Führt den Arbeitsschritt `safe_relative_path` für safe relative path aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn safe_relative_path(path: &str) -> Result<PathBuf, String> {
     let path = Path::new(path.trim().trim_start_matches('/'));
     let mut clean = PathBuf::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for component in path.components() {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match component {
             Component::Normal(part) => clean.push(part),
             Component::CurDir => {}
@@ -585,6 +672,8 @@ fn safe_relative_path(path: &str) -> Result<PathBuf, String> {
     Ok(clean)
 }
 
+// Was: Führt den Arbeitsschritt `detect_ffmpeg` für detect ffmpeg aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub(crate) fn detect_ffmpeg(path: &str) -> bool {
     Command::new(path)
         .arg("-version")

@@ -1,9 +1,14 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use tetra_entities::net_media::{
     LocalMediaUplinkFrame, MediaCodec, MediaDownlinkFrame, MediaSendError,
     TETRA_ACELP_FRAME_BYTES, media_bridge_channel,
 };
 
 #[test]
+// Was: Führt den Arbeitsschritt `bounded_media_bridge_moves_packed_frames_in_both_directions` für bounded Audio- und Mediendaten bridge moves packed frames in und weitere Angaben aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn bounded_media_bridge_moves_packed_frames_in_both_directions() {
     let (uplink_sink, uplink_source, downlink_sink, downlink_source) =
         media_bridge_channel(32);
@@ -39,6 +44,8 @@ fn bounded_media_bridge_moves_packed_frames_in_both_directions() {
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `media_bridge_rejects_wrong_frame_size_before_rf_runtime` für Audio- und Mediendaten bridge rejects wrong Funkrahmen size before und weitere Angaben aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn media_bridge_rejects_wrong_frame_size_before_rf_runtime() {
     let (uplink_sink, _uplink_source, downlink_sink, _downlink_source) =
         media_bridge_channel(16);

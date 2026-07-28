@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Einlesen und Prüfen der TETRA-Konfiguration.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::HashMap;
 
 use serde::Deserialize;
@@ -14,6 +17,8 @@ use toml::Value;
 /// defaults OFF — proactively rebooting the station is a deliberate operator choice, consistent
 /// with the other opt-in, RF-/service-affecting capabilities in this stack.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für cfg health in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgHealth {
     /// Master on/off for the health monitor (snapshots + dashboard tile + Telegram alerts).
     pub enabled: bool,
@@ -41,7 +46,11 @@ pub struct CfgHealth {
     pub sds_queue_critical: u32,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for CfgHealth`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for CfgHealth {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         CfgHealth {
             enabled: true,
@@ -60,6 +69,8 @@ impl Default for CfgHealth {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für cfg health dto in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgHealthDto {
     #[serde(default = "default_true")]
     pub enabled: bool,
@@ -92,7 +103,11 @@ pub struct CfgHealthDto {
 
 // `serde(default)` on a missing whole `[health]` table needs Default on the DTO; when the table
 // is present but a field is missing, the per-field defaults above apply.
+// Was: Implementiert das zugehörige Verhalten für `Default for CfgHealthDto`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for CfgHealthDto {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         CfgHealthDto {
             enabled: true,
@@ -111,37 +126,59 @@ impl Default for CfgHealthDto {
     }
 }
 
+// Was: Führt den Arbeitsschritt `default_true` für default true aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_true() -> bool {
     true
 }
+// Was: Führt den Arbeitsschritt `default_snapshot_interval` für default snapshot interval aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_snapshot_interval() -> u64 {
     5
 }
+// Was: Führt den Arbeitsschritt `default_core_stall` für default core stall aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_core_stall() -> u64 {
     10
 }
+// Was: Führt den Arbeitsschritt `default_restart_after` für default restart after aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_restart_after() -> u64 {
     30
 }
+// Was: Führt den Arbeitsschritt `default_restart_cooldown` für default restart cooldown aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_restart_cooldown() -> u64 {
     600
 }
+// Was: Führt den Arbeitsschritt `default_radios_silent` für default radios silent aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_radios_silent() -> u64 {
     900
 }
+// Was: Führt den Arbeitsschritt `default_dl_degraded` für default dl degraded aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_dl_degraded() -> u32 {
     64
 }
+// Was: Führt den Arbeitsschritt `default_dl_critical` für default dl critical aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_dl_critical() -> u32 {
     192
 }
+// Was: Führt den Arbeitsschritt `default_sds_degraded` für default TETRA-Kurznachricht (SDS) degraded aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_sds_degraded() -> u32 {
     32
 }
+// Was: Führt den Arbeitsschritt `default_sds_critical` für default TETRA-Kurznachricht (SDS) critical aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_sds_critical() -> u32 {
     128
 }
 
+// Was: Diese Funktion wendet health patch.
+// Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
 pub fn apply_health_patch(dto: CfgHealthDto) -> CfgHealth {
     // Clamp everything so a bad TOML value can't wedge the monitor (house style — same as
     // periodic_registration_secs / recovery clamps).
@@ -161,10 +198,14 @@ pub fn apply_health_patch(dto: CfgHealthDto) -> CfgHealth {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
     #[test]
+    // Was: Führt den Arbeitsschritt `serde_defaults_apply_when_only_one_field_set` für serde defaults apply when only one field und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn serde_defaults_apply_when_only_one_field_set() {
         let dto: CfgHealthDto = toml::from_str("restart_on_core_stall = true").unwrap();
         let c = apply_health_patch(dto);
@@ -177,6 +218,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `clamps_out_of_range` für clamps out of range aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn clamps_out_of_range() {
         let dto = CfgHealthDto {
             snapshot_interval_secs: 0,

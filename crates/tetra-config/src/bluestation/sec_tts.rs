@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Einlesen und Prüfen der TETRA-Konfiguration.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
@@ -6,6 +9,8 @@ use toml::Value;
 
 /// One operator-facing voice backed by a voice name exposed by Piper HTTP.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für cfg tts voice in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgTtsVoice {
     /// Stable ID used by the dashboard and API.
     pub id: String,
@@ -19,6 +24,8 @@ pub struct CfgTtsVoice {
 
 /// Local text-to-speech configuration.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für cfg tts in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgTts {
     /// Instantiate the TTS service and dashboard API.
     pub enabled: bool,
@@ -51,13 +58,19 @@ pub struct CfgTts {
     pub voices: Vec<CfgTtsVoice>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for CfgTts`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for CfgTts {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         apply_tts_patch(CfgTtsDto::default()).expect("default TTS config must be valid")
     }
 }
 
 #[derive(Debug, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für cfg tts voice dto in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgTtsVoiceDto {
     #[serde(default)]
     pub id: String,
@@ -72,6 +85,8 @@ pub struct CfgTtsVoiceDto {
 }
 
 #[derive(Debug, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für cfg tts dto in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgTtsDto {
     #[serde(default)]
     pub enabled: bool,
@@ -105,7 +120,11 @@ pub struct CfgTtsDto {
     pub extra: HashMap<String, Value>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for CfgTtsDto`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for CfgTtsDto {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             enabled: false,
@@ -127,50 +146,74 @@ impl Default for CfgTtsDto {
     }
 }
 
+// Was: Führt den Arbeitsschritt `default_endpoint` für default endpoint aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_endpoint() -> String {
     "http://127.0.0.1:5005".to_string()
 }
 
+// Was: Führt den Arbeitsschritt `default_cache_directory` für default Zwischenspeicher directory aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_cache_directory() -> String {
     "/var/cache/netcore/tts".to_string()
 }
 
+// Was: Führt den Arbeitsschritt `default_template_directory` für default template directory aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_template_directory() -> String {
     "/var/lib/netcore/tts/templates".to_string()
 }
 
+// Was: Führt den Arbeitsschritt `default_auto_save_generated_templates` für default auto save generated templates aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_auto_save_generated_templates() -> bool {
     true
 }
 
+// Was: Führt den Arbeitsschritt `default_voice` für default voice aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_voice() -> String {
     "de-thorsten".to_string()
 }
 
+// Was: Führt den Arbeitsschritt `default_speed` für default speed aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_speed() -> f32 {
     0.95
 }
 
+// Was: Führt den Arbeitsschritt `default_priority` für default Priorität aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_priority() -> u8 {
     5
 }
 
+// Was: Führt den Arbeitsschritt `default_max_text_characters` für default max text characters aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_max_text_characters() -> usize {
     2_000
 }
 
+// Was: Führt den Arbeitsschritt `default_synthesis_timeout_seconds` für default synthesis timeout seconds aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_synthesis_timeout_seconds() -> u64 {
     90
 }
 
+// Was: Führt den Arbeitsschritt `default_max_output_file_mb` für default max output file mb aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_max_output_file_mb() -> u64 {
     25
 }
 
+// Was: Führt den Arbeitsschritt `default_cache_retention_minutes` für default Zwischenspeicher retention minutes aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_cache_retention_minutes() -> u64 {
     1_440
 }
 
+// Was: Führt den Arbeitsschritt `valid_id` für valid Kennung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn valid_id(value: &str) -> bool {
     !value.is_empty()
         && value
@@ -178,6 +221,8 @@ fn valid_id(value: &str) -> bool {
             .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'-' | b'_'))
 }
 
+// Was: Diese Funktion prüft endpoint.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_endpoint(endpoint: &str) -> Result<(), String> {
     let lower = endpoint.to_ascii_lowercase();
     if !(lower.starts_with("http://") || lower.starts_with("https://")) {
@@ -189,6 +234,8 @@ fn validate_endpoint(endpoint: &str) -> Result<(), String> {
     Ok(())
 }
 
+// Was: Diese Funktion wendet tts patch.
+// Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
 pub fn apply_tts_patch(mut src: CfgTtsDto) -> Result<CfgTts, String> {
     src.endpoint = src.endpoint.trim().trim_end_matches('/').to_string();
     src.cache_directory = src.cache_directory.trim().to_string();
@@ -220,6 +267,8 @@ pub fn apply_tts_patch(mut src: CfgTtsDto) -> Result<CfgTts, String> {
 
     let mut seen = HashSet::new();
     let mut voices = Vec::with_capacity(src.voices.len());
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (index, mut voice) in src.voices.into_iter().enumerate() {
         if !voice.extra.is_empty() {
             let mut keys = voice.extra.keys().map(String::as_str).collect::<Vec<_>>();
@@ -282,9 +331,13 @@ pub fn apply_tts_patch(mut src: CfgTtsDto) -> Result<CfgTts, String> {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
+    // Was: Führt den Arbeitsschritt `voice` für voice aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn voice() -> CfgTtsVoiceDto {
         CfgTtsVoiceDto {
             id: "de-thorsten".to_string(),
@@ -296,6 +349,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `defaults_are_safe_and_disabled` für defaults are safe and disabled aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn defaults_are_safe_and_disabled() {
         let cfg = CfgTts::default();
         assert!(!cfg.enabled);
@@ -306,6 +361,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `accepts_enabled_http_provider` für accepts enabled HTTP provider aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn accepts_enabled_http_provider() {
         let dto = CfgTtsDto {
             enabled: true,
@@ -318,6 +375,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `rejects_missing_default_voice` für rejects missing default voice aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rejects_missing_default_voice() {
         let dto = CfgTtsDto {
             enabled: true,

@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use tetra_core::BitBuffer;
 use tetra_pdus::mm::enums::location_update_type::LocationUpdateType;
 use tetra_pdus::mm::enums::reject_cause::RejectCause;
@@ -5,6 +8,8 @@ use tetra_pdus::mm::pdus::d_location_update_proceeding::DLocationUpdateProceedin
 use tetra_pdus::mm::pdus::d_location_update_reject::DLocationUpdateReject;
 
 #[test]
+// Was: Führt den Arbeitsschritt `location_update_proceeding_roundtrip_preserves_vassi_and_home_mni` für location update proceeding roundtrip preserves vassi and und weitere Angaben aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn location_update_proceeding_roundtrip_preserves_vassi_and_home_mni() {
     let pdu = DLocationUpdateProceeding {
         ssi: 0xE0_0042,
@@ -20,7 +25,11 @@ fn location_update_proceeding_roundtrip_preserves_vassi_and_home_mni() {
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `location_update_reject_parser_handles_cipher_off_and_on` für location update reject parser handles cipher off und weitere Angaben aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn location_update_reject_parser_handles_cipher_off_and_on() {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (cipher_control, ciphering_parameters) in [(false, None), (true, Some(0x155))] {
         let pdu = DLocationUpdateReject {
             location_update_type: LocationUpdateType::MigratingLocationUpdating,

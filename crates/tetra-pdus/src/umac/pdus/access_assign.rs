@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 use std::panic;
 
@@ -6,6 +9,8 @@ use tetra_core::{BitBuffer, pdu_parse_error::PduParseErr};
 use crate::umac::enums::{access_assign_dl_usage::AccessAssignDlUsage, access_assign_ul_usage::AccessAssignUlUsage};
 
 #[derive(Debug, Clone, Copy)]
+// Was: Bündelt die zusammengehörigen Werte für access field in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct AccessField {
     // 2
     pub access_code: u8,
@@ -16,6 +21,8 @@ pub struct AccessField {
 /// Clause 21.4.7.2 ACCESS-ASSIGN
 /// TODO FIXME technically not part of this SAP, but part of the MAC
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für access assign in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct AccessAssign {
     // 2, kept for debugging purposes
     pub _header: u8,
@@ -44,7 +51,11 @@ pub struct AccessAssign {
     // pub f2_ul_um: Option<AccessAssignUlUsage>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for AccessAssign`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for AccessAssign {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         AccessAssign {
             _header: 0,
@@ -59,7 +70,11 @@ impl Default for AccessAssign {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `AccessAssign`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl AccessAssign {
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buf: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let mut s = AccessAssign {
             _header: buf.read_field(2, "_header")? as u8,
@@ -69,6 +84,8 @@ impl AccessAssign {
         let field1 = buf.read_field(6, "field1")? as u8;
         let field2 = buf.read_field(6, "field2")? as u8;
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match s._header {
             0 => {
                 // DL common control
@@ -123,10 +140,14 @@ impl AccessAssign {
         Ok(s)
     }
 
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buf: &mut BitBuffer) {
         // Safe fallback when a caller sets UL usage to CommonAndAssigned / AssignedOnly
         // but forgets to provide field2 (access field). Scheduler should still
         // set f2_af explicitly; this just prevents runtime panics.
+        // Was: Legt den festen Wert `DEFAULT_AF` für default af fest.
+        // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
         const DEFAULT_AF: AccessField = AccessField {
             access_code: 0,
             base_frame_len: 4,
@@ -179,7 +200,11 @@ impl AccessAssign {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for AccessAssign`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for AccessAssign {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "access_assign {{ dl_usage: {}, ul_usage: {}", self.dl_usage, self.ul_usage)?;
         if let Some(af) = &self.f2_af {
@@ -196,10 +221,14 @@ impl fmt::Display for AccessAssign {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
     #[test]
+    // Was: Prüft automatisch den Fall unallocated.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_unallocated() {
         let bitstr = "11000000000000";
         let mut buf = BitBuffer::from_bitstr(bitstr);
@@ -219,6 +248,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall commoncontrol.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_commoncontrol() {
         let bitstr = "00001010001010";
         let mut buf = BitBuffer::from_bitstr(bitstr);

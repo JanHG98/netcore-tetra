@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use tetra_config::bluestation::StackConfig;
@@ -14,6 +17,8 @@ use crate::{
 /// `node_id` must be stable across restarts; the control room uses it as the
 /// primary key for state, audit logs and command routing.
 #[derive(Debug, Clone, Encode, Decode, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Steuerung room Netzknoten identity in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ControlRoomNodeIdentity {
     pub node_id: String,
     pub station_name: String,
@@ -28,9 +33,13 @@ pub struct ControlRoomNodeIdentity {
     pub system_code: u8,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `ControlRoomNodeIdentity`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl ControlRoomNodeIdentity {
     /// Build a deterministic node identity from config.  A configured node_id wins;
     /// otherwise we derive a readable stable id from the TETRA cell parameters.
+    // Was: Wandelt Eingangsdaten in stack Konfiguration um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_stack_config(
         cfg: &StackConfig,
         node_id: Option<String>,
@@ -63,6 +72,8 @@ impl ControlRoomNodeIdentity {
 /// Capability flags advertised by the base station during hello.  Keep this
 /// explicit so the Leitstelle can gray out buttons instead of guessing.
 #[derive(Debug, Clone, Encode, Decode, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Steuerung room Netzknoten capabilities in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ControlRoomNodeCapabilities {
     pub telemetry: bool,
     pub command: bool,
@@ -101,7 +112,11 @@ pub struct ControlRoomNodeCapabilities {
     pub media_bridge: bool,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `ControlRoomNodeCapabilities`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl ControlRoomNodeCapabilities {
+    // Was: Wandelt Eingangsdaten in stack Konfiguration um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_stack_config(cfg: &StackConfig) -> Self {
         Self {
             telemetry: true,
@@ -128,6 +143,8 @@ impl ControlRoomNodeCapabilities {
 }
 
 #[derive(Debug, Clone, Encode, Decode, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Steuerung room Netzknoten hello in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ControlRoomNodeHello {
     pub protocol_version: String,
     pub node: ControlRoomNodeIdentity,
@@ -136,6 +153,8 @@ pub struct ControlRoomNodeHello {
 }
 
 #[derive(Debug, Clone, Encode, Decode, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Steuerung room Netzknoten heartbeat in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ControlRoomNodeHeartbeat {
     pub node_id: String,
     pub seq: u64,
@@ -144,6 +163,8 @@ pub struct ControlRoomNodeHeartbeat {
 }
 
 #[derive(Debug, Clone, Encode, Decode, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Netzknoten Telemetrie envelope in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct NodeTelemetryEnvelope {
     pub node_id: String,
     pub seq: u64,
@@ -152,6 +173,8 @@ pub struct NodeTelemetryEnvelope {
 }
 
 #[derive(Debug, Clone, Encode, Decode, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Steuerung command envelope in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ControlCommandEnvelope {
     pub command_id: String,
     pub target_node_id: String,
@@ -161,6 +184,8 @@ pub struct ControlCommandEnvelope {
 }
 
 #[derive(Debug, Clone, Encode, Decode, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Steuerung command ack in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ControlCommandAck {
     pub command_id: String,
     pub node_id: String,
@@ -171,6 +196,8 @@ pub struct ControlCommandAck {
 }
 
 #[derive(Debug, Clone, Encode, Decode, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Steuerung response envelope in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ControlResponseEnvelope {
     /// `None` means the legacy entity response could not be correlated back to
     /// a specific command.  The raw response is still valuable for logs/state.
@@ -184,6 +211,8 @@ pub struct ControlResponseEnvelope {
 /// Health level reported by the Node Gateway for one backend service.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Encode, Decode, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für core Dienst health level auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum CoreServiceHealthLevel {
     Unknown,
     Available,
@@ -192,6 +221,8 @@ pub enum CoreServiceHealthLevel {
 }
 
 #[derive(Debug, Clone, Encode, Decode, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für core Dienst health in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CoreServiceHealth {
     pub service: String,
     pub level: CoreServiceHealthLevel,
@@ -206,6 +237,8 @@ pub struct CoreServiceHealth {
 /// switch individual functions between central and local authority without
 /// waiting for a total WebSocket failure.
 #[derive(Debug, Clone, Encode, Decode, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für core services snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CoreServicesSnapshot {
     pub revision: u64,
     pub generated_at: String,
@@ -215,6 +248,8 @@ pub struct CoreServicesSnapshot {
 /// Messages sent from the base station node to the Control-Room Core.
 #[derive(Debug, Clone, Encode, Decode, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für Netzknoten to Steuerung room Nachricht auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum NodeToControlRoomMessage {
     Hello { hello: ControlRoomNodeHello },
     Heartbeat { heartbeat: ControlRoomNodeHeartbeat },
@@ -229,6 +264,8 @@ pub enum NodeToControlRoomMessage {
 /// Messages sent by the Control-Room Core to the base station node.
 #[derive(Debug, Clone, Encode, Decode, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für Steuerung room to Netzknoten Nachricht auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum ControlRoomToNodeMessage {
     HelloAck { accepted: bool, message: Option<String> },
     Ping { seq: u64, timestamp: String },

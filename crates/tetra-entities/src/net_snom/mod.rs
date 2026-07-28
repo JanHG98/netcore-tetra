@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! Snom XML minibrowser notifications via Asterisk AMI.
 //!
 //! This worker stays outside the real-time TETRA path. It consumes cloned telemetry / alert
@@ -14,11 +17,17 @@ use tetra_config::bluestation::{CfgSnomNotify, SharedConfig, parse_ric_route_key
 
 use crate::net_telemetry::TelemetryEvent;
 
+// Was: Legt den festen Wert `READ_LIMIT` für read limit fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const READ_LIMIT: usize = 64 * 1024;
 
+// Was: Legt den festen Wert `ACTION_ID` für action Kennung fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 static ACTION_ID: AtomicU64 = AtomicU64::new(1);
 
 #[derive(Debug, Clone)]
+// Was: Listet die möglichen Varianten für snom notify msg auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum SnomNotifyMsg {
     Event(TelemetryEvent),
     TelegramHtml(String),
@@ -40,22 +49,32 @@ pub enum SnomNotifyMsg {
 }
 
 #[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für snom notify sink in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SnomNotifySink {
     tx: crossbeam_channel::Sender<SnomNotifyMsg>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SnomNotifySink`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SnomNotifySink {
     #[inline]
+    // Was: Diese Funktion sendet Ereignis.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     pub fn send_event(&self, event: TelemetryEvent) {
         let _ = self.tx.send(SnomNotifyMsg::Event(event));
     }
 
     #[inline]
+    // Was: Diese Funktion sendet telegram html.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     pub fn send_telegram_html(&self, html: String) {
         let _ = self.tx.send(SnomNotifyMsg::TelegramHtml(html));
     }
 
     #[inline]
+    // Was: Diese Funktion sendet meshcom.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     pub fn send_meshcom(&self, title: String, src: String, dst: Option<String>, text: String, msg_id: Option<String>) {
         let _ = self.tx.send(SnomNotifyMsg::Meshcom {
             title,
@@ -67,6 +86,8 @@ impl SnomNotifySink {
     }
 
     #[inline]
+    // Was: Diese Funktion sendet geoalarm.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     pub fn send_geoalarm(&self, title: String, source: String, text: String, distance_m: f64, lat: f64, lon: f64) {
         let _ = self.tx.send(SnomNotifyMsg::Geoalarm {
             title,
@@ -79,22 +100,34 @@ impl SnomNotifySink {
     }
 }
 
+// Was: Bündelt die zusammengehörigen Werte für snom notify source in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SnomNotifySource {
     rx: crossbeam_channel::Receiver<SnomNotifyMsg>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SnomNotifySource`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SnomNotifySource {
+    // Was: Führt den Arbeitsschritt `recv` für recv aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn recv(&self) -> Result<SnomNotifyMsg, crossbeam_channel::RecvError> {
         self.rx.recv()
     }
 }
 
+// Was: Führt den Arbeitsschritt `snom_notify_channel` für snom notify Kanal aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn snom_notify_channel() -> (SnomNotifySink, SnomNotifySource) {
     let (tx, rx) = crossbeam_channel::unbounded();
     (SnomNotifySink { tx }, SnomNotifySource { rx })
 }
 
+// Was: Diese Funktion startet snom notify Hintergrundverarbeitung.
+// Warum: Länger laufende Arbeit blockiert dadurch nicht den aufrufenden Ablauf.
 pub fn spawn_snom_notify_worker(cfg: SharedConfig, source: SnomNotifySource) -> Option<thread::JoinHandle<()>> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match thread::Builder::new()
         .name("snom-notify".into())
         .spawn(move || SnomNotifyWorker::new(cfg, source).run())
@@ -107,18 +140,28 @@ pub fn spawn_snom_notify_worker(cfg: SharedConfig, source: SnomNotifySource) -> 
     }
 }
 
+// Was: Bündelt die zusammengehörigen Werte für snom notify Hintergrundverarbeitung in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct SnomNotifyWorker {
     cfg: SharedConfig,
     source: SnomNotifySource,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SnomNotifyWorker`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SnomNotifyWorker {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     fn new(cfg: SharedConfig, source: SnomNotifySource) -> Self {
         Self { cfg, source }
     }
 
+    // Was: Diese Funktion führt den vorgesehenen Arbeitsschritt.
+    // Warum: Der Lebenszyklus des Dienstes bleibt so an einer zentralen Stelle steuerbar.
     fn run(&self) {
         tracing::info!("Snom notify worker started");
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while let Ok(msg) = self.source.recv() {
             let cfg = self.cfg.effective_snom_notify();
             if !cfg.enabled {
@@ -134,7 +177,11 @@ impl SnomNotifyWorker {
         tracing::info!("Snom notify worker exiting");
     }
 
+    // Was: Führt den Arbeitsschritt `notification_for_msg` für notification for msg aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn notification_for_msg(&self, cfg: &CfgSnomNotify, msg: SnomNotifyMsg) -> Option<SnomNotification> {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match msg {
             SnomNotifyMsg::Event(TelemetryEvent::SdsLog {
                 direction,
@@ -250,19 +297,27 @@ impl SnomNotifyWorker {
     }
 }
 
+// Was: Bündelt die zusammengehörigen Werte für snom notification in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct SnomNotification {
     title: String,
     lines: Vec<String>,
 }
 
+// Was: Führt den Arbeitsschritt `direction_allowed` für direction allowed aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn direction_allowed(cfg: &CfgSnomNotify, direction: &str) -> bool {
     cfg.sds_directions.is_empty() || cfg.sds_directions.iter().any(|d| d.eq_ignore_ascii_case(direction.trim()))
 }
 
+// Was: Führt den Arbeitsschritt `sds_issi_allowed` für TETRA-Kurznachricht (SDS) Teilnehmerkennung (ISSI) allowed aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn sds_issi_allowed(cfg: &CfgSnomNotify, source_issi: u32, dest_issi: u32) -> bool {
     cfg.sds_allowed_issis.is_empty() || cfg.sds_allowed_issis.contains(&source_issi) || cfg.sds_allowed_issis.contains(&dest_issi)
 }
 
+// Was: Führt den Arbeitsschritt `dapnet_ric_allowed` für dapnet ric allowed aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn dapnet_ric_allowed(cfg: &CfgSnomNotify, recipient: &str) -> bool {
     if cfg.dapnet_allowed_rics.is_empty() {
         return true;
@@ -272,6 +327,8 @@ fn dapnet_ric_allowed(cfg: &CfgSnomNotify, recipient: &str) -> bool {
         .unwrap_or(false)
 }
 
+// Was: Führt den Arbeitsschritt `dapnet_recipient_ric` für dapnet recipient ric aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn dapnet_recipient_ric(recipient: &str) -> Option<u32> {
     let trimmed = recipient.trim();
     let rest = trimmed.strip_prefix("RIC ")?;
@@ -279,6 +336,8 @@ fn dapnet_recipient_ric(recipient: &str) -> Option<u32> {
     parse_ric_route_key(token).ok()
 }
 
+// Was: Führt den Arbeitsschritt `prefixed_title` für prefixed title aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn prefixed_title(prefix: &str, title: &str) -> String {
     let prefix = prefix.trim();
     if prefix.is_empty() {
@@ -288,6 +347,8 @@ fn prefixed_title(prefix: &str, title: &str) -> String {
     }
 }
 
+// Was: Führt den Arbeitsschritt `format_message_line` für format Nachricht line aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn format_message_line(label: &str, text: &str, max_chars: usize) -> String {
     let trimmed = text.trim();
     if trimmed.is_empty() {
@@ -297,6 +358,8 @@ fn format_message_line(label: &str, text: &str, max_chars: usize) -> String {
     }
 }
 
+// Was: Führt den Arbeitsschritt `split_for_snom` für split for snom aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn split_for_snom(text: &str, max_chars: usize) -> Vec<String> {
     let mut lines: Vec<String> = text
         .lines()
@@ -310,6 +373,8 @@ fn split_for_snom(text: &str, max_chars: usize) -> Vec<String> {
     lines
 }
 
+// Was: Diese Funktion sendet notification.
+// Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
 fn send_notification(cfg: &CfgSnomNotify, title: &str, lines: &[String]) -> Result<(), String> {
     if cfg.endpoints.is_empty() {
         return Err("enabled but no endpoints configured".to_string());
@@ -340,6 +405,8 @@ fn send_notification(cfg: &CfgSnomNotify, title: &str, lines: &[String]) -> Resu
     )
     .map_err(|e| format!("AMI login failed: {}", e))?;
 
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for endpoint in &cfg.endpoints {
         let endpoint = endpoint.trim();
         if endpoint.is_empty() {
@@ -364,11 +431,17 @@ fn send_notification(cfg: &CfgSnomNotify, title: &str, lines: &[String]) -> Resu
     Ok(())
 }
 
+// Was: Diese Funktion verbindet ami.
+// Warum: Der Verbindungsaufbau wird dadurch zentral überwacht und kann sauber fehlschlagen.
 fn connect_ami(host: &str, port: u16, timeout: Duration) -> Result<TcpStream, String> {
     let addr = format!("{host}:{port}");
     let mut last_err = None;
     let addrs = addr.to_socket_addrs().map_err(|e| format!("AMI resolve {} failed: {}", addr, e))?;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for socket in addrs {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match TcpStream::connect_timeout(&socket, timeout) {
             Ok(stream) => {
                 let mut stream = stream;
@@ -389,8 +462,12 @@ fn connect_ami(host: &str, port: u16, timeout: Duration) -> Result<TcpStream, St
     ))
 }
 
+// Was: Führt den Arbeitsschritt `ami_action` für ami action aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn ami_action(stream: &mut TcpStream, fields: &[(&str, String)]) -> Result<String, String> {
     let mut request = String::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (name, value) in fields {
         request.push_str(name);
         request.push_str(": ");
@@ -410,9 +487,13 @@ fn ami_action(stream: &mut TcpStream, fields: &[(&str, String)]) -> Result<Strin
     }
 }
 
+// Was: Diese Funktion liest ami block.
+// Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
 fn read_ami_block(stream: &mut TcpStream) -> Result<String, String> {
     let mut buf = Vec::new();
     let mut tmp = [0u8; 512];
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
     loop {
         let n = stream.read(&mut tmp).map_err(|e| format!("read failed: {}", e))?;
         if n == 0 {
@@ -429,15 +510,21 @@ fn read_ami_block(stream: &mut TcpStream) -> Result<String, String> {
     Ok(String::from_utf8_lossy(&buf).to_string())
 }
 
+// Was: Führt den Arbeitsschritt `next_action_id` für next action Kennung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn next_action_id(kind: &str) -> String {
     let id = ACTION_ID.fetch_add(1, Ordering::Relaxed);
     format!("flowstation-snom-{kind}-{id}")
 }
 
+// Was: Führt den Arbeitsschritt `sanitize_ami_value` für sanitize ami value aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn sanitize_ami_value(value: &str) -> String {
     value.replace(['\r', '\n'], " ")
 }
 
+// Was: Führt den Arbeitsschritt `sanitize_response` für sanitize response aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn sanitize_response(response: &str) -> String {
     response
         .lines()
@@ -446,6 +533,8 @@ fn sanitize_response(response: &str) -> String {
         .join("; ")
 }
 
+// Was: Führt den Arbeitsschritt `snom_ip_phone_text_xml` für snom IP-Daten phone text xml aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn snom_ip_phone_text_xml(title: &str, lines: &[String]) -> String {
     let text = lines.iter().map(|l| xml_escape(l)).collect::<Vec<_>>().join("<br/>");
     format!(
@@ -455,6 +544,8 @@ fn snom_ip_phone_text_xml(title: &str, lines: &[String]) -> String {
     )
 }
 
+// Was: Führt den Arbeitsschritt `xml_escape` für xml escape aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn xml_escape(text: &str) -> String {
     text.replace('&', "&amp;")
         .replace('<', "&lt;")
@@ -463,11 +554,17 @@ fn xml_escape(text: &str) -> String {
         .replace('\'', "&apos;")
 }
 
+// Was: Führt den Arbeitsschritt `html_to_text` für html to text aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn html_to_text(html: &str) -> String {
     let mut out = String::new();
     let mut in_tag = false;
     let mut tag = String::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for ch in html.chars() {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match ch {
             '<' => {
                 in_tag = true;
@@ -493,6 +590,8 @@ fn html_to_text(html: &str) -> String {
     decode_basic_html_entities(&out)
 }
 
+// Was: Diese Funktion dekodiert basic html entities.
+// Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
 fn decode_basic_html_entities(text: &str) -> String {
     text.replace("&lt;", "<")
         .replace("&gt;", ">")
@@ -501,7 +600,11 @@ fn decode_basic_html_entities(text: &str) -> String {
         .replace("&apos;", "'")
 }
 
+// Was: Führt den Arbeitsschritt `truncate_chars` für truncate chars aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn truncate_chars(s: &str, max: usize) -> String {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match s.char_indices().nth(max) {
         Some((idx, _)) => format!("{}...", &s[..idx]),
         None => s.to_string(),
@@ -509,10 +612,14 @@ fn truncate_chars(s: &str, max: usize) -> String {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
     #[test]
+    // Was: Führt den Arbeitsschritt `snom_xml_escapes_dynamic_text_and_uses_br` für snom xml escapes dynamic text and uses und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn snom_xml_escapes_dynamic_text_and_uses_br() {
         let xml = snom_ip_phone_text_xml("Flow <SDS>", &["From: 1".to_string(), "Text: a & b".to_string()]);
         assert!(xml.contains("<SnomIPPhoneText"));
@@ -522,6 +629,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `html_to_text_strips_telegram_markup` für html to text strips telegram markup aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn html_to_text_strips_telegram_markup() {
         let text = html_to_text("X <b>DAPNET</b>\nCall: <code>DJ2TH</code>&amp;test");
         assert!(text.contains("DAPNET"));
@@ -530,11 +639,15 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `ami_value_is_single_line` für ami value is single line aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn ami_value_is_single_line() {
         assert_eq!(sanitize_ami_value("a\r\nb"), "a  b");
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `dapnet_ric_filter_extracts_decimal_ric` für dapnet ric filter extracts decimal ric aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn dapnet_ric_filter_extracts_decimal_ric() {
         assert_eq!(dapnet_recipient_ric("RIC 0632585 / func 3"), Some(632585));
         assert_eq!(dapnet_recipient_ric("DJ2TH"), None);

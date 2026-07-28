@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 
 use tetra_core::{BitBuffer, pdu_parse_error::PduParseErr};
@@ -7,6 +10,8 @@ use crate::mm::enums::energy_saving_mode::EnergySavingMode;
 /// 16.10.10 Energy saving information
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für energy saving information in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct EnergySavingInformation {
     // 3
     pub energy_saving_mode: EnergySavingMode,
@@ -16,7 +21,11 @@ pub struct EnergySavingInformation {
     pub multiframe_number: Option<u8>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `EnergySavingInformation`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl EnergySavingInformation {
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buffer: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let val = buffer.read_field(3, "energy_saving_mode")? as u8;
         let energy_saving_mode = EnergySavingMode::try_from(val as u64).unwrap(); // Never fails
@@ -41,6 +50,8 @@ impl EnergySavingInformation {
         Ok(s)
     }
 
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buf: &mut BitBuffer) -> Result<(), PduParseErr> {
         buf.write_bits(self.energy_saving_mode as u64, 3);
 
@@ -80,7 +91,11 @@ impl EnergySavingInformation {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for EnergySavingInformation`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for EnergySavingInformation {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,

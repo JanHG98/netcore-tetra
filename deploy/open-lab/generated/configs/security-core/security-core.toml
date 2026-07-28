@@ -1,57 +1,146 @@
+# NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Sicherheitsrichtlinien und Authentifizierungsabläufe.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+# Was: Öffnet den Konfigurationsabschnitt `server`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [server]
+# Was: Setzt die Einstellung `bind` für server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 bind = "0.0.0.0:8180"
+# Was: Setzt die Einstellung `history_limit` für server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 history_limit = 5000
 
+# Was: Öffnet den Konfigurationsabschnitt `node_gateway`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [node_gateway]
+# Was: Setzt die Einstellung `url` für Netzknoten Gateway.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 url = "ws://10.0.20.10:8080/ws/backend"
+# Was: Setzt die Einstellung `reconnect_secs` für Netzknoten Gateway.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 reconnect_secs = 5
+# Was: Setzt die Einstellung `observe_nodes` für Netzknoten Gateway.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 observe_nodes = true
 
+# Was: Öffnet den Konfigurationsabschnitt `storage`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [storage]
+# Was: Setzt die Einstellung `database_path` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 database_path = "/var/lib/netcore-security-core/state.json"
+# Was: Setzt die Einstellung `backup_path` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 backup_path = "/var/lib/netcore-security-core/state.json.bak"
+# Was: Setzt die Einstellung `lab_seed_path` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 lab_seed_path = "/var/lib/netcore-security-core/lab-auth.seed"
 
+# Was: Öffnet den Konfigurationsabschnitt `policy`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [policy]
 # shadow: policy decisions and edge actions are visible but not authoritative.
 # authoritative: the Security Core may issue challenge/install/revoke/disable actions.
+# Was: Setzt die Einstellung `operating_mode` für policy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 operating_mode = "shadow"
+# Was: Setzt die Einstellung `default_security_class` für policy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 default_security_class = 1
+# Was: Setzt die Einstellung `minimum_security_class` für policy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 minimum_security_class = 1
+# Was: Setzt die Einstellung `authentication_required` für policy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 authentication_required = true
+# Was: Setzt die Einstellung `allow_class1_fallback` für policy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 allow_class1_fallback = true
+# Was: Setzt die Einstellung `reject_unknown_subscribers` für policy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 reject_unknown_subscribers = false
+# Was: Setzt die Einstellung `disable_after_failures` für policy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 disable_after_failures = false
 
+# Was: Öffnet den Konfigurationsabschnitt `authentication`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [authentication]
 # Integration-test provider only. The following KMF package replaces this with
 # real TETRA authentication/key-provider hooks.
+# Was: Setzt die Einstellung `provider` für authentication.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 provider = "lab_hmac_sha256"
+# Was: Setzt die Einstellung `challenge_bytes` für authentication.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 challenge_bytes = 16
+# Was: Setzt die Einstellung `response_bytes` für authentication.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 response_bytes = 16
+# Was: Setzt die Einstellung `challenge_ttl_secs` für authentication.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 challenge_ttl_secs = 30
+# Was: Setzt die Einstellung `max_attempts` für authentication.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_attempts = 3
+# Was: Setzt die Einstellung `lockout_secs` für authentication.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 lockout_secs = 300
+# Was: Setzt die Einstellung `issue_dck_on_success` für authentication.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 issue_dck_on_success = true
 
+# Was: Öffnet den Konfigurationsabschnitt `dck`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [dck]
+# Was: Setzt die Einstellung `key_bytes` für dck.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 key_bytes = 16
+# Was: Setzt die Einstellung `ttl_secs` für dck.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 ttl_secs = 3600
+# Was: Setzt die Einstellung `rotate_before_secs` für dck.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 rotate_before_secs = 300
+# Was: Setzt die Einstellung `max_active_per_subscriber` für dck.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_active_per_subscriber = 2
 
+# Was: Öffnet den Konfigurationsabschnitt `security`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [security]
 # OPEN LAB: management API/WebUI intentionally have no users, tokens or TLS.
+# Was: Setzt die Einstellung `mode` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 mode = "open_lab"
+# Was: Setzt die Einstellung `allow_remote_management` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 allow_remote_management = true
 # This endpoint is only for the TBS edge adapter. It is deliberately separate
 # from normal management views and must stay inside the isolated lab network.
+# Was: Setzt die Einstellung `expose_ephemeral_edge_material` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 expose_ephemeral_edge_material = true
 
+# Was: Öffnet den Konfigurationsabschnitt `limits`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [limits]
+# Was: Setzt die Einstellung `max_body_bytes` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_body_bytes = 1048576
+# Was: Setzt die Einstellung `max_profiles` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_profiles = 100000
+# Was: Setzt die Einstellung `max_contexts` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_contexts = 20000
+# Was: Setzt die Einstellung `max_actions` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_actions = 20000
+# Was: Setzt die Einstellung `max_alarms` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_alarms = 20000
+# Was: Setzt die Einstellung `max_audit` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_audit = 100000

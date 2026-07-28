@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Gruppen, Mitgliedschaften und Gruppenrichtlinien.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 set -euo pipefail
 sudo systemctl disable --now netcore-group-core.service 2>/dev/null || true
 sudo rm -f /etc/systemd/system/netcore-group-core.service /usr/local/bin/netcore-group-core

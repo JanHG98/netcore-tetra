@@ -1,23 +1,64 @@
+# NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Metriken, Protokolle und Betriebsüberwachung.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+# Was: Legt den YAML-Bereich oder Wert `global` fest.
+# Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
 global:
+  # Was: Legt den YAML-Bereich oder Wert `scrape_interval` fest.
+  # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
   scrape_interval: 15s
+  # Was: Legt den YAML-Bereich oder Wert `evaluation_interval` fest.
+  # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
   evaluation_interval: 15s
+  # Was: Legt den YAML-Bereich oder Wert `external_labels` fest.
+  # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
   external_labels:
+    # Was: Legt den YAML-Bereich oder Wert `system` fest.
+    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
     system: netcore-tetra
+    # Was: Legt den YAML-Bereich oder Wert `environment` fest.
+    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
     environment: open-lab
+# Was: Legt den YAML-Bereich oder Wert `rule_files` fest.
+# Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
 rule_files:
   - /etc/prometheus/rules/*.yml
+# Was: Legt den YAML-Bereich oder Wert `alerting` fest.
+# Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
 alerting:
+  # Was: Legt den YAML-Bereich oder Wert `alertmanagers` fest.
+  # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
   alertmanagers:
+    # Was: Legt den YAML-Bereich oder Wert `static_configs` fest.
+    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
     - static_configs:
+        # Was: Legt den YAML-Bereich oder Wert `targets` fest.
+        # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
         - targets: ["127.0.0.1:9093"]
+# Was: Legt den YAML-Bereich oder Wert `scrape_configs` fest.
+# Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
 scrape_configs:
+  # Was: Legt den YAML-Bereich oder Wert `job_name` fest.
+  # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
   - job_name: netcore-observability
+    # Was: Legt den YAML-Bereich oder Wert `static_configs` fest.
+    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
     static_configs:
+      # Was: Legt den YAML-Bereich oder Wert `targets` fest.
+      # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
       - targets: ["127.0.0.1:8210"]
   # Replace localhost addresses with the management IPs/DNS names of the LXC services.
+  # Was: Legt den YAML-Bereich oder Wert `job_name` fest.
+  # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
   - job_name: netcore-services
+    # Was: Legt den YAML-Bereich oder Wert `metrics_path` fest.
+    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
     metrics_path: /metrics
+    # Was: Legt den YAML-Bereich oder Wert `static_configs` fest.
+    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
     static_configs:
+      # Was: Legt den YAML-Bereich oder Wert `targets` fest.
+      # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
       - targets:
           - "127.0.0.1:8080"
           - "127.0.0.1:8090"

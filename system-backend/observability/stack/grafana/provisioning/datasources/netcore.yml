@@ -1,15 +1,48 @@
+# NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Metriken, Protokolle und Betriebsüberwachung.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+# Was: Legt den YAML-Bereich oder Wert `apiVersion` fest.
+# Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
 apiVersion: 1
+# Was: Legt den YAML-Bereich oder Wert `datasources` fest.
+# Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
 datasources:
+  # Was: Vergibt einen verständlichen Namen für diesen Workflow oder Arbeitsschritt.
+  # Warum: Der Ablauf ist dadurch in GitHub und in Protokollen schnell wiederzuerkennen.
   - name: NetCore Prometheus
+    # Was: Legt den YAML-Bereich oder Wert `uid` fest.
+    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
     uid: netcore-prometheus
+    # Was: Legt den YAML-Bereich oder Wert `type` fest.
+    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
     type: prometheus
+    # Was: Legt den YAML-Bereich oder Wert `access` fest.
+    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
     access: proxy
+    # Was: Legt den YAML-Bereich oder Wert `url` fest.
+    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
     url: http://127.0.0.1:9090
+    # Was: Legt den YAML-Bereich oder Wert `isDefault` fest.
+    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
     isDefault: true
+    # Was: Legt den YAML-Bereich oder Wert `editable` fest.
+    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
     editable: true
+  # Was: Vergibt einen verständlichen Namen für diesen Workflow oder Arbeitsschritt.
+  # Warum: Der Ablauf ist dadurch in GitHub und in Protokollen schnell wiederzuerkennen.
   - name: NetCore Loki
+    # Was: Legt den YAML-Bereich oder Wert `uid` fest.
+    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
     uid: netcore-loki
+    # Was: Legt den YAML-Bereich oder Wert `type` fest.
+    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
     type: loki
+    # Was: Legt den YAML-Bereich oder Wert `access` fest.
+    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
     access: proxy
+    # Was: Legt den YAML-Bereich oder Wert `url` fest.
+    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
     url: http://127.0.0.1:3100
+    # Was: Legt den YAML-Bereich oder Wert `editable` fest.
+    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
     editable: true

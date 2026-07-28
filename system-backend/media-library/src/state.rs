@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für gespeicherte Aufzeichnungen, TTS- und Mediendateien.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fs;
 use std::net::IpAddr;
@@ -19,6 +22,8 @@ use crate::model::{
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für persistent Zustand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct PersistentState {
     assets: BTreeMap<String, AssetRecord>,
     jobs: Vec<DispatchJob>,
@@ -33,6 +38,8 @@ struct PersistentState {
     dispatch_frames_sent: u64,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für library inner in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct LibraryInner {
     config: MediaLibraryConfig,
     state: PersistentState,
@@ -48,12 +55,20 @@ struct LibraryInner {
 }
 
 #[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für shared library in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SharedLibrary {
     inner: Arc<Mutex<LibraryInner>>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SharedLibrary`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SharedLibrary {
+    // Was: Diese Funktion lädt den vorgesehenen Arbeitsschritt.
+    // Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
     pub fn load(config: MediaLibraryConfig) -> Result<Self, Box<dyn std::error::Error>> {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for directory in [
             &config.storage.root,
             &config.storage.temp_root,
@@ -70,6 +85,8 @@ impl SharedLibrary {
             PersistentState::default()
         };
         let now = Utc::now();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for asset in state.assets.values_mut() {
             if matches!(asset.state.as_str(), "importing_active" | "processing_active") {
                 asset.state = if asset.original_path.is_some() {
@@ -81,6 +98,8 @@ impl SharedLibrary {
                 asset.last_error = Some("recovered after service restart".to_string());
             }
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for job in &mut state.jobs {
             if job.state == "playing" {
                 job.state = "failed".to_string();
@@ -119,6 +138,8 @@ impl SharedLibrary {
         Ok(library)
     }
 
+    // Was: Führt den Arbeitsschritt `status` für Status aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn status(&self) -> StatusView {
         let inner = lock(&self.inner);
         let assets = inner.state.assets.values().collect::<Vec<_>>();
@@ -161,6 +182,8 @@ impl SharedLibrary {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `config_view` für Konfiguration view aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn config_view(&self) -> ConfigView {
         let inner = lock(&self.inner);
         ConfigView {
@@ -200,6 +223,8 @@ impl SharedLibrary {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `assets` für assets aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn assets(
         &self,
         query: Option<&str>,
@@ -236,10 +261,14 @@ impl SharedLibrary {
         assets
     }
 
+    // Was: Führt den Arbeitsschritt `asset` für asset aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn asset(&self, asset_id: &str) -> Option<AssetRecord> {
         lock(&self.inner).state.assets.get(asset_id).cloned()
     }
 
+    // Was: Diese Funktion erstellt upload.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     pub fn create_upload(&self, input: UploadInput) -> Result<AssetRecord, String> {
         let bytes = media::decode_base64(&input.data_base64)?;
         let mut inner = lock(&self.inner);
@@ -317,6 +346,8 @@ impl SharedLibrary {
         Ok(asset)
     }
 
+    // Was: Diese Funktion erstellt import url.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     pub fn create_import_url(&self, input: ImportUrlInput) -> Result<AssetRecord, String> {
         let mut inner = lock(&self.inner);
         require_management(&inner)?;
@@ -396,6 +427,8 @@ impl SharedLibrary {
         Ok(asset)
     }
 
+    // Was: Diese Funktion erstellt Aufzeichnung import.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     pub fn create_recorder_import(&self, input: RecorderImportInput) -> Result<AssetRecord, String> {
         let recording_id = input.recording_id.trim();
         if recording_id.is_empty() || !recording_id.chars().all(|character| character.is_ascii_alphanumeric() || character == '-') {
@@ -431,6 +464,8 @@ impl SharedLibrary {
         Ok(asset)
     }
 
+    // Was: Diese Funktion aktualisiert asset.
+    // Warum: Bestehender Zustand wird dadurch kontrolliert und nach einheitlichen Regeln geändert.
     pub fn update_asset(&self, asset_id: &str, input: AssetUpdateInput) -> Result<AssetRecord, String> {
         let mut inner = lock(&self.inner);
         require_management(&inner)?;
@@ -461,14 +496,20 @@ impl SharedLibrary {
         Ok(result)
     }
 
+    // Was: Führt den Arbeitsschritt `approve_asset` für approve asset aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn approve_asset(&self, asset_id: &str, input: ApprovalInput) -> Result<AssetRecord, String> {
         self.set_approval(asset_id, "approved", input)
     }
 
+    // Was: Führt den Arbeitsschritt `reject_asset` für reject asset aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn reject_asset(&self, asset_id: &str, input: ApprovalInput) -> Result<AssetRecord, String> {
         self.set_approval(asset_id, "rejected", input)
     }
 
+    // Was: Diese Funktion setzt approval.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     fn set_approval(&self, asset_id: &str, approval: &str, input: ApprovalInput) -> Result<AssetRecord, String> {
         let mut inner = lock(&self.inner);
         require_management(&inner)?;
@@ -489,6 +530,8 @@ impl SharedLibrary {
         Ok(result)
     }
 
+    // Was: Führt den Arbeitsschritt `reprocess_asset` für reprocess asset aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn reprocess_asset(&self, asset_id: &str, input: ActionInput) -> Result<AssetRecord, String> {
         let mut inner = lock(&self.inner);
         require_management(&inner)?;
@@ -524,6 +567,8 @@ impl SharedLibrary {
         Ok(result)
     }
 
+    // Was: Diese Funktion löscht asset.
+    // Warum: Das Entfernen wird dadurch kontrolliert durchgeführt und hinterlässt keine verwaisten Verweise.
     pub fn delete_asset(&self, asset_id: &str, input: ActionInput) -> Result<(), String> {
         let mut inner = lock(&self.inner);
         require_management(&inner)?;
@@ -562,6 +607,8 @@ impl SharedLibrary {
         persist_locked(&mut inner)
     }
 
+    // Was: Diese Funktion archiviert asset.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn archive_asset(&self, asset_id: &str, input: ActionInput) -> Result<AssetRecord, String> {
         let mut inner = lock(&self.inner);
         require_management(&inner)?;
@@ -589,6 +636,8 @@ impl SharedLibrary {
         fs::create_dir_all(&destination)
             .map_err(|error| format!("cannot create archive directory: {error}"))?;
         let mut archived_files = Vec::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for source in [asset.original_path.as_ref(), asset.preview_path.as_ref(), asset.tetra_path.as_ref()]
             .into_iter()
             .flatten()
@@ -630,6 +679,8 @@ impl SharedLibrary {
         Ok(result)
     }
 
+    // Was: Diese Funktion erstellt dispatch.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     pub fn create_dispatch(&self, input: DispatchInput) -> Result<DispatchJob, String> {
         let mut inner = lock(&self.inner);
         require_management(&inner)?;
@@ -697,6 +748,8 @@ impl SharedLibrary {
         Ok(job)
     }
 
+    // Was: Führt den Arbeitsschritt `jobs` für jobs aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn jobs(&self, state: Option<&str>, limit: usize) -> Vec<DispatchJob> {
         let inner = lock(&self.inner);
         let mut jobs = inner
@@ -711,6 +764,8 @@ impl SharedLibrary {
         jobs
     }
 
+    // Was: Führt den Arbeitsschritt `job` für job aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn job(&self, job_id: &str) -> Option<DispatchJob> {
         lock(&self.inner)
             .state
@@ -720,6 +775,8 @@ impl SharedLibrary {
             .cloned()
     }
 
+    // Was: Diese Funktion bricht job.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn cancel_job(&self, job_id: &str, input: ActionInput) -> Result<DispatchJob, String> {
         let mut inner = lock(&self.inner);
         require_management(&inner)?;
@@ -744,6 +801,8 @@ impl SharedLibrary {
         Ok(result)
     }
 
+    // Was: Führt den Arbeitsschritt `retry_job` für retry job aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn retry_job(&self, job_id: &str, input: ActionInput) -> Result<DispatchJob, String> {
         let mut inner = lock(&self.inner);
         require_management(&inner)?;
@@ -773,6 +832,8 @@ impl SharedLibrary {
         Ok(result)
     }
 
+    // Was: Führt den Arbeitsschritt `events` für events aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn events(&self, limit: usize) -> Vec<EventRecord> {
         lock(&self.inner)
             .state
@@ -784,6 +845,8 @@ impl SharedLibrary {
             .collect()
     }
 
+    // Was: Führt den Arbeitsschritt `audit` für audit aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn audit(&self, limit: usize) -> Vec<AuditRecord> {
         lock(&self.inner)
             .state
@@ -795,10 +858,14 @@ impl SharedLibrary {
             .collect()
     }
 
+    // Was: Führt den Arbeitsschritt `backups` für backups aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn backups(&self) -> Vec<BackupRecord> {
         lock(&self.inner).state.backups.clone()
     }
 
+    // Was: Führt den Arbeitsschritt `backup` für backup aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn backup(&self, input: ActionInput) -> Result<BackupRecord, String> {
         let mut inner = lock(&self.inner);
         require_management(&inner)?;
@@ -819,6 +886,8 @@ impl SharedLibrary {
         Ok(record)
     }
 
+    // Was: Führt den Arbeitsschritt `export` für export aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn export(&self) -> Value {
         let inner = lock(&self.inner);
         json!({
@@ -833,6 +902,8 @@ impl SharedLibrary {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `status_locked` für Status locked aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn status_locked(&self, inner: &LibraryInner) -> Value {
         json!({
             "service":"media-library",
@@ -843,6 +914,8 @@ impl SharedLibrary {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `metrics` für Messwerte aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn metrics(&self) -> String {
         let inner = lock(&self.inner);
         let status = self.status_locked_view(&inner);
@@ -885,6 +958,8 @@ impl SharedLibrary {
         )
     }
 
+    // Was: Führt den Arbeitsschritt `status_locked_view` für Status locked view aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn status_locked_view(&self, inner: &LibraryInner) -> StatusView {
         let assets = inner.state.assets.values().collect::<Vec<_>>();
         StatusView {
@@ -916,9 +991,13 @@ impl SharedLibrary {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `file_for` für file for aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn file_for(&self, asset_id: &str, kind: &str) -> Result<(PathBuf, &'static str, String), String> {
         let inner = lock(&self.inner);
         let asset = inner.state.assets.get(asset_id).ok_or_else(|| "asset not found".to_string())?;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let (path, content_type, filename) = match kind {
             "original" => (
                 asset.original_path.clone(),
@@ -941,6 +1020,8 @@ impl SharedLibrary {
         if !media::file_is_within(&path, &inner.config.storage.root) {
             return Err("asset file escaped storage root or is unavailable".to_string());
         }
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let content_type = match content_type {
             "audio/wav" => "audio/wav",
             "audio/mpeg" => "audio/mpeg",
@@ -950,6 +1031,8 @@ impl SharedLibrary {
         Ok((path, content_type, filename))
     }
 
+    // Was: Führt den Arbeitsschritt `waveform` für waveform aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn waveform(&self, asset_id: &str, points: usize) -> Result<Vec<f32>, String> {
         let path = {
             let inner = lock(&self.inner);
@@ -963,6 +1046,8 @@ impl SharedLibrary {
         media::waveform(&path, points)
     }
 
+    // Was: Führt den Arbeitsschritt `claim_import` für claim import aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn claim_import(&self) -> Option<ImportClaim> {
         let mut inner = lock(&self.inner);
         let asset_id = inner
@@ -994,6 +1079,8 @@ impl SharedLibrary {
         Some(claim)
     }
 
+    // Was: Führt den Arbeitsschritt `complete_import` für complete import aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn complete_import(&self, claim: &ImportClaim, bytes: &[u8]) -> Result<AssetRecord, String> {
         let mut inner = lock(&self.inner);
         if !inner.state.assets.contains_key(&claim.asset_id) {
@@ -1043,6 +1130,8 @@ impl SharedLibrary {
         Ok(result)
     }
 
+    // Was: Führt den Arbeitsschritt `fail_import` für fail import aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn fail_import(&self, asset_id: &str, error: String) {
         let mut inner = lock(&self.inner);
         if let Some(asset) = inner.state.assets.get_mut(asset_id) {
@@ -1054,6 +1143,8 @@ impl SharedLibrary {
         let _ = persist_locked(&mut inner);
     }
 
+    // Was: Führt den Arbeitsschritt `claim_processing` für claim processing aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn claim_processing(&self) -> Option<ProcessingClaim> {
         let mut inner = lock(&self.inner);
         let asset = inner
@@ -1069,6 +1160,8 @@ impl SharedLibrary {
         Some(claim)
     }
 
+    // Was: Führt den Arbeitsschritt `complete_processing` für complete processing aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn complete_processing(&self, asset_id: &str, result: ProcessResult) -> Result<AssetRecord, String> {
         let mut inner = lock(&self.inner);
         let asset = inner
@@ -1099,6 +1192,8 @@ impl SharedLibrary {
         Ok(asset_result)
     }
 
+    // Was: Führt den Arbeitsschritt `fail_processing` für fail processing aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn fail_processing(&self, asset_id: &str, error: String) {
         let mut inner = lock(&self.inner);
         if let Some(asset) = inner.state.assets.get_mut(asset_id) {
@@ -1110,6 +1205,8 @@ impl SharedLibrary {
         let _ = persist_locked(&mut inner);
     }
 
+    // Was: Führt den Arbeitsschritt `claim_dispatch` für claim dispatch aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn claim_dispatch(&self) -> Option<DispatchClaim> {
         let mut inner = lock(&self.inner);
         let index = inner.state.jobs.iter().position(|job| job.state == "queued")?;
@@ -1163,6 +1260,8 @@ impl SharedLibrary {
         Some(claim)
     }
 
+    // Was: Diese Funktion verteilt cancel requested.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn dispatch_cancel_requested(&self, job_id: &str) -> bool {
         lock(&self.inner)
             .state
@@ -1172,6 +1271,8 @@ impl SharedLibrary {
             .is_none_or(|job| job.cancel_requested)
     }
 
+    // Was: Diese Funktion verteilt progress.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn dispatch_progress(&self, job_id: &str, frame_index: u64, queued_targets: u64) {
         let mut inner = lock(&self.inner);
         let updated = if let Some(job) = inner.state.jobs.iter_mut().find(|job| job.job_id == job_id) {
@@ -1188,6 +1289,8 @@ impl SharedLibrary {
         let _ = persist_locked(&mut inner);
     }
 
+    // Was: Führt den Arbeitsschritt `complete_dispatch` für complete dispatch aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn complete_dispatch(&self, job_id: &str) {
         let mut inner = lock(&self.inner);
         let mut identifiers = None;
@@ -1208,6 +1311,8 @@ impl SharedLibrary {
         let _ = persist_locked(&mut inner);
     }
 
+    // Was: Führt den Arbeitsschritt `fail_dispatch` für fail dispatch aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn fail_dispatch(&self, job_id: &str, error: String) {
         let mut inner = lock(&self.inner);
         let mut identifiers = None;
@@ -1224,8 +1329,12 @@ impl SharedLibrary {
         let _ = persist_locked(&mut inner);
     }
 
+    // Was: Diese Funktion aktualisiert dependency probe.
+    // Warum: Bestehender Zustand wird dadurch kontrolliert und nach einheitlichen Regeln geändert.
     pub fn update_dependency_probe(&self, service: &str, connected: bool, error: Option<String>) {
         let mut inner = lock(&self.inner);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match service {
             "media-switch" => inner.media_switch_connected = connected,
             "recorder" => inner.recorder_connected = connected,
@@ -1240,6 +1349,8 @@ impl SharedLibrary {
         inner.last_dependency_probe_at = Some(Utc::now());
     }
 
+    // Was: Führt den Arbeitsschritt `maintenance` für maintenance aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn maintenance(&self, actor_name: Option<String>) -> Result<Value, String> {
         let mut inner = lock(&self.inner);
         require_management(&inner)?;
@@ -1265,6 +1376,8 @@ impl SharedLibrary {
     }
 }
 
+// Was: Diese Funktion prüft new asset locked.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_new_asset_locked(inner: &LibraryInner, incoming_bytes: u64) -> Result<(), String> {
     if inner.state.assets.len() >= inner.config.runtime.max_assets {
         return Err("asset inventory limit reached".to_string());
@@ -1272,6 +1385,8 @@ fn validate_new_asset_locked(inner: &LibraryInner, incoming_bytes: u64) -> Resul
     validate_incoming_bytes_locked(inner, incoming_bytes)
 }
 
+// Was: Diese Funktion prüft incoming bytes locked.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_incoming_bytes_locked(inner: &LibraryInner, incoming_bytes: u64) -> Result<(), String> {
     if incoming_bytes > inner.config.storage.max_asset_bytes {
         return Err(format!(
@@ -1286,6 +1401,8 @@ fn validate_incoming_bytes_locked(inner: &LibraryInner, incoming_bytes: u64) -> 
     Ok(())
 }
 
+// Was: Diese Funktion prüft import url.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_import_url(config: &MediaLibraryConfig, value: &str) -> Result<(), String> {
     let url = reqwest::Url::parse(value).map_err(|error| format!("invalid source_url: {error}"))?;
     if !matches!(url.scheme(), "http" | "https") {
@@ -1302,11 +1419,15 @@ fn validate_import_url(config: &MediaLibraryConfig, value: &str) -> Result<(), S
 }
 
 
+// Was: Führt den Arbeitsschritt `import_host_is_private` für import host is private aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn import_host_is_private(host: &str) -> bool {
     let host = host.trim_matches(['[', ']']).to_ascii_lowercase();
     if host == "localhost" || host.ends_with(".localhost") || host.ends_with(".local") {
         return true;
     }
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match host.parse::<IpAddr>() {
         Ok(IpAddr::V4(address)) => {
             address.is_private()
@@ -1326,14 +1447,20 @@ fn import_host_is_private(host: &str) -> bool {
     }
 }
 
+// Was: Führt den Arbeitsschritt `normalize_kind` für normalize kind aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn normalize_kind(value: &str) -> String {
     let value = value.trim().to_ascii_lowercase().replace([' ', '_'], "-");
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match value.as_str() {
         "tts" | "recording" | "announcement" | "alarm" | "music" | "prompt" | "other" => value,
         _ => "other".to_string(),
     }
 }
 
+// Was: Führt den Arbeitsschritt `normalize_tags` für normalize tags aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn normalize_tags(values: Vec<String>) -> BTreeSet<String> {
     values
         .into_iter()
@@ -1343,6 +1470,8 @@ fn normalize_tags(values: Vec<String>) -> BTreeSet<String> {
         .collect()
 }
 
+// Was: Führt den Arbeitsschritt `nonempty` für nonempty aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn nonempty(value: &str, label: &str) -> Result<String, String> {
     let value = value.trim();
     if value.is_empty() {
@@ -1352,12 +1481,16 @@ fn nonempty(value: &str, label: &str) -> Result<String, String> {
     }
 }
 
+// Was: Führt den Arbeitsschritt `clean_optional` für clean optional aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn clean_optional(value: Option<String>) -> Option<String> {
     value
         .map(|value| value.trim().chars().take(10_000).collect::<String>())
         .filter(|value| !value.is_empty())
 }
 
+// Was: Führt den Arbeitsschritt `media_type_from_filename` für Audio- und Mediendaten type from filename aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn media_type_from_filename(filename: &str) -> String {
     let lower = filename.to_ascii_lowercase();
     if lower.ends_with(".wav") {
@@ -1371,6 +1504,8 @@ fn media_type_from_filename(filename: &str) -> String {
     }
 }
 
+// Was: Führt den Arbeitsschritt `actor` für actor aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn actor(value: Option<&str>) -> String {
     value
         .map(str::trim)
@@ -1381,12 +1516,16 @@ fn actor(value: Option<&str>) -> String {
         .collect()
 }
 
+// Was: Führt den Arbeitsschritt `require_management` für require management aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn require_management(_inner: &LibraryInner) -> Result<(), String> {
     // Remote reachability is enforced by server.bind. A loopback-only bind must
     // still permit local management requests.
     Ok(())
 }
 
+// Was: Diese Funktion legt Ereignis locked.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn push_event_locked(
     inner: &mut LibraryInner,
     kind: &str,
@@ -1403,11 +1542,15 @@ fn push_event_locked(
         job_id: job_id.map(str::to_string),
         detail,
     });
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while inner.state.events.len() > inner.config.runtime.max_events {
         inner.state.events.pop_front();
     }
 }
 
+// Was: Führt den Arbeitsschritt `audit_locked` für audit locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn audit_locked(
     inner: &mut LibraryInner,
     actor: String,
@@ -1428,15 +1571,23 @@ fn audit_locked(
         result: result.to_string(),
         detail,
     });
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while inner.state.audit.len() > inner.config.runtime.max_audit_records {
         inner.state.audit.pop_front();
     }
 }
 
+// Was: Führt den Arbeitsschritt `trim_locked` für trim locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn trim_locked(inner: &mut LibraryInner) {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while inner.state.events.len() > inner.config.runtime.max_events {
         inner.state.events.pop_front();
     }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while inner.state.audit.len() > inner.config.runtime.max_audit_records {
         inner.state.audit.pop_front();
     }
@@ -1446,13 +1597,19 @@ fn trim_locked(inner: &mut LibraryInner) {
     }
 }
 
+// Was: Diese Funktion speichert locked.
+// Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
 fn persist_locked(inner: &mut LibraryInner) -> Result<(), String> {
     trim_locked(inner);
     let bytes = serde_json::to_vec_pretty(&inner.state).map_err(|error| error.to_string())?;
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match media::write_atomic(&inner.config.storage.state_file, &bytes, true) {
         Ok(()) => {
             inner.storage_available = true;
             inner.storage_last_error = None;
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for asset in inner.state.assets.values() {
                 if let Some(directory) = asset
                     .original_path
@@ -1477,10 +1634,14 @@ fn persist_locked(inner: &mut LibraryInner) -> Result<(), String> {
     }
 }
 
+// Was: Führt den Arbeitsschritt `bool_metric` für bool metric aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn bool_metric(value: bool) -> u8 {
     if value { 1 } else { 0 }
 }
 
+// Was: Führt den Arbeitsschritt `lock` für lock aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn lock(inner: &Arc<Mutex<LibraryInner>>) -> MutexGuard<'_, LibraryInner> {
     inner.lock().expect("media library state poisoned")
 }

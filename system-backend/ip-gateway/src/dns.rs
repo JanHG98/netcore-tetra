@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für die Kopplung von TETRA-Paketdaten an IP-Netze.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::net::{SocketAddr, UdpSocket};
 use std::thread;
 use std::time::Duration;
@@ -5,6 +8,8 @@ use std::time::Duration;
 use crate::config::{IpGatewayConfig, MODE_AUTHORITATIVE};
 use crate::state::SharedGateway;
 
+// Was: Diese Funktion startet dns.
+// Warum: Länger laufende Arbeit blockiert dadurch nicht den aufrufenden Ablauf.
 pub fn spawn_dns(config: IpGatewayConfig, gateway: SharedGateway) -> Option<thread::JoinHandle<()>> {
     if !config.dns.enabled {
         return None;
@@ -18,10 +23,14 @@ pub fn spawn_dns(config: IpGatewayConfig, gateway: SharedGateway) -> Option<thre
     Some(thread::spawn(move || run(config, gateway)))
 }
 
+// Was: Diese Funktion führt den vorgesehenen Arbeitsschritt.
+// Warum: Der Lebenszyklus des Dienstes bleibt so an einer zentralen Stelle steuerbar.
 fn run(config: IpGatewayConfig, gateway: SharedGateway) {
     let bind = config.effective_dns_bind();
     let mut attempts = 0u64;
     let socket = loop {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match UdpSocket::bind(bind) {
             Ok(socket) => break socket,
             Err(error) => {
@@ -40,7 +49,11 @@ fn run(config: IpGatewayConfig, gateway: SharedGateway) {
     tracing::info!("IP Gateway DNS listening on udp://{bind}");
     let _ = socket.set_read_timeout(Some(Duration::from_secs(1)));
     let mut buffer = [0u8; 4096];
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
     loop {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let (size, peer) = match socket.recv_from(&mut buffer) {
             Ok(value) => value,
             Err(error) if matches!(error.kind(), std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut) => continue,
@@ -62,6 +75,8 @@ fn run(config: IpGatewayConfig, gateway: SharedGateway) {
                 continue;
             }
         }
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match forward_query(query, &config.dns.upstream, config.dns.query_timeout_ms) {
             Ok(response) => {
                 let _ = socket.send_to(&response, peer);
@@ -76,12 +91,16 @@ fn run(config: IpGatewayConfig, gateway: SharedGateway) {
     }
 }
 
+// Was: Diese Funktion liest und prüft question.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_question(packet: &[u8]) -> Option<(String, u16, usize)> {
     if packet.len() < 12 || u16::from_be_bytes([packet[4], packet[5]]) == 0 {
         return None;
     }
     let mut offset = 12;
     let mut labels = Vec::new();
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
     loop {
         let length = *packet.get(offset)? as usize;
         offset += 1;
@@ -105,6 +124,8 @@ fn parse_question(packet: &[u8]) -> Option<(String, u16, usize)> {
     Some((labels.join(".").to_ascii_lowercase(), qtype, offset + 4))
 }
 
+// Was: Diese Funktion erstellt a response.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
 fn build_a_response(query: &[u8], question_end: usize, address: [u8; 4], ttl: u32) -> Vec<u8> {
     let mut response = Vec::with_capacity(question_end + 16);
     response.extend_from_slice(&query[..2]);
@@ -123,6 +144,8 @@ fn build_a_response(query: &[u8], question_end: usize, address: [u8; 4], ttl: u3
     response
 }
 
+// Was: Diese Funktion erstellt servfail.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
 fn build_servfail(query: &[u8], question_end: usize) -> Vec<u8> {
     let mut response = Vec::with_capacity(question_end);
     response.extend_from_slice(&query[..2]);
@@ -135,6 +158,8 @@ fn build_servfail(query: &[u8], question_end: usize) -> Vec<u8> {
     response
 }
 
+// Was: Diese Funktion leitet query.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn forward_query(query: &[u8], upstream: &str, timeout_ms: u64) -> Result<Vec<u8>, String> {
     let upstream = upstream
         .parse::<SocketAddr>()

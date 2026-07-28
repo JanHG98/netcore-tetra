@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Aufzeichnung und Ereignisprotokollierung.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufWriter, Read, Write};
@@ -15,10 +18,16 @@ use uuid::Uuid;
 use crate::config::RecorderConfig;
 use crate::protocol::{MediaSwitchSession, RecorderTapBatch, RecorderTapRecord};
 
+// Was: Legt den festen Wert `RECORDING_SCHEMA_VERSION` für recording schema version fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const RECORDING_SCHEMA_VERSION: u8 = 1;
+// Was: Legt den festen Wert `EXPECTED_TETRA_FRAME_BYTES` für expected TETRA Funkrahmen bytes fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const EXPECTED_TETRA_FRAME_BYTES: usize = 35;
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Aufzeichnung Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct RecorderStatus {
     pub service: &'static str,
     pub started_at: String,
@@ -47,6 +56,8 @@ pub struct RecorderStatus {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für speaker segment in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SpeakerSegment {
     pub speaker_issi: Option<u32>,
     pub source_node_id: String,
@@ -59,6 +70,8 @@ pub struct SpeakerSegment {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für recording metadata in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct RecordingMetadata {
     pub schema_version: u8,
     pub id: String,
@@ -99,6 +112,8 @@ pub struct RecordingMetadata {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für active recording snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ActiveRecordingSnapshot {
     pub metadata: RecordingMetadata,
     pub seconds_since_last_frame: u64,
@@ -106,6 +121,8 @@ pub struct ActiveRecordingSnapshot {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Ereignis Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct EventRecord {
     pub seq: u64,
     pub timestamp: String,
@@ -116,16 +133,22 @@ pub struct EventRecord {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für retention input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct RetentionInput {
     pub days: u32,
 }
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für hold input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct HoldInput {
     pub legal_hold: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für integrity file in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct IntegrityFile {
     schema_version: u8,
     algorithm: String,
@@ -135,6 +158,8 @@ struct IntegrityFile {
 }
 
 #[derive(Debug, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Funkrahmen index Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct FrameIndexRecord<'a> {
     tap_seq: u64,
     timestamp: &'a str,
@@ -148,6 +173,8 @@ struct FrameIndexRecord<'a> {
     payload_bytes: usize,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für active recording in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct ActiveRecording {
     metadata: RecordingMetadata,
     directory: PathBuf,
@@ -163,6 +190,8 @@ struct ActiveRecording {
     missing_since: Option<Instant>,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für Aufzeichnung Zustand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct RecorderState {
     config: RecorderConfig,
     started_at: String,
@@ -188,9 +217,15 @@ struct RecorderState {
 }
 
 #[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für shared Aufzeichnung in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SharedRecorder(Arc<Mutex<RecorderState>>);
 
+// Was: Implementiert das zugehörige Verhalten für `SharedRecorder`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SharedRecorder {
+    // Was: Diese Funktion lädt den vorgesehenen Arbeitsschritt.
+    // Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
     pub fn load(config: RecorderConfig) -> Result<Self, Box<dyn std::error::Error>> {
         fs::create_dir_all(&config.storage.root)?;
         fs::create_dir_all(&config.storage.export_root)?;
@@ -239,11 +274,15 @@ impl SharedRecorder {
         Ok(recorder)
     }
 
+    // Was: Führt den Arbeitsschritt `status` für Status aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn status(&self) -> RecorderStatus {
         let state = self.0.lock().expect("recorder state poisoned");
         status_locked(&state)
     }
 
+    // Was: Führt den Arbeitsschritt `media_cursor` für Audio- und Mediendaten cursor aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn media_cursor(&self) -> u64 {
         self.0
             .lock()
@@ -251,6 +290,8 @@ impl SharedRecorder {
             .media_cursor
     }
 
+    // Was: Führt den Arbeitsschritt `media_switch_connected` für Audio- und Mediendaten switch connected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn media_switch_connected(&self) {
         let mut state = self.0.lock().expect("recorder state poisoned");
         let changed = !state.media_switch_connected;
@@ -267,6 +308,8 @@ impl SharedRecorder {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `media_switch_failed` für Audio- und Mediendaten switch failed aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn media_switch_failed(&self, error: String) {
         let mut state = self.0.lock().expect("recorder state poisoned");
         let changed = state.media_switch_connected
@@ -284,6 +327,8 @@ impl SharedRecorder {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `media_sequence_reset` für Audio- und Mediendaten sequence reset aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn media_sequence_reset(&self, newest: u64) {
         let mut state = self.0.lock().expect("recorder state poisoned");
         let previous = state.media_cursor;
@@ -297,6 +342,8 @@ impl SharedRecorder {
         );
     }
 
+    // Was: Führt den Arbeitsschritt `record_runtime_error` für Datensatz Laufzeit error aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn record_runtime_error(&self, error: String) {
         let mut state = self.0.lock().expect("recorder state poisoned");
         state.storage_available = false;
@@ -310,6 +357,8 @@ impl SharedRecorder {
         );
     }
 
+    // Was: Führt den Arbeitsschritt `ingest_batch` für ingest batch aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn ingest_batch(&self, batch: RecorderTapBatch) -> Result<(), String> {
         let mut state = self.0.lock().expect("recorder state poisoned");
         state.media_switch_connected = true;
@@ -349,6 +398,8 @@ impl SharedRecorder {
             );
         }
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for tap in batch.records {
             if tap.seq <= state.media_cursor {
                 state.frames_duplicate = state.frames_duplicate.saturating_add(1);
@@ -408,6 +459,8 @@ impl SharedRecorder {
         Ok(())
     }
 
+    // Was: Führt den Arbeitsschritt `reconcile_sessions` für reconcile sessions aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn reconcile_sessions(&self, sessions: Vec<MediaSwitchSession>) {
         let mut state = self.0.lock().expect("recorder state poisoned");
         state.media_switch_connected = true;
@@ -421,6 +474,8 @@ impl SharedRecorder {
             .map(|session| (session.logical_call_id.clone(), session))
             .collect::<HashMap<_, _>>();
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (session_id, active) in &mut state.active {
             if current.contains(session_id) {
                 active.missing_since = None;
@@ -433,6 +488,8 @@ impl SharedRecorder {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `active_recordings` für active recordings aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn active_recordings(&self) -> Vec<ActiveRecordingSnapshot> {
         let state = self.0.lock().expect("recorder state poisoned");
         let mut values = state
@@ -448,6 +505,8 @@ impl SharedRecorder {
         values
     }
 
+    // Was: Führt den Arbeitsschritt `recordings` für recordings aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn recordings(&self) -> Vec<RecordingMetadata> {
         let state = self.0.lock().expect("recorder state poisoned");
         let mut values = state.recordings.values().cloned().collect::<Vec<_>>();
@@ -455,6 +514,8 @@ impl SharedRecorder {
         values
     }
 
+    // Was: Führt den Arbeitsschritt `recording` für recording aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn recording(&self, id: &str) -> Option<RecordingMetadata> {
         let state = self.0.lock().expect("recorder state poisoned");
         state.recordings.get(id).cloned().or_else(|| {
@@ -466,6 +527,8 @@ impl SharedRecorder {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `events` für events aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn events(&self, limit: usize) -> Vec<EventRecord> {
         let state = self.0.lock().expect("recorder state poisoned");
         state
@@ -477,6 +540,8 @@ impl SharedRecorder {
             .collect()
     }
 
+    // Was: Führt den Arbeitsschritt `config_view` für Konfiguration view aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn config_view(&self) -> Value {
         let state = self.0.lock().expect("recorder state poisoned");
         json!({
@@ -494,6 +559,8 @@ impl SharedRecorder {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `metrics` für Messwerte aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn metrics(&self) -> String {
         let status = self.status();
         format!(
@@ -523,6 +590,8 @@ impl SharedRecorder {
         )
     }
 
+    // Was: Führt den Arbeitsschritt `verify_recording` für verify recording aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn verify_recording(&self, id: &str) -> Result<RecordingMetadata, String> {
         let (metadata, directory) = {
             let state = self.0.lock().expect("recorder state poisoned");
@@ -577,6 +646,8 @@ impl SharedRecorder {
         }
     }
 
+    // Was: Diese Funktion setzt retention.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_retention(
         &self,
         id: &str,
@@ -609,6 +680,8 @@ impl SharedRecorder {
         Ok(updated)
     }
 
+    // Was: Diese Funktion setzt hold.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_hold(&self, id: &str, input: HoldInput) -> Result<RecordingMetadata, String> {
         let mut state = self.0.lock().expect("recorder state poisoned");
         require_management(&state)?;
@@ -634,6 +707,8 @@ impl SharedRecorder {
         Ok(updated)
     }
 
+    // Was: Diese Funktion löscht recording.
+    // Warum: Das Entfernen wird dadurch kontrolliert durchgeführt und hinterlässt keine verwaisten Verweise.
     pub fn delete_recording(&self, id: &str) -> Result<(), String> {
         let mut state = self.0.lock().expect("recorder state poisoned");
         require_management(&state)?;
@@ -651,6 +726,8 @@ impl SharedRecorder {
         delete_recording_locked(&mut state, &metadata, "manual_delete")
     }
 
+    // Was: Führt den Arbeitsschritt `finalize_active` für finalize active aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn finalize_active(&self, id: &str) -> Result<RecordingMetadata, String> {
         let mut state = self.0.lock().expect("recorder state poisoned");
         require_management(&state)?;
@@ -663,6 +740,8 @@ impl SharedRecorder {
         finalize_recording_locked(&mut state, &session_id, "manual_finalize")
     }
 
+    // Was: Führt den Arbeitsschritt `recording_audio_path` für recording audio path aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn recording_audio_path(&self, id: &str) -> Result<PathBuf, String> {
         let state = self.0.lock().expect("recorder state poisoned");
         require_management(&state)?;
@@ -688,6 +767,8 @@ impl SharedRecorder {
         Ok(canonical)
     }
 
+    // Was: Führt den Arbeitsschritt `export_recording` für export recording aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn export_recording(&self, id: &str) -> Result<PathBuf, String> {
         let (metadata, directory, output) = {
             let state = self.0.lock().expect("recorder state poisoned");
@@ -719,6 +800,8 @@ impl SharedRecorder {
         Ok(output)
     }
 
+    // Was: Führt den Arbeitsschritt `maintenance` für maintenance aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn maintenance(&self) {
         let mut state = self.0.lock().expect("recorder state poisoned");
         let absent_grace = StdDuration::from_secs(state.config.storage.session_absent_grace_secs);
@@ -740,6 +823,8 @@ impl SharedRecorder {
                 reason.map(|reason| (session_id.clone(), reason))
             })
             .collect::<Vec<_>>();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (session_id, reason) in to_finalize {
             if let Err(error) = finalize_recording_locked(&mut state, &session_id, reason) {
                 state.storage_available = false;
@@ -763,6 +848,8 @@ impl SharedRecorder {
     }
 }
 
+// Was: Diese Funktion startet maintenance Hintergrundverarbeitung.
+// Warum: Länger laufende Arbeit blockiert dadurch nicht den aufrufenden Ablauf.
 pub fn spawn_maintenance_worker(
     _config: RecorderConfig,
     recorder: SharedRecorder,
@@ -773,6 +860,8 @@ pub fn spawn_maintenance_worker(
     })
 }
 
+// Was: Führt den Arbeitsschritt `status_locked` für Status locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn status_locked(state: &RecorderState) -> RecorderStatus {
     let active_bytes = state
         .active
@@ -814,6 +903,8 @@ fn status_locked(state: &RecorderState) -> RecorderStatus {
     }
 }
 
+// Was: Diese Funktion stellt storage space locked.
+// Warum: So wird die notwendige Voraussetzung hergestellt, bevor abhängiger Code weiterläuft.
 fn ensure_storage_space_locked(state: &mut RecorderState) -> Result<(), String> {
     let minimum = state
         .config
@@ -832,6 +923,8 @@ fn ensure_storage_space_locked(state: &mut RecorderState) -> Result<(), String> 
     Ok(())
 }
 
+// Was: Diese Funktion startet recording locked.
+// Warum: Der Dienst oder Teilprozess wird so in einer festen und überprüfbaren Reihenfolge gestartet.
 fn start_recording_locked(
     state: &mut RecorderState,
     tap: &RecorderTapRecord,
@@ -934,6 +1027,8 @@ fn start_recording_locked(
     Ok(())
 }
 
+// Was: Führt den Arbeitsschritt `append_tap_locked` für append tap locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn append_tap_locked(state: &mut RecorderState, tap: &RecorderTapRecord) -> Result<(), String> {
     let fsync_every = state.config.storage.fsync_every_frames;
     let active = state
@@ -997,6 +1092,8 @@ fn append_tap_locked(state: &mut RecorderState, tap: &RecorderTapRecord) -> Resu
     Ok(())
 }
 
+// Was: Diese Funktion aktualisiert segment.
+// Warum: Bestehender Zustand wird dadurch kontrolliert und nach einheitlichen Regeln geändert.
 fn update_segment(metadata: &mut RecordingMetadata, tap: &RecorderTapRecord) {
     let same = metadata.segments.last().is_some_and(|segment| {
         segment.speaker_issi == tap.speaker_issi
@@ -1022,6 +1119,8 @@ fn update_segment(metadata: &mut RecordingMetadata, tap: &RecorderTapRecord) {
     }
 }
 
+// Was: Diese Funktion führt tap metadata.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn merge_tap_metadata(metadata: &mut RecordingMetadata, tap: &RecorderTapRecord) {
     metadata.call_kind = tap.call_kind.clone();
     metadata.source_issi = tap.source_issi.or(metadata.source_issi);
@@ -1032,6 +1131,8 @@ fn merge_tap_metadata(metadata: &mut RecordingMetadata, tap: &RecorderTapRecord)
     metadata.emergency |= tap.emergency;
 }
 
+// Was: Diese Funktion führt Sitzung metadata.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn merge_session_metadata(metadata: &mut RecordingMetadata, session: &MediaSwitchSession) {
     metadata.call_kind = session.kind.clone();
     if metadata.call_phase_at_start == "unknown" && session.phase != "unknown" {
@@ -1048,6 +1149,8 @@ fn merge_session_metadata(metadata: &mut RecordingMetadata, session: &MediaSwitc
     metadata.emergency |= session.emergency;
 }
 
+// Was: Diese Funktion gleicht active.
+// Warum: Mehrere Zustandsquellen bleiben dadurch auf demselben Stand.
 fn sync_active(active: &mut ActiveRecording) -> Result<(), String> {
     active
         .audio_file
@@ -1072,6 +1175,8 @@ fn sync_active(active: &mut ActiveRecording) -> Result<(), String> {
     Ok(())
 }
 
+// Was: Führt den Arbeitsschritt `finalize_recording_locked` für finalize recording locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn finalize_recording_locked(
     state: &mut RecorderState,
     session_id: &str,
@@ -1168,6 +1273,8 @@ fn finalize_recording_locked(
     Ok(metadata)
 }
 
+// Was: Diese Funktion führt retention locked.
+// Warum: Der Lebenszyklus des Dienstes bleibt so an einer zentralen Stelle steuerbar.
 fn run_retention_locked(state: &mut RecorderState) {
     let now = Utc::now();
     let expired = state
@@ -1179,6 +1286,8 @@ fn run_retention_locked(state: &mut RecorderState) {
         })
         .cloned()
         .collect::<Vec<_>>();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for metadata in expired {
         if let Err(error) = delete_recording_locked(state, &metadata, "retention_expired") {
             push_event_locked(
@@ -1194,6 +1303,8 @@ fn run_retention_locked(state: &mut RecorderState) {
     }
 }
 
+// Was: Diese Funktion löscht recording locked.
+// Warum: Das Entfernen wird dadurch kontrolliert durchgeführt und hinterlässt keine verwaisten Verweise.
 fn delete_recording_locked(
     state: &mut RecorderState,
     metadata: &RecordingMetadata,
@@ -1222,6 +1333,8 @@ fn delete_recording_locked(
     Ok(())
 }
 
+// Was: Führt den Arbeitsschritt `require_management` für require management aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn require_management(state: &RecorderState) -> Result<(), String> {
     if state.config.security.allow_remote_management {
         Ok(())
@@ -1230,6 +1343,8 @@ fn require_management(state: &RecorderState) -> Result<(), String> {
     }
 }
 
+// Was: Führt den Arbeitsschritt `recording_directory` für recording directory aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn recording_directory(
     state: &RecorderState,
     metadata: &RecordingMetadata,
@@ -1237,6 +1352,8 @@ fn recording_directory(
     safe_relative_join(&state.config.storage.root, &metadata.relative_directory)
 }
 
+// Was: Diese Funktion legt Ereignis locked.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn push_event_locked(
     state: &mut RecorderState,
     kind: &str,
@@ -1254,17 +1371,25 @@ fn push_event_locked(
     };
     state.next_event_seq = state.next_event_seq.wrapping_add(1);
     state.events.push_back(event);
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while state.events.len() > state.config.server.history_limit {
         state.events.pop_front();
     }
 }
 
+// Was: Diese Funktion stellt active manifests.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn recover_active_manifests(config: &RecorderConfig) -> Result<usize, String> {
     let manifests = find_named_files(&config.storage.root, "metadata.active.json");
     let mut recovered = 0usize;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for manifest_path in manifests {
         let payload = fs::read(&manifest_path)
             .map_err(|error| format!("cannot read {}: {error}", manifest_path.display()))?;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let mut metadata: RecordingMetadata = match serde_json::from_slice(&payload) {
             Ok(metadata) => metadata,
             Err(error) => {
@@ -1325,15 +1450,21 @@ fn recover_active_manifests(config: &RecorderConfig) -> Result<usize, String> {
     Ok(recovered)
 }
 
+// Was: Führt den Arbeitsschritt `scan_recordings` für scan recordings aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn scan_recordings(
     root: &Path,
     max_recordings: usize,
 ) -> Result<BTreeMap<String, RecordingMetadata>, Box<dyn std::error::Error>> {
     let mut recordings = BTreeMap::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for path in find_named_files(root, "metadata.json") {
         if recordings.len() >= max_recordings {
             break;
         }
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match serde_json::from_slice::<RecordingMetadata>(&fs::read(&path)?) {
             Ok(metadata) => {
                 recordings.insert(metadata.id.clone(), metadata);
@@ -1344,13 +1475,19 @@ fn scan_recordings(
     Ok(recordings)
 }
 
+// Was: Diese Funktion sucht named files.
+// Warum: Die Suchlogik bleibt damit wiederverwendbar und muss nicht an mehreren Stellen kopiert werden.
 fn find_named_files(root: &Path, name: &str) -> Vec<PathBuf> {
     let mut output = Vec::new();
     let mut stack = vec![root.to_path_buf()];
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while let Some(directory) = stack.pop() {
         let Ok(entries) = fs::read_dir(&directory) else {
             continue;
         };
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for entry in entries.flatten() {
             let path = entry.path();
             if path.is_dir() {
@@ -1367,6 +1504,8 @@ fn find_named_files(root: &Path, name: &str) -> Vec<PathBuf> {
     output
 }
 
+// Was: Diese Funktion schreibt JSON-Daten atomic.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 fn write_json_atomic<T: Serialize>(path: &Path, value: &T) -> Result<(), String> {
     let parent = path
         .parent()
@@ -1397,11 +1536,15 @@ fn write_json_atomic<T: Serialize>(path: &Path, value: &T) -> Result<(), String>
     })
 }
 
+// Was: Führt den Arbeitsschritt `hash_file` für hash file aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn hash_file(path: &Path) -> Result<String, String> {
     let mut file = File::open(path)
         .map_err(|error| format!("cannot open {}: {error}", path.display()))?;
     let mut hasher = Sha256::new();
     let mut buffer = [0u8; 64 * 1024];
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
     loop {
         let read = file
             .read(&mut buffer)
@@ -1414,8 +1557,12 @@ fn hash_file(path: &Path) -> Result<String, String> {
     Ok(hex_digest(hasher.finalize()))
 }
 
+// Was: Führt den Arbeitsschritt `hex_digest` für hex digest aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn hex_digest(bytes: impl AsRef<[u8]>) -> String {
     let mut output = String::with_capacity(bytes.as_ref().len() * 2);
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for byte in bytes.as_ref() {
         use std::fmt::Write as _;
         let _ = write!(output, "{byte:02x}");
@@ -1423,12 +1570,16 @@ fn hex_digest(bytes: impl AsRef<[u8]>) -> String {
     output
 }
 
+// Was: Führt den Arbeitsschritt `verify_writable` für verify writable aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn verify_writable(path: &Path) -> Result<(), std::io::Error> {
     let marker = path.join(format!(".write-test-{}", Uuid::new_v4()));
     fs::write(&marker, b"netcore-recorder")?;
     fs::remove_file(marker)
 }
 
+// Was: Führt den Arbeitsschritt `safe_relative_join` für safe relative join aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn safe_relative_join(root: &Path, relative: &str) -> Result<PathBuf, String> {
     let relative_path = Path::new(relative);
     if relative_path.is_absolute()
@@ -1441,9 +1592,13 @@ fn safe_relative_join(root: &Path, relative: &str) -> Result<PathBuf, String> {
     Ok(root.join(relative_path))
 }
 
+// Was: Führt den Arbeitsschritt `directory_size` für directory size aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn directory_size(path: &Path) -> u64 {
     let mut total = 0u64;
     let mut stack = vec![path.to_path_buf()];
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while let Some(path) = stack.pop() {
         if let Ok(metadata) = fs::symlink_metadata(&path) {
             if metadata.is_file() {
@@ -1459,6 +1614,8 @@ fn directory_size(path: &Path) -> u64 {
 }
 
 #[cfg(unix)]
+// Was: Führt den Arbeitsschritt `free_space_bytes` für free space bytes aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn free_space_bytes(path: &Path) -> Option<u64> {
     use std::ffi::CString;
     use std::os::unix::ffi::OsStrExt;
@@ -1474,26 +1631,36 @@ fn free_space_bytes(path: &Path) -> Option<u64> {
 }
 
 #[cfg(not(unix))]
+// Was: Führt den Arbeitsschritt `free_space_bytes` für free space bytes aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn free_space_bytes(_path: &Path) -> Option<u64> {
     None
 }
 
+// Was: Diese Funktion liest und prüft timestamp.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_timestamp(value: &str) -> Option<DateTime<Utc>> {
     DateTime::parse_from_rfc3339(value)
         .ok()
         .map(|value| value.with_timezone(&Utc))
 }
 
+// Was: Führt den Arbeitsschritt `now_iso` für now iso aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn now_iso() -> String {
     Utc::now().to_rfc3339()
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
     use crate::config::RecorderConfig;
     use crate::protocol::{RecorderTapBatch, RecorderTapRecord};
 
+    // Was: Prüft automatisch den Fall Konfiguration.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_config(root: &Path) -> RecorderConfig {
         let mut config = RecorderConfig::default();
         config.storage.root = root.join("recordings");
@@ -1504,6 +1671,8 @@ mod tests {
         config
     }
 
+    // Was: Führt den Arbeitsschritt `tap` für tap aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn tap(seq: u64) -> RecorderTapRecord {
         RecorderTapRecord {
             seq,
@@ -1528,6 +1697,8 @@ mod tests {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `temp_root` für temp root aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn temp_root() -> PathBuf {
         let root = std::env::temp_dir().join(format!("netcore-recorder-test-{}", Uuid::new_v4()));
         fs::create_dir_all(&root).expect("temp root");
@@ -1535,6 +1706,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `records_and_finalizes_packed_frames` für records and finalizes packed frames aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn records_and_finalizes_packed_frames() {
         let root = temp_root();
         let recorder = SharedRecorder::load(test_config(&root)).expect("recorder loads");
@@ -1561,6 +1734,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `sequence_gap_is_visible_in_status_and_metadata` für sequence gap is visible in Status and und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn sequence_gap_is_visible_in_status_and_metadata() {
         let root = temp_root();
         let recorder = SharedRecorder::load(test_config(&root)).expect("recorder loads");
@@ -1578,6 +1753,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `unsafe_relative_path_is_rejected` für unsafe relative path is rejected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn unsafe_relative_path_is_rejected() {
         assert!(safe_relative_join(Path::new("/tmp"), "../etc").is_err());
         assert!(safe_relative_join(Path::new("/tmp"), "2026/07/id").is_ok());

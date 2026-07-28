@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Aufzeichnung und Ereignisprotokollierung.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::io::{Read, Write};
 use std::net::{TcpStream, ToSocketAddrs};
 use std::thread;
@@ -9,6 +12,8 @@ use crate::config::RecorderConfig;
 use crate::protocol::{MediaSwitchSession, RecorderTapBatch};
 use crate::state::SharedRecorder;
 
+// Was: Diese Funktion startet Audio- und Mediendaten switch Hintergrundverarbeitung.
+// Warum: Länger laufende Arbeit blockiert dadurch nicht den aufrufenden Ablauf.
 pub fn spawn_media_switch_worker(
     config: RecorderConfig,
     recorder: SharedRecorder,
@@ -17,12 +22,16 @@ pub fn spawn_media_switch_worker(
         let mut last_session_reconcile = Instant::now()
             .checked_sub(Duration::from_millis(config.media_switch.session_reconcile_ms))
             .unwrap_or_else(Instant::now);
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             let cursor = recorder.media_cursor();
             let tap_url = append_query(
                 &config.media_switch.tap_url,
                 &format!("after={cursor}&limit={}", config.media_switch.batch_limit),
             );
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match fetch_json::<RecorderTapBatch>(&tap_url, &config) {
                 Ok(batch) => {
                     if batch
@@ -43,6 +52,8 @@ pub fn spawn_media_switch_worker(
             if last_session_reconcile.elapsed()
                 >= Duration::from_millis(config.media_switch.session_reconcile_ms)
             {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match fetch_json::<Vec<MediaSwitchSession>>(
                     &config.media_switch.sessions_url,
                     &config,
@@ -60,10 +71,14 @@ pub fn spawn_media_switch_worker(
     })
 }
 
+// Was: Führt den Arbeitsschritt `newest_or_zero` für newest or zero aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn newest_or_zero(batch: &RecorderTapBatch) -> u64 {
     batch.newest_available_seq.unwrap_or(0)
 }
 
+// Was: Führt den Arbeitsschritt `append_query` für append query aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn append_query(url: &str, query: &str) -> String {
     if url.contains('?') {
         format!("{url}&{query}")
@@ -72,6 +87,8 @@ fn append_query(url: &str, query: &str) -> String {
     }
 }
 
+// Was: Diese Funktion lädt JSON-Daten.
+// Warum: Externe oder entfernte Daten werden dadurch an einer Stelle geladen und geprüft.
 fn fetch_json<T: DeserializeOwned>(url: &str, config: &RecorderConfig) -> Result<T, String> {
     let parsed = ParsedHttpUrl::parse(url)?;
     let timeout = Duration::from_secs(config.media_switch.request_timeout_secs);
@@ -123,13 +140,19 @@ fn fetch_json<T: DeserializeOwned>(url: &str, config: &RecorderConfig) -> Result
         .map_err(|error| format!("Media Switch JSON failed: {error}"))
 }
 
+// Was: Bündelt die zusammengehörigen Werte für parsed HTTP url in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct ParsedHttpUrl {
     host: String,
     port: u16,
     path: String,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `ParsedHttpUrl`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl ParsedHttpUrl {
+    // Was: Diese Funktion liest und prüft den vorgesehenen Arbeitsschritt.
+    // Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     fn parse(url: &str) -> Result<Self, String> {
         let rest = url
             .strip_prefix("http://")
@@ -155,6 +178,8 @@ impl ParsedHttpUrl {
     }
 }
 
+// Was: Diese Funktion sucht subslice.
+// Warum: Die Suchlogik bleibt damit wiederverwendbar und muss nicht an mehreren Stellen kopiert werden.
 fn find_subslice(haystack: &[u8], needle: &[u8]) -> Option<usize> {
     haystack
         .windows(needle.len())
@@ -162,10 +187,14 @@ fn find_subslice(haystack: &[u8], needle: &[u8]) -> Option<usize> {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::{ParsedHttpUrl, append_query};
 
     #[test]
+    // Was: Führt den Arbeitsschritt `parses_open_lab_media_switch_url` für parses open lab Audio- und Mediendaten switch url aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn parses_open_lab_media_switch_url() {
         let url = ParsedHttpUrl::parse(
             "http://127.0.0.1:8130/api/v1/recorder/taps?after=4&limit=50",
@@ -180,6 +209,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `query_is_appended_without_destroying_existing_query` für query is appended without destroying existing query aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn query_is_appended_without_destroying_existing_query() {
         assert_eq!(
             append_query("http://x/a?foo=bar", "after=7"),

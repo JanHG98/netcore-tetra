@@ -1,9 +1,14 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use tetra_core::{TdmaTime, tetra_entities::TetraEntity};
 use tetra_entities::net_control::{
     ControlCommand, ControlResponse, ManagedCallKind, ManagedCallRestoreContextPayload,
 };
 
 #[test]
+// Was: Führt den Arbeitsschritt `group_leg_command_roundtrips_through_json` für Gruppe Rufzweig command roundtrips through JSON-Daten aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn group_leg_command_roundtrips_through_json() {
     let command = ControlCommand::CallControlGroupStart {
         handle: 41,
@@ -15,6 +20,8 @@ fn group_leg_command_roundtrips_through_json() {
     let encoded = serde_json::to_vec(&command).expect("serialize managed group call");
     let decoded: ControlCommand =
         serde_json::from_slice(&encoded).expect("deserialize managed group call");
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match decoded {
         ControlCommand::CallControlGroupStart {
             handle,
@@ -33,6 +40,8 @@ fn group_leg_command_roundtrips_through_json() {
 }
 
 #[test]
+// Was: Diese Funktion stellt Kontext roundtrips without losing floor or network und weitere Angaben.
+// Warum: Nach Verbindungsabbruch oder Neustart kann der vorherige Betriebszustand dadurch kontrolliert zurückkehren.
 fn restore_context_roundtrips_without_losing_floor_or_network_origin() {
     let context = ManagedCallRestoreContextPayload::Group {
         call_id: 101,
@@ -61,6 +70,8 @@ fn restore_context_roundtrips_without_losing_floor_or_network_origin() {
     let encoded = serde_json::to_vec(&response).expect("serialize restore response");
     let decoded: ControlResponse =
         serde_json::from_slice(&encoded).expect("deserialize restore response");
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match decoded {
         ControlResponse::CallControlRestoreContextExported {
             context:
@@ -81,6 +92,8 @@ fn restore_context_roundtrips_without_losing_floor_or_network_origin() {
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `leg_started_response_carries_local_resource_identity` für Rufzweig started response carries local resource identity aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn leg_started_response_carries_local_resource_identity() {
     let response = ControlResponse::CallControlLegStarted {
         handle: 43,

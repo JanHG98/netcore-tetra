@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für check foundation acceptance.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 """Dependency-free architecture guard for SWMI Foundation 1 Package E."""
 
 from __future__ import annotations
@@ -10,11 +13,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
+# Was: Führt den Arbeitsschritt `fail` für fail aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def fail(message: str) -> None:
     print(f"Foundation Package E check failed: {message}", file=sys.stderr)
     raise SystemExit(1)
 
 
+# Was: Diese Funktion liest den vorgesehenen Arbeitsschritt.
+# Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
 def read(relative: str) -> str:
     path = ROOT / relative
     if not path.is_file():
@@ -22,18 +29,26 @@ def read(relative: str) -> str:
     return path.read_text(encoding="utf-8")
 
 
+# Was: Führt den Arbeitsschritt `require` für require aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def require(text: str, markers: list[str], label: str) -> None:
     missing = [marker for marker in markers if marker not in text]
     if missing:
         fail(f"{label} misses: {', '.join(missing)}")
 
 
+# Was: Führt den Arbeitsschritt `delimiters` für delimiters aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def delimiters(relative: str, text: str) -> None:
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for opening, closing in (("{", "}"), ("(", ")"), ("[", "]")):
         if text.count(opening) != text.count(closing):
             fail(f"unbalanced {opening}{closing} in {relative}")
 
 
+# Was: Führt den Arbeitsschritt `function_body` für function body aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def function_body(text: str, name: str) -> str:
     match = re.search(rf"\bfn\s+{re.escape(name)}\b", text)
     if not match:
@@ -42,6 +57,8 @@ def function_body(text: str, name: str) -> str:
     if start < 0:
         fail(f"function {name} has no body")
     depth = 0
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for index in range(start, len(text)):
         if text[index] == "{":
             depth += 1
@@ -52,6 +69,8 @@ def function_body(text: str, name: str) -> str:
     fail(f"function {name} has an unclosed body")
 
 
+# Was: Startet das Programm, lädt die benötigten Einstellungen und übergibt an den eigentlichen Dienstablauf.
+# Warum: Ein klarer Einstiegspunkt hält Startreihenfolge, Fehlerausgabe und geordnetes Beenden zusammen.
 def main() -> None:
     runtime_path = "crates/tetra-entities/src/mle/ltpd_runtime.rs"
     router_path = "crates/tetra-entities/src/messagerouter.rs"
@@ -98,6 +117,8 @@ def main() -> None:
         fail("completed-handle replay guard missing from unitdata")
 
     tick = function_body(runtime, "tick")
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for marker in (
         "TxState::Discarded",
         "TxState::Lost",
@@ -148,6 +169,8 @@ def main() -> None:
         "two-cell acceptance tests",
     )
 
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for relative, text in (
         (runtime_path, runtime),
         (router_path, router),
@@ -166,5 +189,7 @@ def main() -> None:
     print("  reusable two-cell test harness: present")
 
 
+# Was: Startet den Programmablauf nur dann, wenn diese Datei direkt ausgeführt wird.
+# Warum: Beim Import als Modul sollen nur Funktionen bereitstehen und keine Nebenwirkungen automatisch starten.
 if __name__ == "__main__":
     main()

@@ -1,10 +1,19 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+// Was: Bindet das Untermodul removal in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 pub mod removal {
     use tetra_core::bitbuffer::BitBuffer;
 
     /// Returns the number of fill bits at the end of the PDU in bitbuf, given the total pdu_len_bits.
+    // Was: Diese Funktion liest num fill bits.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     pub fn get_num_fill_bits(bitbuf: &BitBuffer, pdu_len_bits: usize, suppress_warning: bool) -> usize {
         let mut index = pdu_len_bits as isize - 1;
         // TODO FIXME improve efficiency by fetching larger chunks than 1 bit
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while index >= bitbuf.get_pos() as isize {
             let bit = bitbuf.peek_bits_startoffset(index as usize, 1).unwrap();
             if bit == 0 {
@@ -22,12 +31,16 @@ pub mod removal {
     }
 }
 
+// Was: Bindet das Untermodul addition in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 pub mod addition {
     use tetra_core::bitbuffer::BitBuffer;
 
     /// Compute how many fill bits need to be added in order to reach the next byte boundary.
     /// Returns 0-7
     #[inline(always)]
+    // Was: Führt den Arbeitsschritt `compute_required_bytealigned` für compute required bytealigned aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn compute_required_bytealigned(total_pdu_sdu_len_bits: usize) -> usize {
         (8 - total_pdu_sdu_len_bits % 8) % 8
     }
@@ -36,6 +49,8 @@ pub mod addition {
     /// - Reach the next byte boundary, if this would not overflow the slot, or:
     /// - Reach the end of the slot if that occurs after sdu end but before next byte boundary
     /// - If total_pdu_sdu_len_bits already exceeds slot capacity, returns 0 (no fill bits can be added)
+    // Was: Führt den Arbeitsschritt `compute_required` für compute required aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn compute_required(total_pdu_sdu_len_bits: usize, dest_cap_left: usize) -> usize {
         if total_pdu_sdu_len_bits >= dest_cap_left {
             // No fill bits can be added, slot is already full or overflowing
@@ -52,6 +67,8 @@ pub mod addition {
     }
 
     /// Zeroes all bits behind the current position to end of window, preceded by a 1
+    // Was: Diese Funktion schreibt den vorgesehenen Arbeitsschritt.
+    // Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
     pub fn write(bitbuf: &mut BitBuffer, num_fill_bits: Option<usize>) {
         if let Some(num_fill_bits) = num_fill_bits {
             if num_fill_bits > 0 {

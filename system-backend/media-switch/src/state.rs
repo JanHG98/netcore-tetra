@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für die Audioverteilung zwischen Basisstationen und Rufen.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -17,6 +20,8 @@ use crate::protocol::{
 };
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Audio- und Mediendaten switch Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MediaSwitchStatus {
     pub service: &'static str,
     pub started_at: String,
@@ -53,6 +58,8 @@ pub struct MediaSwitchStatus {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Netzknoten Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct NodeRecord {
     pub node_id: String,
     pub station_name: String,
@@ -70,6 +77,8 @@ pub struct NodeRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Audio- und Mediendaten Rufzweig in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MediaLeg {
     pub node_id: String,
     pub local_call_id: Option<u16>,
@@ -87,6 +96,8 @@ pub struct MediaLeg {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Audio- und Mediendaten Sitzung in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MediaSession {
     pub logical_call_id: String,
     pub kind: String,
@@ -108,6 +119,8 @@ pub struct MediaSession {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für stream snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct StreamSnapshot {
     pub session_id: String,
     pub stream_id: String,
@@ -126,6 +139,8 @@ pub struct StreamSnapshot {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für buffer snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct BufferSnapshot {
     pub session_id: String,
     pub target_node_id: String,
@@ -135,6 +150,8 @@ pub struct BufferSnapshot {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für tap Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TapRecord {
     pub seq: u64,
     pub timestamp: String,
@@ -148,6 +165,8 @@ pub struct TapRecord {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Aufzeichnung tap Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct RecorderTapRecord {
     pub seq: u64,
     pub timestamp: String,
@@ -171,6 +190,8 @@ pub struct RecorderTapRecord {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Aufzeichnung tap batch in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct RecorderTapBatch {
     pub requested_after: u64,
     pub oldest_available_seq: Option<u64>,
@@ -180,6 +201,8 @@ pub struct RecorderTapBatch {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Ereignis Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct EventRecord {
     pub seq: u64,
     pub timestamp: String,
@@ -190,6 +213,8 @@ pub struct EventRecord {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für mute input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MuteInput {
     pub node_id: String,
     pub logical_ts: u8,
@@ -197,6 +222,8 @@ pub struct MuteInput {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für injection input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct InjectionInput {
     pub payload: Vec<u8>,
     pub target_node: Option<String>,
@@ -204,6 +231,8 @@ pub struct InjectionInput {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+// Was: Bündelt die zusammengehörigen Werte für stream key in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct StreamKey {
     session_id: String,
     target_node_id: String,
@@ -211,6 +240,8 @@ struct StreamKey {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für buffered Funkrahmen in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct BufferedFrame {
     due_at: Instant,
     frame: MediaDownlinkFrame,
@@ -218,18 +249,24 @@ struct BufferedFrame {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für early Uplink (Funkgerät zum Netz) Funkrahmen in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct EarlyUplinkFrame {
     received_at: Instant,
     frame: MediaUplinkFrame,
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für adaptive Laufzeitschwankung profile in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct AdaptiveJitterProfile {
     target_frames: usize,
     last_arrival: Option<Instant>,
     stable_frames: u32,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für Audio- und Mediendaten Zustand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct MediaState {
     config: MediaSwitchConfig,
     started_at: String,
@@ -265,9 +302,15 @@ struct MediaState {
 }
 
 #[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für shared Audio- und Mediendaten in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SharedMedia(Arc<Mutex<MediaState>>);
 
+// Was: Implementiert das zugehörige Verhalten für `SharedMedia`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SharedMedia {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(config: MediaSwitchConfig) -> Self {
         Self(Arc::new(Mutex::new(MediaState {
             config,
@@ -304,21 +347,29 @@ impl SharedMedia {
         })))
     }
 
+    // Was: Führt den Arbeitsschritt `status` für Status aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn status(&self) -> MediaSwitchStatus {
         let state = self.0.lock().expect("media state poisoned");
         status_locked(&state)
     }
 
+    // Was: Führt den Arbeitsschritt `nodes` für nodes aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn nodes(&self) -> Vec<NodeRecord> {
         let state = self.0.lock().expect("media state poisoned");
         state.nodes.values().cloned().collect()
     }
 
+    // Was: Führt den Arbeitsschritt `sessions` für sessions aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn sessions(&self) -> Vec<MediaSession> {
         let state = self.0.lock().expect("media state poisoned");
         state.sessions.values().cloned().collect()
     }
 
+    // Was: Diese Funktion leitet ready sessions.
+    // Warum: Nachrichten und Daten gelangen dadurch nachvollziehbar an das richtige Ziel.
     pub fn route_ready_sessions(&self) -> Vec<String> {
         let state = self.0.lock().expect("media state poisoned");
         state
@@ -329,16 +380,22 @@ impl SharedMedia {
             .collect()
     }
 
+    // Was: Führt den Arbeitsschritt `session` für Sitzung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn session(&self, session_id: &str) -> Option<MediaSession> {
         let state = self.0.lock().expect("media state poisoned");
         state.sessions.get(session_id).cloned()
     }
 
+    // Was: Führt den Arbeitsschritt `streams` für streams aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn streams(&self) -> Vec<StreamSnapshot> {
         let state = self.0.lock().expect("media state poisoned");
         streams_locked(&state)
     }
 
+    // Was: Führt den Arbeitsschritt `buffers` für buffers aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn buffers(&self) -> Vec<BufferSnapshot> {
         let state = self.0.lock().expect("media state poisoned");
         let now = Instant::now();
@@ -369,6 +426,8 @@ impl SharedMedia {
         buffers
     }
 
+    // Was: Führt den Arbeitsschritt `taps` für taps aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn taps(&self, limit: usize) -> Vec<TapRecord> {
         let state = self.0.lock().expect("media state poisoned");
         state
@@ -380,6 +439,8 @@ impl SharedMedia {
             .collect()
     }
 
+    // Was: Führt den Arbeitsschritt `recorder_taps` für Aufzeichnung taps aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn recorder_taps(&self, after: u64, limit: usize) -> RecorderTapBatch {
         let state = self.0.lock().expect("media state poisoned");
         let oldest = state.recorder_taps.front().map(|record| record.seq);
@@ -404,6 +465,8 @@ impl SharedMedia {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `events` für events aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn events(&self, limit: usize) -> Vec<EventRecord> {
         let state = self.0.lock().expect("media state poisoned");
         state
@@ -415,6 +478,8 @@ impl SharedMedia {
             .collect()
     }
 
+    // Was: Führt den Arbeitsschritt `config_view` für Konfiguration view aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn config_view(&self) -> Value {
         let state = self.0.lock().expect("media state poisoned");
         json!({
@@ -432,6 +497,8 @@ impl SharedMedia {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `gateway_connected` für Gateway connected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn gateway_connected(&self) {
         let mut state = self.0.lock().expect("media state poisoned");
         state.gateway_connected = true;
@@ -445,6 +512,8 @@ impl SharedMedia {
         );
     }
 
+    // Was: Führt den Arbeitsschritt `gateway_disconnected` für Gateway disconnected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn gateway_disconnected(&self, error: String) {
         let mut state = self.0.lock().expect("media state poisoned");
         let changed = state.gateway_connected
@@ -462,6 +531,8 @@ impl SharedMedia {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `call_control_failed` für Ruf Steuerung failed aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn call_control_failed(&self, error: String) {
         let mut state = self.0.lock().expect("media state poisoned");
         let changed = state.call_control_connected
@@ -479,7 +550,11 @@ impl SharedMedia {
         }
     }
 
+    // Was: Diese Funktion verarbeitet Hintergrunddienst Ereignis.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     pub fn handle_backend_event(&self, event: BackendEvent) {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match event {
             BackendEvent::Snapshot { snapshot } => self.apply_gateway_snapshot(snapshot),
             BackendEvent::NodeMessage { node_id, message } => {
@@ -524,6 +599,8 @@ impl SharedMedia {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `reconcile_calls` für reconcile calls aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn reconcile_calls(&self, calls: Vec<CallControlCall>) -> Vec<String> {
         let mut state = self.0.lock().expect("media state poisoned");
         state.call_control_connected = true;
@@ -535,6 +612,8 @@ impl SharedMedia {
         let max_streams = state.config.limits.max_streams;
         let mut stream_count = 0usize;
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for call in calls.into_iter().filter(is_routable_call).take(max_sessions) {
             let previous = old_sessions.get(&call.logical_call_id);
             let created_at = previous
@@ -547,6 +626,8 @@ impl SharedMedia {
                 .filter(|leg| is_expected_leg(&leg.phase))
                 .count();
 
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for leg in call.legs.values().filter(|leg| is_routable_leg(&leg.phase)) {
                 let Some(logical_ts) = leg.timeslot.filter(|ts| (1..=7).contains(ts)) else {
                     continue;
@@ -613,6 +694,8 @@ impl SharedMedia {
         state.sessions = sessions;
         rebuild_route_index_locked(&mut state);
         prune_buffers_locked(&mut state);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for session_id in &removed {
             flush_session_locked(&mut state, session_id);
         }
@@ -646,12 +729,16 @@ impl SharedMedia {
             .cloned()
             .collect::<Vec<_>>();
         drop(state);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for frame in replay {
             self.route_uplink_internal(frame, false);
         }
         ready_sessions
     }
 
+    // Was: Diese Funktion arbeitet due frames.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn drain_due_frames(&self) -> Vec<BackendRequest> {
         let replay = {
             let mut state = self.0.lock().expect("media state poisoned");
@@ -663,6 +750,8 @@ impl SharedMedia {
             }
             replay
         };
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for frame in replay {
             self.route_uplink_internal(frame, false);
         }
@@ -674,7 +763,11 @@ impl SharedMedia {
         let mut output = Vec::new();
         let mut empty_keys = Vec::new();
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for key in keys {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             while output.len() < max_frames {
                 let frame = state
                     .buffers
@@ -713,12 +806,16 @@ impl SharedMedia {
             }
         }
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for key in empty_keys {
             state.buffers.remove(&key);
         }
         output
     }
 
+    // Was: Führt den Arbeitsschritt `mute_stream` für mute stream aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn mute_stream(&self, session_id: &str, input: MuteInput) -> Result<(), String> {
         let mut state = self.0.lock().expect("media state poisoned");
         if !state.config.security.allow_remote_management {
@@ -748,6 +845,8 @@ impl SharedMedia {
         Ok(())
     }
 
+    // Was: Diese Funktion schreibt Sitzung.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn flush_session(&self, session_id: &str) -> Result<usize, String> {
         let mut state = self.0.lock().expect("media state poisoned");
         if !state.config.security.allow_remote_management {
@@ -767,6 +866,8 @@ impl SharedMedia {
         Ok(removed)
     }
 
+    // Was: Führt den Arbeitsschritt `inject` für inject aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn inject(&self, session_id: &str, input: InjectionInput) -> Result<usize, String> {
         let mut state = self.0.lock().expect("media state poisoned");
         if !state.config.security.allow_remote_management {
@@ -814,6 +915,8 @@ impl SharedMedia {
         let sequence = state.injection_sequence;
         let due_at = Instant::now() + jitter_delay(&state.config);
         let mut queued = 0usize;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (node_id, logical_ts) in targets {
             let frame = MediaDownlinkFrame {
                 session_id: session_id.to_string(),
@@ -862,6 +965,8 @@ impl SharedMedia {
         Ok(queued)
     }
 
+    // Was: Führt den Arbeitsschritt `metrics` für Messwerte aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn metrics(&self) -> String {
         let status = self.status();
         format!(
@@ -897,6 +1002,8 @@ impl SharedMedia {
         )
     }
 
+    // Was: Diese Funktion wendet Gateway snapshot.
+    // Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
     fn apply_gateway_snapshot(&self, snapshot: GatewaySnapshot) {
         let mut state = self.0.lock().expect("media state poisoned");
         state.gateway_connected = true;
@@ -938,8 +1045,14 @@ impl SharedMedia {
             })
             .collect::<Vec<_>>();
         state.nodes = nodes;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for node_id in restarted_nodes {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for session in state.sessions.values_mut() {
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for leg in session.legs.values_mut().filter(|leg| leg.node_id == node_id) {
                     leg.last_sequence = None;
                 }
@@ -954,10 +1067,14 @@ impl SharedMedia {
         }
     }
 
+    // Was: Diese Funktion leitet Uplink (Funkgerät zum Netz).
+    // Warum: Nachrichten und Daten gelangen dadurch nachvollziehbar an das richtige Ziel.
     fn route_uplink(&self, frame: MediaUplinkFrame) {
         self.route_uplink_internal(frame, true);
     }
 
+    // Was: Diese Funktion leitet Uplink (Funkgerät zum Netz) internal.
+    // Warum: Nachrichten und Daten gelangen dadurch nachvollziehbar an das richtige Ziel.
     fn route_uplink_internal(&self, frame: MediaUplinkFrame, count_received: bool) {
         let mut state = self.0.lock().expect("media state poisoned");
         if count_received {
@@ -1071,6 +1188,8 @@ impl SharedMedia {
             jitter_delay(&state.config)
         };
         let mut routed = 0usize;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (node_id, logical_ts, muted, online) in targets {
             if muted {
                 state.muted_frames = state.muted_frames.wrapping_add(1);
@@ -1149,6 +1268,8 @@ impl SharedMedia {
     }
 }
 
+// Was: Führt den Arbeitsschritt `status_locked` für Status locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn status_locked(state: &MediaState) -> MediaSwitchStatus {
     MediaSwitchStatus {
         service: "netcore-media-switch",
@@ -1199,6 +1320,8 @@ fn status_locked(state: &MediaState) -> MediaSwitchStatus {
     }
 }
 
+// Was: Führt den Arbeitsschritt `streams_locked` für streams locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn streams_locked(state: &MediaState) -> Vec<StreamSnapshot> {
     state
         .sessions
@@ -1224,10 +1347,16 @@ fn streams_locked(state: &MediaState) -> Vec<StreamSnapshot> {
         .collect()
 }
 
+// Was: Führt den Arbeitsschritt `rebuild_route_index_locked` für rebuild Weiterleitung index locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn rebuild_route_index_locked(state: &mut MediaState) {
     state.route_index.clear();
     let mut collisions = Vec::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for session in state.sessions.values() {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for leg in session.legs.values() {
             let key = (leg.node_id.clone(), leg.logical_ts);
             if let Some(previous) = state
@@ -1238,6 +1367,8 @@ fn rebuild_route_index_locked(state: &mut MediaState) {
             }
         }
     }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for ((node_id, logical_ts), previous, replacement) in collisions {
         push_event_locked(
             state,
@@ -1253,6 +1384,8 @@ fn rebuild_route_index_locked(state: &mut MediaState) {
     }
 }
 
+// Was: Führt den Arbeitsschritt `buffer_early_uplink_locked` für buffer early Uplink (Funkgerät zum Netz) locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn buffer_early_uplink_locked(state: &mut MediaState, frame: MediaUplinkFrame) {
     let key = (frame.node_id.clone(), frame.logical_ts);
     let now = Instant::now();
@@ -1268,6 +1401,8 @@ fn buffer_early_uplink_locked(state: &mut MediaState, frame: MediaUplinkFrame) {
     }
 
     let queue = state.early_uplink.entry(key.clone()).or_default();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while queue
         .front()
         .is_some_and(|entry| now.duration_since(entry.received_at) > max_age)
@@ -1299,12 +1434,16 @@ fn buffer_early_uplink_locked(state: &mut MediaState, frame: MediaUplinkFrame) {
     }
 }
 
+// Was: Führt den Arbeitsschritt `take_routable_early_frames_locked` für take routable early frames locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn take_routable_early_frames_locked(state: &mut MediaState) -> Vec<MediaUplinkFrame> {
     let now = Instant::now();
     let max_age = Duration::from_millis(state.config.media.cold_start_buffer_max_age_ms);
     let keys = state.early_uplink.keys().cloned().collect::<Vec<_>>();
     let mut replay = Vec::new();
 
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for key in keys {
         let Some(mut queue) = state.early_uplink.remove(&key) else {
             continue;
@@ -1314,6 +1453,8 @@ fn take_routable_early_frames_locked(state: &mut MediaState) -> Vec<MediaUplinkF
             .get(&key)
             .is_some_and(|session_id| media_route_ready_locked(state, session_id));
         let mut retained = VecDeque::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while let Some(entry) = queue.pop_front() {
             if now.duration_since(entry.received_at) > max_age {
                 state.frames_dropped = state.frames_dropped.wrapping_add(1);
@@ -1343,12 +1484,16 @@ fn take_routable_early_frames_locked(state: &mut MediaState) -> Vec<MediaUplinkF
     replay.into_iter().map(|(_, frame)| frame).collect()
 }
 
+// Was: Führt den Arbeitsschritt `take_due_early_frames_locked` für take due early frames locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn take_due_early_frames_locked(state: &mut MediaState) -> Vec<MediaUplinkFrame> {
     let now = Instant::now();
     let max_age = Duration::from_millis(state.config.media.cold_start_buffer_max_age_ms);
     let keys = state.early_uplink.keys().cloned().collect::<Vec<_>>();
     let mut replay = Vec::new();
 
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for key in keys {
         let route_ready = state
             .route_index
@@ -1358,6 +1503,8 @@ fn take_due_early_frames_locked(state: &mut MediaState) -> Vec<MediaUplinkFrame>
             continue;
         };
         let mut retained = VecDeque::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while let Some(entry) = queue.pop_front() {
             if now.duration_since(entry.received_at) > max_age {
                 state.frames_dropped = state.frames_dropped.wrapping_add(1);
@@ -1378,6 +1525,8 @@ fn take_due_early_frames_locked(state: &mut MediaState) -> Vec<MediaUplinkFrame>
     replay.into_iter().map(|(_, frame)| frame).collect()
 }
 
+// Was: Führt den Arbeitsschritt `jitter_delay_for_source_locked` für Laufzeitschwankung delay for source locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn jitter_delay_for_source_locked(
     state: &mut MediaState,
     node_id: &str,
@@ -1432,6 +1581,8 @@ fn jitter_delay_for_source_locked(
     Duration::from_millis(frame_duration_ms.saturating_mul(profile.target_frames as u64))
 }
 
+// Was: Führt den Arbeitsschritt `enqueue_locked` für enqueue locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn enqueue_locked(state: &mut MediaState, key: StreamKey, frame: BufferedFrame) -> bool {
     if state.pending_frames >= state.config.limits.max_pending_frames {
         state.buffer_overflows = state.buffer_overflows.wrapping_add(1);
@@ -1503,6 +1654,8 @@ fn enqueue_locked(state: &mut MediaState, key: StreamKey, frame: BufferedFrame) 
     true
 }
 
+// Was: Führt den Arbeitsschritt `prune_buffers_locked` für prune buffers locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn prune_buffers_locked(state: &mut MediaState) {
     let valid = state
         .sessions
@@ -1521,6 +1674,8 @@ fn prune_buffers_locked(state: &mut MediaState) {
         .filter(|key| !valid.contains(*key))
         .cloned()
         .collect::<Vec<_>>();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for key in stale {
         if let Some(queue) = state.buffers.remove(&key) {
             state.pending_frames = state.pending_frames.saturating_sub(queue.len());
@@ -1528,6 +1683,8 @@ fn prune_buffers_locked(state: &mut MediaState) {
     }
 }
 
+// Was: Diese Funktion schreibt Sitzung locked.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn flush_session_locked(state: &mut MediaState, session_id: &str) -> usize {
     let keys = state
         .buffers
@@ -1536,6 +1693,8 @@ fn flush_session_locked(state: &mut MediaState, session_id: &str) -> usize {
         .cloned()
         .collect::<Vec<_>>();
     let mut removed = 0usize;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for key in keys {
         if let Some(queue) = state.buffers.remove(&key) {
             removed += queue.len();
@@ -1545,6 +1704,8 @@ fn flush_session_locked(state: &mut MediaState, session_id: &str) -> usize {
     removed
 }
 
+// Was: Diese Funktion legt tap locked.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn push_tap_locked(
     state: &mut MediaState,
     session_id: &str,
@@ -1597,14 +1758,20 @@ fn push_tap_locked(
         });
     }
 
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while state.taps.len() > state.config.media.tap_history_frames {
         state.taps.pop_front();
     }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while state.recorder_taps.len() > state.config.media.recorder_tap_history_frames {
         state.recorder_taps.pop_front();
     }
 }
 
+// Was: Diese Funktion legt Ereignis locked.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn push_event_locked(
     state: &mut MediaState,
     kind: &str,
@@ -1622,11 +1789,15 @@ fn push_event_locked(
     };
     state.next_event_seq = state.next_event_seq.wrapping_add(1);
     state.events.push_back(event);
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while state.events.len() > state.config.server.history_limit {
         state.events.pop_front();
     }
 }
 
+// Was: Führt den Arbeitsschritt `jitter_delay` für Laufzeitschwankung delay aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn jitter_delay(config: &MediaSwitchConfig) -> Duration {
     Duration::from_millis(
         config
@@ -1636,32 +1807,46 @@ fn jitter_delay(config: &MediaSwitchConfig) -> Duration {
     )
 }
 
+// Was: Führt den Arbeitsschritt `node_can_receive` für Netzknoten can receive aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn node_can_receive(state: &MediaState, node_id: &str) -> bool {
     state.nodes.get(node_id).is_some_and(|node| {
         node.connected && !node.stale && node.media_bridge
     })
 }
 
+// Was: Führt den Arbeitsschritt `stream_id` für stream Kennung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn stream_id(node_id: &str, logical_ts: u8) -> String {
     format!("{node_id}:ts{logical_ts}")
 }
 
+// Was: Prüft, ob routable Ruf zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
 fn is_routable_call(call: &CallControlCall) -> bool {
     is_routable_call_phase(&call.phase)
 }
 
+// Was: Prüft, ob routable Ruf phase zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
 fn is_routable_call_phase(phase: &str) -> bool {
     matches!(phase, "starting" | "partial" | "active" | "releasing")
 }
 
+// Was: Prüft, ob routable Rufzweig zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
 fn is_routable_leg(phase: &str) -> bool {
     matches!(phase, "starting" | "active" | "releasing")
 }
 
+// Was: Prüft, ob expected Rufzweig zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
 fn is_expected_leg(phase: &str) -> bool {
     matches!(phase, "requested" | "starting" | "active" | "releasing")
 }
 
+// Was: Führt den Arbeitsschritt `media_route_ready_locked` für Audio- und Mediendaten Weiterleitung ready locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn media_route_ready_locked(state: &MediaState, session_id: &str) -> bool {
     state.sessions.get(session_id).is_some_and(|session| {
         session.expected_legs > 0
@@ -1675,16 +1860,22 @@ fn media_route_ready_locked(state: &MediaState, session_id: &str) -> bool {
 }
 
 
+// Was: Führt den Arbeitsschritt `now_iso` für now iso aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn now_iso() -> String {
     Utc::now().to_rfc3339()
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
     use crate::config::MediaSwitchConfig;
     use crate::protocol::{CallControlCall, CallControlLeg};
 
+    // Was: Führt den Arbeitsschritt `sample_call` für sample Ruf aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn sample_call() -> CallControlCall {
         CallControlCall {
             logical_call_id: "call-1".to_string(),
@@ -1727,6 +1918,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `reconciliation_creates_two_stream_session` für reconciliation creates two stream Sitzung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn reconciliation_creates_two_stream_session() {
         let media = SharedMedia::new(MediaSwitchConfig::default());
         let ready = media.reconcile_calls(vec![sample_call()]);
@@ -1736,6 +1929,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `mute_and_flush_are_operator_actions` für mute and flush are operator actions aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn mute_and_flush_are_operator_actions() {
         let media = SharedMedia::new(MediaSwitchConfig::default());
         let _ = media.reconcile_calls(vec![sample_call()]);
@@ -1759,12 +1954,16 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `uplink_routes_to_other_active_leg_and_rejects_duplicate` für Uplink (Funkgerät zum Netz) routes to other active Rufzweig and und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn uplink_routes_to_other_active_leg_and_rejects_duplicate() {
         let mut config = MediaSwitchConfig::default();
         config.media.jitter_buffer_frames = 0;
         let media = SharedMedia::new(config);
         {
             let mut state = media.0.lock().expect("media state");
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for (node_id, session_id) in [("tbs-a", "session-a"), ("tbs-b", "session-b")] {
                 state.nodes.insert(
                     node_id.to_string(),
@@ -1810,6 +2009,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `cold_start_frames_wait_for_all_expected_legs_and_replay` für cold start frames wait for all expected und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn cold_start_frames_wait_for_all_expected_legs_and_replay() {
         let mut config = MediaSwitchConfig::default();
         config.media.jitter_buffer_frames = 0;
@@ -1817,6 +2018,8 @@ mod tests {
         let media = SharedMedia::new(config);
         {
             let mut state = media.0.lock().expect("media state");
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for (node_id, session_id) in [("tbs-a", "session-a"), ("tbs-b", "session-b")] {
                 state.nodes.insert(
                     node_id.to_string(),
@@ -1874,6 +2077,8 @@ mod tests {
 
 
     #[test]
+    // Was: Führt den Arbeitsschritt `cold_start_replay_is_queued_before_interleaved_live_audio` für cold start replay is queued before interleaved und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn cold_start_replay_is_queued_before_interleaved_live_audio() {
         let media = SharedMedia::new(MediaSwitchConfig::default());
         let key = StreamKey {
@@ -1882,6 +2087,8 @@ mod tests {
             target_logical_ts: 3,
         };
         let mut state = media.0.lock().expect("media state");
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (sequence, cold_start_replay) in [(6, false), (1, true), (2, true)] {
             assert!(enqueue_locked(
                 &mut state,
@@ -1911,6 +2118,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `injection_requires_exact_packed_frame_size` für injection requires exact packed Funkrahmen size aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn injection_requires_exact_packed_frame_size() {
         let media = SharedMedia::new(MediaSwitchConfig::default());
         let _ = media.reconcile_calls(vec![sample_call()]);
@@ -1926,6 +2135,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `recorder_tap_contains_payload_and_call_metadata` für Aufzeichnung tap contains payload and Ruf metadata aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn recorder_tap_contains_payload_and_call_metadata() {
         let mut config = MediaSwitchConfig::default();
         config.media.jitter_buffer_frames = 0;

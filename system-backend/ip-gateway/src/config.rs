@@ -1,15 +1,26 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für die Kopplung von TETRA-Paketdaten an IP-Netze.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::fs;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
+// Was: Legt den festen Wert `OPEN_LAB_MODE` für open lab mode fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const OPEN_LAB_MODE: &str = "open_lab";
+// Was: Legt den festen Wert `MODE_SHADOW` für mode shadow fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const MODE_SHADOW: &str = "shadow";
+// Was: Legt den festen Wert `MODE_AUTHORITATIVE` für mode authoritative fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const MODE_AUTHORITATIVE: &str = "authoritative";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für IP-Daten Gateway Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct IpGatewayConfig {
     pub server: ServerConfig,
     pub packet_core: PacketCoreClientConfig,
@@ -25,7 +36,11 @@ pub struct IpGatewayConfig {
     pub limits: LimitsConfig,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for IpGatewayConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for IpGatewayConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             server: ServerConfig::default(),
@@ -44,8 +59,14 @@ impl Default for IpGatewayConfig {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `IpGatewayConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl IpGatewayConfig {
+    // Was: Diese Funktion lädt den vorgesehenen Arbeitsschritt.
+    // Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
     pub fn load(path: Option<&Path>) -> Result<Self, Box<dyn std::error::Error>> {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let mut config = match path {
             Some(path) => toml::from_str::<Self>(&fs::read_to_string(path)?)?,
             None => Self::default(),
@@ -56,6 +77,8 @@ impl IpGatewayConfig {
         Ok(config)
     }
 
+    // Was: Diese Funktion wendet bind override.
+    // Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
     pub fn apply_bind_override(&mut self, bind: Option<SocketAddr>) -> Result<(), String> {
         if let Some(bind) = bind {
             self.server.bind = bind;
@@ -63,6 +86,8 @@ impl IpGatewayConfig {
         self.normalise()
     }
 
+    // Was: Führt den Arbeitsschritt `normalise` für normalise aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn normalise(&mut self) -> Result<(), String> {
         if self.security.mode != OPEN_LAB_MODE {
             return Err(format!(
@@ -139,6 +164,8 @@ impl IpGatewayConfig {
         Ok(())
     }
 
+    // Was: Führt den Arbeitsschritt `gateway_ipv4` für Gateway ipv4 aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn gateway_ipv4(&self) -> Ipv4Addr {
         parse_cidr(&self.interface.address)
             .map(|(address, _)| address)
@@ -151,6 +178,8 @@ impl IpGatewayConfig {
     /// systemd-resolved/dnsmasq on many LXCs and would also expose it on the
     /// management interface. Existing configurations may keep 0.0.0.0:53;
     /// at runtime it is narrowed automatically to the TUN gateway address.
+    // Was: Führt den Arbeitsschritt `effective_dns_bind` für effective dns bind aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn effective_dns_bind(&self) -> SocketAddr {
         if self.dns.bind.ip().is_unspecified() {
             SocketAddr::new(IpAddr::V4(self.gateway_ipv4()), self.dns.bind.port())
@@ -162,10 +191,16 @@ impl IpGatewayConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für server Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ServerConfig {
     pub bind: SocketAddr,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for ServerConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for ServerConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             bind: "0.0.0.0:8170".parse().expect("valid default bind"),
@@ -175,6 +210,8 @@ impl Default for ServerConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für Datenpaket core client Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PacketCoreClientConfig {
     pub url: String,
     pub poll_interval_ms: u64,
@@ -182,7 +219,11 @@ pub struct PacketCoreClientConfig {
     pub request_timeout_ms: u64,
     pub outbox_batch: usize,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for PacketCoreClientConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for PacketCoreClientConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             url: "http://127.0.0.1:8160".to_string(),
@@ -196,11 +237,17 @@ impl Default for PacketCoreClientConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für storage Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct StorageConfig {
     pub database_path: PathBuf,
     pub backup_path: PathBuf,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for StorageConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for StorageConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             database_path: "/var/lib/netcore-ip-gateway/state.json".into(),
@@ -211,6 +258,8 @@ impl Default for StorageConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für interface Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct InterfaceConfig {
     pub mode: String,
     pub name: String,
@@ -220,7 +269,11 @@ pub struct InterfaceConfig {
     pub owner_user: String,
     pub delete_on_exit: bool,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for InterfaceConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for InterfaceConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             mode: MODE_SHADOW.to_string(),
@@ -236,12 +289,18 @@ impl Default for InterfaceConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für routing Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct RoutingConfig {
     pub enable_ipv4_forwarding: bool,
     pub reconcile_interval_secs: u64,
     pub install_connected_route: bool,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for RoutingConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for RoutingConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             enable_ipv4_forwarding: true,
@@ -253,12 +312,18 @@ impl Default for RoutingConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für nat Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct NatConfig {
     pub enabled: bool,
     pub masquerade: bool,
     pub egress_interface: String,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for NatConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for NatConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             enabled: true,
@@ -270,6 +335,8 @@ impl Default for NatConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für firewall Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct FirewallConfig {
     pub enabled: bool,
     pub default_forward_policy: String,
@@ -278,7 +345,11 @@ pub struct FirewallConfig {
     pub allow_icmp: bool,
     pub log_drops: bool,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for FirewallConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for FirewallConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             enabled: true,
@@ -293,6 +364,8 @@ impl Default for FirewallConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für dns Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DnsConfig {
     pub enabled: bool,
     pub bind: SocketAddr,
@@ -301,7 +374,11 @@ pub struct DnsConfig {
     pub ttl_secs: u32,
     pub query_timeout_ms: u64,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for DnsConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for DnsConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             enabled: true,
@@ -316,12 +393,18 @@ impl Default for DnsConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für test server Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TestServerConfig {
     pub enabled: bool,
     pub bind: SocketAddr,
     pub udp_echo_bind: SocketAddr,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for TestServerConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for TestServerConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             enabled: true,
@@ -333,13 +416,19 @@ impl Default for TestServerConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für capture Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CaptureConfig {
     pub directory: PathBuf,
     pub max_captures: usize,
     pub max_file_bytes: u64,
     pub snaplen: usize,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for CaptureConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for CaptureConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             directory: "/var/lib/netcore-ip-gateway/captures".into(),
@@ -352,11 +441,17 @@ impl Default for CaptureConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für Sicherheit Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SecurityConfig {
     pub mode: String,
     pub allow_remote_management: bool,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for SecurityConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for SecurityConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             mode: OPEN_LAB_MODE.to_string(),
@@ -367,13 +462,19 @@ impl Default for SecurityConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für limits Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LimitsConfig {
     pub max_body_bytes: usize,
     pub max_events: usize,
     pub max_flows: usize,
     pub max_packet_bytes: usize,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for LimitsConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for LimitsConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             max_body_bytes: 2_097_152,
@@ -384,6 +485,8 @@ impl Default for LimitsConfig {
     }
 }
 
+// Was: Diese Funktion liest und prüft cidr.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 pub fn parse_cidr(value: &str) -> Result<(Ipv4Addr, u8), String> {
     let (address, prefix) = value
         .split_once('/')
@@ -400,6 +503,8 @@ pub fn parse_cidr(value: &str) -> Result<(Ipv4Addr, u8), String> {
     Ok((address, prefix))
 }
 
+// Was: Führt den Arbeitsschritt `network_address` für network address aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn network_address(address: Ipv4Addr, prefix: u8) -> Ipv4Addr {
     let value = u32::from(address);
     let mask = if prefix == 0 {
@@ -410,6 +515,8 @@ pub fn network_address(address: Ipv4Addr, prefix: u8) -> Ipv4Addr {
     Ipv4Addr::from(value & mask)
 }
 
+// Was: Diese Funktion prüft interface name.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_interface_name(name: &str) -> Result<(), String> {
     if name.is_empty() || name.len() >= libc::IFNAMSIZ {
         return Err(format!(

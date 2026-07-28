@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für check shared platform.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 from __future__ import annotations
 
 import json
@@ -28,14 +31,20 @@ REQUIRED = [
 ]
 
 
+# Was: Startet das Programm, lädt die benötigten Einstellungen und übergibt an den eigentlichen Dienstablauf.
+# Warum: Ein klarer Einstiegspunkt hält Startreihenfolge, Fehlerausgabe und geordnetes Beenden zusammen.
 def main() -> int:
     errors: list[str] = []
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for relative in REQUIRED:
         if not (ROOT / relative).is_file():
             errors.append(f"missing {relative}")
 
     cargo = (ROOT / "Cargo.toml").read_text()
     lock = (ROOT / "Cargo.lock").read_text()
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for crate in ["netcore-contracts", "netcore-service-common", "netcore-database-common", "netcore-telemetry-common"]:
         if crate not in cargo:
             errors.append(f"workspace missing {crate}")
@@ -45,11 +54,17 @@ def main() -> int:
     with (ROOT / "system-backend/services.toml").open("rb") as handle:
         registry = tomllib.load(handle)
     services = [item for item in registry["services"] if item["name"] != "shared"]
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for service in services:
         if service.get("security_mode") != "open_lab" or service.get("token_auth") or service.get("tls"):
             errors.append(f"{service['name']}: current package must remain explicit open_lab without token/TLS")
 
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for schema in (ROOT / "system-backend/shared/contracts/schemas").glob("*.json"):
+        # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+        # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
         try:
             json.loads(schema.read_text())
         except Exception as error:
@@ -61,7 +76,11 @@ def main() -> int:
         [sys.executable, "tests/integration/open_lab_contract_test.py"],
         ["node", "--check", "system-backend/shared/web-ui/assets/netcore.js"],
     ]
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for command in commands:
+        # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+        # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
         try:
             result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True)
         except FileNotFoundError:
@@ -71,6 +90,8 @@ def main() -> int:
         if result.returncode:
             errors.append(f"command failed {' '.join(command)}: {result.stderr.strip() or result.stdout.strip()}")
 
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for script in [ROOT / "deploy/open-lab/netcore-deploy.py"]:
         if not script.stat().st_mode & 0o111:
             errors.append(f"not executable: {script.relative_to(ROOT)}")
@@ -86,5 +107,7 @@ def main() -> int:
     return 0
 
 
+# Was: Startet den Programmablauf nur dann, wenn diese Datei direkt ausgeführt wird.
+# Warum: Beim Import als Modul sollen nur Funktionen bereitstehen und keine Nebenwirkungen automatisch starten.
 if __name__ == "__main__":
     raise SystemExit(main())

@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für check full system integration.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 """Cross-check the complete NetCore-Tetra open-lab deployment and edge fallback.
 
 This is deliberately stricter than the component checkers: it verifies the
@@ -32,43 +35,67 @@ REQUIRED_EDGE = {
 }
 API_MARKERS = ("/health/live", "/health/ready", "/metrics", "/openapi.json")
 
+# Was: Bündelt Daten und Verhalten für audit.
+# Warum: Zusammengehöriger Zustand und seine Operationen bleiben dadurch an einer klaren Stelle.
 class Audit:
+    # Was: Diese Funktion initialisiert den vorgesehenen Arbeitsschritt.
+    # Warum: Alle benötigten Startwerte werden so in einer festen Reihenfolge eingerichtet.
     def __init__(self) -> None:
         self.errors: list[str] = []
         self.notes: list[str] = []
         self.rows: list[tuple[str, str, int, str, str]] = []
 
+    # Was: Führt den Arbeitsschritt `require` für require aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def require(self, cond: bool, message: str) -> None:
         if not cond:
             self.errors.append(message)
 
+    # Was: Führt den Arbeitsschritt `note` für note aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def note(self, message: str) -> None:
         self.notes.append(message)
 
 
+# Was: Diese Funktion lädt toml.
+# Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
 def load_toml(path: Path) -> dict:
+    # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+    # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
     try:
         return tomllib.loads(path.read_text(encoding="utf-8"))
     except Exception as exc:
         raise RuntimeError(f"invalid TOML {path.relative_to(ROOT)}: {exc}") from exc
 
 
+# Was: Führt den Arbeitsschritt `service_source` für Dienst source aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def service_source(name: str) -> str:
     bases = [ROOT / "system-backend" / name]
     if name == "control-room":
         bases.append(ROOT / "bins/netcore-control-room")
     chunks = []
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for base in bases:
+      # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+      # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
       for path in sorted(base.rglob("*")):
           if path.is_file() and path.suffix in {".rs", ".py", ".html", ".js"}:
               chunks.append(path.read_text(encoding="utf-8", errors="replace"))
     return "\n".join(chunks)
 
 
+# Was: Diese Funktion prüft graph.
+# Warum: Fehler oder unzulässige Zustände werden dadurch früh erkannt.
 def check_graph(audit: Audit, services: dict[str, dict]) -> None:
     indegree = {name: 0 for name in services}
     outgoing: dict[str, list[str]] = defaultdict(list)
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for name, svc in services.items():
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for dep in svc.get("depends_on", []):
             audit.require(dep in services, f"{name}: unknown dependency {dep}")
             if dep in services:
@@ -76,8 +103,12 @@ def check_graph(audit: Audit, services: dict[str, dict]) -> None:
                 indegree[name] += 1
     queue = deque(name for name, degree in indegree.items() if degree == 0)
     seen = []
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     while queue:
         name = queue.popleft(); seen.append(name)
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for nxt in outgoing[name]:
             indegree[nxt] -= 1
             if indegree[nxt] == 0:
@@ -86,6 +117,8 @@ def check_graph(audit: Audit, services: dict[str, dict]) -> None:
     audit.note("Start order: " + " → ".join(seen))
 
 
+# Was: Diese Funktion prüft rendered urls.
+# Warum: Fehler oder unzulässige Zustände werden dadurch früh erkannt.
 def check_rendered_urls(audit: Audit, services: dict[str, dict]) -> None:
     subprocess.run(
         [sys.executable, str(ROOT / "deploy/open-lab/netcore-deploy.py"), "--inventory", str(INVENTORY), "render"],
@@ -94,9 +127,13 @@ def check_rendered_urls(audit: Audit, services: dict[str, dict]) -> None:
     endpoint_owner = {(svc["host"], int(svc["port"])): name for name, svc in services.items()}
     generated = ROOT / "deploy/open-lab/generated/configs"
     checked = 0
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for path in sorted(generated.rglob("*.toml")):
         load_toml(path)
         text = path.read_text(encoding="utf-8")
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for raw in re.findall(r'(?:https?|wss?)://[^\s"\']+', text):
             parsed = urlparse(raw.rstrip(",)]}"))
             if not parsed.hostname or parsed.port is None:
@@ -110,6 +147,8 @@ def check_rendered_urls(audit: Audit, services: dict[str, dict]) -> None:
     audit.note(f"Rendered inter-service URLs checked: {checked}")
 
 
+# Was: Startet das Programm, lädt die benötigten Einstellungen und übergibt an den eigentlichen Dienstablauf.
+# Warum: Ein klarer Einstiegspunkt hält Startreihenfolge, Fehlerausgabe und geordnetes Beenden zusammen.
 def main() -> int:
     audit = Audit()
     inventory = load_toml(INVENTORY)
@@ -124,6 +163,8 @@ def main() -> int:
     audit.require(len(ports) == len(set(ports)), "duplicate management port in inventory")
     check_graph(audit, services)
 
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for name, svc in services.items():
         template = ROOT / svc["config_template"]
         install = ROOT / svc["install"]
@@ -142,6 +183,8 @@ def main() -> int:
     ng = load_toml(NODE_GATEWAY)
     targets = {target["name"]: target for target in ng["service_monitor"]["targets"]}
     audit.require(set(targets) == EXPECTED - {"node-gateway"}, "Node Gateway health target set is not inventory minus node-gateway")
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for name, target in targets.items():
         svc = services[name]
         parsed = urlparse(target["url"])
@@ -187,6 +230,8 @@ def main() -> int:
         "offline fallback reference tests": (ROOT / "tests/e2e/unit/test_edge_fallback_reference.py", "test_stale_matrix_fails_every_central_service_closed"),
         "TBS fallback API": (ROOT / "crates/tetra-entities/src/net_dashboard/server.rs", "/api/edge-fallback"),
     }
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for label, (path, needle) in hooks.items():
         audit.require(path.is_file() and needle in path.read_text(encoding="utf-8"), f"missing integration hook: {label}")
 
@@ -211,6 +256,8 @@ def main() -> int:
     ]
     report += [f"| {n} | {h} | {p} | {d} | {ok} |" for n,h,p,d,ok in sorted(audit.rows)]
     report += ["", "## Edge fallback rules", ""]
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for name in sorted(modes):
         report.append(f"- `{name}` → `{modes[name]}`")
     report += ["", "## Audit notes", ""] + [f"- {note}" for note in audit.notes]
@@ -220,6 +267,8 @@ def main() -> int:
 
     if audit.errors:
         print("Full-system integration audit: FAIL", file=sys.stderr)
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for error in audit.errors:
             print(" -", error, file=sys.stderr)
         return 1
@@ -231,5 +280,7 @@ def main() -> int:
     print(f"  report: {REPORT.relative_to(ROOT)}")
     return 0
 
+# Was: Startet den Programmablauf nur dann, wenn diese Datei direkt ausgeführt wird.
+# Warum: Beim Import als Modul sollen nur Funktionen bereitstehen und keine Nebenwirkungen automatisch starten.
 if __name__ == "__main__":
     raise SystemExit(main())

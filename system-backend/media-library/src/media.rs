@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für gespeicherte Aufzeichnungen, TTS- und Mediendateien.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::fs::{self, File};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
@@ -9,8 +12,12 @@ use sha2::{Digest, Sha256};
 use crate::config::MediaLibraryConfig;
 use crate::model::{AudioMetadata, ProcessResult};
 
+// Was: Legt den festen Wert `TETRA_FRAME_BYTES` für TETRA Funkrahmen bytes fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const TETRA_FRAME_BYTES: usize = 35;
 
+// Was: Diese Funktion dekodiert base64.
+// Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
 pub fn decode_base64(data: &str) -> Result<Vec<u8>, String> {
     let payload = data
         .split_once(',')
@@ -22,16 +29,22 @@ pub fn decode_base64(data: &str) -> Result<Vec<u8>, String> {
         .map_err(|error| format!("invalid base64 payload: {error}"))
 }
 
+// Was: Führt den Arbeitsschritt `sha256_bytes` für sha256 bytes aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn sha256_bytes(bytes: &[u8]) -> String {
     let mut hasher = Sha256::new();
     hasher.update(bytes);
     format!("{:x}", hasher.finalize())
 }
 
+// Was: Führt den Arbeitsschritt `sha256_file` für sha256 file aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn sha256_file(path: &Path) -> Result<String, String> {
     let mut file = File::open(path).map_err(|error| format!("cannot open {}: {error}", path.display()))?;
     let mut hasher = Sha256::new();
     let mut buffer = [0u8; 64 * 1024];
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
     loop {
         let read = file.read(&mut buffer).map_err(|error| format!("cannot read {}: {error}", path.display()))?;
         if read == 0 {
@@ -42,6 +55,8 @@ pub fn sha256_file(path: &Path) -> Result<String, String> {
     Ok(format!("{:x}", hasher.finalize()))
 }
 
+// Was: Führt den Arbeitsschritt `safe_filename` für safe filename aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn safe_filename(value: &str, fallback: &str) -> String {
     let value = value
         .rsplit(['/', '\\'])
@@ -49,6 +64,8 @@ pub fn safe_filename(value: &str, fallback: &str) -> String {
         .unwrap_or(value)
         .trim();
     let mut output = String::with_capacity(value.len());
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for character in value.chars().take(160) {
         if character.is_ascii_alphanumeric() || matches!(character, '.' | '-' | '_' | ' ') {
             output.push(character);
@@ -64,6 +81,8 @@ pub fn safe_filename(value: &str, fallback: &str) -> String {
     }
 }
 
+// Was: Führt den Arbeitsschritt `extension_for` für extension for aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn extension_for(filename: &str, media_type: &str, bytes: &[u8]) -> String {
     if bytes.len() >= 12 && &bytes[..4] == b"RIFF" && &bytes[8..12] == b"WAVE" {
         return "wav".to_string();
@@ -81,6 +100,8 @@ pub fn extension_for(filename: &str, media_type: &str, bytes: &[u8]) -> String {
         .to_ascii_lowercase()
 }
 
+// Was: Diese Funktion schreibt atomic.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 pub fn write_atomic(path: &Path, bytes: &[u8], fsync: bool) -> Result<(), String> {
     let parent = path.parent().ok_or_else(|| "target has no parent directory".to_string())?;
     fs::create_dir_all(parent).map_err(|error| format!("cannot create {}: {error}", parent.display()))?;
@@ -97,6 +118,8 @@ pub fn write_atomic(path: &Path, bytes: &[u8], fsync: bool) -> Result<(), String
     Ok(())
 }
 
+// Was: Führt den Arbeitsschritt `copy_atomic` für copy atomic aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn copy_atomic(source: &Path, destination: &Path, fsync: bool) -> Result<u64, String> {
     let parent = destination.parent().ok_or_else(|| "destination has no parent".to_string())?;
     fs::create_dir_all(parent).map_err(|error| format!("cannot create {}: {error}", parent.display()))?;
@@ -116,6 +139,8 @@ pub fn copy_atomic(source: &Path, destination: &Path, fsync: bool) -> Result<u64
     Ok(bytes)
 }
 
+// Was: Führt den Arbeitsschritt `inspect_original` für inspect original aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn inspect_original(path: &Path, media_type: &str) -> Result<AudioMetadata, String> {
     let mut file = File::open(path).map_err(|error| format!("cannot open {}: {error}", path.display()))?;
     let mut header = [0u8; 12];
@@ -140,6 +165,8 @@ pub fn inspect_original(path: &Path, media_type: &str) -> Result<AudioMetadata, 
     Err("unsupported media format; expected RIFF/WAVE, MP3 or packed .tacelp".to_string())
 }
 
+// Was: Führt den Arbeitsschritt `inspect_tacelp` für inspect tacelp aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn inspect_tacelp(path: &Path) -> Result<AudioMetadata, String> {
     let size = fs::metadata(path).map_err(|error| format!("cannot stat {}: {error}", path.display()))?.len();
     if size == 0 || size % TETRA_FRAME_BYTES as u64 != 0 {
@@ -158,6 +185,8 @@ pub fn inspect_tacelp(path: &Path) -> Result<AudioMetadata, String> {
     })
 }
 
+// Was: Führt den Arbeitsschritt `inspect_wav` für inspect wav aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn inspect_wav(path: &Path) -> Result<AudioMetadata, String> {
     let bytes = fs::read(path).map_err(|error| format!("cannot read WAV {}: {error}", path.display()))?;
     if bytes.len() < 44 || &bytes[..4] != b"RIFF" || &bytes[8..12] != b"WAVE" {
@@ -169,6 +198,8 @@ pub fn inspect_wav(path: &Path) -> Result<AudioMetadata, String> {
     let mut sample_rate = None;
     let mut bits = None;
     let mut data_bytes = None;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while offset.saturating_add(8) <= bytes.len() {
         let id = &bytes[offset..offset + 4];
         let length = u32::from_le_bytes(bytes[offset + 4..offset + 8].try_into().unwrap()) as usize;
@@ -217,6 +248,8 @@ pub fn inspect_wav(path: &Path) -> Result<AudioMetadata, String> {
     })
 }
 
+// Was: Prüft, ob canonical preview zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
 pub fn is_canonical_preview(metadata: &AudioMetadata) -> bool {
     metadata.format == "wav"
         && metadata.codec.as_deref() == Some("pcm")
@@ -225,6 +258,8 @@ pub fn is_canonical_preview(metadata: &AudioMetadata) -> bool {
         && metadata.bits_per_sample == Some(16)
 }
 
+// Was: Diese Funktion verarbeitet asset.
+// Warum: Die einzelnen Verarbeitungsschritte bleiben damit gebündelt und leichter testbar.
 pub fn process_asset(
     config: &MediaLibraryConfig,
     original_path: &Path,
@@ -241,6 +276,8 @@ pub fn process_asset(
     let mut preview = None;
     let mut tetra = None;
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match metadata.format.as_str() {
         "tacelp" => {
             validate_tetra_file(original_path, config.codec.frame_bytes)?;
@@ -318,6 +355,8 @@ pub fn process_asset(
     })
 }
 
+// Was: Diese Funktion prüft TETRA file.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_tetra_file(path: &Path, frame_bytes: usize) -> Result<AudioMetadata, String> {
     if frame_bytes != TETRA_FRAME_BYTES {
         return Err("only 35-byte packed TETRA ACELP frames are supported".to_string());
@@ -325,6 +364,8 @@ fn validate_tetra_file(path: &Path, frame_bytes: usize) -> Result<AudioMetadata,
     inspect_tacelp(path)
 }
 
+// Was: Diese Funktion führt template command.
+// Warum: Der Lebenszyklus des Dienstes bleibt so an einer zentralen Stelle steuerbar.
 pub fn run_template_command(template: &[String], input: &Path, output: &Path) -> Result<(), String> {
     if template.is_empty() {
         return Err("required media command is not configured".to_string());
@@ -360,6 +401,8 @@ pub fn run_template_command(template: &[String], input: &Path, output: &Path) ->
 }
 
 
+// Was: Führt den Arbeitsschritt `command_partial_path` für command partial path aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn command_partial_path(output: &Path) -> PathBuf {
     let parent = output.parent().unwrap_or_else(|| Path::new("."));
     let stem = output
@@ -373,6 +416,8 @@ fn command_partial_path(output: &Path) -> PathBuf {
     parent.join(format!("{stem}.part.{extension}"))
 }
 
+// Was: Führt den Arbeitsschritt `waveform` für waveform aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn waveform(path: &Path, points: usize) -> Result<Vec<f32>, String> {
     let bytes = fs::read(path).map_err(|error| format!("cannot read preview {}: {error}", path.display()))?;
     let data = wav_data_chunk(&bytes)?;
@@ -396,11 +441,15 @@ pub fn waveform(path: &Path, points: usize) -> Result<Vec<f32>, String> {
         .collect())
 }
 
+// Was: Führt den Arbeitsschritt `wav_data_chunk` für wav data chunk aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn wav_data_chunk(bytes: &[u8]) -> Result<&[u8], String> {
     if bytes.len() < 12 || &bytes[..4] != b"RIFF" || &bytes[8..12] != b"WAVE" {
         return Err("not a RIFF/WAVE file".to_string());
     }
     let mut offset = 12usize;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while offset.saturating_add(8) <= bytes.len() {
         let id = &bytes[offset..offset + 4];
         let length = u32::from_le_bytes(bytes[offset + 4..offset + 8].try_into().unwrap()) as usize;
@@ -417,11 +466,15 @@ fn wav_data_chunk(bytes: &[u8]) -> Result<&[u8], String> {
     Err("WAV data chunk missing".to_string())
 }
 
+// Was: Führt den Arbeitsschritt `total_directory_bytes` für total directory bytes aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn total_directory_bytes(path: &Path) -> u64 {
     let mut total = 0u64;
     let Ok(entries) = fs::read_dir(path) else {
         return 0;
     };
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for entry in entries.flatten() {
         let path = entry.path();
         let Ok(metadata) = fs::symlink_metadata(&path) else {
@@ -439,6 +492,8 @@ pub fn total_directory_bytes(path: &Path) -> u64 {
     total
 }
 
+// Was: Führt den Arbeitsschritt `file_is_within` für file is within aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn file_is_within(path: &Path, root: &Path) -> bool {
     let Ok(path) = path.canonicalize() else {
         return false;
@@ -450,10 +505,14 @@ pub fn file_is_within(path: &Path, root: &Path) -> bool {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
     use std::time::{SystemTime, UNIX_EPOCH};
 
+    // Was: Prüft automatisch den Fall directory.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_directory(label: &str) -> PathBuf {
         let nonce = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -465,6 +524,8 @@ mod tests {
         ))
     }
 
+    // Was: Führt den Arbeitsschritt `canonical_wav` für canonical wav aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn canonical_wav(samples: &[i16]) -> Vec<u8> {
         let data_bytes = samples.len() * 2;
         let mut bytes = Vec::with_capacity(44 + data_bytes);
@@ -480,6 +541,8 @@ mod tests {
         bytes.extend_from_slice(&16u16.to_le_bytes());
         bytes.extend_from_slice(b"data");
         bytes.extend_from_slice(&(data_bytes as u32).to_le_bytes());
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for sample in samples {
             bytes.extend_from_slice(&sample.to_le_bytes());
         }
@@ -487,6 +550,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `canonical_wav_is_inspected_and_waveformed` für canonical wav is inspected and waveformed aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn canonical_wav_is_inspected_and_waveformed() {
         let directory = test_directory("wav");
         let path = directory.join("sample.wav");
@@ -503,6 +568,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `packed_tetra_requires_whole_frames` für packed TETRA requires whole frames aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn packed_tetra_requires_whole_frames() {
         let directory = test_directory("tetra");
         let valid = directory.join("valid.tacelp");
@@ -515,6 +582,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `command_partial_path_keeps_media_extension` für command partial path keeps Audio- und Mediendaten extension aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn command_partial_path_keeps_media_extension() {
         assert_eq!(
             command_partial_path(Path::new("/tmp/preview.wav")),
@@ -527,6 +596,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `safe_filename_removes_path_and_control_characters` für safe filename removes path and Steuerung characters aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn safe_filename_removes_path_and_control_characters() {
         assert_eq!(safe_filename("../../hello\nworld.wav", "fallback"), "hello_world.wav");
         assert_eq!(safe_filename("...", "fallback"), "fallback");

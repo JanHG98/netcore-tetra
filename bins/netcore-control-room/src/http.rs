@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für HTTP.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::HashMap;
 use std::env;
 use std::io::{Read, Write};
@@ -20,12 +23,20 @@ use crate::operations::{
 };
 use crate::state::{SharedControlRoom, now_iso};
 
+// Was: Legt den festen Wert `MAX_HTTP_REQUEST_BYTES` für max HTTP request bytes fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const MAX_HTTP_REQUEST_BYTES: usize = 1024 * 1024;
+// Was: Legt den festen Wert `V5_14_2_NO_RESOLVED_LEN_MARKER` für v5 14 2 no resolved len marker fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const V5_14_2_NO_RESOLVED_LEN_MARKER: &str = "v5.14.2-no-resolved-len";
 
+// Was: Vergibt für shared directory einen fachlich verständlichen Typnamen.
+// Warum: Der Alias macht Signaturen lesbarer und hält technische Details aus dem aufrufenden Code heraus.
 pub type SharedDirectory = Arc<Mutex<Value>>;
 
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für HTTP request in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct HttpRequest {
     pub method: String,
     pub path: String,
@@ -35,6 +46,8 @@ pub struct HttpRequest {
 }
 
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für HTTP response in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct HttpResponse {
     pub status: u16,
     pub reason: &'static str,
@@ -42,7 +55,11 @@ pub struct HttpResponse {
     pub body: Vec<u8>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `HttpResponse`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl HttpResponse {
+    // Was: Führt den Arbeitsschritt `json` für JSON-Daten aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn json<T: serde::Serialize>(status: u16, value: &T) -> Self {
         let reason = reason_phrase(status);
         let body = serde_json::to_vec_pretty(value).unwrap_or_else(|_| b"{\"error\":\"json serialisation failed\"}".to_vec());
@@ -54,6 +71,8 @@ impl HttpResponse {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `text` für text aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn text(status: u16, text: impl Into<String>) -> Self {
         Self {
             status,
@@ -63,6 +82,8 @@ impl HttpResponse {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `html` für html aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn html(status: u16, html: impl Into<String>) -> Self {
         Self {
             status,
@@ -72,6 +93,8 @@ impl HttpResponse {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `with_content_type` für with content type aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn with_content_type(status: u16, content_type: &'static str, body: impl Into<Vec<u8>>) -> Self {
         Self {
             status,
@@ -82,6 +105,8 @@ impl HttpResponse {
     }
 }
 
+// Was: Diese Funktion verarbeitet HTTP stream.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 pub fn handle_http_stream(
     mut stream: TcpStream,
     state: SharedControlRoom,
@@ -92,6 +117,8 @@ pub fn handle_http_stream(
     operations: SharedOperations,
 ) {
     let _ = stream.set_read_timeout(Some(Duration::from_secs(5)));
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let request = match read_http_request(&mut stream) {
         Ok(req) => req,
         Err(err) => {
@@ -105,6 +132,8 @@ pub fn handle_http_stream(
     let _ = write_response(&mut stream, &response);
 }
 
+// Was: Diese Funktion leitet HTTP.
+// Warum: Nachrichten und Daten gelangen dadurch nachvollziehbar an das richtige Ziel.
 fn route_http(
     request: HttpRequest,
     state: SharedControlRoom,
@@ -125,6 +154,8 @@ fn route_http(
     let identity = if health_public || login_public {
         None
     } else {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match auth.authorize_http_role(&request.headers, required_role_for_request(&request)) {
             Ok(identity) => Some(identity),
             Err(err) => {
@@ -134,6 +165,8 @@ fn route_http(
         }
     };
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match (request.method.as_str(), request.path.as_str()) {
         ("GET", "/") => HttpResponse::html(200, index_html(node_path, ui_path)),
         ("GET", "/health/live") => HttpResponse::json(200, &json!({
@@ -275,6 +308,8 @@ fn route_http(
             route_incident_operation(&request, operations)
         }
         _ if request.path.starts_with("/api/admin/users/") => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_admin_user_route(&request.path) {
                 Some((username, Some("password"))) if request.method == "POST" => admin_change_user_password(&username, &request.body, auth),
                 Some((username, None)) if request.method == "PATCH" || request.method == "POST" => admin_update_user(&username, &request.body, auth),
@@ -284,6 +319,8 @@ fn route_http(
         }
         _ if request.method == "GET" => {
             if let Some(route) = parse_node_detail_route(&request.path) {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match route.collection.as_deref() {
                     None => node_or_404(state.node_detail(&route.node_id)),
                     Some("subscribers") => {
@@ -313,6 +350,8 @@ fn route_http(
         }
         _ if request.method == "POST" => {
             if let Some(route) = parse_node_command_route(&request.path) {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match route.shortcut.as_deref() {
                     None => submit_command_from_body(&request.body, state, Some(route.node_id)),
                     Some("kick") => submit_kick_command(&request.body, state, route.node_id),
@@ -334,6 +373,8 @@ fn route_http(
     }
 }
 
+// Was: Führt den Arbeitsschritt `required_role_for_request` für required role for request aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn required_role_for_request(request: &HttpRequest) -> AuthRole {
     if request.path.starts_with("/api/admin/users")
         || (request.method == "POST"
@@ -367,7 +408,11 @@ fn required_role_for_request(request: &HttpRequest) -> AuthRole {
 }
 
 
+// Was: Führt den Arbeitsschritt `directory_snapshot` für directory snapshot aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn directory_snapshot(directory: &SharedDirectory) -> Value {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let mut guard = match directory.lock() {
         Ok(guard) => guard,
         Err(_) => return json!({ "error": "directory lock poisoned" }),
@@ -380,12 +425,18 @@ fn directory_snapshot(directory: &SharedDirectory) -> Value {
     value
 }
 
+// Was: Führt den Arbeitsschritt `api_directory_import` für API-Schnittstelle directory import aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn api_directory_import(body: &[u8], directory: &SharedDirectory) -> HttpResponse {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let incoming: Value = match serde_json::from_slice(body) {
         Ok(value) => value,
         Err(error) => return HttpResponse::json(400, &json!({ "error": format!("invalid json: {error}") })),
     };
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let mut guard = match directory.lock() {
         Ok(guard) => guard,
         Err(_) => return HttpResponse::json(500, &json!({ "error": "directory lock poisoned" })),
@@ -405,7 +456,11 @@ fn api_directory_import(body: &[u8], directory: &SharedDirectory) -> HttpRespons
     }))
 }
 
+// Was: Führt den Arbeitsschritt `api_directory_refresh` für API-Schnittstelle directory refresh aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn api_directory_refresh(directory: &SharedDirectory) -> HttpResponse {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let mut guard = match directory.lock() {
         Ok(guard) => guard,
         Err(_) => return HttpResponse::json(500, &json!({ "error": "directory lock poisoned" })),
@@ -425,7 +480,11 @@ fn api_directory_refresh(directory: &SharedDirectory) -> HttpResponse {
     }))
 }
 
+// Was: Führt den Arbeitsschritt `directory_resolved_response` für directory resolved response aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn directory_resolved_response(directory: &SharedDirectory) -> Value {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let mut guard = match directory.lock() {
         Ok(guard) => guard,
         Err(_) => return json!({ "error": "directory lock poisoned" }),
@@ -443,8 +502,12 @@ fn directory_resolved_response(directory: &SharedDirectory) -> Value {
     })
 }
 
+// Was: Führt den Arbeitsschritt `directory_upstream_debug` für directory upstream debug aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn directory_upstream_debug() -> Value {
     let base = directory_upstream_base();
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match fetch_netcore_directory_upstream() {
         Some(value) => json!({
             "ok": true,
@@ -463,6 +526,8 @@ fn directory_upstream_debug() -> Value {
     }
 }
 
+// Was: Diese Funktion gleicht directory upstream.
+// Warum: Mehrere Zustandsquellen bleiben dadurch auf demselben Stand.
 fn sync_directory_upstream(target: &mut Value) -> Option<String> {
     let upstream = fetch_netcore_directory_upstream()?;
     let count = directory_resolved_from_value(&upstream).as_object().map(|object| object.len()).unwrap_or(0);
@@ -471,6 +536,8 @@ fn sync_directory_upstream(target: &mut Value) -> Option<String> {
 }
 
 
+// Was: Führt den Arbeitsschritt `directory_upstream_base` für directory upstream base aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn directory_upstream_base() -> String {
     env::var("NETCORE_DIRECTORY_API")
         .or_else(|_| env::var("NETCORE_DIRECTORY_URL"))
@@ -480,6 +547,8 @@ fn directory_upstream_base() -> String {
         .to_string()
 }
 
+// Was: Diese Funktion lädt netcore directory upstream.
+// Warum: Externe oder entfernte Daten werden dadurch an einer Stelle geladen und geprüft.
 fn fetch_netcore_directory_upstream() -> Option<Value> {
     let base = directory_upstream_base();
 
@@ -502,6 +571,8 @@ fn fetch_netcore_directory_upstream() -> Option<Value> {
     Some(netcore_directory_api_to_control_room(devices, basestations, groups, device_groups, statuses, &base))
 }
 
+// Was: Führt den Arbeitsschritt `http_get_json` für HTTP get JSON-Daten aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn http_get_json(url: &str) -> Option<Value> {
     let (host, port, path) = parse_http_url(url)?;
     let mut stream = TcpStream::connect((host.as_str(), port)).ok()?;
@@ -528,6 +599,8 @@ fn http_get_json(url: &str) -> Option<Value> {
     serde_json::from_str(body.trim()).ok()
 }
 
+// Was: Diese Funktion liest und prüft HTTP url.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_http_url(url: &str) -> Option<(String, u16, String)> {
     let without_scheme = url.strip_prefix("http://")?;
     let (authority, path) = without_scheme
@@ -543,6 +616,8 @@ fn parse_http_url(url: &str) -> Option<(String, u16, String)> {
     Some((host, port?, path))
 }
 
+// Was: Führt den Arbeitsschritt `netcore_directory_api_to_control_room` für netcore directory API-Schnittstelle to Steuerung room aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn netcore_directory_api_to_control_room(
     devices: Value,
     basestations: Value,
@@ -557,6 +632,8 @@ fn netcore_directory_api_to_control_room(
     let mut status_map = serde_json::Map::new();
 
     if let Some(items) = devices.as_array() {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for item in items {
             let Some(issi) = value_field_u64(item, &["issi", "id"]) else { continue; };
             let name = value_field_string(item, &["name", "short", "label"]).unwrap_or_else(|| issi.to_string());
@@ -577,6 +654,8 @@ fn netcore_directory_api_to_control_room(
     }
 
     if let Some(items) = basestations.as_array() {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for item in items {
             let Some(issi) = value_field_u64(item, &["issi", "id"]) else { continue; };
             let name = value_field_string(item, &["name", "short", "label"]).unwrap_or_else(|| issi.to_string());
@@ -595,6 +674,8 @@ fn netcore_directory_api_to_control_room(
     }
 
     if let Some(items) = groups.as_array() {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for item in items {
             let Some(gssi) = value_field_u64(item, &["gssi", "id"]) else { continue; };
             let name = value_field_string(item, &["name", "short", "label"]).unwrap_or_else(|| gssi.to_string());
@@ -607,6 +688,8 @@ fn netcore_directory_api_to_control_room(
     }
 
     if let Some(items) = device_groups.as_array() {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for item in items {
             let Some(group_id) = value_field_u64(item, &["group_id", "id"]) else { continue; };
             let group_key = group_id.to_string();
@@ -618,6 +701,8 @@ fn netcore_directory_api_to_control_room(
             status_groups.insert(group_key.clone(), entry);
 
             if let Some(members) = item.get("members").and_then(Value::as_array) {
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for member in members {
                     if let Some(issi) = value_as_u64(member) {
                         let subscriber = subscribers
@@ -628,6 +713,8 @@ fn netcore_directory_api_to_control_room(
                 }
             }
             if let Some(member_devices) = item.get("member_devices").and_then(Value::as_array) {
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for member in member_devices {
                     let Some(issi) = value_field_u64(member, &["issi", "id"]) else { continue; };
                     let subscriber = subscribers.entry(issi.to_string()).or_insert_with(|| {
@@ -644,6 +731,8 @@ fn netcore_directory_api_to_control_room(
     }
 
     if let Some(items) = statuses.as_array() {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for item in items {
             let Some(code) = value_field_u64(item, &["code", "status", "id"]) else { continue; };
             let label = value_field_string(item, &["label", "name", "description"]).unwrap_or_else(|| format!("Status {code}"));
@@ -669,8 +758,12 @@ fn netcore_directory_api_to_control_room(
     })
 }
 
+// Was: Führt den Arbeitsschritt `value_field_string` für value field string aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn value_field_string(value: &Value, keys: &[&str]) -> Option<String> {
     let object = value.as_object()?;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for key in keys {
         let Some(value) = object.get(*key) else { continue; };
         if let Some(text) = value.as_str().map(str::trim).filter(|text| !text.is_empty()) {
@@ -686,8 +779,12 @@ fn value_field_string(value: &Value, keys: &[&str]) -> Option<String> {
     None
 }
 
+// Was: Führt den Arbeitsschritt `value_field_u64` für value field u64 aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn value_field_u64(value: &Value, keys: &[&str]) -> Option<u64> {
     let object = value.as_object()?;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for key in keys {
         let Some(value) = object.get(*key) else { continue; };
         if let Some(number) = value_as_u64(value) {
@@ -697,6 +794,8 @@ fn value_field_u64(value: &Value, keys: &[&str]) -> Option<u64> {
     None
 }
 
+// Was: Führt den Arbeitsschritt `value_as_u64` für value as u64 aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn value_as_u64(value: &Value) -> Option<u64> {
     if let Some(number) = value.as_u64() {
         return Some(number);
@@ -707,14 +806,20 @@ fn value_as_u64(value: &Value) -> Option<u64> {
     value.as_str()?.trim().parse::<u64>().ok()
 }
 
+// Was: Führt den Arbeitsschritt `copy_string_field` für copy string field aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn copy_string_field(source: &Value, target: &mut Value, target_key: &str, source_keys: &[&str]) {
     if let Some(value) = value_field_string(source, source_keys) {
         target[target_key] = json!(value);
     }
 }
 
+// Was: Führt den Arbeitsschritt `copy_bool_field` für copy bool field aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn copy_bool_field(source: &Value, target: &mut Value, target_key: &str, source_keys: &[&str]) {
     let Some(object) = source.as_object() else { return; };
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for key in source_keys {
         let Some(value) = object.get(*key) else { continue; };
         if let Some(flag) = value.as_bool() {
@@ -728,6 +833,8 @@ fn copy_bool_field(source: &Value, target: &mut Value, target_key: &str, source_
     }
 }
 
+// Was: Diese Funktion führt directory value.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn merge_directory_value(target: &mut Value, incoming: Value) {
     let incoming = canonical_directory_value(incoming);
     if !target.is_object() {
@@ -739,6 +846,8 @@ fn merge_directory_value(target: &mut Value, incoming: Value) {
     }
 }
 
+// Was: Führt den Arbeitsschritt `canonical_directory_value` für canonical directory value aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn canonical_directory_value(value: Value) -> Value {
     if let Some(directory) = value.get("directory").cloned() {
         return canonical_directory_value(directory);
@@ -754,11 +863,15 @@ fn canonical_directory_value(value: Value) -> Value {
     value
 }
 
+// Was: Führt den Arbeitsschritt `canonicalize_directory_collection` für canonicalize directory collection aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn canonicalize_directory_collection(object: &mut serde_json::Map<String, Value>, field: &str, key_fields: &[&str]) {
     let Some(value) = object.get_mut(field) else { return; };
     let Some(array) = value.as_array() else { return; };
 
     let mut map = serde_json::Map::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for item in array {
         if let Some(key) = directory_item_key(item, key_fields) {
             map.insert(key, item.clone());
@@ -767,7 +880,11 @@ fn canonicalize_directory_collection(object: &mut serde_json::Map<String, Value>
     *value = Value::Object(map);
 }
 
+// Was: Führt den Arbeitsschritt `directory_item_key` für directory item key aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn directory_item_key(item: &Value, key_fields: &[&str]) -> Option<String> {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for key in key_fields {
         if let Some(value) = item.get(*key) {
             if let Some(text) = value.as_str().map(str::trim).filter(|text| !text.is_empty()) {
@@ -784,10 +901,18 @@ fn directory_item_key(item: &Value, key_fields: &[&str]) -> Option<String> {
     None
 }
 
+// Was: Diese Funktion führt JSON-Daten objects.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn merge_json_objects(target: &mut Value, incoming: &Value) {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match (target, incoming) {
         (Value::Object(target), Value::Object(incoming)) => {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for (key, incoming_value) in incoming {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match target.get_mut(key) {
                     Some(target_value) => merge_json_objects(target_value, incoming_value),
                     None => {
@@ -800,15 +925,23 @@ fn merge_json_objects(target: &mut Value, incoming: &Value) {
     }
 }
 
+// Was: Führt den Arbeitsschritt `directory_resolved_from_value` für directory resolved from value aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn directory_resolved_from_value(directory: &Value) -> Value {
     let mut resolved: serde_json::Map<String, Value> = serde_json::Map::new();
     collect_resolved_subscribers(directory, &mut resolved);
     Value::Object(resolved)
 }
 
+// Was: Diese Funktion sammelt resolved subscribers.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn collect_resolved_subscribers(value: &Value, resolved: &mut serde_json::Map<String, Value>) {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match value {
         Value::Array(items) => {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for item in items {
                 collect_resolved_subscribers(item, resolved);
             }
@@ -824,6 +957,8 @@ fn collect_resolved_subscribers(value: &Value, resolved: &mut serde_json::Map<St
                 }
             }
 
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for (key, child) in object {
                 if let Ok(issi) = key.trim().parse::<u64>() {
                     if let Some(child_object) = child.as_object() {
@@ -858,7 +993,11 @@ fn collect_resolved_subscribers(value: &Value, resolved: &mut serde_json::Map<St
     }
 }
 
+// Was: Führt den Arbeitsschritt `directory_object_issi` für directory object Teilnehmerkennung (ISSI) aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn directory_object_issi(object: &serde_json::Map<String, Value>) -> Option<u64> {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for key in ["issi", "individual_issi", "source_issi", "address", "id", "subscriber_id", "subscriberId", "terminal_id", "terminalId", "radio_id", "radioId"] {
         let Some(value) = object.get(key) else { continue; };
         if let Some(number) = value.as_u64() {
@@ -876,6 +1015,8 @@ fn directory_object_issi(object: &serde_json::Map<String, Value>) -> Option<u64>
     None
 }
 
+// Was: Führt den Arbeitsschritt `directory_object_name` für directory object name aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn directory_object_name(object: &serde_json::Map<String, Value>, issi: u64) -> Option<String> {
     directory_object_text(object, &["name", "display_name", "displayName", "label", "alias", "rufname", "callsign", "call_sign", "radio_alias", "radioAlias", "short_name", "shortName", "shortLabel", "terminal_name", "terminalName", "bezeichnung", "description", "title"])
         .filter(|text| {
@@ -884,9 +1025,15 @@ fn directory_object_name(object: &serde_json::Map<String, Value>, issi: u64) -> 
         })
 }
 
+// Was: Führt den Arbeitsschritt `directory_object_text` für directory object text aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn directory_object_text(object: &serde_json::Map<String, Value>, keys: &[&str]) -> Option<String> {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for key in keys {
         let Some(value) = object.get(*key) else { continue; };
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match value {
             Value::String(text) => {
                 let trimmed = text.trim();
@@ -901,40 +1048,62 @@ fn directory_object_text(object: &serde_json::Map<String, Value>, keys: &[&str])
     None
 }
 
+// Was: Führt den Arbeitsschritt `api_login` für API-Schnittstelle login aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn api_login(body: &[u8], auth: &AuthState) -> HttpResponse {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let req: LoginRequest = match parse_json_body(body) {
         Ok(req) => req,
         Err(response) => return response,
     };
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match auth.login(&req.username, &req.password) {
         Ok(user) => HttpResponse::json(200, &LoginResponse { ok: true, user, auth_mode: "user_password" }),
         Err(err) => auth_error_response(err, AuthRole::Viewer),
     }
 }
 
+// Was: Führt den Arbeitsschritt `admin_list_users` für admin list users aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn admin_list_users(auth: &AuthState) -> HttpResponse {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match auth.list_users() {
         Ok(users) => HttpResponse::json(200, &UserListResponse { now: now_iso(), count: users.len(), users }),
         Err(err) => HttpResponse::json(500, &json!({ "error": err })),
     }
 }
 
+// Was: Führt den Arbeitsschritt `admin_create_user` für admin create Benutzer aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn admin_create_user(body: &[u8], auth: &AuthState, identity: Option<&AuthIdentity>) -> HttpResponse {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let req: CreateUserRequest = match parse_json_body(body) {
         Ok(req) => req,
         Err(response) => return response,
     };
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match auth.create_user(req, identity.map(|i| i.username.as_str())) {
         Ok(created) => HttpResponse::json(201, &created),
         Err(err) => HttpResponse::json(400, &json!({ "error": err })),
     }
 }
 
+// Was: Führt den Arbeitsschritt `admin_update_user` für admin update Benutzer aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn admin_update_user(username: &str, body: &[u8], auth: &AuthState) -> HttpResponse {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let req: UpdateUserRequest = match parse_json_body(body) {
         Ok(req) => req,
         Err(response) => return response,
     };
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match auth.update_user(username, req) {
         Ok(updated) => HttpResponse::json(200, &updated),
         Err(err) if err == "user not found" => HttpResponse::json(404, &json!({ "error": err })),
@@ -942,11 +1111,17 @@ fn admin_update_user(username: &str, body: &[u8], auth: &AuthState) -> HttpRespo
     }
 }
 
+// Was: Führt den Arbeitsschritt `admin_change_user_password` für admin change Benutzer password aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn admin_change_user_password(username: &str, body: &[u8], auth: &AuthState) -> HttpResponse {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let req: ChangePasswordRequest = match parse_json_body(body) {
         Ok(req) => req,
         Err(response) => return response,
     };
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match auth.change_user_password(username, req) {
         Ok(updated) => HttpResponse::json(200, &updated),
         Err(err) if err == "user not found" => HttpResponse::json(404, &json!({ "error": err })),
@@ -954,7 +1129,11 @@ fn admin_change_user_password(username: &str, body: &[u8], auth: &AuthState) -> 
     }
 }
 
+// Was: Führt den Arbeitsschritt `admin_delete_user` für admin delete Benutzer aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn admin_delete_user(username: &str, auth: &AuthState) -> HttpResponse {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match auth.delete_user(username) {
         Ok(true) => HttpResponse::json(200, &json!({ "deleted": true, "username": username })),
         Ok(false) => HttpResponse::json(404, &json!({ "error": "user not found", "username": username })),
@@ -962,10 +1141,14 @@ fn admin_delete_user(username: &str, auth: &AuthState) -> HttpResponse {
     }
 }
 
+// Was: Diese Funktion liest und prüft admin Benutzer Weiterleitung.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_admin_user_route(path: &str) -> Option<(String, Option<&'static str>)> {
     let rest = path.strip_prefix("/api/admin/users/")?;
     let mut parts = rest.split('/').filter(|part| !part.is_empty());
     let username = parts.next()?.to_string();
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match parts.next() {
         None => Some((username, None)),
         Some("password") if parts.next().is_none() => Some((username, Some("password"))),
@@ -975,17 +1158,23 @@ fn parse_admin_user_route(path: &str) -> Option<(String, Option<&'static str>)> 
 
 
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für Netzknoten command Weiterleitung in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct NodeCommandRoute {
     node_id: String,
     shortcut: Option<String>,
 }
 
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für Netzknoten detail Weiterleitung in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct NodeDetailRoute {
     node_id: String,
     collection: Option<String>,
 }
 
+// Was: Diese Funktion liest und prüft Netzknoten detail Weiterleitung.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_node_detail_route(path: &str) -> Option<NodeDetailRoute> {
     let rest = path.strip_prefix("/api/nodes/")?;
     let mut parts = rest.split('/').filter(|part| !part.is_empty());
@@ -997,13 +1186,19 @@ fn parse_node_detail_route(path: &str) -> Option<NodeDetailRoute> {
     Some(NodeDetailRoute { node_id, collection })
 }
 
+// Was: Führt den Arbeitsschritt `node_or_404` für Netzknoten or 404 aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn node_or_404<T: serde::Serialize>(value: Option<T>) -> HttpResponse {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match value {
         Some(value) => HttpResponse::json(200, &value),
         None => HttpResponse::json(404, &json!({ "error": "node not found" })),
     }
 }
 
+// Was: Diese Funktion liest und prüft Netzknoten command Weiterleitung.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_node_command_route(path: &str) -> Option<NodeCommandRoute> {
     let rest = path.strip_prefix("/api/nodes/")?;
     let mut parts = rest.split('/').filter(|part| !part.is_empty());
@@ -1019,17 +1214,23 @@ fn parse_node_command_route(path: &str) -> Option<NodeCommandRoute> {
 }
 
 #[derive(Debug, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für operator only request in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct OperatorOnlyRequest {
     operator_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für kick command request in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct KickCommandRequest {
     operator_id: Option<String>,
     issi: u32,
 }
 
 #[derive(Debug, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für dgna command request in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct DgnaCommandRequest {
     operator_id: Option<String>,
     issi: u32,
@@ -1038,6 +1239,8 @@ struct DgnaCommandRequest {
 }
 
 #[derive(Debug, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für clear emergency command request in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct ClearEmergencyCommandRequest {
     operator_id: Option<String>,
     #[serde(default)]
@@ -1045,6 +1248,8 @@ struct ClearEmergencyCommandRequest {
 }
 
 #[derive(Debug, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für legacy WAP-Dienst command request in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct LegacyWapCommandRequest {
     operator_id: Option<String>,
     dest_issi: u32,
@@ -1062,25 +1267,37 @@ struct LegacyWapCommandRequest {
     message_reference: u8,
 }
 
+// Was: Führt den Arbeitsschritt `default_legacy_wap_source_issi` für default legacy WAP-Dienst source Teilnehmerkennung (ISSI) aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_legacy_wap_source_issi() -> u32 {
     4_010_001
 }
 
+// Was: Führt den Arbeitsschritt `default_legacy_wap_title` für default legacy WAP-Dienst title aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_legacy_wap_title() -> String {
     "NetCore".to_string()
 }
 
+// Was: Führt den Arbeitsschritt `default_legacy_wap_message_reference` für default legacy WAP-Dienst Nachricht reference aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_legacy_wap_message_reference() -> u8 {
     1
 }
 
 #[derive(Debug, Clone, Copy)]
+// Was: Listet die möglichen Varianten für Dienst action auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 enum ServiceAction {
     Restart,
     Shutdown,
 }
 
+// Was: Führt den Arbeitsschritt `submit_kick_command` für submit kick command aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn submit_kick_command(body: &[u8], state: SharedControlRoom, node_id: String) -> HttpResponse {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let req: KickCommandRequest = match parse_json_body(body) {
         Ok(req) => req,
         Err(response) => return response,
@@ -1089,7 +1306,11 @@ fn submit_kick_command(body: &[u8], state: SharedControlRoom, node_id: String) -
     submit_envelope(envelope, state)
 }
 
+// Was: Führt den Arbeitsschritt `submit_dgna_command` für submit dgna command aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn submit_dgna_command(body: &[u8], state: SharedControlRoom, node_id: String) -> HttpResponse {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let req: DgnaCommandRequest = match parse_json_body(body) {
         Ok(req) => req,
         Err(response) => return response,
@@ -1106,7 +1327,11 @@ fn submit_dgna_command(body: &[u8], state: SharedControlRoom, node_id: String) -
     submit_envelope(envelope, state)
 }
 
+// Was: Führt den Arbeitsschritt `submit_clear_emergency_command` für submit clear emergency command aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn submit_clear_emergency_command(body: &[u8], state: SharedControlRoom, node_id: String) -> HttpResponse {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let req: ClearEmergencyCommandRequest = match parse_json_body(body) {
         Ok(req) => req,
         Err(response) => return response,
@@ -1115,7 +1340,11 @@ fn submit_clear_emergency_command(body: &[u8], state: SharedControlRoom, node_id
     submit_envelope(envelope, state)
 }
 
+// Was: Führt den Arbeitsschritt `submit_legacy_wap_command` für submit legacy WAP-Dienst command aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn submit_legacy_wap_command(body: &[u8], state: SharedControlRoom, node_id: String) -> HttpResponse {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let req: LegacyWapCommandRequest = match parse_json_body(body) {
         Ok(req) => req,
         Err(response) => return response,
@@ -1126,6 +1355,8 @@ fn submit_legacy_wap_command(body: &[u8], state: SharedControlRoom, node_id: Str
     if req.message.trim().is_empty() {
         return HttpResponse::json(400, &json!({ "error": "message must not be empty" }));
     }
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let transport = match req.transport.as_deref().map(str::trim) {
         Some("sds_tl") | Some("sds-tl") | Some("84") | Some("0x84") => {
             tetra_entities::legacy_wap::LegacyWapTransport::SdsTl
@@ -1140,6 +1371,8 @@ fn submit_legacy_wap_command(body: &[u8], state: SharedControlRoom, node_id: Str
             );
         }
     };
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let payload = match tetra_entities::legacy_wap::build_compact_wml_type4(
         &req.title,
         &req.message,
@@ -1171,11 +1404,17 @@ fn submit_legacy_wap_command(body: &[u8], state: SharedControlRoom, node_id: Str
     submit_envelope(envelope, state)
 }
 
+// Was: Führt den Arbeitsschritt `submit_service_command` für submit Dienst command aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn submit_service_command(body: &[u8], state: SharedControlRoom, node_id: String, action: ServiceAction) -> HttpResponse {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let req: OperatorOnlyRequest = match parse_json_body(body) {
         Ok(req) => req,
         Err(response) => return response,
     };
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let command = match action {
         ServiceAction::Restart => ControlCommand::RestartService,
         ServiceAction::Shutdown => ControlCommand::ShutdownService,
@@ -1184,23 +1423,35 @@ fn submit_service_command(body: &[u8], state: SharedControlRoom, node_id: String
     submit_envelope(envelope, state)
 }
 
+// Was: Diese Funktion liest und prüft JSON-Daten body.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_json_body<T: for<'de> Deserialize<'de>>(body: &[u8]) -> Result<T, HttpResponse> {
     serde_json::from_slice(body).map_err(|e| HttpResponse::json(400, &json!({ "error": format!("invalid json: {}", e) })))
 }
 
+// Was: Führt den Arbeitsschritt `submit_envelope` für submit envelope aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn submit_envelope(envelope: ControlCommandEnvelope, state: SharedControlRoom) -> HttpResponse {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match state.submit_command(envelope) {
         Ok(queued) => HttpResponse::json(202, &queued),
         Err(e) => HttpResponse::json(409, &json!({ "error": e })),
     }
 }
 
+// Was: Führt den Arbeitsschritt `submit_command_from_body` für submit command from body aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn submit_command_from_body(body: &[u8], state: SharedControlRoom, node_from_path: Option<String>) -> HttpResponse {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let value: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
         Err(e) => return HttpResponse::json(400, &json!({ "error": format!("invalid json: {}", e) })),
     };
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let envelope = match parse_command_request(value, &state, node_from_path) {
         Ok(envelope) => envelope,
         Err(e) => return HttpResponse::json(400, &json!({ "error": e })),
@@ -1209,6 +1460,8 @@ fn submit_command_from_body(body: &[u8], state: SharedControlRoom, node_from_pat
     submit_envelope(envelope, state)
 }
 
+// Was: Diese Funktion liest und prüft command request.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_command_request(value: Value, state: &SharedControlRoom, node_from_path: Option<String>) -> Result<ControlCommandEnvelope, String> {
     if value.get("target_node_id").is_some() && value.get("command_id").is_some() && value.get("command").is_some() {
         let mut envelope: ControlCommandEnvelope = serde_json::from_value(value).map_err(|e| format!("invalid ControlCommandEnvelope: {}", e))?;
@@ -1219,6 +1472,8 @@ fn parse_command_request(value: Value, state: &SharedControlRoom, node_from_path
     }
 
     #[derive(Debug, Deserialize)]
+    // Was: Bündelt die zusammengehörigen Werte für submit command request in einem Datentyp.
+    // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
     struct SubmitCommandRequest {
         operator_id: Option<String>,
         command_id: Option<String>,
@@ -1241,11 +1496,15 @@ fn parse_command_request(value: Value, state: &SharedControlRoom, node_from_path
     Ok(envelope)
 }
 
+// Was: Diese Funktion liest HTTP request.
+// Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
 pub fn read_http_request(stream: &mut TcpStream) -> Result<HttpRequest, String> {
     let mut buf = Vec::with_capacity(4096);
     let mut chunk = [0u8; 4096];
     let mut header_end = None;
 
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while header_end.is_none() {
         let n = stream.read(&mut chunk).map_err(|e| format!("read failed: {}", e))?;
         if n == 0 {
@@ -1268,6 +1527,8 @@ pub fn read_http_request(stream: &mut TcpStream) -> Result<HttpRequest, String> 
     let (path, query) = parse_path_and_query(raw_path);
 
     let mut headers = HashMap::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for line in lines {
         if let Some((name, value)) = line.split_once(':') {
             headers.insert(name.trim().to_ascii_lowercase(), value.trim().to_string());
@@ -1283,6 +1544,8 @@ pub fn read_http_request(stream: &mut TcpStream) -> Result<HttpRequest, String> 
     }
 
     let mut body = buf[header_end..].to_vec();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while body.len() < content_length {
         let n = stream.read(&mut chunk).map_err(|e| format!("body read failed: {}", e))?;
         if n == 0 {
@@ -1298,6 +1561,8 @@ pub fn read_http_request(stream: &mut TcpStream) -> Result<HttpRequest, String> 
     Ok(HttpRequest { method, path, query, headers, body })
 }
 
+// Was: Diese Funktion schreibt response.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 pub fn write_response(stream: &mut TcpStream, response: &HttpResponse) -> std::io::Result<()> {
     let header = format!(
         "HTTP/1.1 {} {}\r\nContent-Type: {}\r\nContent-Length: {}\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, PATCH, DELETE, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type, Authorization\r\nConnection: close\r\n\r\n",
@@ -1311,11 +1576,15 @@ pub fn write_response(stream: &mut TcpStream, response: &HttpResponse) -> std::i
     stream.flush()
 }
 
+// Was: Führt den Arbeitsschritt `looks_like_websocket_upgrade` für looks like websocket upgrade aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn looks_like_websocket_upgrade(peek: &[u8]) -> bool {
     let text = String::from_utf8_lossy(peek).to_ascii_lowercase();
     text.contains("upgrade: websocket") && text.contains("sec-websocket-key:")
 }
 
+// Was: Diese Funktion sucht subslice.
+// Warum: Die Suchlogik bleibt damit wiederverwendbar und muss nicht an mehreren Stellen kopiert werden.
 pub fn find_subslice(hay: &[u8], needle: &[u8]) -> Option<usize> {
     if needle.is_empty() || hay.len() < needle.len() {
         return None;
@@ -1323,6 +1592,8 @@ pub fn find_subslice(hay: &[u8], needle: &[u8]) -> Option<usize> {
     hay.windows(needle.len()).position(|w| w == needle)
 }
 
+// Was: Diese Funktion liest und prüft path and query.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_path_and_query(raw_path: &str) -> (String, HashMap<String, String>) {
     let mut split = raw_path.splitn(2, '?');
     let path = split.next().unwrap_or(raw_path).to_string();
@@ -1330,8 +1601,12 @@ fn parse_path_and_query(raw_path: &str) -> (String, HashMap<String, String>) {
     (path, query)
 }
 
+// Was: Diese Funktion liest und prüft query string.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_query_string(query: &str) -> HashMap<String, String> {
     let mut out = HashMap::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for pair in query.split('&').filter(|pair| !pair.is_empty()) {
         let mut split = pair.splitn(2, '=');
         let key = split.next().unwrap_or_default();
@@ -1341,10 +1616,14 @@ fn parse_query_string(query: &str) -> HashMap<String, String> {
     out
 }
 
+// Was: Führt den Arbeitsschritt `percentish_decode` für percentish Dekodierung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn percentish_decode(value: &str) -> String {
     value.replace('+', " ")
 }
 
+// Was: Führt den Arbeitsschritt `query_usize` für query usize aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn query_usize(request: &HttpRequest, key: &str, default: usize, max: usize) -> usize {
     request
         .query
@@ -1354,6 +1633,8 @@ fn query_usize(request: &HttpRequest, key: &str, default: usize, max: usize) -> 
         .min(max)
 }
 
+// Was: Führt den Arbeitsschritt `query_bool` für query bool aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn query_bool(request: &HttpRequest, key: &str, default: bool) -> bool {
     request
         .query
@@ -1363,28 +1644,42 @@ fn query_bool(request: &HttpRequest, key: &str, default: bool) -> bool {
 }
 
 
+// Was: Führt den Arbeitsschritt `operations_create_incident` für operations create incident aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn operations_create_incident(body: &[u8], operations: &SharedOperations) -> HttpResponse {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let request: CreateIncidentRequest = match parse_json_body(body) {
         Ok(request) => request,
         Err(response) => return response,
     };
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match operations.create_incident(request) {
         Ok(incident) => HttpResponse::json(201, &json!({ "incident": incident })),
         Err(error) => HttpResponse::json(400, &json!({ "error": error })),
     }
 }
 
+// Was: Führt den Arbeitsschritt `operations_add_shift_log` für operations add shift log aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn operations_add_shift_log(body: &[u8], operations: &SharedOperations) -> HttpResponse {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let request: ShiftLogRequest = match parse_json_body(body) {
         Ok(request) => request,
         Err(response) => return response,
     };
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match operations.add_shift_log(request) {
         Ok(entry) => HttpResponse::json(201, &json!({ "entry": entry })),
         Err(error) => HttpResponse::json(400, &json!({ "error": error })),
     }
 }
 
+// Was: Diese Funktion leitet Dienst operation.
+// Warum: Nachrichten und Daten gelangen dadurch nachvollziehbar an das richtige Ziel.
 fn route_service_operation(request: &HttpRequest, operations: &SharedOperations) -> HttpResponse {
     let suffix = request.path.trim_start_matches("/api/v1/services/");
     let mut parts = suffix.split('/').filter(|part| !part.is_empty());
@@ -1395,6 +1690,8 @@ fn route_service_operation(request: &HttpRequest, operations: &SharedOperations)
     if parts.next().is_some() {
         return HttpResponse::json(404, &json!({ "error": "unknown service route" }));
     }
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match (request.method.as_str(), action) {
         ("GET", None) => match operations.service(name) {
             Some(service) => HttpResponse::json(200, &service),
@@ -1404,6 +1701,8 @@ fn route_service_operation(request: &HttpRequest, operations: &SharedOperations)
             let body: Value = if request.body.is_empty() {
                 json!({})
             } else {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match serde_json::from_slice(&request.body) {
                     Ok(value) => value,
                     Err(error) => return HttpResponse::json(400, &json!({ "error": format!("invalid json: {error}") })),
@@ -1414,6 +1713,8 @@ fn route_service_operation(request: &HttpRequest, operations: &SharedOperations)
                 .and_then(Value::as_str)
                 .unwrap_or("operator");
             let enabled = action == Some("enable");
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match operations.set_service_enabled(name, enabled, operator) {
                 Ok(service) => HttpResponse::json(200, &json!({ "service": service })),
                 Err(error) => HttpResponse::json(404, &json!({ "error": error })),
@@ -1426,6 +1727,8 @@ fn route_service_operation(request: &HttpRequest, operations: &SharedOperations)
     }
 }
 
+// Was: Diese Funktion leitet incident operation.
+// Warum: Nachrichten und Daten gelangen dadurch nachvollziehbar an das richtige Ziel.
 fn route_incident_operation(request: &HttpRequest, operations: &SharedOperations) -> HttpResponse {
     let suffix = request.path.trim_start_matches("/api/v1/incidents/");
     let mut parts = suffix.split('/').filter(|part| !part.is_empty());
@@ -1436,42 +1739,58 @@ fn route_incident_operation(request: &HttpRequest, operations: &SharedOperations
     if parts.next().is_some() {
         return HttpResponse::json(404, &json!({ "error": "unknown incident route" }));
     }
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match (request.method.as_str(), action) {
         ("GET", None) => {
             let incident = operations
                 .incidents(None, 5000)
                 .into_iter()
                 .find(|incident| incident.id == id);
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match incident {
                 Some(incident) => HttpResponse::json(200, &incident),
                 None => HttpResponse::json(404, &json!({ "error": format!("unknown incident '{id}'") })),
             }
         }
         ("POST", Some("ack")) => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let action: IncidentActionRequest = match parse_json_body_or_default(&request.body) {
                 Ok(action) => action,
                 Err(response) => return response,
             };
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match operations.acknowledge_incident(id, action) {
                 Ok(incident) => HttpResponse::json(200, &json!({ "incident": incident })),
                 Err(error) => HttpResponse::json(400, &json!({ "error": error })),
             }
         }
         ("POST", Some("resolve")) => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let action: IncidentActionRequest = match parse_json_body_or_default(&request.body) {
                 Ok(action) => action,
                 Err(response) => return response,
             };
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match operations.resolve_incident(id, action) {
                 Ok(incident) => HttpResponse::json(200, &json!({ "incident": incident })),
                 Err(error) => HttpResponse::json(400, &json!({ "error": error })),
             }
         }
         ("POST", Some("notes")) => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let note: IncidentNoteRequest = match parse_json_body(&request.body) {
                 Ok(note) => note,
                 Err(response) => return response,
             };
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match operations.add_incident_note(id, note) {
                 Ok(incident) => HttpResponse::json(200, &json!({ "incident": incident })),
                 Err(error) => HttpResponse::json(400, &json!({ "error": error })),
@@ -1484,6 +1803,8 @@ fn route_incident_operation(request: &HttpRequest, operations: &SharedOperations
     }
 }
 
+// Was: Diese Funktion liest und prüft JSON-Daten body or default.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_json_body_or_default<T>(body: &[u8]) -> Result<T, HttpResponse>
 where
     T: for<'de> Deserialize<'de> + Default,
@@ -1495,6 +1816,8 @@ where
     }
 }
 
+// Was: Führt den Arbeitsschritt `control_room_openapi` für Steuerung room openapi aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn control_room_openapi() -> Value {
     json!({
         "openapi": "3.0.3",
@@ -1531,6 +1854,8 @@ fn control_room_openapi() -> Value {
     })
 }
 
+// Was: Führt den Arbeitsschritt `not_found` für not found aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn not_found(node_path: &str, ui_path: &str) -> HttpResponse {
     HttpResponse::json(
         404,
@@ -1598,7 +1923,11 @@ fn not_found(node_path: &str, ui_path: &str) -> HttpResponse {
     )
 }
 
+// Was: Führt den Arbeitsschritt `auth_error_response` für Anmeldung und Berechtigung error response aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn auth_error_response(error: AuthError, required: AuthRole) -> HttpResponse {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match error {
         AuthError::Missing | AuthError::Invalid => HttpResponse::json(401, &json!({
             "error": "unauthorized",
@@ -1612,7 +1941,11 @@ fn auth_error_response(error: AuthError, required: AuthRole) -> HttpResponse {
     }
 }
 
+// Was: Führt den Arbeitsschritt `reason_phrase` für reason phrase aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn reason_phrase(status: u16) -> &'static str {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match status {
         200 => "OK",
         201 => "Created",
@@ -1628,6 +1961,8 @@ fn reason_phrase(status: u16) -> &'static str {
     }
 }
 
+// Was: Führt den Arbeitsschritt `index_html` für index html aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn index_html(node_path: &str, ui_path: &str) -> String {
     crate::webui::index_html(node_path, ui_path)
 }

@@ -1,23 +1,66 @@
+# NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Schlüsselverwaltung und Schlüsselverteilung.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+# Was: Öffnet den Konfigurationsabschnitt `package`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [package]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "netcore-kmf"
+# Was: Setzt die Einstellung `version.workspace` für package.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 version.workspace = true
+# Was: Setzt die Einstellung `edition.workspace` für package.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 edition.workspace = true
+# Was: Setzt die Einstellung `license.workspace` für package.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 license.workspace = true
 
+# Was: Öffnet den Konfigurationsabschnitt `bin`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[bin]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "netcore-kmf"
+# Was: Verweist auf den lokalen Pfad der Komponente.
+# Warum: Cargo findet dadurch den Quellcode innerhalb dieses gemeinsamen Arbeitsbereichs.
 path = "src/main.rs"
 
+# Was: Öffnet den Konfigurationsabschnitt `dependencies`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [dependencies]
+# Was: Bindet die Abhängigkeit `clap` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 clap = { workspace = true }
+# Was: Bindet die Abhängigkeit `chrono` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 chrono = { workspace = true }
+# Was: Bindet die Abhängigkeit `serde` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 serde = { workspace = true }
+# Was: Bindet die Abhängigkeit `serde_json` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 serde_json = "1.0"
+# Was: Bindet die Abhängigkeit `sha2` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 sha2 = "0.10"
+# Was: Bindet die Abhängigkeit `toml` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 toml = { workspace = true }
+# Was: Bindet die Abhängigkeit `uuid` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 uuid = { workspace = true }
+# Was: Bindet die Abhängigkeit `tracing` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 tracing = { workspace = true }
+# Was: Bindet die Abhängigkeit `tracing-subscriber` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 tracing-subscriber = { workspace = true }
 
+# Was: Öffnet den Konfigurationsabschnitt `lints`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [lints]
+# Was: Setzt die Einstellung `workspace` für lints.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 workspace = true

@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für die Verbindung zwischen Basisstationen und Backend-Diensten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::sync::{Arc, Mutex, mpsc};
 
@@ -14,12 +17,16 @@ use tetra_entities::net_control_room::{
 use crate::config::NodeGatewayConfig;
 
 #[derive(Debug, Clone)]
+// Was: Listet die möglichen Varianten für Netzknoten outbound auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum NodeOutbound {
     Protocol(ControlRoomToNodeMessage),
     Close,
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Netzknoten snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct NodeSnapshot {
     pub node_id: String,
     pub session_id: String,
@@ -44,6 +51,8 @@ pub struct NodeSnapshot {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Gateway Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GatewayStatus {
     pub service: &'static str,
     pub started_at: String,
@@ -68,6 +77,8 @@ pub struct GatewayStatus {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Gateway snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GatewaySnapshot {
     pub status: GatewayStatus,
     pub nodes: Vec<NodeSnapshot>,
@@ -75,6 +86,8 @@ pub struct GatewaySnapshot {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Ereignis Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct EventRecord {
     pub seq: u64,
     pub timestamp: String,
@@ -85,6 +98,8 @@ pub struct EventRecord {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für Hintergrunddienst Ereignis auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum BackendEvent {
     Snapshot { snapshot: GatewaySnapshot },
     Event { event: EventRecord },
@@ -99,6 +114,8 @@ pub enum BackendEvent {
 
 #[derive(Debug, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für Hintergrunddienst request auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum BackendRequest {
     Ping {
         #[serde(default)]
@@ -137,22 +154,30 @@ pub enum BackendRequest {
     },
 }
 
+// Was: Bündelt die zusammengehörigen Werte für Netzknoten Laufzeit in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct NodeRuntime {
     snapshot: NodeSnapshot,
     sender: Option<mpsc::Sender<NodeOutbound>>,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für Hintergrunddienst Laufzeit in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct BackendRuntime {
     sender: mpsc::Sender<BackendEvent>,
     media_frames: bool,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für Dienst Laufzeit in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct ServiceRuntime {
     health: CoreServiceHealth,
     consecutive_successes: u32,
     consecutive_failures: u32,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für Gateway Zustand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct GatewayState {
     config: NodeGatewayConfig,
     started_at: String,
@@ -170,9 +195,15 @@ struct GatewayState {
 }
 
 #[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für shared Gateway in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SharedGateway(Arc<Mutex<GatewayState>>);
 
+// Was: Implementiert das zugehörige Verhalten für `SharedGateway`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SharedGateway {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(config: NodeGatewayConfig) -> Self {
         let checked_at = now_iso();
         let services = config
@@ -215,35 +246,49 @@ impl SharedGateway {
         })))
     }
 
+    // Was: Führt den Arbeitsschritt `status` für Status aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn status(&self) -> GatewayStatus {
         let state = self.0.lock().expect("gateway state poisoned");
         status_locked(&state)
     }
 
+    // Was: Diese Funktion erzeugt den vorgesehenen Arbeitsschritt.
+    // Warum: Die Oberfläche und andere Dienste erhalten dadurch eine in sich stimmige Momentaufnahme.
     pub fn snapshot(&self) -> GatewaySnapshot {
         let state = self.0.lock().expect("gateway state poisoned");
         snapshot_locked(&state)
     }
 
+    // Was: Führt den Arbeitsschritt `nodes` für nodes aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn nodes(&self) -> Vec<NodeSnapshot> {
         self.snapshot().nodes
     }
 
+    // Was: Führt den Arbeitsschritt `core_services` für core services aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn core_services(&self) -> CoreServicesSnapshot {
         let state = self.0.lock().expect("gateway state poisoned");
         core_services_locked(&state)
     }
 
+    // Was: Führt den Arbeitsschritt `node` für Netzknoten aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn node(&self, node_id: &str) -> Option<NodeSnapshot> {
         let state = self.0.lock().expect("gateway state poisoned");
         state.nodes.get(node_id).map(|node| snapshot_node(node, state.config.server.stale_after_secs))
     }
 
+    // Was: Führt den Arbeitsschritt `recent_events` für recent events aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn recent_events(&self, limit: usize) -> Vec<EventRecord> {
         let state = self.0.lock().expect("gateway state poisoned");
         state.events.iter().rev().take(limit.min(state.events.len())).cloned().collect()
     }
 
+    // Was: Diese Funktion registriert Netzknoten.
+    // Warum: Die Zuordnung bleibt dadurch eindeutig und kann später sauber wieder entfernt werden.
     pub fn register_node(
         &self,
         hello: &ControlRoomNodeHello,
@@ -318,9 +363,13 @@ impl SharedGateway {
     /// Publish the complete matrix even when no level changed. The TBS treats
     /// this as a renewable lease, so a live WebSocket with a wedged service
     /// monitor cannot leave stale "available" decisions active forever.
+    // Was: Diese Funktion veröffentlicht core services.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn publish_core_services(&self) {
         let state = self.0.lock().expect("gateway state poisoned");
         let snapshot = core_services_locked(&state);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for sender in state.nodes.values().filter_map(|node| node.sender.as_ref()) {
             let _ = sender.send(NodeOutbound::Protocol(ControlRoomToNodeMessage::CoreServices {
                 snapshot: snapshot.clone(),
@@ -330,6 +379,8 @@ impl SharedGateway {
 
     /// Update one backend health record and broadcast a complete, revisioned
     /// matrix to every connected TBS after a state transition.
+    // Was: Führt den Arbeitsschritt `record_service_probe` für Datensatz Dienst probe aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn record_service_probe(&self, service: &str, ok: bool, message: Option<String>) {
         let mut state = self.0.lock().expect("gateway state poisoned");
         let failure_threshold = state.config.service_monitor.failure_threshold;
@@ -373,6 +424,8 @@ impl SharedGateway {
             json!({"service": service, "old": format!("{:?}", old_level), "new": format!("{:?}", new_level)}),
         );
         let snapshot = core_services_locked(&state);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for sender in state.nodes.values().filter_map(|node| node.sender.as_ref()) {
             let _ = sender.send(NodeOutbound::Protocol(ControlRoomToNodeMessage::CoreServices {
                 snapshot: snapshot.clone(),
@@ -382,6 +435,8 @@ impl SharedGateway {
         broadcast_locked(&mut state, BackendEvent::Snapshot { snapshot: gateway_snapshot });
     }
 
+    // Was: Diese Funktion verarbeitet Netzknoten Nachricht.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     pub fn handle_node_message(&self, node_id: &str, session_id: &str, message: NodeToControlRoomMessage) {
         let mut state = self.0.lock().expect("gateway state poisoned");
         let (kind, is_media) = {
@@ -397,6 +452,8 @@ impl SharedGateway {
             runtime.snapshot.last_seen = now_iso();
             runtime.snapshot.message_count = runtime.snapshot.message_count.wrapping_add(1);
 
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let kind = match &message {
                 NodeToControlRoomMessage::Hello { .. } => "hello",
                 NodeToControlRoomMessage::Heartbeat { heartbeat } => {
@@ -450,6 +507,8 @@ impl SharedGateway {
         );
     }
 
+    // Was: Diese Funktion kennzeichnet disconnected.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn mark_disconnected(&self, node_id: &str, session_id: &str, reason: &str) {
         let mut state = self.0.lock().expect("gateway state poisoned");
         {
@@ -481,6 +540,8 @@ impl SharedGateway {
         );
     }
 
+    // Was: Führt den Arbeitsschritt `ping_node` für ping Netzknoten aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn ping_node(&self, node_id: &str) -> Result<(), String> {
         let mut state = self.0.lock().expect("gateway state poisoned");
         if !state.config.security.allow_remote_management {
@@ -500,6 +561,8 @@ impl SharedGateway {
         Ok(())
     }
 
+    // Was: Diese Funktion trennt Netzknoten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn disconnect_node(&self, node_id: &str) -> Result<(), String> {
         let mut state = self.0.lock().expect("gateway state poisoned");
         if !state.config.security.allow_remote_management {
@@ -520,6 +583,8 @@ impl SharedGateway {
         Ok(())
     }
 
+    // Was: Diese Funktion sendet Audio- und Mediendaten Funkrahmen.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     pub fn send_media_frame(
         &self,
         node_id: &str,
@@ -545,6 +610,8 @@ impl SharedGateway {
         Ok(())
     }
 
+    // Was: Diese Funktion sendet command.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     pub fn send_command(&self, node_id: &str, command: ControlCommand, operator_id: Option<String>) -> Result<String, String> {
         let mut state = self.0.lock().expect("gateway state poisoned");
         if !state.config.security.allow_remote_management {
@@ -576,6 +643,8 @@ impl SharedGateway {
         Ok(command_id)
     }
 
+    // Was: Diese Funktion registriert Hintergrunddienst.
+    // Warum: Die Zuordnung bleibt dadurch eindeutig und kann später sauber wieder entfernt werden.
     pub fn register_backend(&self) -> (String, mpsc::Receiver<BackendEvent>) {
         let (tx, rx) = mpsc::channel();
         let id = uuid::Uuid::new_v4().to_string();
@@ -586,6 +655,8 @@ impl SharedGateway {
         (id, rx)
     }
 
+    // Was: Diese Funktion setzt Hintergrunddienst topics.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_backend_topics(
         &self,
         backend_id: &str,
@@ -611,12 +682,16 @@ impl SharedGateway {
         Ok(accepted)
     }
 
+    // Was: Diese Funktion meldet Hintergrunddienst.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn unregister_backend(&self, backend_id: &str) {
         let mut state = self.0.lock().expect("gateway state poisoned");
         state.backend_clients.remove(backend_id);
         push_event_locked(&mut state, "backend_disconnected", None, json!({ "backend_id": backend_id }));
     }
 
+    // Was: Führt den Arbeitsschritt `metrics` für Messwerte aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn metrics(&self) -> String {
         let status = self.status();
         format!(
@@ -662,6 +737,8 @@ impl SharedGateway {
     }
 }
 
+// Was: Diese Funktion erzeugt locked.
+// Warum: Die Oberfläche und andere Dienste erhalten dadurch eine in sich stimmige Momentaufnahme.
 fn snapshot_locked(state: &GatewayState) -> GatewaySnapshot {
     let mut nodes: Vec<_> = state
         .nodes
@@ -676,6 +753,8 @@ fn snapshot_locked(state: &GatewayState) -> GatewaySnapshot {
     }
 }
 
+// Was: Führt den Arbeitsschritt `status_locked` für Status locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn status_locked(state: &GatewayState) -> GatewayStatus {
     let nodes: Vec<_> = state
         .nodes
@@ -706,6 +785,8 @@ fn status_locked(state: &GatewayState) -> GatewayStatus {
     }
 }
 
+// Was: Führt den Arbeitsschritt `core_services_locked` für core services locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn core_services_locked(state: &GatewayState) -> CoreServicesSnapshot {
     CoreServicesSnapshot {
         revision: state.service_revision,
@@ -714,12 +795,16 @@ fn core_services_locked(state: &GatewayState) -> CoreServicesSnapshot {
     }
 }
 
+// Was: Diese Funktion erzeugt Netzknoten.
+// Warum: Die Oberfläche und andere Dienste erhalten dadurch eine in sich stimmige Momentaufnahme.
 fn snapshot_node(node: &NodeRuntime, stale_after_secs: u64) -> NodeSnapshot {
     let mut snapshot = node.snapshot.clone();
     snapshot.stale = snapshot.connected && seconds_since(&snapshot.last_seen).is_some_and(|age| age > stale_after_secs);
     snapshot
 }
 
+// Was: Diese Funktion legt Ereignis locked.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn push_event_locked(state: &mut GatewayState, kind: &str, node_id: Option<String>, detail: Value) {
     let event = EventRecord {
         seq: state.next_event_seq,
@@ -730,12 +815,16 @@ fn push_event_locked(state: &mut GatewayState, kind: &str, node_id: Option<Strin
     };
     state.next_event_seq = state.next_event_seq.wrapping_add(1);
     state.events.push_back(event.clone());
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while state.events.len() > state.config.server.history_limit {
         state.events.pop_front();
     }
     broadcast_locked(state, BackendEvent::Event { event });
 }
 
+// Was: Führt den Arbeitsschritt `broadcast_locked` für broadcast locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn broadcast_locked(state: &mut GatewayState, event: BackendEvent) {
     let is_media = matches!(
         &event,
@@ -753,20 +842,28 @@ fn broadcast_locked(state: &mut GatewayState, event: BackendEvent) {
     });
 }
 
+// Was: Führt den Arbeitsschritt `seconds_since` für seconds since aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn seconds_since(timestamp: &str) -> Option<u64> {
     let parsed = chrono::DateTime::parse_from_rfc3339(timestamp).ok()?;
     let elapsed = chrono::Utc::now().signed_duration_since(parsed.with_timezone(&chrono::Utc));
     Some(elapsed.num_seconds().max(0) as u64)
 }
 
+// Was: Führt den Arbeitsschritt `now_iso` für now iso aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn now_iso() -> String {
     chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
+    // Was: Führt den Arbeitsschritt `hello` für hello aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn hello(node_id: &str) -> ControlRoomNodeHello {
         ControlRoomNodeHello {
             protocol_version: CONTROL_ROOM_PROTOCOL_VERSION.to_string(),
@@ -809,6 +906,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `registers_and_disconnects_node_without_auth` für registers and disconnects Netzknoten without Anmeldung und Berechtigung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn registers_and_disconnects_node_without_auth() {
         let gateway = SharedGateway::new(NodeGatewayConfig::default());
         let (tx, _rx) = mpsc::channel();
@@ -819,6 +918,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `media_frames_are_delivered_only_to_subscribed_backends` für Audio- und Mediendaten frames are delivered only to subscribed und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn media_frames_are_delivered_only_to_subscribed_backends() {
         let gateway = SharedGateway::new(NodeGatewayConfig::default());
         let (node_tx, _node_rx) = mpsc::channel();
@@ -837,7 +938,11 @@ mod tests {
         gateway
             .set_backend_topics(&media_id, &["media_frames".to_string()])
             .unwrap();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while plain_rx.try_recv().is_ok() {}
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while media_rx.try_recv().is_ok() {}
 
         gateway.handle_node_message(
@@ -864,6 +969,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `service_health_is_thresholded_and_sent_to_nodes` für Dienst health is thresholded and sent to und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn service_health_is_thresholded_and_sent_to_nodes() {
         let mut cfg = NodeGatewayConfig::default();
         cfg.service_monitor.failure_threshold = 2;
@@ -885,6 +992,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `duplicate_node_replaces_old_session` für duplicate Netzknoten replaces old Sitzung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn duplicate_node_replaces_old_session() {
         let gateway = SharedGateway::new(NodeGatewayConfig::default());
         let (tx1, rx1) = mpsc::channel();

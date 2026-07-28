@@ -1,11 +1,34 @@
+# NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Metriken, Protokolle und Betriebsüberwachung.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+# Was: Legt den YAML-Bereich oder Wert `global` fest.
+# Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
 global:
+  # Was: Legt den YAML-Bereich oder Wert `resolve_timeout` fest.
+  # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
   resolve_timeout: 5m
+# Was: Legt den YAML-Bereich oder Wert `route` fest.
+# Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
 route:
+  # Was: Legt den YAML-Bereich oder Wert `receiver` fest.
+  # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
   receiver: open-lab-log
+  # Was: Legt den YAML-Bereich oder Wert `group_by` fest.
+  # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
   group_by: [alertname, service, instance]
+  # Was: Legt den YAML-Bereich oder Wert `group_wait` fest.
+  # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
   group_wait: 10s
+  # Was: Legt den YAML-Bereich oder Wert `group_interval` fest.
+  # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
   group_interval: 1m
+  # Was: Legt den YAML-Bereich oder Wert `repeat_interval` fest.
+  # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
   repeat_interval: 4h
+# Was: Legt den YAML-Bereich oder Wert `receivers` fest.
+# Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
 receivers:
+  # Was: Vergibt einen verständlichen Namen für diesen Workflow oder Arbeitsschritt.
+  # Warum: Der Ablauf ist dadurch in GitHub und in Protokollen schnell wiederzuerkennen.
   - name: open-lab-log
 # No mail, webhook, pager or secret-bearing receiver is configured in open-lab.

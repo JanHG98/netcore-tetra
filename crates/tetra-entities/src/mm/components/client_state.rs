@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::{HashMap, HashSet};
 
 use crate::net_telemetry::{TelemetryEvent, channel::TelemetrySink};
@@ -11,7 +14,11 @@ use tetra_pdus::mm::fields::class_of_ms::ClassOfMs;
 /// so only StayAlive / Eg1 / Eg2 / Eg3 are ever granted or stored. Returns `None` for StayAlive
 /// (no monitoring window — the MS is always reachable). Single source of truth for both the grant
 /// (`grant_energy_saving`) and the republished window, so the two can never drift apart.
+// Was: Führt den Arbeitsschritt `ee_cycle_frames` für ee cycle frames aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub(crate) const fn ee_cycle_frames(mode: EnergySavingMode) -> Option<u8> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match mode {
         EnergySavingMode::StayAlive => None,
         EnergySavingMode::Eg1 => Some(2),
@@ -22,6 +29,8 @@ pub(crate) const fn ee_cycle_frames(mode: EnergySavingMode) -> Option<u8> {
 }
 
 #[derive(Debug)]
+// Was: Listet die möglichen Varianten für client mgr err auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum ClientMgrErr {
     ClientNotFound { issi: u32 },
     GroupNotFound { gssi: u32 },
@@ -30,6 +39,8 @@ pub enum ClientMgrErr {
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
+// Was: Listet die möglichen Varianten für Mobilitätsverwaltung client Zustand auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum MmClientState {
     Unknown,
     Attached,
@@ -38,6 +49,8 @@ pub enum MmClientState {
 
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für Mobilitätsverwaltung client Mobilität Kontext in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MmClientMobilityContext {
     pub issi: u32,
     pub state: MmClientState,
@@ -50,6 +63,8 @@ pub struct MmClientMobilityContext {
     pub tei: Option<u64>,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für Mobilitätsverwaltung client properties in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MmClientProperties {
     pub issi: u32,
     pub state: MmClientState,
@@ -94,7 +109,11 @@ pub struct MmClientProperties {
     // pub last_seen: TdmaTime,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `MmClientProperties`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl MmClientProperties {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(ssi: u32) -> Self {
         MmClientProperties {
             issi: ssi,
@@ -117,32 +136,48 @@ impl MmClientProperties {
 }
 
 /// Stub function, to be replaced with checks based on configuration file
+// Was: Prüft, ob individual zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
 fn is_individual(_issi: u32) -> bool {
     return true;
 }
 /// Stub function, to be replaced with checks based on configuration file
+// Was: Führt den Arbeitsschritt `in_group_range` für in Gruppe range aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn in_group_range(_gssi: u32) -> bool {
     return true;
 }
 /// Stub function, to be replaced with checks based on configuration file
+// Was: Prüft, ob Gruppe zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
 fn is_group(_gssi: u32) -> bool {
     return true;
 }
 /// Stub function, to be replaced with checks based on configuration file
+// Was: Führt den Arbeitsschritt `may_attach` für may attach aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn may_attach(_issi: u32, _gssi: u32) -> bool {
     return true;
 }
 
+// Was: Bündelt die zusammengehörigen Werte für Mobilitätsverwaltung client mgr in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MmClientMgr {
     clients: HashMap<u32, MmClientProperties>,
     telemetry_sink: Option<TelemetrySink>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `MmClientMgr`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl MmClientMgr {
+    // Was: Führt den Arbeitsschritt `telemetry_sink` für Telemetrie sink aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn telemetry_sink(&self) -> Option<&TelemetrySink> {
         self.telemetry_sink.as_ref()
     }
 
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(telemetry_sink: Option<TelemetrySink>) -> Self {
         MmClientMgr {
             clients: HashMap::new(),
@@ -150,14 +185,20 @@ impl MmClientMgr {
         }
     }
 
+    // Was: Diese Funktion liest client by Teilnehmerkennung (ISSI).
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     pub fn get_client_by_issi(&mut self, issi: u32) -> Option<&MmClientProperties> {
         self.clients.get(&issi)
     }
 
+    // Was: Führt den Arbeitsschritt `client_is_known` für client is known aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn client_is_known(&self, issi: u32) -> bool {
         self.clients.contains_key(&issi)
     }
 
+    // Was: Diese Funktion setzt client Zustand.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_client_state(&mut self, issi: u32, state: MmClientState) -> Result<(), ClientMgrErr> {
         if let Some(client) = self.clients.get_mut(&issi) {
             client.state = state;
@@ -167,6 +208,8 @@ impl MmClientMgr {
         }
     }
 
+    // Was: Diese Funktion setzt client energy saving mode.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_client_energy_saving_mode(&mut self, issi: u32, mode: EnergySavingMode) -> Result<(), ClientMgrErr> {
         if let Some(client) = self.clients.get_mut(&issi) {
             client.energy_saving_mode = mode;
@@ -179,6 +222,8 @@ impl MmClientMgr {
         }
     }
 
+    // Was: Diese Funktion setzt client monitoring window.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_client_monitoring_window(&mut self, issi: u32, frame: Option<u8>, multiframe: Option<u8>) -> Result<(), ClientMgrErr> {
         if let Some(client) = self.clients.get_mut(&issi) {
             client.monitoring_frame = frame;
@@ -190,10 +235,14 @@ impl MmClientMgr {
     }
 
     /// Update RSSI for a known MS. Silently ignored if MS is not registered.
+    // Was: Diese Funktion aktualisiert client rssi.
+    // Warum: Bestehender Zustand wird dadurch kontrolliert und nach einheitlichen Regeln geändert.
     pub fn update_client_rssi(&mut self, issi: u32, rssi_dbfs: f32) {
         if let Some(client) = self.clients.get_mut(&issi) {
             // Every RSSI measurement is an uplink burst we just heard → the MS is on the air now.
             client.last_uplink_time = std::time::Instant::now();
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let should_log = match client.last_rssi {
                 None => true,                                  // First measurement
                 Some(prev) => (rssi_dbfs - prev).abs() >= 3.0, // Log on >=3dB change
@@ -209,6 +258,8 @@ impl MmClientMgr {
     /// is still on the air, independent of whether it answered an unsolicited
     /// D-LOCATION-UPDATE-COMMAND. Used to keep a present radio from being torn down at T351
     /// expiry (it may be an energy-economy radio that was asleep when the COMMAND was sent).
+    // Was: Führt den Arbeitsschritt `heard_on_air_within` für heard on air within aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn heard_on_air_within(&self, issi: u32, within: std::time::Duration) -> bool {
         self.clients
             .get(&issi)
@@ -217,6 +268,8 @@ impl MmClientMgr {
     }
 
     /// Reset the periodic registration timer for a MS (called on each U-LOCATION-UPDATING-DEMAND).
+    // Was: Diese Funktion setzt registration Zeitüberwachung.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn reset_registration_timer(&mut self, issi: u32) {
         if let Some(client) = self.clients.get_mut(&issi) {
             client.last_registration_time = std::time::Instant::now();
@@ -226,12 +279,16 @@ impl MmClientMgr {
     }
 
     /// Returns true if a D-LOCATION-UPDATE-COMMAND was sent and terminal hasn't responded yet.
+    // Was: Prüft, ob pending command zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     pub fn is_pending_command(&self, issi: u32) -> bool {
         self.clients.get(&issi).map(|c| c.pending_command_sent).unwrap_or(false)
     }
 
     /// Mark that we sent D-LOCATION-UPDATE-COMMAND at T351 expiry.
     /// Terminal has grace_secs to respond before being removed.
+    // Was: Diese Funktion setzt pending command.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_pending_command(&mut self, issi: u32, grace_secs: u32) {
         if let Some(client) = self.clients.get_mut(&issi) {
             client.pending_command_sent = true;
@@ -245,6 +302,8 @@ impl MmClientMgr {
 
     /// Returns list of ISSIs whose periodic registration has expired.
     /// interval_secs=0 means disabled — always returns empty list.
+    // Was: Diese Funktion sammelt expired registrations.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn collect_expired_registrations(&self, interval_secs: u32) -> Vec<u32> {
         if interval_secs == 0 {
             return Vec::new();
@@ -279,11 +338,15 @@ impl MmClientMgr {
     ///     sends in the wake window — UNLESS it is overdue by more than `window_wait_secs` beyond
     ///     the interval, in which case send blind (`true`) so a stale/incorrect window can never
     ///     suppress the probe forever.
+    // Was: Prüft, ob send t351 command now zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     pub fn should_send_t351_command_now(&self, issi: u32, ts: TdmaTime, interval_secs: u32, window_wait_secs: u64) -> bool {
         let Some(c) = self.clients.get(&issi) else {
             // Unknown client — let the caller proceed; the send is addressed by ISSI and harmless.
             return true;
         };
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let reachable_now = match ee_cycle_frames(c.energy_saving_mode) {
             None => true, // StayAlive — always reachable
             Some(cycle_len) => match (c.monitoring_frame, c.monitoring_multiframe) {
@@ -298,6 +361,8 @@ impl MmClientMgr {
         c.last_registration_time.elapsed().as_secs() >= interval_secs as u64 + window_wait_secs
     }
 
+    // Was: Diese Funktion setzt client class of ms.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_client_class_of_ms(&mut self, issi: u32, class: Option<ClassOfMs>) -> Result<(), ClientMgrErr> {
         if let Some(client) = self.clients.get_mut(&issi) {
             client.class_of_ms = class;
@@ -309,6 +374,8 @@ impl MmClientMgr {
 
     /// Store the TEI (Terminal Equipment Identity) received from U-TEI-PROVIDE.
     /// If the ISSI is not registered yet, the TEI is silently ignored (can't fail critically).
+    // Was: Diese Funktion setzt client tei.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_client_tei(&mut self, issi: u32, tei: u64) -> Result<(), ClientMgrErr> {
         if let Some(client) = self.clients.get_mut(&issi) {
             client.tei = Some(tei);
@@ -320,6 +387,8 @@ impl MmClientMgr {
 
     /// Registers a fresh state for a client, based on ssi
     /// If client is already registered, previous state is discarded.
+    // Was: Diese Funktion registriert client.
+    // Warum: Die Zuordnung bleibt dadurch eindeutig und kann später sauber wieder entfernt werden.
     pub fn try_register_client(&mut self, issi: u32, attached: bool) -> Result<bool, ClientMgrErr> {
         if !is_individual(issi) {
             return Err(ClientMgrErr::IssiInGroupRange { issi });
@@ -348,6 +417,8 @@ impl MmClientMgr {
     /// Removes a client from the registry, returning its properties if found
     /// Returns every known client's ISSI. Used by mm_bs to re-register all MS by ISSI (the L2
     /// handle is inert: MLE addresses downlink MM PDUs by ISSI; `last_handle` is always 0).
+    // Was: Führt den Arbeitsschritt `all_known_issis` für all known issis aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn all_known_issis(&self) -> Vec<u32> {
         self.clients.keys().copied().collect()
     }
@@ -358,6 +429,8 @@ impl MmClientMgr {
     /// in an energy-saving mode (not StayAlive) and has a valid monitoring window. StayAlive MSs are
     /// omitted (their absence means "always reachable"). cycle_len is the FRAME-based cycle from
     /// [`ee_cycle_frames`] (Eg1=2, Eg2=3, Eg3=6 — ETSI Table 23.9).
+    // Was: Führt den Arbeitsschritt `ee_monitoring_windows` für ee monitoring windows aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn ee_monitoring_windows(&self) -> impl Iterator<Item = (u32, u8, u8, u8)> + '_ {
         self.clients.values().filter_map(|c| {
             let cycle_len = ee_cycle_frames(c.energy_saving_mode)?;
@@ -372,6 +445,8 @@ impl MmClientMgr {
     }
 
     /// Update the last known L2 handle for a registered client.
+    // Was: Diese Funktion setzt client handle.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_client_handle(&mut self, issi: u32, handle: u32) {
         if let Some(client) = self.clients.get_mut(&issi) {
             client.last_handle = handle;
@@ -380,6 +455,8 @@ impl MmClientMgr {
 
 
     /// Export a subscriber context for forward registration or migration.
+    // Was: Führt den Arbeitsschritt `export_mobility_context` für export Mobilität Kontext aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn export_mobility_context(&self, issi: u32) -> Option<MmClientMobilityContext> {
         let client = self.clients.get(&issi)?;
         let mut groups: Vec<u32> = client.groups.iter().copied().collect();
@@ -399,6 +476,8 @@ impl MmClientMgr {
 
     /// Import a transferred subscriber context under the local SSI used by this cell.
     /// Runtime timestamps and pending-command state are intentionally re-initialised.
+    // Was: Führt den Arbeitsschritt `import_mobility_context` für import Mobilität Kontext aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn import_mobility_context(&mut self, local_issi: u32, context: &MmClientMobilityContext) {
         let mut client = MmClientProperties::new(local_issi);
         client.state = MmClientState::Attached;
@@ -415,6 +494,8 @@ impl MmClientMgr {
     /// Project the persistable recovery state of every known client: (issi, groups, energy mode).
     /// Used by restart recovery to snapshot the registry to disk. The L2 handle is intentionally
     /// omitted — it is inert (always 0) in this stack, so there is nothing to persist.
+    // Was: Diese Funktion erzeugt for recovery.
+    // Warum: Die Oberfläche und andere Dienste erhalten dadurch eine in sich stimmige Momentaufnahme.
     pub fn snapshot_for_recovery(&self) -> Vec<(u32, Vec<u32>, EnergySavingMode)> {
         self.clients
             .values()
@@ -429,16 +510,22 @@ impl MmClientMgr {
     /// flagging it for T351 expiry before the replay sweep completes (which would let the
     /// second-expiry REJECT+remove path wipe the restored groups). No CMCE/Brew affiliation is
     /// emitted here; that happens only when the MS actually re-registers.
+    // Was: Diese Funktion stellt client.
+    // Warum: Nach Verbindungsabbruch oder Neustart kann der vorherige Betriebszustand dadurch kontrolliert zurückkehren.
     pub fn restore_client(&mut self, issi: u32, groups: &[u32], esm: EnergySavingMode) {
         let mut client = MmClientProperties::new(issi);
         client.state = MmClientState::Detached;
         client.energy_saving_mode = esm;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for &g in groups {
             client.groups.insert(g);
         }
         self.clients.insert(issi, client);
     }
 
+    // Was: Diese Funktion entfernt client.
+    // Warum: Das Entfernen bleibt damit vollständig und hinterlässt keinen widersprüchlichen Zustand.
     pub fn remove_client(&mut self, ssi: u32) -> Option<MmClientProperties> {
         if let Some(client) = self.clients.remove(&ssi) {
             // Send telemetry event
@@ -452,6 +539,8 @@ impl MmClientMgr {
     }
 
     /// Detaches all groups from a client
+    // Was: Führt den Arbeitsschritt `client_detach_all_groups` für client detach all groups aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn client_detach_all_groups(&mut self, issi: u32) -> Result<bool, ClientMgrErr> {
         if let Some(client) = self.clients.get_mut(&issi) {
             // Send telemetry event
@@ -469,6 +558,8 @@ impl MmClientMgr {
     }
 
     /// Attaches or detaches a client from a group
+    // Was: Führt den Arbeitsschritt `client_group_attach` für client Gruppe attach aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn client_group_attach(&mut self, issi: u32, gssi: u32, do_attach: bool) -> Result<bool, ClientMgrErr> {
         // Checks
         if !in_group_range(gssi) {
@@ -502,6 +593,8 @@ impl MmClientMgr {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
     use std::time::Duration;
@@ -509,6 +602,8 @@ mod tests {
     /// The T351 presence guard: a radio heard transmitting recently is reported "on air" so it is
     /// never torn down at expiry (FH-BUG-044 — present stations vanishing from the dashboard).
     #[test]
+    // Was: Führt den Arbeitsschritt `heard_on_air_tracks_uplink_presence` für heard on air tracks Uplink (Funkgerät zum Netz) presence aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn heard_on_air_tracks_uplink_presence() {
         let mut mgr = MmClientMgr::new(None);
         mgr.try_register_client(100, true).unwrap();
@@ -535,6 +630,8 @@ mod tests {
     /// (FH-BUG-044 follow-up). StayAlive radios are always reachable; EE radios are sent only
     /// in their monitoring window.
     #[test]
+    // Was: Führt den Arbeitsschritt `t351_command_gated_to_ee_monitoring_window` für t351 command gated to ee monitoring window aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn t351_command_gated_to_ee_monitoring_window() {
         let mut mgr = MmClientMgr::new(None);
         mgr.try_register_client(100, true).unwrap();

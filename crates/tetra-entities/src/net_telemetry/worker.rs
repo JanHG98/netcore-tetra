@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! Telemetry worker thread — receives events from the core and forwards them
 //! over a pluggable network transport.
 //!
@@ -21,11 +24,17 @@ use crate::{
 
 /// How long to block waiting for a telemetry event before running a
 /// maintenance cycle (heartbeat, reconnect check, etc.).
+// Was: Legt den festen Wert `POLL_TIMEOUT` für poll timeout fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const POLL_TIMEOUT: Duration = Duration::from_millis(500);
 
 /// How long to wait between reconnection attempts when the transport is down.
+// Was: Legt den festen Wert `RECONNECT_DELAY` für reconnect delay fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const RECONNECT_DELAY: Duration = Duration::from_secs(15);
 
+// Was: Bündelt die zusammengehörigen Werte für Telemetrie Hintergrundverarbeitung in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TelemetryWorker<T: NetworkTransport> {
     source: TelemetrySource,
     transport: T,
@@ -33,7 +42,11 @@ pub struct TelemetryWorker<T: NetworkTransport> {
     last_connect_attempt: Option<Instant>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `TelemetryWorker<T>`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl<T: NetworkTransport> TelemetryWorker<T> {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(source: TelemetrySource, transport: T) -> Self {
         Self {
             source,
@@ -43,13 +56,19 @@ impl<T: NetworkTransport> TelemetryWorker<T> {
         }
     }
 
+    // Was: Diese Funktion führt den vorgesehenen Arbeitsschritt.
+    // Warum: Der Lebenszyklus des Dienstes bleibt so an einer zentralen Stelle steuerbar.
     pub fn run(&mut self) {
         tracing::debug!("Telemetry worker started");
         self.try_connect();
 
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             // Block for up to POLL_TIMEOUT waiting for an event.
             // On timeout we still run maintenance (heartbeat / reconnect).
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match self.source.recv_timeout(POLL_TIMEOUT) {
                 RecvEvent::Event(event) => {
                     tracing::debug!("telemetry event received: {:?}", event);
@@ -75,6 +94,8 @@ impl<T: NetworkTransport> TelemetryWorker<T> {
 
             // Periodically retry connection when disconnected
             if !self.connected {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 let should_retry = match self.last_connect_attempt {
                     Some(last) => last.elapsed() >= RECONNECT_DELAY,
                     None => true,
@@ -89,6 +110,8 @@ impl<T: NetworkTransport> TelemetryWorker<T> {
         tracing::info!("Telemetry worker exiting");
     }
 
+    // Was: Diese Funktion leitet Ereignis.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn forward_event(&mut self, event: &TelemetryEvent) {
         if !self.connected {
             self.try_connect();
@@ -109,12 +132,16 @@ impl<T: NetworkTransport> TelemetryWorker<T> {
     /// Call `receive_reliable()` on the transport to drive its internal
     /// heartbeat machinery (ping/pong, timeout detection).
     /// Any unexpected inbound messages are logged and discarded.
+    // Was: Führt den Arbeitsschritt `drive_heartbeat` für drive heartbeat aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn drive_heartbeat(&mut self) {
         if !self.connected {
             return;
         }
 
         let msgs = self.transport.receive_reliable();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for msg in msgs {
             tracing::trace!(
                 "Telemetry: unexpected inbound message ({} bytes) from {:?}",
@@ -131,8 +158,12 @@ impl<T: NetworkTransport> TelemetryWorker<T> {
         }
     }
 
+    // Was: Diese Funktion verbindet den vorgesehenen Arbeitsschritt.
+    // Warum: Der Verbindungsaufbau wird dadurch zentral überwacht und kann sauber fehlschlagen.
     fn try_connect(&mut self) {
         self.last_connect_attempt = Some(Instant::now());
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.transport.connect() {
             Ok(()) => {
                 tracing::info!("Telemetry transport connected");
@@ -151,6 +182,8 @@ impl<T: NetworkTransport> TelemetryWorker<T> {
 // ---------------------------------------------------------------------------
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use std::time::Duration;
 
@@ -164,6 +197,8 @@ mod tests {
     use crate::network::transports::websocket::{WebSocketTransport, WebSocketTransportConfig};
 
     #[test]
+    // Was: Prüft automatisch den Fall Hintergrundverarbeitung forwards events and exits.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_worker_forwards_events_and_exits() {
         setup_logging_verbose();
         let (sink, source) = telemetry_channel();
@@ -188,6 +223,8 @@ mod tests {
     /// Run with: `cargo test -p tetra-entities -- --ignored test_websocket_to_telemetry_endpoint`
     #[test]
     #[ignore] // Not run by default as it requires a running local listener
+    // Was: Prüft automatisch den Fall websocket to Telemetrie endpoint.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_websocket_to_telemetry_endpoint() {
         setup_logging_verbose();
 
@@ -228,6 +265,8 @@ mod tests {
     /// Run with: `cargo test -p tetra-entities -- --ignored test_quic_to_telemetry_endpoint`
     #[test]
     #[ignore] // Not run by default as it requires a running local QUIC listener
+    // Was: Prüft automatisch den Fall quic to Telemetrie endpoint.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_quic_to_telemetry_endpoint() {
         setup_logging_verbose();
 
@@ -272,6 +311,8 @@ mod tests {
     /// Run: `cargo test -p tetra-entities -- --ignored test_basic_auth_accepted`
     #[test]
     #[ignore]
+    // Was: Prüft automatisch den Fall basic Anmeldung und Berechtigung accepted.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_basic_auth_accepted() {
         setup_logging_verbose();
 
@@ -300,6 +341,8 @@ mod tests {
     /// Run: `cargo test -p tetra-entities -- --ignored test_basic_auth_rejected`
     #[test]
     #[ignore]
+    // Was: Prüft automatisch den Fall basic Anmeldung und Berechtigung rejected.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_basic_auth_rejected() {
         setup_logging_verbose();
 
@@ -327,6 +370,8 @@ mod tests {
     /// Run: `cargo test -p tetra-entities -- --ignored test_basic_auth_missing`
     #[test]
     #[ignore]
+    // Was: Prüft automatisch den Fall basic Anmeldung und Berechtigung missing.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_basic_auth_missing() {
         setup_logging_verbose();
 

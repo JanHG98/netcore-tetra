@@ -1,14 +1,41 @@
+# NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für netcore directory.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+# Was: Beginnt den Abschnitt `Unit`.
+# Warum: Zusammengehörige Start-, Laufzeit- oder Installationswerte bleiben dadurch geordnet.
 [Unit]
+# Was: Beschreibt den Dienst für systemd und Administratoren.
+# Warum: Statusausgaben zeigen dadurch sofort, wofür die Einheit zuständig ist.
 Description=NetCore Directory Server
+# Was: Legt die Startreihenfolge gegenüber anderen Einheiten fest.
+# Warum: Abhängige Netzwerk- oder Systemfunktionen müssen zuerst verfügbar sein.
 After=network-online.target
+# Was: Nennt Einheiten, die gemeinsam gestartet werden sollen.
+# Warum: Zusammengehörige Dienste stehen dadurch beim Start möglichst vollständig bereit.
 Wants=network-online.target
 
+# Was: Beginnt den Abschnitt `Service`.
+# Warum: Zusammengehörige Start-, Laufzeit- oder Installationswerte bleiben dadurch geordnet.
 [Service]
+# Was: Legt fest, wie systemd den Startzustand des Prozesses bewertet.
+# Warum: Systemd kann dadurch korrekt erkennen, wann die Einheit als gestartet gilt.
 Type=simple
+# Was: Legt das Arbeitsverzeichnis des Prozesses fest.
+# Warum: Relative Pfade werden dadurch immer vom erwarteten Ort aus aufgelöst.
 WorkingDirectory=/opt/netcore-directory
+# Was: Legt den eigentlichen Startbefehl des Dienstes fest.
+# Warum: Systemd kann den Prozess dadurch mit einem eindeutigen und reproduzierbaren Kommando starten.
 ExecStart=/usr/bin/python3 /opt/netcore-directory/netcore_directory-server.py --host 0.0.0.0 --port 8095 --db /opt/netcore-directory/netcore-directory.db
+# Was: Bestimmt das Neustartverhalten nach einem Prozessende.
+# Warum: Der Dienst kann sich dadurch entsprechend seiner Betriebsanforderung selbst erholen.
 Restart=on-failure
+# Was: Legt die Wartezeit vor einem Neustart fest.
+# Warum: Eine kurze Pause verhindert schnelle Endlosschleifen bei dauerhaftem Fehler.
 RestartSec=3
 
+# Was: Beginnt den Abschnitt `Install`.
+# Warum: Zusammengehörige Start-, Laufzeit- oder Installationswerte bleiben dadurch geordnet.
 [Install]
+# Was: Legt fest, an welches systemd-Ziel die Einheit bei Aktivierung angehängt wird.
+# Warum: Der Dienst startet dadurch automatisch in der vorgesehenen Betriebsphase.
 WantedBy=multi-user.target

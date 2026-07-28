@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::VecDeque;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -20,13 +23,19 @@ use super::types::{
     AudioPlayerCommand, AudioPlayerState, AudioTargetType, PrepareEvent, PreparedAudio,
 };
 
+// Was: Legt den festen Wert `GROUP_CALL_PREPARE_SETTLE` für Gruppe Ruf prepare settle fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const GROUP_CALL_PREPARE_SETTLE: Duration = Duration::from_millis(1000);
 
+// Was: Bündelt die zusammengehörigen Werte für pending playback in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct PendingPlayback {
     prepared: PreparedAudio,
     not_before: Instant,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für active playback in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct ActivePlayback {
     job_id: String,
     call_uuid: Uuid,
@@ -40,6 +49,8 @@ struct ActivePlayback {
     finish_error: Option<String>,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für audio player entity in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct AudioPlayerEntity {
     config: SharedConfig,
     handle: AudioPlayerHandle,
@@ -52,7 +63,11 @@ pub struct AudioPlayerEntity {
     dltime: TdmaTime,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `AudioPlayerEntity`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl AudioPlayerEntity {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(config: SharedConfig) -> Result<(Self, AudioPlayerHandle), String> {
         let player_config = config.config().audio_player.clone();
         let (command_tx, command_rx) = crossbeam_channel::unbounded();
@@ -75,8 +90,14 @@ impl AudioPlayerEntity {
         ))
     }
 
+    // Was: Diese Funktion verarbeitet commands.
+    // Warum: Die einzelnen Verarbeitungsschritte bleiben damit gebündelt und leichter testbar.
     fn process_commands(&mut self, queue: &mut MessageQueue) {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while let Ok(command) = self.command_rx.try_recv() {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match command {
                 AudioPlayerCommand::Play {
                     job_id,
@@ -104,6 +125,8 @@ impl AudioPlayerEntity {
                     if let Err(error) = thread::Builder::new()
                         .name("audio-player-prepare".into())
                         .spawn(move || {
+                            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                             let event = match prepare_audio(&config, job_id.clone(), source, target_type, target_id, priority) {
                                 Ok(prepared) => PrepareEvent::Ready(prepared),
                                 Err(error) => PrepareEvent::Failed { job_id, error },
@@ -120,8 +143,14 @@ impl AudioPlayerEntity {
         }
     }
 
+    // Was: Diese Funktion verarbeitet prepare events.
+    // Warum: Die einzelnen Verarbeitungsschritte bleiben damit gebündelt und leichter testbar.
     fn process_prepare_events(&mut self, _queue: &mut MessageQueue) {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while let Ok(event) = self.prepare_rx.try_recv() {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match event {
                 PrepareEvent::Ready(prepared) => {
                     if self.current_job_id.as_deref() != Some(prepared.job_id.as_str()) {
@@ -155,6 +184,8 @@ impl AudioPlayerEntity {
     }
 
 
+    // Was: Diese Funktion startet pending.
+    // Warum: Der Dienst oder Teilprozess wird so in einer festen und überprüfbaren Reihenfolge gestartet.
     fn try_start_pending(&mut self, queue: &mut MessageQueue) {
         let should_start = self.pending_playback.as_ref().is_some_and(|pending| {
             if Instant::now() < pending.not_before {
@@ -178,6 +209,8 @@ impl AudioPlayerEntity {
         self.start_prepared(queue, pending.prepared);
     }
 
+    // Was: Diese Funktion startet prepared.
+    // Warum: Der Dienst oder Teilprozess wird so in einer festen und überprüfbaren Reihenfolge gestartet.
     fn start_prepared(&mut self, queue: &mut MessageQueue, prepared: PreparedAudio) {
         let call_uuid = Uuid::new_v4();
         let total_blocks = prepared.blocks.len();
@@ -196,6 +229,8 @@ impl AudioPlayerEntity {
             finish_error: None,
         });
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match prepared.target_type {
             AudioTargetType::Group => queue.push_back(SapMsg {
                 sap: Sap::Control,
@@ -245,6 +280,8 @@ impl AudioPlayerEntity {
         );
     }
 
+    // Was: Führt den Arbeitsschritt `playout` für playout aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn playout(&mut self, queue: &mut MessageQueue) {
         if self.dltime.f == 18 {
             return;
@@ -287,10 +324,14 @@ impl AudioPlayerEntity {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `begin_finish` für begin finish aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn begin_finish(&mut self, queue: &mut MessageQueue) {
         self.request_finish(queue, "end of file", None);
     }
 
+    // Was: Diese Funktion fordert finish.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn request_finish(&mut self, queue: &mut MessageQueue, reason: &str, finish_error: Option<String>) {
         let Some(playback) = self.playback.as_mut() else {
             // A stop during asynchronous preparation or the common launch gate cancels the
@@ -311,6 +352,8 @@ impl AudioPlayerEntity {
         let call_uuid = playback.call_uuid;
         let job_id = playback.job_id.clone();
         self.handle.set_state(AudioPlayerState::Finishing);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match target_type {
             AudioTargetType::Group => queue.push_back(SapMsg {
                 sap: Sap::Control,
@@ -331,10 +374,14 @@ impl AudioPlayerEntity {
         tracing::info!("AudioPlayer: finishing job={} ({})", job_id, reason);
     }
 
+    // Was: Diese Funktion stoppt current.
+    // Warum: Der Betrieb wird dadurch geordnet beendet und Ressourcen werden freigegeben.
     fn stop_current(&mut self, queue: &mut MessageQueue, reason: &str) {
         self.request_finish(queue, reason, None);
     }
 
+    // Was: Führt den Arbeitsschritt `fail_current` für fail current aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fail_current(&mut self, error: impl Into<String>) {
         self.pending_playback = None;
         self.playback = None;
@@ -342,6 +389,8 @@ impl AudioPlayerEntity {
         self.handle.mark_failed(error);
     }
 
+    // Was: Führt den Arbeitsschritt `complete_current` für complete current aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn complete_current(&mut self) {
         let finish_error = self.playback.take().and_then(|playback| {
             tracing::info!(
@@ -360,12 +409,16 @@ impl AudioPlayerEntity {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `lifecycle_timeout` für lifecycle timeout aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn lifecycle_timeout(&mut self, queue: &mut MessageQueue) {
         let (finish_timeout, setup_timeout) = self
             .playback
             .as_ref()
             .map(|playback| {
                 let elapsed = playback.phase_started.elapsed();
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 let finish_guard_seconds = match playback.target_type {
                     AudioTargetType::Group => self.handle.config().group_release_guard_seconds as u64,
                     AudioTargetType::Individual => 3,
@@ -389,10 +442,14 @@ impl AudioPlayerEntity {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `current_matches` für current matches aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn current_matches(&self, uuid: Uuid) -> bool {
         self.playback.as_ref().is_some_and(|playback| playback.call_uuid == uuid)
     }
 
+    // Was: Führt den Arbeitsschritt `media_ready` für Audio- und Mediendaten ready aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn media_ready(&mut self, uuid: Uuid, call_id: u16, ts: u8) {
         let Some(playback) = self.playback.as_mut() else {
             return;
@@ -407,12 +464,20 @@ impl AudioPlayerEntity {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `TetraEntityTrait for AudioPlayerEntity`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl TetraEntityTrait for AudioPlayerEntity {
+    // Was: Führt den Arbeitsschritt `entity` für entity aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn entity(&self) -> TetraEntity {
         TetraEntity::AudioPlayer
     }
 
+    // Was: Führt den Arbeitsschritt `rx_prim` für rx prim aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_prim(&mut self, queue: &mut MessageQueue, message: SapMsg) {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match message.msg {
             SapMsgInner::CmceCallControl(CallControl::NetworkCallReady {
                 brew_uuid,
@@ -481,6 +546,8 @@ impl TetraEntityTrait for AudioPlayerEntity {
         }
     }
 
+    // Was: Diese Funktion bearbeitet start.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn tick_start(&mut self, queue: &mut MessageQueue, ts: TdmaTime) {
         self.dltime = ts;
         self.process_commands(queue);
@@ -491,7 +558,11 @@ impl TetraEntityTrait for AudioPlayerEntity {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Drop for AudioPlayerEntity`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Drop for AudioPlayerEntity {
+    // Was: Führt den Arbeitsschritt `drop` für drop aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn drop(&mut self) {
         self.current_job_id = None;
         self.pending_playback = None;
@@ -500,6 +571,8 @@ impl Drop for AudioPlayerEntity {
     }
 }
 
+// Was: Führt den Arbeitsschritt `carrier_for_logical_ts` für carrier for logical ts aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn carrier_for_logical_ts(config: &SharedConfig, ts: u8) -> u16 {
     if ts >= 5 {
         config.config().cell.secondary_carrier.unwrap_or(config.config().cell.main_carrier)
@@ -509,22 +582,30 @@ fn carrier_for_logical_ts(config: &SharedConfig, ts: u8) -> u16 {
 }
 
 
+// Was: Führt den Arbeitsschritt `group_call_launch_slot` für Gruppe Ruf launch slot aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn group_call_launch_slot(ts: TdmaTime) -> bool {
     ts.t == 4 && !matches!(ts.f, 1 | 17 | 18)
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::group_call_launch_slot;
     use tetra_core::TdmaTime;
 
     #[test]
+    // Was: Führt den Arbeitsschritt `group_launch_gate_accepts_clean_timeslot_four` für Gruppe launch gate accepts clean timeslot four aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn group_launch_gate_accepts_clean_timeslot_four() {
         assert!(group_call_launch_slot(TdmaTime { h: 0, m: 1, f: 2, t: 4 }));
         assert!(group_call_launch_slot(TdmaTime { h: 0, m: 1, f: 16, t: 4 }));
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `group_launch_gate_rejects_special_frames_and_other_slots` für Gruppe launch gate rejects special frames and und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn group_launch_gate_rejects_special_frames_and_other_slots() {
         assert!(!group_call_launch_slot(TdmaTime { h: 0, m: 1, f: 1, t: 4 }));
         assert!(!group_call_launch_slot(TdmaTime { h: 0, m: 1, f: 17, t: 4 }));

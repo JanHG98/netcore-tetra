@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use tetra_core::{TdmaTime, TetraAddress};
 use tetra_entities::mm::components::client_state::{MmClientMobilityContext, MmClientState};
 use tetra_entities::mm::mobility_runtime::{
@@ -8,6 +11,8 @@ use tetra_pdus::mm::enums::energy_saving_mode::EnergySavingMode;
 use tetra_pdus::mm::enums::location_update_type::LocationUpdateType;
 use tetra_pdus::mm::pdus::u_location_update_demand::ULocationUpdateDemand;
 
+// Was: Führt den Arbeitsschritt `demand` für demand aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn demand(kind: LocationUpdateType) -> ULocationUpdateDemand {
     ULocationUpdateDemand {
         location_update_type: kind,
@@ -27,6 +32,8 @@ fn demand(kind: LocationUpdateType) -> ULocationUpdateDemand {
     }
 }
 
+// Was: Führt den Arbeitsschritt `context` für Kontext aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn context(issi: u32) -> MmClientMobilityContext {
     MmClientMobilityContext {
         issi,
@@ -42,6 +49,8 @@ fn context(issi: u32) -> MmClientMobilityContext {
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `two_stage_migration_allocates_vassi_and_transfers_context` für two stage migration allocates vassi and transfers und weitere Angaben aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn two_stage_migration_allocates_vassi_and_transfers_context() {
     let now = TdmaTime::default();
     let mut runtime = MmMobilityRuntime::new();
@@ -69,6 +78,8 @@ fn two_stage_migration_allocates_vassi_and_transfers_context() {
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `migration_rejects_a_changed_home_identity` für migration rejects a changed home identity aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn migration_rejects_a_changed_home_identity() {
     let now = TdmaTime::default();
     let mut runtime = MmMobilityRuntime::new();
@@ -88,6 +99,8 @@ fn migration_rejects_a_changed_home_identity() {
 }
 
 #[test]
+// Was: Diese Funktion leitet registration exports the existing Kontext.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn forward_registration_exports_the_existing_context() {
     let now = TdmaTime::default();
     let mut runtime = MmMobilityRuntime::new();
@@ -103,6 +116,8 @@ fn forward_registration_exports_the_existing_context() {
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `pending_migration_has_a_bounded_timeout` für pending migration has a bounded timeout aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn pending_migration_has_a_bounded_timeout() {
     let now = TdmaTime::default();
     let mut runtime = MmMobilityRuntime::new();
@@ -116,6 +131,8 @@ fn pending_migration_has_a_bounded_timeout() {
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `terminal_migration_history_is_bounded_and_vassi_can_be_reused` für terminal migration history is bounded and vassi und weitere Angaben aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn terminal_migration_history_is_bounded_and_vassi_can_be_reused() {
     use tetra_entities::mm::mobility_runtime::MM_MOBILITY_HISTORY_SLOTS;
 

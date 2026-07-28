@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! Phase-modulation resource request information element (table 28.115).
 
 use tetra_core::BitBuffer;
@@ -5,6 +8,8 @@ use tetra_core::BitBuffer;
 use super::protocol::RawBits;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für phase modulation resource request in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PhaseModulationResourceRequest {
     pub asymmetric: bool,
     pub mean_throughput: u8,
@@ -16,7 +21,11 @@ pub struct PhaseModulationResourceRequest {
     pub full_capability_code: u8,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `PhaseModulationResourceRequest`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl PhaseModulationResourceRequest {
+    // Was: Führt den Arbeitsschritt `one_slot_symmetric` für one slot symmetric aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn one_slot_symmetric() -> Self {
         Self {
             asymmetric: false,
@@ -27,18 +36,26 @@ impl PhaseModulationResourceRequest {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `uplink_slots` für Uplink (Funkgerät zum Netz) slots aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn uplink_slots(self) -> u8 {
         self.uplink_slots_code + 1
     }
 
+    // Was: Führt den Arbeitsschritt `downlink_slots` für Downlink (Netz zum Funkgerät) slots aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn downlink_slots(self) -> u8 {
         self.downlink_slots_code.unwrap_or(self.uplink_slots_code) + 1
     }
 
+    // Was: Führt den Arbeitsschritt `full_capability_slots` für full capability slots aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn full_capability_slots(self) -> u8 {
         self.full_capability_code + 1
     }
 
+    // Was: Diese Funktion prüft den vorgesehenen Arbeitsschritt.
+    // Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
     pub fn validate(self) -> Result<Self, ResourceError> {
         if self.mean_throughput > 7 {
             return Err(ResourceError::ReservedValue { field: "resource.mean_throughput", value: u64::from(self.mean_throughput) });
@@ -68,6 +85,8 @@ impl PhaseModulationResourceRequest {
         Ok(self)
     }
 
+    // Was: Diese Funktion dekodiert prefix.
+    // Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
     pub fn decode_prefix(raw: &RawBits) -> Result<(Self, RawBits), ResourceError> {
         let mut reader = raw.reader();
         let asymmetric = read(&mut reader, 1, "resource.symmetry")? != 0;
@@ -94,6 +113,8 @@ impl PhaseModulationResourceRequest {
         Ok((request, RawBits::from_remaining(&reader)))
     }
 
+    // Was: Diese Funktion kodiert den vorgesehenen Arbeitsschritt.
+    // Warum: Alle Gegenstellen erhalten dadurch dasselbe erwartete Protokollformat.
     pub fn encode(&self, out: &mut BitBuffer) {
         self.validate().expect("invalid phase-modulation resource request passed to encoder");
         out.write_bits(self.asymmetric as u64, 1);
@@ -108,6 +129,8 @@ impl PhaseModulationResourceRequest {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für resource error auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum ResourceError {
     TooShort(&'static str),
     MissingField(&'static str),
@@ -115,15 +138,21 @@ pub enum ResourceError {
     InvalidCombination(&'static str),
 }
 
+// Was: Diese Funktion liest den vorgesehenen Arbeitsschritt.
+// Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
 fn read(reader: &mut BitBuffer, bits: usize, field: &'static str) -> Result<u64, ResourceError> {
     reader.read_bits(bits).ok_or(ResourceError::TooShort(field))
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
     #[test]
+    // Was: Führt den Arbeitsschritt `symmetric_resource_round_trips` für symmetric resource round trips aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn symmetric_resource_round_trips() {
         let request = PhaseModulationResourceRequest::one_slot_symmetric();
         let mut bits = BitBuffer::new_autoexpand(16);

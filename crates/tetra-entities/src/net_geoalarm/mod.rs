@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! GeoAlarm geofence worker.
 //!
 //! The worker is intentionally small and off the real-time TETRA path. TETRA LIP and MeshCom
@@ -15,33 +18,55 @@ use crate::net_snom::SnomNotifySink;
 use crate::net_telegram::TelegramAlertSink;
 use crate::tpg2200::{build_sds_text_payload, build_tpg2200_callout_payload, format_hex_bytes};
 
+// Was: Vergibt für cmd sender einen fachlich verständlichen Typnamen.
+// Warum: Der Alias macht Signaturen lesbarer und hält technische Details aus dem aufrufenden Code heraus.
 type CmdSender = crossbeam_channel::Sender<ControlCommand>;
 
+// Was: Legt den festen Wert `STATUS_TICK` für Status tick fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const STATUS_TICK: Duration = Duration::from_secs(1);
+// Was: Legt den festen Wert `MAX_EVENTS` für max events fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const MAX_EVENTS: usize = 250;
 
 #[derive(Debug, Clone)]
+// Was: Listet die möglichen Varianten für geo alarm source auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 enum GeoAlarmSource {
     Tetra { issi: u32 },
     Meshcom { src: String, via: Vec<String> },
 }
 
+// Was: Implementiert das zugehörige Verhalten für `GeoAlarmSource`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl GeoAlarmSource {
+    // Was: Führt den Arbeitsschritt `label` für label aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn label(&self) -> String {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self {
             Self::Tetra { issi } => format!("TETRA {issi}"),
             Self::Meshcom { src, .. } => format!("MeshCom {src}"),
         }
     }
 
+    // Was: Führt den Arbeitsschritt `key` für key aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn key(&self) -> String {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self {
             Self::Tetra { issi } => format!("tetra:{issi}"),
             Self::Meshcom { src, .. } => format!("meshcom:{}", src.trim().to_ascii_uppercase()),
         }
     }
 
+    // Was: Führt den Arbeitsschritt `kind` für kind aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn kind(&self) -> &'static str {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self {
             Self::Tetra { .. } => "tetra",
             Self::Meshcom { .. } => "meshcom",
@@ -50,6 +75,8 @@ impl GeoAlarmSource {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für geo alarm update in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct GeoAlarmUpdate {
     source: GeoAlarmSource,
     lat: f64,
@@ -57,12 +84,18 @@ struct GeoAlarmUpdate {
 }
 
 #[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für geo alarm sink in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GeoAlarmSink {
     tx: crossbeam_channel::Sender<GeoAlarmUpdate>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `GeoAlarmSink`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl GeoAlarmSink {
     #[inline]
+    // Was: Diese Funktion sendet TETRA lip.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     pub fn send_tetra_lip(&self, source_issi: u32, text: &str) {
         if let Some((lat, lon)) = parse_lip_position_text(text) {
             self.send_tetra_position(source_issi, lat, lon);
@@ -70,6 +103,8 @@ impl GeoAlarmSink {
     }
 
     #[inline]
+    // Was: Diese Funktion sendet TETRA position.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     pub fn send_tetra_position(&self, source_issi: u32, lat: f64, lon: f64) {
         let _ = self.tx.send(GeoAlarmUpdate {
             source: GeoAlarmSource::Tetra { issi: source_issi },
@@ -79,11 +114,15 @@ impl GeoAlarmSink {
     }
 
     #[inline]
+    // Was: Diese Funktion sendet meshcom position.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     pub fn send_meshcom_position(&self, src: String, lat: f64, lon: f64) {
         self.send_meshcom_position_with_via(src, Vec::new(), lat, lon);
     }
 
     #[inline]
+    // Was: Diese Funktion sendet meshcom position with via.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     pub fn send_meshcom_position_with_via(&self, src: String, via: Vec<String>, lat: f64, lon: f64) {
         let src = src.trim();
         if src.is_empty() {
@@ -97,11 +136,15 @@ impl GeoAlarmSink {
     }
 }
 
+// Was: Führt den Arbeitsschritt `geoalarm_channel` für geoalarm Kanal aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn geoalarm_channel() -> (GeoAlarmSink, crossbeam_channel::Receiver<GeoAlarmUpdate>) {
     let (tx, rx) = crossbeam_channel::unbounded();
     (GeoAlarmSink { tx }, rx)
 }
 
+// Was: Diese Funktion startet geoalarm Hintergrundverarbeitung.
+// Warum: Länger laufende Arbeit blockiert dadurch nicht den aufrufenden Ablauf.
 pub fn spawn_geoalarm_worker(
     cfg: SharedConfig,
     cmce_cmd_tx: Option<CmdSender>,
@@ -109,6 +152,8 @@ pub fn spawn_geoalarm_worker(
     snom_sink: Option<SnomNotifySink>,
 ) -> Option<GeoAlarmSink> {
     let (sink, rx) = geoalarm_channel();
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match thread::Builder::new()
         .name("geoalarm-worker".into())
         .spawn(move || GeoAlarmWorker::new(cfg, cmce_cmd_tx, telegram_sink, snom_sink, rx).run())
@@ -122,11 +167,15 @@ pub fn spawn_geoalarm_worker(
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für device Zustand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct DeviceState {
     inside: bool,
     last_alarm: Option<Instant>,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für geo alarm Hintergrundverarbeitung in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct GeoAlarmWorker {
     cfg: SharedConfig,
     cmce_cmd_tx: Option<CmdSender>,
@@ -145,7 +194,11 @@ struct GeoAlarmWorker {
     last_callout_id_base: Option<u16>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `GeoAlarmWorker`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl GeoAlarmWorker {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     fn new(
         cfg: SharedConfig,
         cmce_cmd_tx: Option<CmdSender>,
@@ -173,10 +226,16 @@ impl GeoAlarmWorker {
         }
     }
 
+    // Was: Diese Funktion führt den vorgesehenen Arbeitsschritt.
+    // Warum: Der Lebenszyklus des Dienstes bleibt so an einer zentralen Stelle steuerbar.
     fn run(&mut self) {
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             let geoalarm = self.cfg.effective_geoalarm();
             self.note_config_state(&geoalarm);
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match self.rx.recv_timeout(STATUS_TICK) {
                 Ok(update) => self.handle_update(&geoalarm, update),
                 Err(crossbeam_channel::RecvTimeoutError::Timeout) => {}
@@ -187,6 +246,8 @@ impl GeoAlarmWorker {
         tracing::info!("GeoAlarm worker exiting");
     }
 
+    // Was: Führt den Arbeitsschritt `note_config_state` für note Konfiguration Zustand aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn note_config_state(&mut self, geoalarm: &CfgGeoalarm) {
         if self.last_enabled == Some(geoalarm.enabled) {
             return;
@@ -213,6 +274,8 @@ impl GeoAlarmWorker {
         self.last_enabled = Some(geoalarm.enabled);
     }
 
+    // Was: Diese Funktion verarbeitet update.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_update(&mut self, geoalarm: &CfgGeoalarm, update: GeoAlarmUpdate) {
         if !geoalarm.enabled {
             return;
@@ -279,29 +342,39 @@ impl GeoAlarmWorker {
             alarmed: should_alarm && !paths.is_empty(),
             paths,
         });
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while self.events.len() > MAX_EVENTS {
             self.events.pop_back();
         }
     }
 
+    // Was: Diese Funktion leitet alarm.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn forward_alarm(&mut self, geoalarm: &CfgGeoalarm, source: &GeoAlarmSource, lat: f64, lon: f64, distance_m: f64) -> Vec<String> {
         let mut paths = Vec::new();
         let label = source.label();
         let body = format!("{} {:.0}m ({:.6},{:.6})", label, distance_m.max(0.0), lat, lon);
 
         if geoalarm.forward_tpg2200 {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match self.forward_tpg2200(geoalarm, &body) {
                 Ok(()) => paths.push("tpg2200".to_string()),
                 Err(err) => self.warn_forward("TPG2200", &label, err),
             }
         }
         if geoalarm.forward_sds {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match self.forward_sds(geoalarm, &body) {
                 Ok(()) => paths.push("sds".to_string()),
                 Err(err) => self.warn_forward("SDS", &label, err),
             }
         }
         if geoalarm.forward_sip {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match self.forward_sip(geoalarm, &label, &body, distance_m, lat, lon) {
                 Ok(()) => paths.push("sip".to_string()),
                 Err(err) => self.warn_forward("SIP", &label, err),
@@ -309,6 +382,8 @@ impl GeoAlarmWorker {
         }
         if geoalarm.forward_telegram {
             if telegram_source_allowed(geoalarm, source) {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match self.forward_telegram(geoalarm, &label, &body) {
                     Ok(()) => paths.push("telegram".to_string()),
                     Err(err) => self.warn_forward("Telegram", &label, err),
@@ -333,6 +408,8 @@ impl GeoAlarmWorker {
         paths
     }
 
+    // Was: Diese Funktion leitet tpg2200.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn forward_tpg2200(&mut self, geoalarm: &CfgGeoalarm, body: &str) -> Result<(), String> {
         if geoalarm.tpg2200_dest_issi == 0 {
             return Err("tpg2200_dest_issi is 0".to_string());
@@ -378,6 +455,8 @@ impl GeoAlarmWorker {
         .map_err(|e| format!("send to CMCE failed: {}", e))
     }
 
+    // Was: Diese Funktion leitet TETRA-Kurznachricht (SDS).
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn forward_sds(&self, geoalarm: &CfgGeoalarm, body: &str) -> Result<(), String> {
         if geoalarm.sds_dest_issi == 0 {
             return Err("sds_dest_issi is 0".to_string());
@@ -398,6 +477,8 @@ impl GeoAlarmWorker {
         .map_err(|e| format!("send to CMCE failed: {}", e))
     }
 
+    // Was: Diese Funktion leitet sip.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn forward_sip(&self, geoalarm: &CfgGeoalarm, source: &str, body: &str, distance_m: f64, lat: f64, lon: f64) -> Result<(), String> {
         let Some(sink) = &self.snom_sink else {
             return Err("Snom notify sink unavailable".to_string());
@@ -413,6 +494,8 @@ impl GeoAlarmWorker {
         Ok(())
     }
 
+    // Was: Diese Funktion leitet telegram.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn forward_telegram(&self, geoalarm: &CfgGeoalarm, source: &str, body: &str) -> Result<(), String> {
         let Some(sink) = &self.telegram_sink else {
             return Err("Telegram alert sink unavailable".to_string());
@@ -421,22 +504,30 @@ impl GeoAlarmWorker {
         Ok(())
     }
 
+    // Was: Führt den Arbeitsschritt `warn_forward` für warn forward aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn warn_forward(&mut self, path: &str, source: &str, err: String) {
         let msg = format!("{path} forwarding failed for {source}: {err}");
         tracing::warn!("GeoAlarm: {}", msg);
         self.set_error(msg);
     }
 
+    // Was: Diese Funktion setzt error.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     fn set_error(&mut self, msg: String) {
         self.last_error = Some(msg);
     }
 
+    // Was: Führt den Arbeitsschritt `next_callout_id` für next callout Kennung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn next_callout_id(&mut self) -> u16 {
         let callout_id = self.next_tpg2200_callout_id.min(255);
         self.next_tpg2200_callout_id = if callout_id >= 255 { 0 } else { callout_id + 1 };
         callout_id
     }
 
+    // Was: Diese Funktion veröffentlicht Status.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn publish_status(&self, geoalarm: &CfgGeoalarm) {
         let mut state = self.cfg.state_write();
         state.geoalarm_status = GeoalarmRuntimeStatus {
@@ -460,14 +551,22 @@ impl GeoAlarmWorker {
     }
 }
 
+// Was: Führt den Arbeitsschritt `source_enabled` für source enabled aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn source_enabled(geoalarm: &CfgGeoalarm, source: &GeoAlarmSource) -> bool {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match source {
         GeoAlarmSource::Tetra { .. } => geoalarm.trigger_tetra,
         GeoAlarmSource::Meshcom { .. } => geoalarm.trigger_meshcom,
     }
 }
 
+// Was: Führt den Arbeitsschritt `source_allowed` für source allowed aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn source_allowed(geoalarm: &CfgGeoalarm, source: &GeoAlarmSource) -> bool {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match source {
         GeoAlarmSource::Tetra { issi } => {
             !geoalarm.tetra_issi_blacklist.contains(issi)
@@ -481,7 +580,11 @@ fn source_allowed(geoalarm: &CfgGeoalarm, source: &GeoAlarmSource) -> bool {
     }
 }
 
+// Was: Führt den Arbeitsschritt `telegram_source_allowed` für telegram source allowed aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn telegram_source_allowed(geoalarm: &CfgGeoalarm, source: &GeoAlarmSource) -> bool {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match source {
         GeoAlarmSource::Tetra { issi } => {
             !geoalarm.telegram_tetra_issi_blacklist.contains(issi)
@@ -495,17 +598,25 @@ fn telegram_source_allowed(geoalarm: &CfgGeoalarm, source: &GeoAlarmSource) -> b
     }
 }
 
+// Was: Führt den Arbeitsschritt `geoalarm_source_via` für geoalarm source via aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn geoalarm_source_via(source: &GeoAlarmSource) -> Vec<String> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match source {
         GeoAlarmSource::Meshcom { via, .. } => via.clone(),
         _ => Vec::new(),
     }
 }
 
+// Was: Führt den Arbeitsschritt `coord_valid` für coord valid aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn coord_valid(lat: f64, lon: f64) -> bool {
     lat.is_finite() && lon.is_finite() && (-90.0..=90.0).contains(&lat) && (-180.0..=180.0).contains(&lon)
 }
 
+// Was: Diese Funktion liest und prüft lip position text.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 pub fn parse_lip_position_text(text: &str) -> Option<(f64, f64)> {
     let rest = text.trim().strip_prefix("LIP position:")?.trim();
     let (lat, lon) = rest.split_once(',')?;
@@ -514,6 +625,8 @@ pub fn parse_lip_position_text(text: &str) -> Option<(f64, f64)> {
     if coord_valid(lat, lon) { Some((lat, lon)) } else { None }
 }
 
+// Was: Führt den Arbeitsschritt `haversine_m` für haversine m aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn haversine_m(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
     let r = 6_371_000.0_f64;
     let phi1 = lat1.to_radians();
@@ -525,6 +638,8 @@ fn haversine_m(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
     r * c
 }
 
+// Was: Führt den Arbeitsschritt `prefixed_text` für prefixed text aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn prefixed_text(prefix: &str, text: &str) -> String {
     let prefix = prefix.trim();
     let text = text.trim();
@@ -539,6 +654,8 @@ fn prefixed_text(prefix: &str, text: &str) -> String {
     }
 }
 
+// Was: Führt den Arbeitsschritt `truncate_chars` für truncate chars aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn truncate_chars(text: &str, max: usize) -> (String, bool) {
     if text.chars().count() <= max {
         (text.to_string(), false)
@@ -547,6 +664,8 @@ fn truncate_chars(text: &str, max: usize) -> (String, bool) {
     }
 }
 
+// Was: Führt den Arbeitsschritt `now_stamp` für now stamp aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn now_stamp() -> String {
     chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string()
 }

@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Anwendungsdienste wie TTS und externe Integrationen.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::net::SocketAddr;
@@ -5,12 +8,20 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
+// Was: Legt den festen Wert `OPEN_LAB_MODE` für open lab mode fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const OPEN_LAB_MODE: &str = "open_lab";
+// Was: Legt den festen Wert `SHADOW_MODE` für shadow mode fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const SHADOW_MODE: &str = "shadow";
+// Was: Legt den festen Wert `AUTHORITATIVE_MODE` für authoritative mode fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const AUTHORITATIVE_MODE: &str = "authoritative";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für application Gateway Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ApplicationGatewayConfig {
     pub server: ServerConfig,
     pub storage: StorageConfig,
@@ -21,7 +32,11 @@ pub struct ApplicationGatewayConfig {
     pub templates: Vec<TemplateSeed>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for ApplicationGatewayConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for ApplicationGatewayConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             server: ServerConfig::default(),
@@ -35,8 +50,14 @@ impl Default for ApplicationGatewayConfig {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `ApplicationGatewayConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl ApplicationGatewayConfig {
+    // Was: Diese Funktion lädt den vorgesehenen Arbeitsschritt.
+    // Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
     pub fn load(path: Option<&Path>) -> Result<Self, Box<dyn std::error::Error>> {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let mut config = match path {
             Some(path) => toml::from_str::<Self>(&fs::read_to_string(path)?)?,
             None => Self::default(),
@@ -47,6 +68,8 @@ impl ApplicationGatewayConfig {
         Ok(config)
     }
 
+    // Was: Diese Funktion wendet bind override.
+    // Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
     pub fn apply_bind_override(&mut self, bind: Option<SocketAddr>) -> Result<(), String> {
         if let Some(bind) = bind {
             self.server.bind = bind;
@@ -54,6 +77,8 @@ impl ApplicationGatewayConfig {
         self.normalise()
     }
 
+    // Was: Führt den Arbeitsschritt `normalise` für normalise aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn normalise(&mut self) -> Result<(), String> {
         if self.security.mode != OPEN_LAB_MODE {
             return Err(format!(
@@ -94,6 +119,8 @@ impl ApplicationGatewayConfig {
         self.runtime.dedupe_window_secs = self.runtime.dedupe_window_secs.max(10);
 
         let mut connector_ids = HashSet::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for connector in &mut self.connectors {
             connector.connector_id = slug(&connector.connector_id);
             connector.kind = connector.kind.trim().to_ascii_lowercase();
@@ -131,6 +158,8 @@ impl ApplicationGatewayConfig {
         }
 
         let mut rule_ids = HashSet::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for rule in &mut self.rules {
             rule.rule_id = slug(&rule.rule_id);
             rule.source_connector = rule.source_connector.trim().to_ascii_lowercase();
@@ -145,6 +174,8 @@ impl ApplicationGatewayConfig {
         }
 
         let mut template_ids = HashSet::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for template in &mut self.templates {
             template.template_id = slug(&template.template_id);
             template.kind = template.kind.trim().to_ascii_lowercase();
@@ -167,6 +198,8 @@ impl ApplicationGatewayConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für server Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ServerConfig {
     pub bind: SocketAddr,
     pub public_base_url: String,
@@ -174,7 +207,11 @@ pub struct ServerConfig {
     pub history_limit: usize,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for ServerConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for ServerConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             bind: "0.0.0.0:8220".parse().expect("valid default bind"),
@@ -187,6 +224,8 @@ impl Default for ServerConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für storage Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct StorageConfig {
     pub state_path: PathBuf,
     pub state_backup_path: PathBuf,
@@ -195,7 +234,11 @@ pub struct StorageConfig {
     pub backup_dir: PathBuf,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for StorageConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for StorageConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             state_path: "/var/lib/netcore-application-gateway/state.json".into(),
@@ -209,6 +252,8 @@ impl Default for StorageConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für Sicherheit Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SecurityConfig {
     pub mode: String,
     pub management_token_auth: bool,
@@ -218,7 +263,11 @@ pub struct SecurityConfig {
     pub warning_banner: String,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for SecurityConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for SecurityConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             mode: OPEN_LAB_MODE.to_string(),
@@ -233,6 +282,8 @@ impl Default for SecurityConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für Laufzeit Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct RuntimeConfig {
     pub operating_mode: String,
     pub worker_interval_ms: u64,
@@ -253,7 +304,11 @@ pub struct RuntimeConfig {
     pub audit_retention_secs: u64,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for RuntimeConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for RuntimeConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             operating_mode: SHADOW_MODE.to_string(),
@@ -279,6 +334,8 @@ impl Default for RuntimeConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für connector seed in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ConnectorSeed {
     pub connector_id: String,
     pub display_name: String,
@@ -295,7 +352,11 @@ pub struct ConnectorSeed {
     pub settings: BTreeMap<String, String>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for ConnectorSeed`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for ConnectorSeed {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             connector_id: "webhook".to_string(),
@@ -317,6 +378,8 @@ impl Default for ConnectorSeed {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für Weiterleitung rule seed in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct RouteRuleSeed {
     pub rule_id: String,
     pub name: String,
@@ -331,7 +394,11 @@ pub struct RouteRuleSeed {
     pub stop_processing: bool,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for RouteRuleSeed`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for RouteRuleSeed {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             rule_id: "manual-to-sds".to_string(),
@@ -351,6 +418,8 @@ impl Default for RouteRuleSeed {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für template seed in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TemplateSeed {
     pub template_id: String,
     pub name: String,
@@ -363,7 +432,11 @@ pub struct TemplateSeed {
     pub description: String,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for TemplateSeed`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for TemplateSeed {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             template_id: "plain-text".to_string(),
@@ -379,6 +452,8 @@ impl Default for TemplateSeed {
     }
 }
 
+// Was: Führt den Arbeitsschritt `connector` für connector aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn connector(id: &str, name: &str, kind: &str, direction: &str, endpoint: &str, enabled: bool) -> ConnectorSeed {
     ConnectorSeed {
         connector_id: id.to_string(),
@@ -391,6 +466,8 @@ fn connector(id: &str, name: &str, kind: &str, direction: &str, endpoint: &str, 
     }
 }
 
+// Was: Führt den Arbeitsschritt `default_connectors` für default connectors aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_connectors() -> Vec<ConnectorSeed> {
     let mut sds = connector(
         "sds-router",
@@ -523,6 +600,8 @@ fn default_connectors() -> Vec<ConnectorSeed> {
     vec![sds, piper, media, telegram, dapnet, meshcom, snom, geoalarm, weather, tpg, directory, generic]
 }
 
+// Was: Führt den Arbeitsschritt `default_rules` für default rules aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_rules() -> Vec<RouteRuleSeed> {
     vec![
         RouteRuleSeed::default(),
@@ -540,6 +619,8 @@ fn default_rules() -> Vec<RouteRuleSeed> {
     ]
 }
 
+// Was: Führt den Arbeitsschritt `default_templates` für default templates aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_templates() -> Vec<TemplateSeed> {
     vec![
         TemplateSeed {
@@ -578,6 +659,8 @@ fn default_templates() -> Vec<TemplateSeed> {
     ]
 }
 
+// Was: Führt den Arbeitsschritt `slug` für slug aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn slug(value: &str) -> String {
     value
         .trim()

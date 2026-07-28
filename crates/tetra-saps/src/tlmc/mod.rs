@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Nachrichten an den Schnittstellen zwischen TETRA-Protokollschichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! TLC/TMC service primitives used between MLE, LLC and MAC.
 //!
 //! ETSI EN 300 392-2 defines the TLC-SAP and TMC-SAP as local management
@@ -17,6 +20,8 @@ use crate::common::{
 
 /// Information identifying the currently valid network address scope.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für tlmc valid address in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlmcValidAddress {
     pub mcc: u16,
     pub mnc: u16,
@@ -24,18 +29,24 @@ pub struct TlmcValidAddress {
 
 /// Result of path-loss assessment for one or more channel classes.
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für tlmc assessment ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlmcAssessmentInd {
     pub assessments: Vec<ChannelClassMeasurement>,
 }
 
 /// Start assessment for a list of channel classes on the serving cell.
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für tlmc assessment list req in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlmcAssessmentListReq {
     pub classes: Vec<ChannelClassAssessmentRequest>,
 }
 
 /// Request reading SYSINFO-DA on a DA-neighbour main carrier.
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für tlmc cell read req in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlmcCellReadReq {
     pub request_id: ScanRequestId,
     pub channel_number: RfChannelNumber,
@@ -44,10 +55,14 @@ pub struct TlmcCellReadReq {
 
 /// Compatibility alias for the earlier incorrectly named placeholder.
 #[deprecated(note = "use TlmcCellReadReq; ETSI defines a request/confirm pair")]
+// Was: Vergibt für tlmc cell read ind einen fachlich verständlichen Typnamen.
+// Warum: Der Alias macht Signaturen lesbarer und hält technische Details aus dem aufrufenden Code heraus.
 pub type TlmcCellReadInd = TlmcCellReadReq;
 
 /// Completion of a SYSINFO-DA cell-read request.
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für tlmc cell read conf in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlmcCellReadConf {
     pub request_id: ScanRequestId,
     pub channel_number: RfChannelNumber,
@@ -56,6 +71,8 @@ pub struct TlmcCellReadConf {
 
 /// TMC-CONFIGURE indication for loss or recovery of a local MAC resource.
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für tlmc configure ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlmcConfigureInd {
     pub endpoint_id: EndpointId,
     pub lower_layer_resource_availability: LowerLayerResourceAvailability,
@@ -64,6 +81,8 @@ pub struct TlmcConfigureInd {
 
 /// TL/TMC-CONFIGURE request.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
+// Was: Bündelt die zusammengehörigen Werte für tlmc configure req in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlmcConfigureReq {
     pub threshold_values: Option<ThresholdValues>,
     pub distribution_on_18th_frame: Option<Frame18Distribution>,
@@ -93,6 +112,8 @@ pub struct TlmcConfigureReq {
 
 /// TL-CONFIGURE confirmation. Only values reflected by lower layers are carried.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
+// Was: Bündelt die zusammengehörigen Werte für tlmc configure conf in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlmcConfigureConf {
     pub threshold_values: Option<ThresholdValues>,
     pub distribution_on_18th_frame: Option<Frame18Distribution>,
@@ -115,12 +136,16 @@ pub struct TlmcConfigureConf {
 
 /// Quality of the current serving-channel link.
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für tlmc measurement ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlmcMeasurementInd {
     pub measurement: MeasurementReport,
 }
 
 /// Result of monitoring one RF channel.
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für tlmc monitor ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlmcMonitorInd {
     pub channel_number: RfChannelNumber,
     pub path_loss_c2: MeasurementValue,
@@ -130,6 +155,8 @@ pub struct TlmcMonitorInd {
 
 /// One channel and optional channel classes included in a monitor list.
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für tlmc monitor Kanal in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlmcMonitorChannel {
     pub channel_number: RfChannelNumber,
     pub characteristics: RfChannelCharacteristics,
@@ -138,12 +165,16 @@ pub struct TlmcMonitorChannel {
 
 /// Start monitoring one or more RF channels.
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für tlmc monitor list req in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlmcMonitorListReq {
     pub channels: Vec<TlmcMonitorChannel>,
 }
 
 /// Local status/progress report generated by LLC or MAC.
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für tlmc report ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlmcReportInd {
     pub request_handle: Option<RequestHandle>,
     pub report: Layer2Report,
@@ -153,6 +184,8 @@ pub struct TlmcReportInd {
 
 /// Start scanning a neighbour-cell main carrier.
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für tlmc scan req in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlmcScanReq {
     pub request_id: ScanRequestId,
     pub channel_number: RfChannelNumber,
@@ -164,6 +197,8 @@ pub struct TlmcScanReq {
 
 /// Completion of an explicit scan request.
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für tlmc scan conf in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlmcScanConf {
     pub request_id: ScanRequestId,
     pub channel_number: RfChannelNumber,
@@ -175,6 +210,8 @@ pub struct TlmcScanConf {
 
 /// Updated scan measurement reported after monitoring/scanning has completed.
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für tlmc scan report ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlmcScanReportInd {
     pub request_id: Option<ScanRequestId>,
     pub channel_number: RfChannelNumber,
@@ -185,6 +222,8 @@ pub struct TlmcScanReportInd {
 
 /// Request MAC to tune to an RF channel.
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für tlmc select req in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlmcSelectReq {
     pub channel_number: RfChannelNumber,
     pub channel_information: Option<ChannelInformation>,
@@ -196,6 +235,8 @@ pub struct TlmcSelectReq {
 
 /// BS-controlled channel change reported by MAC to MLE.
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für tlmc select ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlmcSelectInd {
     pub channel_number: RfChannelNumber,
     pub channel_information: ChannelInformation,
@@ -206,6 +247,8 @@ pub struct TlmcSelectInd {
 
 /// MLE response to a cell-change indication.
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für tlmc select resp in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlmcSelectResp {
     pub channel_number: RfChannelNumber,
     pub threshold_level: Option<MeasurementValue>,
@@ -217,6 +260,8 @@ pub struct TlmcSelectResp {
 
 /// Completion of a requested channel selection.
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für tlmc select conf in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TlmcSelectConf {
     pub channel_number: RfChannelNumber,
     pub threshold_level: Option<MeasurementValue>,
@@ -226,10 +271,14 @@ pub struct TlmcSelectConf {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
     use crate::common::{ChannelBandwidth, ChannelRole, ChannelTopology, ModulationMode};
 
+    // Was: Führt den Arbeitsschritt `characteristics` für characteristics aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn characteristics() -> RfChannelCharacteristics {
         RfChannelCharacteristics {
             modulation: ModulationMode::PhaseModulation,
@@ -243,6 +292,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `scan_request_keeps_explicit_correlation_and_units` für scan request keeps explicit correlation and units aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn scan_request_keeps_explicit_correlation_and_units() {
         let request = TlmcScanReq {
             request_id: ScanRequestId(42),
@@ -259,6 +310,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `configure_default_does_not_invent_normative_values` für configure default does not invent normative values aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn configure_default_does_not_invent_normative_values() {
         let configure = TlmcConfigureReq::default();
         assert!(configure.valid_addresses.is_none());

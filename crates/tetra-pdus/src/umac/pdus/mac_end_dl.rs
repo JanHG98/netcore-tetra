@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 
 use tetra_core::BitBuffer;
@@ -8,6 +11,8 @@ use crate::umac::fields::channel_allocation::ChanAllocElement;
 
 /// Clause 21.4.3.3 MAC-END (downlink)
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für MAC-Funkzugriffssteuerung end dl in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MacEndDl {
     // 1
     pub fill_bits: bool,
@@ -25,7 +30,11 @@ pub struct MacEndDl {
     pub chan_alloc_element: Option<ChanAllocElement>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `MacEndDl`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl MacEndDl {
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buf: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let mut s = MacEndDl {
             fill_bits: false,
@@ -57,11 +66,15 @@ impl MacEndDl {
         Ok(s)
     }
 
+    // Was: Führt den Arbeitsschritt `compute_hdr_len` für compute hdr len aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn compute_hdr_len(has_slotgrant: bool, has_chanalloc: bool) -> usize {
         assert!(!has_chanalloc, "unimplemented");
         2 + 1 + 1 + 1 + 6 + 1 + (if has_slotgrant { 6 } else { 0 }) + 1
     }
 
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buf: &mut BitBuffer) {
         // write required constant mac_pdu_type and pdu_subtype
         buf.write_bits(1, 2);
@@ -88,7 +101,11 @@ impl MacEndDl {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for MacEndDl`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for MacEndDl {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "MacEndDl {{ fill_bits: {}", self.fill_bits)?;
         write!(f, "  pos_of_grant: {}", self.pos_of_grant)?;

@@ -1,50 +1,125 @@
+# NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für die Audioverteilung zwischen Basisstationen und Rufen.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 # NetCore Media Switch – offener Testbetrieb.
 # Keine Tokens, keine Passwörter und kein TLS. Nur in einem isolierten Labornetz verwenden.
 
+# Was: Öffnet den Konfigurationsabschnitt `server`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [server]
+# Was: Setzt die Einstellung `bind` für server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 bind = "0.0.0.0:8130"
+# Was: Setzt die Einstellung `history_limit` für server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 history_limit = 2000
 
+# Was: Öffnet den Konfigurationsabschnitt `node_gateway`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [node_gateway]
+# Was: Setzt die Einstellung `url` für Netzknoten Gateway.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 url = "ws://10.0.1.20:8080/ws/backend"
+# Was: Setzt die Einstellung `reconnect_secs` für Netzknoten Gateway.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 reconnect_secs = 2
 
+# Was: Öffnet den Konfigurationsabschnitt `call_control`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [call_control]
 # HTTP ist nur Startup-/Fallback-Snapshot. Der Sprachpfad folgt dem WebSocket.
+# Was: Setzt die Einstellung `url` für Ruf Steuerung.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 url = "http://10.0.1.24:8120/api/v1/calls"
+# Was: Setzt die Einstellung `events_url` für Ruf Steuerung.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 events_url = "ws://10.0.1.24:8120/ws/media"
+# Was: Setzt die Einstellung `route_ready_url` für Ruf Steuerung.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 route_ready_url = "http://10.0.1.24:8120/api/v1/media/route-ready"
+# Was: Setzt die Einstellung `reconcile_secs` für Ruf Steuerung.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 reconcile_secs = 15
+# Was: Setzt die Einstellung `reconnect_secs` für Ruf Steuerung.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 reconnect_secs = 1
+# Was: Setzt die Einstellung `request_timeout_secs` für Ruf Steuerung.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 request_timeout_secs = 2
 
+# Was: Öffnet den Konfigurationsabschnitt `media`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [media]
 # Ein gepackter TETRA-TCH/S-Sprachframe pro 60-ms-Rahmen.
+# Was: Setzt die Einstellung `frame_duration_ms` für Audio- und Mediendaten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 frame_duration_ms = 60
 # Normaler Startwert: 2 Frames = 120 ms. Adaptiv ist 1..12 möglich.
+# Was: Setzt die Einstellung `jitter_buffer_frames` für Audio- und Mediendaten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 jitter_buffer_frames = 2
+# Was: Setzt die Einstellung `min_jitter_buffer_frames` für Audio- und Mediendaten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 min_jitter_buffer_frames = 1
+# Was: Setzt die Einstellung `max_jitter_buffer_frames` für Audio- und Mediendaten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_jitter_buffer_frames = 12
+# Was: Setzt die Einstellung `adaptive_jitter` für Audio- und Mediendaten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 adaptive_jitter = true
+# Was: Setzt die Einstellung `adaptive_jitter_up_threshold_ms` für Audio- und Mediendaten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 adaptive_jitter_up_threshold_ms = 18
+# Was: Setzt die Einstellung `adaptive_jitter_down_stable_frames` für Audio- und Mediendaten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 adaptive_jitter_down_stable_frames = 120
 # Ersten Satz halten, bis CallCreated/LegReady den Routinggraphen komplettieren.
+# Was: Setzt die Einstellung `cold_start_buffer_frames` für Audio- und Mediendaten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 cold_start_buffer_frames = 5
+# Was: Setzt die Einstellung `cold_start_buffer_max_age_ms` für Audio- und Mediendaten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 cold_start_buffer_max_age_ms = 600
+# Was: Setzt die Einstellung `session_idle_secs` für Audio- und Mediendaten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 session_idle_secs = 30
+# Was: Setzt die Einstellung `max_frames_per_tick` für Audio- und Mediendaten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_frames_per_tick = 256
+# Was: Setzt die Einstellung `allow_same_leg_loopback` für Audio- und Mediendaten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 allow_same_leg_loopback = false
+# Was: Setzt die Einstellung `tap_history_frames` für Audio- und Mediendaten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 tap_history_frames = 256
 # Replay-fähiger Vollframe-Tap für den Recorder. 20.000 Frames entsprechen
 # bei einem einzelnen aktiven Sprecher ungefähr 20 Minuten Roh-Audio.
+# Was: Setzt die Einstellung `recorder_tap_history_frames` für Audio- und Mediendaten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 recorder_tap_history_frames = 20000
 
+# Was: Öffnet den Konfigurationsabschnitt `security`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [security]
+# Was: Setzt die Einstellung `mode` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 mode = "open_lab"
+# Was: Setzt die Einstellung `allow_remote_management` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 allow_remote_management = true
 
+# Was: Öffnet den Konfigurationsabschnitt `limits`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [limits]
+# Was: Setzt die Einstellung `max_body_bytes` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_body_bytes = 1048576
+# Was: Setzt die Einstellung `max_sessions` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_sessions = 10000
+# Was: Setzt die Einstellung `max_streams` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_streams = 50000
+# Was: Setzt die Einstellung `max_pending_frames` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_pending_frames = 100000

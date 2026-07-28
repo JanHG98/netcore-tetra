@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 
 use tetra_core::{BitBuffer, pdu_parse_error::PduParseErr};
@@ -5,6 +8,8 @@ use tetra_core::{BitBuffer, pdu_parse_error::PduParseErr};
 /// 16.10.5 Class of MS (Table 16.31)
 /// 24 bits total, MSB-first
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für class of ms in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ClassOfMs {
     /// Bit 1: 0=simplex only, 1=duplex+simplex
     pub freq_simplex_duplex: bool,
@@ -52,7 +57,11 @@ pub struct ClassOfMs {
     pub d8psk: bool,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `ClassOfMs`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl ClassOfMs {
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buffer: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let val = buffer.read_field(24, "class_of_ms")? as u32;
 
@@ -82,6 +91,8 @@ impl ClassOfMs {
         })
     }
 
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buf: &mut BitBuffer) -> Result<(), PduParseErr> {
         let mut val: u32 = 0;
         val |= (self.freq_simplex_duplex as u32) << 23;
@@ -111,7 +122,11 @@ impl ClassOfMs {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for ClassOfMs`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for ClassOfMs {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,

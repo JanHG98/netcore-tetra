@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::HashMap;
 
 use crossbeam_channel::{Receiver, Sender, unbounded};
@@ -13,28 +16,40 @@ use crate::net_control::commands::{ControlCommand, ControlResponse};
 // ---------------------------------------------------------------------------
 
 #[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für command dispatcher in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CommandDispatcher {
     cmd_tx: Sender<ControlCommand>,
     resp_rx: Receiver<ControlResponse>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `CommandDispatcher`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl CommandDispatcher {
     /// Send a command to the linked entity. Fire‑and‑forget: silently drops
     /// if the entity's endpoint has been dropped.
     #[inline]
+    // Was: Diese Funktion sendet den vorgesehenen Arbeitsschritt.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     pub fn send(&self, command: ControlCommand) {
         let _ = self.cmd_tx.send(command);
     }
 
     /// Clone just the Sender half so a secondary source (e.g. dashboard) can
     /// inject commands into the same channel without owning the full Dispatcher.
+    // Was: Führt den Arbeitsschritt `clone_sender` für clone sender aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn clone_sender(&self) -> Sender<ControlCommand> {
         self.cmd_tx.clone()
     }
 
     /// Non-blocking: collect all pending responses from the entity.
+    // Was: Führt den Arbeitsschritt `try_recv_responses` für try recv responses aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn try_recv_responses(&self) -> Vec<ControlResponse> {
         let mut responses = Vec::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while let Ok(resp) = self.resp_rx.try_recv() {
             responses.push(resp);
         }
@@ -42,6 +57,8 @@ impl CommandDispatcher {
     }
 
     /// Non-blocking: collect a single pending response, if any.
+    // Was: Führt den Arbeitsschritt `try_recv_response` für try recv response aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn try_recv_response(&self) -> Option<ControlResponse> {
         self.resp_rx.try_recv().ok()
     }
@@ -56,18 +73,26 @@ impl CommandDispatcher {
 // ---------------------------------------------------------------------------
 
 #[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für Steuerung endpoint in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ControlEndpoint {
     cmd_rx: Receiver<ControlCommand>,
     resp_tx: Sender<ControlResponse>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `ControlEndpoint`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl ControlEndpoint {
     /// Non-blocking: receive a pending command, if any.
+    // Was: Führt den Arbeitsschritt `try_recv` für try recv aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn try_recv(&self) -> Option<ControlCommand> {
         self.cmd_rx.try_recv().ok()
     }
 
     /// Blocking receive.  Returns `None` when the dispatcher has been dropped.
+    // Was: Führt den Arbeitsschritt `recv` für recv aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn recv(&self) -> Option<ControlCommand> {
         self.cmd_rx.recv().ok()
     }
@@ -75,6 +100,8 @@ impl ControlEndpoint {
     /// Send a response back to the worker. Fire‑and‑forget: silently drops
     /// if the dispatcher has been dropped.
     #[inline]
+    // Was: Führt den Arbeitsschritt `respond` für respond aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn respond(&self, response: ControlResponse) {
         let _ = self.resp_tx.send(response);
     }
@@ -88,6 +115,8 @@ impl ControlEndpoint {
 ///
 /// - The **dispatcher** (worker side) sends [`ControlCommand`]s and receives [`ControlResponse`]s.
 /// - The **endpoint** (entity side) receives [`ControlCommand`]s and sends [`ControlResponse`]s.
+// Was: Führt den Arbeitsschritt `make_control_link` für make Steuerung link aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn make_control_link() -> (CommandDispatcher, ControlEndpoint) {
     let (cmd_tx, cmd_rx) = unbounded();
     let (resp_tx, resp_rx) = unbounded();
@@ -95,6 +124,8 @@ pub fn make_control_link() -> (CommandDispatcher, ControlEndpoint) {
 }
 
 /// Build one CommandDispatcher / CommandEndpoint pair per TetraEntity
+// Was: Diese Funktion erstellt all Steuerung links.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
 pub fn build_all_control_links() -> (HashMap<TetraEntity, CommandDispatcher>, HashMap<TetraEntity, ControlEndpoint>) {
     let mut dispatchers = HashMap::new();
     let mut endpoints = HashMap::new();
@@ -139,10 +170,14 @@ pub fn build_all_control_links() -> (HashMap<TetraEntity, CommandDispatcher>, Ha
 // ---------------------------------------------------------------------------
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
     #[test]
+    // Was: Prüft automatisch den Fall send command and receive response.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_send_command_and_receive_response() {
         let (dispatcher, endpoint) = make_control_link();
 
@@ -166,6 +201,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall multiple commands and responses.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_multiple_commands_and_responses() {
         let (dispatcher, endpoint) = make_control_link();
 

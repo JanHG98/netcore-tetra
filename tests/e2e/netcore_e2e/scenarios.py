@@ -1,3 +1,6 @@
+# NETCORE-KOMMENTAR – Was: Enthält automatische Prüfungen für scenarios.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 from __future__ import annotations
 
 import json
@@ -9,31 +12,45 @@ from .http import HttpFailure, query_url
 from .wait import wait_for
 
 
+# Was: Führt den Arbeitsschritt `_as_list` für as list aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def _as_list(value: Any) -> list[Any]:
     if isinstance(value, list):
         return value
     if isinstance(value, dict):
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for key in ("items", "services", "records", "results"):
             if isinstance(value.get(key), list):
                 return value[key]
     return []
 
 
+# Was: Führt den Arbeitsschritt `_security_header` für Sicherheit header aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def _security_header(headers: dict[str, str]) -> str:
     return headers.get("x-netcore-security-mode", "").lower().replace("_", "-")
 
 
+# Was: Prüft automatisch den Fall contracts.
+# Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 def scenario_contracts(ctx: E2EContext) -> None:
     scenario = "contracts"
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for service in ctx.inventory.services:
         base = service.base_url
 
+        # Was: Führt den Arbeitsschritt `live` für live aus.
+        # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
         def live(service_name: str = service.name, base_url: str = base) -> dict[str, Any]:
             response = ctx.client.get(base_url + "/health/live")
             return {"status": response.status, "elapsed_ms": response.elapsed_ms, "body": response.text()[:400]}
 
         ctx.check(f"{service.name}: liveness", live, scenario=scenario, service=service.name)
 
+        # Was: Führt den Arbeitsschritt `ready` für ready aus.
+        # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
         def ready(service_name: str = service.name, base_url: str = base) -> dict[str, Any]:
             expected = (200,) if ctx.strict_ready else (200, 503)
             response = ctx.client.get(base_url + "/health/ready", expected=expected)
@@ -43,6 +60,8 @@ def scenario_contracts(ctx: E2EContext) -> None:
 
         ctx.check(f"{service.name}: readiness", ready, scenario=scenario, service=service.name)
 
+        # Was: Führt den Arbeitsschritt `status` für Status aus.
+        # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
         def status(base_url: str = base) -> dict[str, Any]:
             response = ctx.client.get(base_url + "/api/v1/status")
             value = response.json()
@@ -52,6 +71,8 @@ def scenario_contracts(ctx: E2EContext) -> None:
 
         ctx.check(f"{service.name}: status contract", status, scenario=scenario, service=service.name)
 
+        # Was: Führt den Arbeitsschritt `openapi` für openapi aus.
+        # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
         def openapi(base_url: str = base) -> dict[str, Any]:
             response = ctx.client.get(base_url + "/openapi.json")
             value = response.json()
@@ -63,6 +84,8 @@ def scenario_contracts(ctx: E2EContext) -> None:
 
         ctx.check(f"{service.name}: OpenAPI", openapi, scenario=scenario, service=service.name)
 
+        # Was: Führt den Arbeitsschritt `metrics` für Messwerte aus.
+        # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
         def metrics(base_url: str = base) -> dict[str, Any]:
             response = ctx.client.get(base_url + "/metrics")
             text = response.text()
@@ -72,6 +95,8 @@ def scenario_contracts(ctx: E2EContext) -> None:
 
         ctx.check(f"{service.name}: metrics", metrics, scenario=scenario, service=service.name)
 
+        # Was: Führt den Arbeitsschritt `webui` für Weboberfläche aus.
+        # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
         def webui(base_url: str = base) -> dict[str, Any]:
             response = ctx.client.get(base_url + "/")
             content_type = response.headers.get("content-type", "")
@@ -85,12 +110,16 @@ def scenario_contracts(ctx: E2EContext) -> None:
         ctx.check(f"{service.name}: independent WebUI", webui, scenario=scenario, service=service.name)
 
 
+# Was: Prüft automatisch den Fall Netzknoten Gateway.
+# Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 def scenario_node_gateway(ctx: E2EContext) -> None:
     scenario = "node-gateway"
     if ctx.mock_tbs is None:
         ctx.check("mock TBS connected", lambda: None, scenario=scenario, skip="mock TBS disabled")
         return
 
+    # Was: Führt den Arbeitsschritt `connected` für connected aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def connected() -> dict[str, Any]:
         nodes = wait_for(
             "mock TBS to become visible in Node Gateway",
@@ -103,6 +132,8 @@ def scenario_node_gateway(ctx: E2EContext) -> None:
 
     ctx.check("mock TBS connected and capability-advertised", connected, scenario=scenario, service="node-gateway")
 
+    # Was: Führt den Arbeitsschritt `ping` für ping aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def ping() -> dict[str, Any]:
         response = ctx.client.post(
             ctx.base("node-gateway") + f"/api/v1/nodes/{ctx.mock_tbs.node_id}/ping",
@@ -114,16 +145,22 @@ def scenario_node_gateway(ctx: E2EContext) -> None:
     ctx.check("application ping reaches mock TBS", ping, scenario=scenario, service="node-gateway")
 
 
+# Was: Prüft automatisch den Fall edge fallback contract.
+# Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 def scenario_edge_fallback_contract(ctx: E2EContext) -> None:
     scenario = "edge-fallback-contract"
     expected = {service.name for service in ctx.inventory.services if service.name != "node-gateway"}
 
+    # Was: Führt den Arbeitsschritt `health_matrix` für health matrix aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def health_matrix() -> dict[str, Any]:
         value = ctx.client.get(ctx.base("node-gateway") + "/api/v1/core-services").json()
         services = _as_list(value)
         names = {item.get("service") for item in services}
         if names != expected:
             raise AssertionError(f"backend health matrix mismatch: expected={sorted(expected)} got={sorted(names)}")
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for item in services:
             if not item.get("fallback_mode"):
                 raise AssertionError(f"missing fallback mode: {item}")
@@ -137,6 +174,8 @@ def scenario_edge_fallback_contract(ctx: E2EContext) -> None:
         ctx.check("health matrix reaches TBS", lambda: None, scenario=scenario, skip="mock TBS disabled")
         return
 
+    # Was: Führt den Arbeitsschritt `delivered` für delivered aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def delivered() -> dict[str, Any]:
         snapshot = wait_for(
             "core service matrix delivered to mock TBS",
@@ -149,6 +188,8 @@ def scenario_edge_fallback_contract(ctx: E2EContext) -> None:
     ctx.check("revisioned health matrix reaches connected TBS", delivered, scenario=scenario, service="node-gateway")
 
 
+# Was: Führt den Arbeitsschritt `_upsert_subscriber` für upsert Teilnehmer aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def _upsert_subscriber(ctx: E2EContext, issi: int, gssi: int) -> dict[str, Any]:
     payload = {
         "issi": issi,
@@ -178,6 +219,8 @@ def _upsert_subscriber(ctx: E2EContext, issi: int, gssi: int) -> dict[str, Any]:
     return result
 
 
+# Was: Führt den Arbeitsschritt `_upsert_group` für upsert Gruppe aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def _upsert_group(ctx: E2EContext, gssi: int) -> dict[str, Any]:
     payload = {
         "gssi": gssi,
@@ -206,6 +249,8 @@ def _upsert_group(ctx: E2EContext, gssi: int) -> dict[str, Any]:
     return result
 
 
+# Was: Prüft automatisch den Fall Teilnehmer Gruppe.
+# Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 def scenario_subscriber_group(ctx: E2EContext) -> None:
     scenario = "subscriber-group"
     if not ctx.allow_mutations:
@@ -235,6 +280,8 @@ def scenario_subscriber_group(ctx: E2EContext) -> None:
         service="group-core",
     )
 
+    # Was: Führt den Arbeitsschritt `membership` für membership aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def membership() -> dict[str, Any]:
         base = ctx.base("group-core")
         current = next(
@@ -255,6 +302,8 @@ def scenario_subscriber_group(ctx: E2EContext) -> None:
 
     ctx.check("create membership", membership, scenario=scenario, service="group-core")
 
+    # Was: Führt den Arbeitsschritt `radio_state` für radio Zustand aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def radio_state() -> dict[str, Any]:
         ctx.mock_tbs.register(issi_a)
         ctx.mock_tbs.register(issi_b)
@@ -263,6 +312,8 @@ def scenario_subscriber_group(ctx: E2EContext) -> None:
 
     ctx.check("emit registration and affiliation telemetry", radio_state, scenario=scenario, service="node-gateway")
 
+    # Was: Führt den Arbeitsschritt `subscriber_observed` für Teilnehmer observed aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def subscriber_observed() -> dict[str, Any]:
         observed = wait_for(
             "subscriber-core observed registration",
@@ -277,6 +328,8 @@ def scenario_subscriber_group(ctx: E2EContext) -> None:
 
     ctx.check("registration propagated to Subscriber Core", subscriber_observed, scenario=scenario, service="subscriber-core")
 
+    # Was: Führt den Arbeitsschritt `group_affiliation` für Gruppe affiliation aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def group_affiliation() -> dict[str, Any]:
         affiliations = wait_for(
             "group-core affiliation",
@@ -289,6 +342,8 @@ def scenario_subscriber_group(ctx: E2EContext) -> None:
 
     ctx.check("affiliation propagated to Group Core", group_affiliation, scenario=scenario, service="group-core")
 
+    # Was: Führt den Arbeitsschritt `policy_sync` für policy sync aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def policy_sync() -> dict[str, Any]:
         sub = ctx.client.post(ctx.base("subscriber-core") + "/api/v1/sync", {}, expected=(202,)).json()
         grp = ctx.client.post(ctx.base("group-core") + "/api/v1/sync", {}, expected=(202,)).json()
@@ -302,6 +357,8 @@ def scenario_subscriber_group(ctx: E2EContext) -> None:
     ctx.check("policy synchronization round-trip", policy_sync, scenario=scenario, service="node-gateway")
 
 
+# Was: Prüft automatisch den Fall Ruf Audio- und Mediendaten Aufzeichnung.
+# Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 def scenario_call_media_recorder(ctx: E2EContext) -> None:
     scenario = "call-media-recorder"
     if not ctx.allow_mutations:
@@ -313,6 +370,8 @@ def scenario_call_media_recorder(ctx: E2EContext) -> None:
     issi_a, _, gssi = ctx.fixture_numbers()
     call_id = 400 + (issi_a % 100)
 
+    # Was: Diese Funktion startet Ruf.
+    # Warum: Der Dienst oder Teilprozess wird so in einer festen und überprüfbaren Reihenfolge gestartet.
     def start_call() -> dict[str, Any]:
         ctx.mock_tbs.start_group_call(call_id=call_id, gssi=gssi, caller_issi=issi_a, ts=2, priority=5)
         ctx.mock_tbs.group_speaker(call_id=call_id, gssi=gssi, speaker_issi=issi_a)
@@ -327,6 +386,8 @@ def scenario_call_media_recorder(ctx: E2EContext) -> None:
 
     ctx.check("group-call telemetry creates logical call", start_call, scenario=scenario, service="call-control")
 
+    # Was: Führt den Arbeitsschritt `media_session` für Audio- und Mediendaten Sitzung aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def media_session() -> dict[str, Any]:
         sessions = wait_for(
             "media session",
@@ -339,7 +400,11 @@ def scenario_call_media_recorder(ctx: E2EContext) -> None:
 
     ctx.check("Media Switch mirrors active call", media_session, scenario=scenario, service="media-switch")
 
+    # Was: Führt den Arbeitsschritt `frames` für frames aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def frames() -> dict[str, Any]:
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for sequence in range(1, 25):
             ctx.mock_tbs.media_frame(sequence=sequence, logical_ts=2)
             time.sleep(0.015)
@@ -353,6 +418,8 @@ def scenario_call_media_recorder(ctx: E2EContext) -> None:
 
     ctx.check("packed 35-byte speech frames traverse Node Gateway", frames, scenario=scenario, service="media-switch")
 
+    # Was: Führt den Arbeitsschritt `recorder_active` für Aufzeichnung active aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def recorder_active() -> dict[str, Any]:
         active = wait_for(
             "active recorder session",
@@ -365,6 +432,8 @@ def scenario_call_media_recorder(ctx: E2EContext) -> None:
 
     ctx.check("Recorder opens a recording from full-frame tap", recorder_active, scenario=scenario, service="recorder")
 
+    # Was: Führt den Arbeitsschritt `end_and_verify` für end and verify aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def end_and_verify() -> dict[str, Any]:
         ctx.mock_tbs.end_group_call(call_id=call_id, gssi=gssi)
         recordings = wait_for(
@@ -389,6 +458,8 @@ def scenario_call_media_recorder(ctx: E2EContext) -> None:
     ctx.check("call end finalizes and verifies recording", end_and_verify, scenario=scenario, service="recorder")
 
 
+# Was: Prüft automatisch den Fall TETRA-Kurznachricht (SDS).
+# Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 def scenario_sds(ctx: E2EContext) -> None:
     scenario = "sds"
     if not ctx.allow_mutations:
@@ -399,6 +470,8 @@ def scenario_sds(ctx: E2EContext) -> None:
         return
     issi_a, issi_b, _ = ctx.fixture_numbers()
 
+    # Was: Führt den Arbeitsschritt `delivered` für delivered aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def delivered() -> dict[str, Any]:
         payload = {
             "source_issi": 9999,
@@ -425,6 +498,8 @@ def scenario_sds(ctx: E2EContext) -> None:
 
     ctx.check("individual SDS delivered through mock TBS", delivered, scenario=scenario, service="sds-router")
 
+    # Was: Führt den Arbeitsschritt `offline` für offline aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def offline() -> dict[str, Any]:
         payload = {
             "source_issi": 9999,
@@ -447,6 +522,8 @@ def scenario_sds(ctx: E2EContext) -> None:
     ctx.check("offline destination enters store-and-forward", offline, scenario=scenario, service="sds-router")
 
 
+# Was: Führt den Arbeitsschritt `_ipv4_udp_packet` für ipv4 UDP Datenpaket aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def _ipv4_udp_packet(source: str, destination: str, source_port: int = 17007, destination_port: int = 7007, payload: bytes = b"netcore-e2e") -> bytes:
     import ipaddress
     import struct
@@ -457,6 +534,8 @@ def _ipv4_udp_packet(source: str, destination: str, source_port: int = 17007, de
     total_length = 20 + udp_length
     header = bytearray(struct.pack("!BBHHHBBH4s4s", 0x45, 0, total_length, 0x1234, 0, 64, 17, 0, src, dst))
     checksum = 0
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for index in range(0, len(header), 2):
         checksum += (header[index] << 8) + header[index + 1]
         checksum = (checksum & 0xFFFF) + (checksum >> 16)
@@ -467,9 +546,13 @@ def _ipv4_udp_packet(source: str, destination: str, source_port: int = 17007, de
 
 
 
+# Was: Führt den Arbeitsschritt `_pick_free_packet_ipv4` für pick free Datenpaket ipv4 aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def _pick_free_packet_ipv4(contexts: list[Any], issi: int) -> str:
     used = {str(item.get("ipv4")) for item in contexts if item.get("ipv4")}
     start = 2 + (issi % 253)
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for offset in range(253):
         host = 2 + ((start - 2 + offset) % 253)
         candidate = f"10.44.0.{host}"
@@ -477,6 +560,8 @@ def _pick_free_packet_ipv4(contexts: list[Any], issi: int) -> str:
             return candidate
     raise RuntimeError("no free IPv4 address available in the E2E packet-data fixture pool")
 
+# Was: Prüft automatisch den Fall Datenpaket data.
+# Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 def scenario_packet_data(ctx: E2EContext) -> None:
     scenario = "packet-data"
     if not ctx.allow_mutations:
@@ -489,6 +574,8 @@ def scenario_packet_data(ctx: E2EContext) -> None:
     node_id = ctx.mock_tbs.node_id
     packet = ctx.base("packet-core")
 
+    # Was: Führt den Arbeitsschritt `context_flow` für Kontext flow aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def context_flow() -> dict[str, Any]:
         existing_contexts = _as_list(ctx.client.get(packet + "/api/v1/contexts").json())
         requested_ipv4 = _pick_free_packet_ipv4(existing_contexts, issi_a)
@@ -498,6 +585,8 @@ def scenario_packet_data(ctx: E2EContext) -> None:
             {"kind": "activate_demand", "node_id": node_id, "issi": issi_a, "nsapi": 1, "requested_ipv4": requested_ipv4, "primary_nsapi": None, "snei": 1, "mtu": 1200, "priority": 3},
         ]
         actions: list[Any] = []
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for event in events:
             response = ctx.client.post(packet + "/api/v1/edge/events", event, expected=(202,)).json()
             actions.extend(response.get("actions", []))
@@ -541,6 +630,8 @@ def scenario_packet_data(ctx: E2EContext) -> None:
 
     ctx.check("SNDCP activation creates anchored PDP context", context_flow, scenario=scenario, service="packet-core")
 
+    # Was: Führt den Arbeitsschritt `npdu` für npdu aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def npdu() -> dict[str, Any]:
         contexts = _as_list(ctx.client.get(packet + "/api/v1/contexts").json())
         context = next(item for item in contexts if item.get("issi") == issi_a and item.get("nsapi") == 1)
@@ -556,6 +647,8 @@ def scenario_packet_data(ctx: E2EContext) -> None:
         matching_actions = [item for item in _as_list(actions) if (item.get("payload") or {}).get("issi") == issi_a]
         if not matching_outbox and not matching_actions:
             raise AssertionError("downlink produced neither N-PDU outbox entry nor edge action")
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for item in matching_outbox:
             if item.get("id"):
                 outbox_id = str(item["id"])
@@ -564,6 +657,8 @@ def scenario_packet_data(ctx: E2EContext) -> None:
                         packet + f"/api/v1/npdu-outbox/{outbox_id}", expected=(204, 404)
                     )
                 )
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for item in matching_actions:
             if item.get("id"):
                 action_id = str(item["id"])
@@ -582,6 +677,8 @@ def scenario_packet_data(ctx: E2EContext) -> None:
 
     ctx.check("IPv4 N-PDU enters packet downlink path", npdu, scenario=scenario, service="packet-core")
 
+    # Was: Führt den Arbeitsschritt `gateway_view` für Gateway view aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def gateway_view() -> dict[str, Any]:
         contexts = wait_for(
             "IP Gateway context synchronization",
@@ -594,9 +691,13 @@ def scenario_packet_data(ctx: E2EContext) -> None:
     ctx.check("IP Gateway learns Packet Core context", gateway_view, scenario=scenario, service="ip-gateway")
 
 
+# Was: Prüft automatisch den Fall observability.
+# Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 def scenario_observability(ctx: E2EContext) -> None:
     scenario = "observability"
 
+    # Was: Führt den Arbeitsschritt `scrape` für scrape aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def scrape() -> dict[str, Any]:
         response = ctx.client.post(ctx.base("observability") + "/api/v1/maintenance/scrape-now", {}, expected=(200, 202)).json()
         status = wait_for(
@@ -609,6 +710,8 @@ def scenario_observability(ctx: E2EContext) -> None:
 
     ctx.check("central collector scrapes service metrics", scrape, scenario=scenario, service="observability")
 
+    # Was: Führt den Arbeitsschritt `trace_log` für trace log aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def trace_log() -> dict[str, Any]:
         trace_id = ctx.report.run_id.replace("-", "")[:32]
         log = {
@@ -634,9 +737,13 @@ def scenario_observability(ctx: E2EContext) -> None:
 
 
 
+# Was: Diese Funktion sucht sensitive keys.
+# Warum: Die Suchlogik bleibt damit wiederverwendbar und muss nicht an mehreren Stellen kopiert werden.
 def _find_sensitive_keys(value: Any, forbidden: set[str], path: str = "$") -> list[str]:
     findings: list[str] = []
     if isinstance(value, dict):
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for key, child in value.items():
             key_text = str(key)
             child_path = f"{path}.{key_text}"
@@ -644,16 +751,22 @@ def _find_sensitive_keys(value: Any, forbidden: set[str], path: str = "$") -> li
                 findings.append(child_path)
             findings.extend(_find_sensitive_keys(child, forbidden, child_path))
     elif isinstance(value, list):
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for index, child in enumerate(value):
             findings.extend(_find_sensitive_keys(child, forbidden, f"{path}[{index}]"))
     return findings
 
 
+# Was: Prüft automatisch den Fall Steuerung room federation.
+# Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 def scenario_control_room_federation(ctx: E2EContext) -> None:
     scenario = "control-room-federation"
     base = ctx.base("control-room")
     expected = set(ctx.services) - {"control-room", "observability"}
 
+    # Was: Diese Funktion fragt den vorgesehenen Arbeitsschritt.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def poll() -> dict[str, Any]:
         accepted = ctx.client.post(base + "/api/v1/services/poll", {}, expected=(202,)).json()
         matrix = wait_for(
@@ -689,6 +802,8 @@ def scenario_control_room_federation(ctx: E2EContext) -> None:
         service="control-room",
     )
 
+    # Was: Führt den Arbeitsschritt `overview` für overview aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def overview() -> dict[str, Any]:
         value = ctx.client.get(base + "/api/v1/control-room/overview").json()
         if not isinstance(value.get("operations"), dict) or not isinstance(value.get("federated"), dict):
@@ -708,6 +823,8 @@ def scenario_control_room_federation(ctx: E2EContext) -> None:
     )
 
 
+# Was: Prüft automatisch den Fall platform services.
+# Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 def scenario_platform_services(ctx: E2EContext) -> None:
     scenario = "platform-services"
     forbidden = {
@@ -724,6 +841,8 @@ def scenario_platform_services(ctx: E2EContext) -> None:
         "data_base64",
     }
 
+    # Was: Führt den Arbeitsschritt `security_view` für Sicherheit view aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def security_view() -> dict[str, Any]:
         base = ctx.base("security-core")
         payload = {
@@ -744,6 +863,8 @@ def scenario_platform_services(ctx: E2EContext) -> None:
         service="security-core",
     )
 
+    # Was: Führt den Arbeitsschritt `kmf_view` für Schlüsselverwaltung view aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def kmf_view() -> dict[str, Any]:
         base = ctx.base("kmf")
         payload = {
@@ -764,6 +885,8 @@ def scenario_platform_services(ctx: E2EContext) -> None:
         service="kmf",
     )
 
+    # Was: Führt den Arbeitsschritt `transit_view` für Netzübergang view aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def transit_view() -> dict[str, Any]:
         base = ctx.base("transit")
         status = ctx.client.get(base + "/api/v1/status").json()
@@ -784,6 +907,8 @@ def scenario_platform_services(ctx: E2EContext) -> None:
         service="transit",
     )
 
+    # Was: Führt den Arbeitsschritt `application_view` für application view aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def application_view() -> dict[str, Any]:
         base = ctx.base("application-gateway")
         connectors = ctx.client.get(base + "/api/v1/connectors").json()
@@ -805,6 +930,8 @@ def scenario_platform_services(ctx: E2EContext) -> None:
         service="application-gateway",
     )
 
+    # Was: Führt den Arbeitsschritt `media_view` für Audio- und Mediendaten view aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def media_view() -> dict[str, Any]:
         base = ctx.base("media-library")
         status = ctx.client.get(base + "/api/v1/status").json()
@@ -825,6 +952,8 @@ def scenario_platform_services(ctx: E2EContext) -> None:
         service="media-library",
     )
 
+# Was: Prüft automatisch den Fall restart Wiederherstellung.
+# Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 def scenario_restart_restore(ctx: E2EContext) -> None:
     scenario = "restart-restore"
     if not ctx.allow_restarts:
@@ -835,6 +964,8 @@ def scenario_restart_restore(ctx: E2EContext) -> None:
         return
     issi_a, _, gssi = ctx.fixture_numbers()
 
+    # Was: Führt den Arbeitsschritt `subscriber_restart` für Teilnehmer restart aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def subscriber_restart() -> dict[str, Any]:
         before = ctx.client.get(ctx.base("subscriber-core") + f"/api/v1/subscribers/{issi_a}").json()
         ctx.ssh("subscriber-core", f"systemctl restart {ctx.service('subscriber-core').unit} && systemctl is-active --quiet {ctx.service('subscriber-core').unit}")
@@ -851,6 +982,8 @@ def scenario_restart_restore(ctx: E2EContext) -> None:
 
     ctx.check("Subscriber Core persists profile across restart", subscriber_restart, scenario=scenario, service="subscriber-core")
 
+    # Was: Führt den Arbeitsschritt `group_restart` für Gruppe restart aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def group_restart() -> dict[str, Any]:
         before = ctx.client.get(ctx.base("group-core") + f"/api/v1/groups/{gssi}").json()
         ctx.ssh("group-core", f"systemctl restart {ctx.service('group-core').unit} && systemctl is-active --quiet {ctx.service('group-core').unit}")
@@ -868,6 +1001,8 @@ def scenario_restart_restore(ctx: E2EContext) -> None:
     ctx.check("Group Core persists group across restart", group_restart, scenario=scenario, service="group-core")
 
 
+# Was: Prüft automatisch den Fall fault matrix.
+# Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 def scenario_fault_matrix(ctx: E2EContext) -> None:
     scenario = "fault-matrix"
     if not ctx.allow_restarts:
@@ -879,14 +1014,20 @@ def scenario_fault_matrix(ctx: E2EContext) -> None:
         ("packet-core", "ip-gateway"),
         ("media-switch", "recorder"),
     ]
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for victim, dependent in pairs:
         if victim not in ctx.services or dependent not in ctx.services:
             ctx.check(f"{victim} outage degrades {dependent}", lambda: None, scenario=scenario, skip="service missing from inventory")
             continue
 
+        # Was: Diese Funktion führt fault.
+        # Warum: Der Lebenszyklus des Dienstes bleibt so an einer zentralen Stelle steuerbar.
         def run_fault(victim_name: str = victim, dependent_name: str = dependent) -> dict[str, Any]:
             victim_service = ctx.service(victim_name)
             dependent_base = ctx.base(dependent_name)
+            # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+            # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
             try:
                 ctx.ssh(victim_name, f"systemctl stop {victim_service.unit}")
                 wait_for(
@@ -926,6 +1067,8 @@ def scenario_fault_matrix(ctx: E2EContext) -> None:
 
 
 
+# Was: Prüft automatisch den Fall edge Dienst outages.
+# Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 def scenario_edge_service_outages(ctx: E2EContext) -> None:
     """Prove the per-service health/fallback contract for every remote backend.
 
@@ -942,11 +1085,15 @@ def scenario_edge_service_outages(ctx: E2EContext) -> None:
     victims = [service.name for service in ctx.inventory.services if service.name != "node-gateway"]
     gateway_url = ctx.base("node-gateway") + "/api/v1/core-services"
 
+    # Was: Führt den Arbeitsschritt `gateway_level` für Gateway level aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def gateway_level(service_name: str) -> tuple[str | None, int | None]:
         payload = ctx.client.get(gateway_url).json()
         item = next((entry for entry in _as_list(payload) if entry.get("service") == service_name), None)
         return (item.get("level") if item else None, payload.get("revision"))
 
+    # Was: Führt den Arbeitsschritt `tbs_level` für TETRA-Basisstation level aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def tbs_level(service_name: str) -> tuple[str | None, int | None]:
         if ctx.mock_tbs is None or not isinstance(ctx.mock_tbs.core_services_snapshot, dict):
             return None, None
@@ -954,7 +1101,11 @@ def scenario_edge_service_outages(ctx: E2EContext) -> None:
         item = next((entry for entry in _as_list(payload) if entry.get("service") == service_name), None)
         return (item.get("level") if item else None, payload.get("revision"))
 
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for victim in victims:
+        # Was: Diese Funktion führt outage.
+        # Warum: Der Lebenszyklus des Dienstes bleibt so an einer zentralen Stelle steuerbar.
         def run_outage(victim_name: str = victim) -> dict[str, Any]:
             service = ctx.service(victim_name)
             initial_level, initial_revision = wait_for(
@@ -965,6 +1116,8 @@ def scenario_edge_service_outages(ctx: E2EContext) -> None:
             )
             stopped_revision: int | None = None
             recovered_revision: int | None = None
+            # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+            # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
             try:
                 ctx.ssh(victim_name, f"systemctl stop {service.unit}")
                 wait_for(
@@ -1028,7 +1181,11 @@ def scenario_edge_service_outages(ctx: E2EContext) -> None:
         )
 
 
+# Was: Führt den Arbeitsschritt `_http_status_or_zero` für HTTP Status or zero aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def _http_status_or_zero(ctx: E2EContext, url: str) -> int:
+    # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+    # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
     try:
         return ctx.client.get(url, expected=(200, 503)).status
     except BaseException:

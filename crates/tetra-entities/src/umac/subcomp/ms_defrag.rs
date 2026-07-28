@@ -1,31 +1,52 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use tetra_core::{BitBuffer, TdmaTime, TetraAddress, Todo};
 
 use crate::umac::subcomp::defrag::{DefragBuffer, DefragBufferState};
 
+// Was: Legt den festen Wert `DEFRAG_BUF_MAX_LEN` für defrag buf max len fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const DEFRAG_BUF_MAX_LEN: usize = 4096;
+// Was: Legt den festen Wert `DEFRAG_TS_BEFORE_TIMEOUT` für defrag ts before timeout fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const DEFRAG_TS_BEFORE_TIMEOUT: i32 = 10 * 4; // TODO check documentation. 10 frames.
 
 /// Simple defragmenter suitable for MS use
 /// Only maintains a single DefragBuffer per timeslot, as only the SwMI will
 /// be sending data.
+// Was: Bündelt die zusammengehörigen Werte für ms defrag in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MsDefrag {
     pub buffers: [DefragBuffer; 4],
 }
 
+// Was: Implementiert das zugehörige Verhalten für `MsDefrag`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl MsDefrag {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new() -> Self {
         Self {
             buffers: [DefragBuffer::new(), DefragBuffer::new(), DefragBuffer::new(), DefragBuffer::new()],
         }
     }
 
+    // Was: Diese Funktion setzt den vorgesehenen Arbeitsschritt.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn reset(&mut self) {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for buffer in &mut self.buffers {
             buffer.reset();
         }
     }
 
+    // Was: Führt den Arbeitsschritt `age_buffers` für age buffers aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn age_buffers(&mut self, t: TdmaTime) {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for buffer in &mut self.buffers {
             if buffer.state != DefragBufferState::Inactive && t.diff(buffer.t_last) > DEFRAG_TS_BEFORE_TIMEOUT {
                 tracing::warn!("Defrag buffer {} timed out", buffer.t_last.t);
@@ -35,6 +56,8 @@ impl MsDefrag {
     }
 
     /// Inserts a first fragment into a fragbuffer.
+    // Was: Diese Funktion trägt first.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn insert_first(&mut self, bitbuffer: &mut BitBuffer, t: TdmaTime, addr: TetraAddress, aie_info: Option<Todo>) {
         // Reset target buffer if needed
         let ts = (t.t - 1) as usize;
@@ -65,6 +88,8 @@ impl MsDefrag {
         );
     }
 
+    // Was: Diese Funktion trägt next.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn insert_next(&mut self, bitbuffer: &mut BitBuffer, t: TdmaTime) {
         let ts = (t.t - 1) as usize;
         if self.buffers[ts].state != DefragBufferState::Active {
@@ -95,6 +120,8 @@ impl MsDefrag {
         );
     }
 
+    // Was: Diese Funktion trägt last.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn insert_last(&mut self, bitbuffer: &mut BitBuffer, t: TdmaTime) {
         let ts = (t.t - 1) as usize;
         if self.buffers[ts].state != DefragBufferState::Active {
@@ -127,6 +154,8 @@ impl MsDefrag {
     }
 
     /// Retrieves a reference to the AIE info associated with a defrag buffer
+    // Was: Diese Funktion liest aie info.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     pub fn get_aie_info(&self, t: TdmaTime) -> Option<&Todo> {
         let ts = (t.t - 1) as usize;
         if self.buffers[ts].state != DefragBufferState::Active {
@@ -137,6 +166,8 @@ impl MsDefrag {
     }
 
     /// Transfers finalized defragbuf to caller, setting bitbuffer slot pos to start.
+    // Was: Führt den Arbeitsschritt `take_defragged_buf` für take defragged buf aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn take_defragged_buf(&mut self, t: TdmaTime) -> Option<DefragBuffer> {
         let ts = (t.t - 1) as usize;
         if self.buffers[ts].state != DefragBufferState::Complete {
@@ -155,11 +186,15 @@ impl MsDefrag {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
     use tetra_core::{address::SsiType, bitbuffer::BitBuffer, debug};
 
     #[test]
+    // Was: Prüft automatisch den Fall 3 chunks.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_3_chunks() {
         debug::setup_logging_verbose();
 

@@ -1,6 +1,15 @@
+# NETCORE-KOMMENTAR – Was: Beschreibt das Rust-Paket, seine Abhängigkeiten und seine aktivierbaren Funktionen.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+# Was: Öffnet den Konfigurationsabschnitt `workspace`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [workspace]
+# Was: Wählt die Cargo-Regeln zur Auflösung von Funktionen und Abhängigkeiten.
+# Warum: Abhängigkeiten werden dadurch nach den für den Arbeitsbereich erwarteten Regeln kombiniert.
 resolver = "2"
 
+# Was: Listet die Pakete auf, die zum gemeinsamen Cargo-Arbeitsbereich gehören.
+# Warum: Alle Komponenten lassen sich dadurch zusammen bauen, prüfen und versionieren.
 members = [
     # Core libraries
     "crates/tetra-core",
@@ -49,99 +58,281 @@ members = [
 # Allowing them centrally keeps `cargo clippy` clean and actionable: any *correctness*,
 # *suspicious*, or *perf-bug* lint (which are NOT listed here) will still surface as a
 # warning. Revisit individual entries if/when the relevant code is rewritten anyway.
+# Was: Öffnet den Konfigurationsabschnitt `workspace.lints.clippy`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [workspace.lints.clippy]
+# Was: Setzt die Einstellung `assertions_on_constants` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 assertions_on_constants = "allow"
+# Was: Setzt die Einstellung `blocks_in_conditions` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 blocks_in_conditions = "allow"
+# Was: Setzt die Einstellung `bool_assert_comparison` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 bool_assert_comparison = "allow"
+# Was: Setzt die Einstellung `bool_comparison` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 bool_comparison = "allow"
+# Was: Setzt die Einstellung `clone_on_copy` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 clone_on_copy = "allow"
+# Was: Setzt die Einstellung `collapsible_if` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 collapsible_if = "allow"
+# Was: Setzt die Einstellung `doc_lazy_continuation` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 doc_lazy_continuation = "allow"
+# Was: Setzt die Einstellung `empty_line_after_doc_comments` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 empty_line_after_doc_comments = "allow"
+# Was: Setzt die Einstellung `empty_line_after_outer_attr` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 empty_line_after_outer_attr = "allow"
+# Was: Setzt die Einstellung `expect_fun_call` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 expect_fun_call = "allow"
+# Was: Setzt die Einstellung `extend_with_drain` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 extend_with_drain = "allow"
+# Was: Setzt die Einstellung `if_same_then_else` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 if_same_then_else = "allow"
+# Was: Setzt die Einstellung `items_after_test_module` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 items_after_test_module = "allow"
+# Was: Setzt die Einstellung `iter_overeager_cloned` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 iter_overeager_cloned = "allow"
+# Was: Setzt die Einstellung `large_enum_variant` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 large_enum_variant = "allow"
+# Was: Setzt die Einstellung `len_zero` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 len_zero = "allow"
+# Was: Setzt die Einstellung `let_and_return` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 let_and_return = "allow"
+# Was: Setzt die Einstellung `let_unit_value` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 let_unit_value = "allow"
+# Was: Setzt die Einstellung `manual_checked_ops` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 manual_checked_ops = "allow"
+# Was: Setzt die Einstellung `manual_clamp` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 manual_clamp = "allow"
+# Was: Setzt die Einstellung `manual_div_ceil` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 manual_div_ceil = "allow"
+# Was: Setzt die Einstellung `manual_flatten` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 manual_flatten = "allow"
+# Was: Setzt die Einstellung `manual_is_multiple_of` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 manual_is_multiple_of = "allow"
+# Was: Setzt die Einstellung `manual_map` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 manual_map = "allow"
+# Was: Setzt die Einstellung `manual_memcpy` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 manual_memcpy = "allow"
+# Was: Setzt die Einstellung `manual_range_contains` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 manual_range_contains = "allow"
+# Was: Setzt die Einstellung `manual_split_once` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 manual_split_once = "allow"
+# Was: Setzt die Einstellung `manual_strip` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 manual_strip = "allow"
+# Was: Setzt die Einstellung `match_like_matches_macro` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 match_like_matches_macro = "allow"
+# Was: Setzt die Einstellung `match_single_binding` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 match_single_binding = "allow"
+# Was: Setzt die Einstellung `module_inception` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 module_inception = "allow"
+# Was: Setzt die Einstellung `needless_borrow` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 needless_borrow = "allow"
+# Was: Setzt die Einstellung `needless_question_mark` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 needless_question_mark = "allow"
+# Was: Setzt die Einstellung `needless_range_loop` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 needless_range_loop = "allow"
+# Was: Setzt die Einstellung `needless_return` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 needless_return = "allow"
+# Was: Setzt die Einstellung `needless_update` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 needless_update = "allow"
+# Was: Setzt die Einstellung `new_without_default` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 new_without_default = "allow"
+# Was: Setzt die Einstellung `nonminimal_bool` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 nonminimal_bool = "allow"
+# Was: Setzt die Einstellung `obfuscated_if_else` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 obfuscated_if_else = "allow"
+# Was: Setzt die Einstellung `ptr_arg` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 ptr_arg = "allow"
+# Was: Setzt die Einstellung `question_mark` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 question_mark = "allow"
+# Was: Setzt die Einstellung `redundant_closure` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 redundant_closure = "allow"
+# Was: Setzt die Einstellung `redundant_pattern_matching` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 redundant_pattern_matching = "allow"
+# Was: Setzt die Einstellung `result_large_err` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 result_large_err = "allow"
+# Was: Setzt die Einstellung `result_unit_err` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 result_unit_err = "allow"
+# Was: Setzt die Einstellung `single_match` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 single_match = "allow"
+# Was: Setzt die Einstellung `too_many_arguments` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 too_many_arguments = "allow"
+# Was: Setzt die Einstellung `unnecessary_cast` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 unnecessary_cast = "allow"
+# Was: Setzt die Einstellung `unnecessary_lazy_evaluations` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 unnecessary_lazy_evaluations = "allow"
+# Was: Setzt die Einstellung `unnecessary_map_or` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 unnecessary_map_or = "allow"
+# Was: Setzt die Einstellung `unnecessary_sort_by` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 unnecessary_sort_by = "allow"
+# Was: Setzt die Einstellung `unnecessary_unwrap` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 unnecessary_unwrap = "allow"
+# Was: Setzt die Einstellung `unwrap_or_default` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 unwrap_or_default = "allow"
+# Was: Setzt die Einstellung `useless_conversion` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 useless_conversion = "allow"
+# Was: Setzt die Einstellung `useless_format` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 useless_format = "allow"
+# Was: Setzt die Einstellung `while_let_loop` für workspace lints clippy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 while_let_loop = "allow"
 
+# Was: Öffnet den Konfigurationsabschnitt `workspace.package`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [workspace.package]
+# Was: Legt die Versionsnummer fest.
+# Warum: Änderungsstände und kompatible Abhängigkeiten bleiben dadurch nachvollziehbar.
 version = "1.3.0"
+# Was: Wählt die verwendete Rust-Sprachversion.
+# Warum: Compiler und Entwickler verwenden dadurch dieselben Sprachregeln.
 edition = "2024"
+# Was: Dokumentiert die Urheber des Pakets.
+# Warum: Metadaten und veröffentlichte Pakete bleiben dadurch korrekt zugeordnet.
 authors = ["JanHG98 / NetCore-Tetra"]
+# Was: Legt die Lizenz des Pakets fest.
+# Warum: Nutzer und Werkzeuge können dadurch die erlaubte Weiterverwendung eindeutig erkennen.
 license = "MIT"
 
+# Was: Öffnet den Konfigurationsabschnitt `workspace.dependencies`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [workspace.dependencies]
 # Internal crates
+# Was: Bindet die Abhängigkeit `tetra-core` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 tetra-core = { path = "crates/tetra-core" }
+# Was: Bindet die Abhängigkeit `tetra-config` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 tetra-config = { path = "crates/tetra-config" }
+# Was: Bindet die Abhängigkeit `tetra-saps` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 tetra-saps = { path = "crates/tetra-saps" }
+# Was: Bindet die Abhängigkeit `tetra-pdus` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 tetra-pdus = { path = "crates/tetra-pdus" }
+# Was: Bindet die Abhängigkeit `tetra-entities` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 tetra-entities = { path = "crates/tetra-entities" }
+# Was: Bindet die Abhängigkeit `netcore-contracts` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 netcore-contracts = { path = "system-backend/shared/contracts" }
+# Was: Bindet die Abhängigkeit `netcore-service-common` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 netcore-service-common = { path = "system-backend/shared/service-common" }
+# Was: Bindet die Abhängigkeit `netcore-database-common` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 netcore-database-common = { path = "system-backend/shared/database-common" }
+# Was: Bindet die Abhängigkeit `netcore-telemetry-common` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 netcore-telemetry-common = { path = "system-backend/shared/telemetry-common" }
 
 # External dependencies
+# Was: Bindet die Abhängigkeit `as-any` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 as-any = "0.3.2"
+# Was: Bindet die Abhängigkeit `num` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 num = "0.4.3"
+# Was: Bindet die Abhängigkeit `num-complex` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 num-complex = "0.4.6"
+# Was: Bindet die Abhängigkeit `serde` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 serde = { version = "1.0", features = ["derive"] }
+# Was: Bindet die Abhängigkeit `toml` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 toml = "0.8"
+# Was: Bindet die Abhängigkeit `rustfft` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 rustfft = "6.4.0"
+# Was: Bindet die Abhängigkeit `soapysdr` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 soapysdr = "0.5.0"
+# Was: Bindet die Abhängigkeit `rand` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 rand = "0.9.2"
+# Was: Bindet die Abhängigkeit `clap` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 clap = { version = "4.5.53", features = ["derive"] }
+# Was: Bindet die Abhängigkeit `tracing` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 tracing = { version = "0.1.41", features = ["std"] }
+# Was: Bindet die Abhängigkeit `tracing-subscriber` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 tracing-subscriber = { version = "0.3", features = ["env-filter", "time"] }
+# Was: Bindet die Abhängigkeit `tracing-appender` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 tracing-appender = "0.2.4"
+# Was: Bindet die Abhängigkeit `crossbeam-channel` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 crossbeam-channel = "0.5"
+# Was: Bindet die Abhängigkeit `bitcode` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 bitcode = "0.6.9"
+# Was: Bindet die Abhängigkeit `tungstenite` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 tungstenite = { version = "0.24", features = ["rustls-tls-native-roots"] }
+# Was: Bindet die Abhängigkeit `uuid` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 uuid = { version = "1", features = ["v4"] }
+# Was: Bindet die Abhängigkeit `ctrlc` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 ctrlc = "3"
+# Was: Bindet die Abhängigkeit `chrono` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 chrono = { version = "0.4", default-features = false, features = ["clock", "std", "serde"] }
+# Was: Bindet die Abhängigkeit `chrono-tz` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 chrono-tz = "0.10"

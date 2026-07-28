@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für check Teilnehmer core.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 from pathlib import Path
 import sys
 root=Path(__file__).resolve().parents[1]
@@ -12,6 +15,8 @@ need=['SubscriberAccessPolicyApply','SubscriberAccessPolicyApplied','open_lab','
 missing_terms=[x for x in need if x not in all_text and x not in (root/'crates/tetra-entities/src/net_control/commands.rs').read_text() and x not in (root/'crates/tetra-config/src/bluestation/state.rs').read_text()]
 if missing_terms: print('missing terms:',missing_terms);sys.exit(1)
 low=all_text.lower()
+# Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+# Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
 for forbidden in ['api_token','auth_token','bearer_token','client_secret','password =']:
     if forbidden in low: print('forbidden credential field:',forbidden);sys.exit(1)
 print('SWMI Core 1 Package A Subscriber Core checks passed.')

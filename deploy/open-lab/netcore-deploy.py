@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# NETCORE-KOMMENTAR – Was: Beschreibt Installation oder Betrieb von netcore deploy.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 """Inventory-driven Open-Lab deployment helper for NetCore-Tetra LXCs.
 
 The helper is deliberately conservative:
@@ -39,10 +42,14 @@ URL_RE = re.compile(r"(?P<scheme>https?|wss?)://(?P<host>\[[^]]+\]|[^/:\s\"']+):
 SERVICE_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 
 
+# Was: Bündelt Daten und Verhalten für deploy error.
+# Warum: Zusammengehöriger Zustand und seine Operationen bleiben dadurch an einer klaren Stelle.
 class DeployError(RuntimeError):
     pass
 
 
+# Was: Bündelt Daten und Verhalten für Dienst.
+# Warum: Zusammengehöriger Zustand und seine Operationen bleiben dadurch an einer klaren Stelle.
 @dataclass(frozen=True)
 class Service:
     name: str
@@ -55,11 +62,15 @@ class Service:
     config_target: str
     depends_on: tuple[str, ...]
 
+    # Was: Führt den Arbeitsschritt `base_url` für base url aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     @property
     def base_url(self) -> str:
         return f"http://{self.host}:{self.port}"
 
 
+# Was: Bündelt Daten und Verhalten für inventory.
+# Warum: Zusammengehöriger Zustand und seine Operationen bleiben dadurch an einer klaren Stelle.
 @dataclass(frozen=True)
 class Inventory:
     path: Path
@@ -72,15 +83,21 @@ class Inventory:
     health_timeout_secs: int
     services: tuple[Service, ...]
 
+    # Was: Führt den Arbeitsschritt `by_name` für by name aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     @property
     def by_name(self) -> dict[str, Service]:
         return {service.name: service for service in self.services}
 
+    # Was: Führt den Arbeitsschritt `by_port` für by port aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     @property
     def by_port(self) -> dict[int, Service]:
         return {service.port: service for service in self.services}
 
 
+# Was: Diese Funktion lädt inventory.
+# Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
 def load_inventory(path: Path) -> Inventory:
     with path.open("rb") as handle:
         raw = tomllib.load(handle)
@@ -111,6 +128,8 @@ def load_inventory(path: Path) -> Inventory:
     )
 
 
+# Was: Diese Funktion prüft den vorgesehenen Arbeitsschritt.
+# Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 def validate(inventory: Inventory) -> list[str]:
     errors: list[str] = []
     if inventory.version != 1:
@@ -125,6 +144,8 @@ def validate(inventory: Inventory) -> list[str]:
     names: set[str] = set()
     sockets: set[tuple[str, int]] = set()
     by_name = inventory.by_name
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for service in inventory.services:
         if not SERVICE_NAME_RE.fullmatch(service.name):
             errors.append(f"invalid service name: {service.name!r}")
@@ -137,6 +158,8 @@ def validate(inventory: Inventory) -> list[str]:
         sockets.add(socket)
         if not 1 <= service.port <= 65535:
             errors.append(f"invalid port for {service.name}: {service.port}")
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for relative, label in ((service.install, "install"), (service.config_template, "config template")):
             path = ROOT / relative
             if not path.is_file():
@@ -149,12 +172,16 @@ def validate(inventory: Inventory) -> list[str]:
             configured_user = next((line.split("=", 1)[1].strip() for line in unit_text.splitlines() if line.startswith("User=")), None)
             if configured_user and configured_user != service.user:
                 errors.append(f"{service.name}: inventory user {service.user} differs from unit User={configured_user}")
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for dependency in service.depends_on:
             if dependency not in by_name:
                 errors.append(f"{service.name}: unknown dependency {dependency}")
             if dependency == service.name:
                 errors.append(f"{service.name}: self dependency")
 
+    # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+    # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
     try:
         topological_order(inventory)
     except DeployError as error:
@@ -162,6 +189,8 @@ def validate(inventory: Inventory) -> list[str]:
     return errors
 
 
+# Was: Führt den Arbeitsschritt `topological_order` für topological order aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def topological_order(inventory: Inventory, selected: Iterable[str] | None = None) -> list[Service]:
     by_name = inventory.by_name
     requested = set(selected or by_name)
@@ -171,8 +200,12 @@ def topological_order(inventory: Inventory, selected: Iterable[str] | None = Non
 
     closure = set(requested)
     pending = list(requested)
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     while pending:
         current = by_name[pending.pop()]
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for dependency in current.depends_on:
             if dependency not in closure:
                 closure.add(dependency)
@@ -180,16 +213,24 @@ def topological_order(inventory: Inventory, selected: Iterable[str] | None = Non
 
     indegree = {name: 0 for name in closure}
     outgoing = {name: [] for name in closure}
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for name in closure:
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for dependency in by_name[name].depends_on:
             if dependency in closure:
                 indegree[name] += 1
                 outgoing[dependency].append(name)
     queue = sorted(name for name, degree in indegree.items() if degree == 0)
     result: list[Service] = []
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     while queue:
         name = queue.pop(0)
         result.append(by_name[name])
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for downstream in sorted(outgoing[name]):
             indegree[downstream] -= 1
             if indegree[downstream] == 0:
@@ -201,9 +242,13 @@ def topological_order(inventory: Inventory, selected: Iterable[str] | None = Non
     return result
 
 
+# Was: Diese Funktion erzeugt Konfiguration.
+# Warum: Darstellung und Fachdaten bleiben dadurch voneinander getrennt.
 def render_config(template: str, inventory: Inventory) -> str:
     by_port = inventory.by_port
 
+    # Was: Führt den Arbeitsschritt `replacement` für replacement aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def replacement(match: re.Match[str]) -> str:
         port = int(match.group("port"))
         target = by_port.get(port)
@@ -214,10 +259,14 @@ def render_config(template: str, inventory: Inventory) -> str:
     return URL_RE.sub(replacement, template)
 
 
+# Was: Diese Funktion schreibt generated.
+# Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 def write_generated(inventory: Inventory) -> None:
     GENERATED.mkdir(parents=True, exist_ok=True)
     configs = GENERATED / "configs"
     configs.mkdir(parents=True, exist_ok=True)
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for service in inventory.services:
         target_dir = configs / service.name
         target_dir.mkdir(parents=True, exist_ok=True)
@@ -250,24 +299,34 @@ def write_generated(inventory: Inventory) -> None:
     with (GENERATED / "ports.csv").open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
         writer.writerow(["service", "host", "port", "webui", "unit"])
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for service in inventory.services:
             writer.writerow([service.name, service.host, service.port, service.base_url + "/", service.unit])
     hosts = [f"{service.host}\tnetcore-{service.name}" for service in inventory.services]
     (GENERATED / "hosts.example").write_text("\n".join(hosts) + "\n", encoding="utf-8")
     dot = ["digraph netcore_open_lab {", "  rankdir=LR;"]
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for service in inventory.services:
         dot.append(f'  "{service.name}" [label="{service.name}\\n{service.host}:{service.port}"];')
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for dependency in service.depends_on:
             dot.append(f'  "{dependency}" -> "{service.name}";')
     dot.append("}")
     (GENERATED / "dependency-graph.dot").write_text("\n".join(dot) + "\n", encoding="utf-8")
 
 
+# Was: Führt den Arbeitsschritt `bundle` für bundle aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def bundle(output: Path) -> str:
     exclusions = {".git", "target", "__pycache__", ".pytest_cache", "node_modules"}
     with output.open("wb") as raw_output:
         with gzip.GzipFile(filename="", mode="wb", fileobj=raw_output, mtime=0) as compressed:
             with tarfile.open(fileobj=compressed, mode="w", format=tarfile.PAX_FORMAT) as archive:
+                # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+                # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
                 for path in sorted(ROOT.rglob("*")):
                     relative = path.relative_to(ROOT)
                     if any(part in exclusions for part in relative.parts):
@@ -294,20 +353,28 @@ def bundle(output: Path) -> str:
     return digest
 
 
+# Was: Führt den Arbeitsschritt `ssh_command` für ssh command aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def ssh_command(inventory: Inventory, service: Service, remote: str) -> list[str]:
     return ["ssh", *inventory.ssh_options, f"{inventory.ssh_user}@{service.host}", remote]
 
 
+# Was: Führt den Arbeitsschritt `scp_command` für scp command aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def scp_command(inventory: Inventory, service: Service, local: Path, remote: str) -> list[str]:
     return ["scp", *inventory.ssh_options, str(local), f"{inventory.ssh_user}@{service.host}:{remote}"]
 
 
+# Was: Diese Funktion führt den vorgesehenen Arbeitsschritt.
+# Warum: Der Lebenszyklus des Dienstes bleibt so an einer zentralen Stelle steuerbar.
 def run(command: list[str], *, dry_run: bool) -> None:
     print("+", shlex.join(command))
     if not dry_run:
         subprocess.run(command, check=True)
 
 
+# Was: Diese Funktion wendet den vorgesehenen Arbeitsschritt.
+# Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
 def apply(inventory: Inventory, selected: list[str], *, dry_run: bool) -> None:
     write_generated(inventory)
     order = topological_order(inventory, selected or None)
@@ -315,6 +382,8 @@ def apply(inventory: Inventory, selected: list[str], *, dry_run: bool) -> None:
         bundle_path = Path(temp) / "netcore-open-lab.tar.gz"
         digest = bundle(bundle_path)
         print(f"bundle sha256={digest}")
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for service in order:
             remote_bundle = f"/tmp/netcore-open-lab-{digest[:12]}.tar.gz"
             run(scp_command(inventory, service, bundle_path, remote_bundle), dry_run=dry_run)
@@ -338,10 +407,14 @@ def apply(inventory: Inventory, selected: list[str], *, dry_run: bool) -> None:
                 check_health(service, inventory.health_timeout_secs, ready=True)
 
 
+# Was: Diese Funktion prüft health.
+# Warum: Fehler oder unzulässige Zustände werden dadurch früh erkannt.
 def check_health(service: Service, timeout: int, *, ready: bool) -> tuple[bool, str]:
     path = "/health/ready" if ready else "/health/live"
     url = service.base_url + path
     request = urllib.request.Request(url, headers={"Accept": "application/json", "User-Agent": "netcore-deploy/1"})
+    # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+    # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
             body = response.read(4096).decode("utf-8", errors="replace")
@@ -350,9 +423,13 @@ def check_health(service: Service, timeout: int, *, ready: bool) -> tuple[bool, 
         return False, str(error)
 
 
+# Was: Führt den Arbeitsschritt `status` für Status aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def status(inventory: Inventory, selected: list[str]) -> int:
     services = topological_order(inventory, selected or None)
     failures = 0
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for service in services:
         ok, detail = check_health(service, inventory.health_timeout_secs, ready=True)
         print(f"{'READY' if ok else 'DOWN ':5} {service.name:22} {service.base_url} {detail[:160]}")
@@ -360,6 +437,8 @@ def status(inventory: Inventory, selected: list[str]) -> int:
     return 1 if failures else 0
 
 
+# Was: Startet das Programm, lädt die benötigten Einstellungen und übergibt an den eigentlichen Dienstablauf.
+# Warum: Ein klarer Einstiegspunkt hält Startreihenfolge, Fehlerausgabe und geordnetes Beenden zusammen.
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--inventory", type=Path, default=DEFAULT_INVENTORY)
@@ -394,6 +473,8 @@ def main() -> int:
     inventory = load_inventory(args.inventory)
     errors = validate(inventory)
     if errors:
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for error in errors:
             print(f"ERROR: {error}", file=sys.stderr)
         return 2
@@ -402,6 +483,8 @@ def main() -> int:
         print(f"OK: {len(inventory.services)} services, contract={inventory.contract_version}, mode={inventory.mode}")
         return 0
     if args.command == "plan":
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for index, service in enumerate(topological_order(inventory, args.services or None), 1):
             dependencies = ",".join(service.depends_on) or "-"
             print(f"{index:02d} {service.name:22} {service.host}:{service.port:<5} depends={dependencies}")
@@ -431,8 +514,12 @@ def main() -> int:
             "--timeout",
             str(args.timeout),
         ]
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for scenario in args.scenario or []:
             command.extend(["--scenario", scenario])
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for value, flag in (
             (args.run_id, "--run-id"),
             (args.node_id, "--node-id"),
@@ -440,6 +527,8 @@ def main() -> int:
         ):
             if value is not None:
                 command.extend([flag, str(value)])
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for enabled, flag in (
             (args.allow_mutations, "--allow-mutations"),
             (args.allow_restarts, "--allow-restarts"),
@@ -455,5 +544,7 @@ def main() -> int:
     return 2
 
 
+# Was: Startet den Programmablauf nur dann, wenn diese Datei direkt ausgeführt wird.
+# Warum: Beim Import als Modul sollen nur Funktionen bereitstehen und keine Nebenwirkungen automatisch starten.
 if __name__ == "__main__":
     raise SystemExit(main())

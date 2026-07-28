@@ -1,265 +1,742 @@
+# NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Metriken, Protokolle und Betriebsüberwachung.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+# Was: Öffnet den Konfigurationsabschnitt `server`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [server]
+# Was: Setzt die Einstellung `bind` für server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 bind = "0.0.0.0:8210"
+# Was: Setzt die Einstellung `history_limit` für server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 history_limit = 5000
+# Was: Setzt die Einstellung `max_body_bytes` für server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_body_bytes = 4194304
 
+# Was: Öffnet den Konfigurationsabschnitt `storage`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [storage]
+# Was: Setzt die Einstellung `state_path` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 state_path = "/var/lib/netcore-observability/state.json"
+# Was: Setzt die Einstellung `backup_path` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 backup_path = "/var/lib/netcore-observability/state.json.bak"
+# Was: Setzt die Einstellung `diagnostic_dir` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 diagnostic_dir = "/var/lib/netcore-observability/diagnostics"
 
+# Was: Öffnet den Konfigurationsabschnitt `security`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [security]
+# Was: Setzt die Einstellung `mode` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 mode = "open_lab"
+# Was: Setzt die Einstellung `token_auth` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 token_auth = false
+# Was: Setzt die Einstellung `tls` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 tls = false
+# Was: Setzt die Einstellung `allow_remote_management` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 allow_remote_management = true
+# Was: Setzt die Einstellung `warning_banner` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 warning_banner = "OPEN LAB: no login, no tokens and no TLS. Isolated management network only."
 
+# Was: Öffnet den Konfigurationsabschnitt `collection`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [collection]
+# Was: Setzt die Einstellung `scrape_interval_secs` für collection.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 scrape_interval_secs = 15
+# Was: Setzt die Einstellung `request_timeout_ms` für collection.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 request_timeout_ms = 2000
+# Was: Setzt die Einstellung `max_response_bytes` für collection.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_response_bytes = 2097152
+# Was: Setzt die Einstellung `scrape_on_start` für collection.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 scrape_on_start = true
+# Was: Setzt die Einstellung `ingest_logs` für collection.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 ingest_logs = true
+# Was: Setzt die Einstellung `ingest_traces` für collection.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 ingest_traces = true
 
+# Was: Öffnet den Konfigurationsabschnitt `retention`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [retention]
+# Was: Setzt die Einstellung `metric_retention_secs` für retention.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 metric_retention_secs = 86400
+# Was: Setzt die Einstellung `log_retention_secs` für retention.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 log_retention_secs = 604800
+# Was: Setzt die Einstellung `trace_retention_secs` für retention.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 trace_retention_secs = 86400
+# Was: Setzt die Einstellung `audit_retention_secs` für retention.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 audit_retention_secs = 2592000
+# Was: Setzt die Einstellung `max_series` für retention.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_series = 10000
+# Was: Setzt die Einstellung `max_samples_per_series` für retention.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_samples_per_series = 5760
+# Was: Setzt die Einstellung `max_logs` für retention.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_logs = 100000
+# Was: Setzt die Einstellung `max_spans` für retention.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_spans = 50000
+# Was: Setzt die Einstellung `max_alerts` für retention.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_alerts = 10000
+# Was: Setzt die Einstellung `max_audit_records` für retention.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_audit_records = 50000
 
+# Was: Öffnet den Konfigurationsabschnitt `stack`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [stack]
+# Was: Setzt die Einstellung `prometheus_url` für stack.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 prometheus_url = "http://127.0.0.1:9090"
+# Was: Setzt die Einstellung `grafana_url` für stack.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 grafana_url = "http://127.0.0.1:3000"
+# Was: Setzt die Einstellung `loki_url` für stack.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 loki_url = "http://127.0.0.1:3100"
+# Was: Setzt die Einstellung `alertmanager_url` für stack.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 alertmanager_url = "http://127.0.0.1:9093"
+# Was: Setzt die Einstellung `prometheus_ready_path` für stack.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 prometheus_ready_path = "/-/ready"
+# Was: Setzt die Einstellung `grafana_ready_path` für stack.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 grafana_ready_path = "/api/health"
+# Was: Setzt die Einstellung `loki_ready_path` für stack.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 loki_ready_path = "/ready"
+# Was: Setzt die Einstellung `alertmanager_ready_path` für stack.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 alertmanager_ready_path = "/-/ready"
 
 # In a distributed LXC setup, replace 127.0.0.1 with the management IP or DNS
 # name of each service container. All endpoints are deliberately HTTP-only in
 # this open-lab package.
 
+# Was: Öffnet den Konfigurationsabschnitt `targets`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[targets]]
+# Was: Setzt die Einstellung `target_id` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 target_id = "node-gateway"
+# Was: Setzt die Einstellung `display_name` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "Node Gateway"
+# Was: Setzt die Einstellung `service` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 service = "node-gateway"
+# Was: Setzt die Einstellung `base_url` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 base_url = "http://127.0.0.1:8080"
+# Was: Setzt die Einstellung `metrics_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 metrics_path = "/metrics"
+# Was: Setzt die Einstellung `live_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 live_path = "/health/live"
+# Was: Setzt die Einstellung `ready_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 ready_path = "/health/ready"
+# Was: Setzt die Einstellung `enabled` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `labels` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 labels = { environment = "open-lab", component = "node-gateway" }
 
+# Was: Öffnet den Konfigurationsabschnitt `targets`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[targets]]
+# Was: Setzt die Einstellung `target_id` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 target_id = "mobility-core"
+# Was: Setzt die Einstellung `display_name` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "Mobility Core"
+# Was: Setzt die Einstellung `service` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 service = "mobility-core"
+# Was: Setzt die Einstellung `base_url` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 base_url = "http://127.0.0.1:8090"
+# Was: Setzt die Einstellung `metrics_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 metrics_path = "/metrics"
+# Was: Setzt die Einstellung `live_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 live_path = "/health/live"
+# Was: Setzt die Einstellung `ready_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 ready_path = "/health/ready"
+# Was: Setzt die Einstellung `enabled` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `labels` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 labels = { environment = "open-lab", component = "mobility-core" }
 
+# Was: Öffnet den Konfigurationsabschnitt `targets`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[targets]]
+# Was: Setzt die Einstellung `target_id` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 target_id = "subscriber-core"
+# Was: Setzt die Einstellung `display_name` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "Subscriber Core"
+# Was: Setzt die Einstellung `service` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 service = "subscriber-core"
+# Was: Setzt die Einstellung `base_url` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 base_url = "http://127.0.0.1:8100"
+# Was: Setzt die Einstellung `metrics_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 metrics_path = "/metrics"
+# Was: Setzt die Einstellung `live_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 live_path = "/health/live"
+# Was: Setzt die Einstellung `ready_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 ready_path = "/health/ready"
+# Was: Setzt die Einstellung `enabled` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `labels` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 labels = { environment = "open-lab", component = "subscriber-core" }
 
+# Was: Öffnet den Konfigurationsabschnitt `targets`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[targets]]
+# Was: Setzt die Einstellung `target_id` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 target_id = "group-core"
+# Was: Setzt die Einstellung `display_name` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "Group Core"
+# Was: Setzt die Einstellung `service` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 service = "group-core"
+# Was: Setzt die Einstellung `base_url` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 base_url = "http://127.0.0.1:8110"
+# Was: Setzt die Einstellung `metrics_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 metrics_path = "/metrics"
+# Was: Setzt die Einstellung `live_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 live_path = "/health/live"
+# Was: Setzt die Einstellung `ready_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 ready_path = "/health/ready"
+# Was: Setzt die Einstellung `enabled` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `labels` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 labels = { environment = "open-lab", component = "group-core" }
 
+# Was: Öffnet den Konfigurationsabschnitt `targets`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[targets]]
+# Was: Setzt die Einstellung `target_id` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 target_id = "call-control"
+# Was: Setzt die Einstellung `display_name` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "Call Control"
+# Was: Setzt die Einstellung `service` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 service = "call-control"
+# Was: Setzt die Einstellung `base_url` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 base_url = "http://127.0.0.1:8120"
+# Was: Setzt die Einstellung `metrics_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 metrics_path = "/metrics"
+# Was: Setzt die Einstellung `live_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 live_path = "/health/live"
+# Was: Setzt die Einstellung `ready_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 ready_path = "/health/ready"
+# Was: Setzt die Einstellung `enabled` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `labels` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 labels = { environment = "open-lab", component = "call-control" }
 
+# Was: Öffnet den Konfigurationsabschnitt `targets`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[targets]]
+# Was: Setzt die Einstellung `target_id` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 target_id = "media-switch"
+# Was: Setzt die Einstellung `display_name` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "Media Switch"
+# Was: Setzt die Einstellung `service` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 service = "media-switch"
+# Was: Setzt die Einstellung `base_url` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 base_url = "http://127.0.0.1:8130"
+# Was: Setzt die Einstellung `metrics_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 metrics_path = "/metrics"
+# Was: Setzt die Einstellung `live_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 live_path = "/health/live"
+# Was: Setzt die Einstellung `ready_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 ready_path = "/health/ready"
+# Was: Setzt die Einstellung `enabled` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `labels` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 labels = { environment = "open-lab", component = "media-switch" }
 
+# Was: Öffnet den Konfigurationsabschnitt `targets`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[targets]]
+# Was: Setzt die Einstellung `target_id` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 target_id = "recorder"
+# Was: Setzt die Einstellung `display_name` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "Recorder"
+# Was: Setzt die Einstellung `service` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 service = "recorder"
+# Was: Setzt die Einstellung `base_url` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 base_url = "http://127.0.0.1:8140"
+# Was: Setzt die Einstellung `metrics_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 metrics_path = "/metrics"
+# Was: Setzt die Einstellung `live_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 live_path = "/health/live"
+# Was: Setzt die Einstellung `ready_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 ready_path = "/health/ready"
+# Was: Setzt die Einstellung `enabled` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `labels` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 labels = { environment = "open-lab", component = "recorder" }
 
+# Was: Öffnet den Konfigurationsabschnitt `targets`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[targets]]
+# Was: Setzt die Einstellung `target_id` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 target_id = "sds-router"
+# Was: Setzt die Einstellung `display_name` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "SDS Router"
+# Was: Setzt die Einstellung `service` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 service = "sds-router"
+# Was: Setzt die Einstellung `base_url` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 base_url = "http://127.0.0.1:8150"
+# Was: Setzt die Einstellung `metrics_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 metrics_path = "/metrics"
+# Was: Setzt die Einstellung `live_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 live_path = "/health/live"
+# Was: Setzt die Einstellung `ready_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 ready_path = "/health/ready"
+# Was: Setzt die Einstellung `enabled` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `labels` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 labels = { environment = "open-lab", component = "sds-router" }
 
+# Was: Öffnet den Konfigurationsabschnitt `targets`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[targets]]
+# Was: Setzt die Einstellung `target_id` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 target_id = "packet-core"
+# Was: Setzt die Einstellung `display_name` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "Packet Core"
+# Was: Setzt die Einstellung `service` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 service = "packet-core"
+# Was: Setzt die Einstellung `base_url` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 base_url = "http://127.0.0.1:8160"
+# Was: Setzt die Einstellung `metrics_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 metrics_path = "/metrics"
+# Was: Setzt die Einstellung `live_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 live_path = "/health/live"
+# Was: Setzt die Einstellung `ready_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 ready_path = "/health/ready"
+# Was: Setzt die Einstellung `enabled` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `labels` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 labels = { environment = "open-lab", component = "packet-core" }
 
+# Was: Öffnet den Konfigurationsabschnitt `targets`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[targets]]
+# Was: Setzt die Einstellung `target_id` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 target_id = "ip-gateway"
+# Was: Setzt die Einstellung `display_name` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "IP Gateway"
+# Was: Setzt die Einstellung `service` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 service = "ip-gateway"
+# Was: Setzt die Einstellung `base_url` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 base_url = "http://127.0.0.1:8170"
+# Was: Setzt die Einstellung `metrics_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 metrics_path = "/metrics"
+# Was: Setzt die Einstellung `live_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 live_path = "/health/live"
+# Was: Setzt die Einstellung `ready_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 ready_path = "/health/ready"
+# Was: Setzt die Einstellung `enabled` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `labels` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 labels = { environment = "open-lab", component = "ip-gateway" }
 
+# Was: Öffnet den Konfigurationsabschnitt `targets`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[targets]]
+# Was: Setzt die Einstellung `target_id` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 target_id = "security-core"
+# Was: Setzt die Einstellung `display_name` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "Security Core"
+# Was: Setzt die Einstellung `service` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 service = "security-core"
+# Was: Setzt die Einstellung `base_url` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 base_url = "http://127.0.0.1:8180"
+# Was: Setzt die Einstellung `metrics_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 metrics_path = "/metrics"
+# Was: Setzt die Einstellung `live_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 live_path = "/health/live"
+# Was: Setzt die Einstellung `ready_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 ready_path = "/health/ready"
+# Was: Setzt die Einstellung `enabled` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `labels` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 labels = { environment = "open-lab", component = "security-core" }
 
+# Was: Öffnet den Konfigurationsabschnitt `targets`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[targets]]
+# Was: Setzt die Einstellung `target_id` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 target_id = "kmf"
+# Was: Setzt die Einstellung `display_name` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "KMF"
+# Was: Setzt die Einstellung `service` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 service = "kmf"
+# Was: Setzt die Einstellung `base_url` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 base_url = "http://127.0.0.1:8190"
+# Was: Setzt die Einstellung `metrics_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 metrics_path = "/metrics"
+# Was: Setzt die Einstellung `live_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 live_path = "/health/live"
+# Was: Setzt die Einstellung `ready_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 ready_path = "/health/ready"
+# Was: Setzt die Einstellung `enabled` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `labels` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 labels = { environment = "open-lab", component = "kmf" }
 
+# Was: Öffnet den Konfigurationsabschnitt `targets`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[targets]]
+# Was: Setzt die Einstellung `target_id` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 target_id = "transit"
+# Was: Setzt die Einstellung `display_name` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "Transit"
+# Was: Setzt die Einstellung `service` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 service = "transit"
+# Was: Setzt die Einstellung `base_url` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 base_url = "http://127.0.0.1:8200"
+# Was: Setzt die Einstellung `metrics_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 metrics_path = "/metrics"
+# Was: Setzt die Einstellung `live_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 live_path = "/health/live"
+# Was: Setzt die Einstellung `ready_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 ready_path = "/health/ready"
+# Was: Setzt die Einstellung `enabled` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `labels` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 labels = { environment = "open-lab", component = "transit" }
 
+# Was: Öffnet den Konfigurationsabschnitt `targets`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[targets]]
+# Was: Setzt die Einstellung `target_id` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 target_id = "application-gateway"
+# Was: Setzt die Einstellung `display_name` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "Application Gateway"
+# Was: Setzt die Einstellung `service` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 service = "application-gateway"
+# Was: Setzt die Einstellung `base_url` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 base_url = "http://127.0.0.1:8220"
+# Was: Setzt die Einstellung `metrics_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 metrics_path = "/metrics"
+# Was: Setzt die Einstellung `live_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 live_path = "/health/live"
+# Was: Setzt die Einstellung `ready_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 ready_path = "/health/ready"
+# Was: Setzt die Einstellung `enabled` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `labels` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 labels = { environment = "open-lab", component = "application-gateway" }
 
+# Was: Öffnet den Konfigurationsabschnitt `targets`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[targets]]
+# Was: Setzt die Einstellung `target_id` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 target_id = "media-library"
+# Was: Setzt die Einstellung `display_name` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "Media Library"
+# Was: Setzt die Einstellung `service` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 service = "media-library"
+# Was: Setzt die Einstellung `base_url` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 base_url = "http://127.0.0.1:8230"
+# Was: Setzt die Einstellung `metrics_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 metrics_path = "/metrics"
+# Was: Setzt die Einstellung `live_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 live_path = "/health/live"
+# Was: Setzt die Einstellung `ready_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 ready_path = "/health/ready"
+# Was: Setzt die Einstellung `enabled` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `labels` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 labels = { environment = "open-lab", component = "media-library" }
 
+# Was: Öffnet den Konfigurationsabschnitt `targets`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[targets]]
+# Was: Setzt die Einstellung `target_id` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 target_id = "control-room"
+# Was: Setzt die Einstellung `display_name` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 display_name = "Control Room"
+# Was: Setzt die Einstellung `service` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 service = "control-room"
+# Was: Setzt die Einstellung `base_url` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 base_url = "http://127.0.0.1:9010"
+# Was: Setzt die Einstellung `metrics_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 metrics_path = "/metrics"
+# Was: Setzt die Einstellung `live_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 live_path = "/health/live"
+# Was: Setzt die Einstellung `ready_path` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 ready_path = "/health/ready"
+# Was: Setzt die Einstellung `enabled` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `labels` für targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 labels = { environment = "open-lab", component = "control-room" }
 
+# Was: Öffnet den Konfigurationsabschnitt `alert_rules`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[alert_rules]]
+# Was: Setzt die Einstellung `rule_id` für alert rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 rule_id = "target-down"
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "Target down"
+# Was: Beschreibt kurz den Zweck der Komponente.
+# Warum: Menschen und Paketwerkzeuge können die Aufgabe dadurch ohne Quellcodeanalyse erkennen.
 description = "A monitored target does not answer its liveness endpoint"
+# Was: Setzt die Einstellung `metric` für alert rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 metric = "netcore_observability_target_up"
+# Was: Setzt die Einstellung `comparator` für alert rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 comparator = "<"
+# Was: Setzt die Einstellung `threshold` für alert rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 threshold = 1.0
+# Was: Setzt die Einstellung `for_secs` für alert rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 for_secs = 30
+# Was: Setzt die Einstellung `severity` für alert rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 severity = "critical"
+# Was: Setzt die Einstellung `enabled` für alert rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `labels` für alert rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 labels = { source = "netcore-observability" }
+# Was: Setzt die Einstellung `annotations` für alert rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 annotations = { runbook = "Check service process, network path and /health/live" }
 
+# Was: Öffnet den Konfigurationsabschnitt `alert_rules`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[alert_rules]]
+# Was: Setzt die Einstellung `rule_id` für alert rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 rule_id = "target-not-ready"
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "Target not ready"
+# Was: Beschreibt kurz den Zweck der Komponente.
+# Warum: Menschen und Paketwerkzeuge können die Aufgabe dadurch ohne Quellcodeanalyse erkennen.
 description = "A service is alive but reports not ready"
+# Was: Setzt die Einstellung `metric` für alert rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 metric = "netcore_observability_target_ready"
+# Was: Setzt die Einstellung `comparator` für alert rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 comparator = "<"
+# Was: Setzt die Einstellung `threshold` für alert rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 threshold = 1.0
+# Was: Setzt die Einstellung `for_secs` für alert rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 for_secs = 60
+# Was: Setzt die Einstellung `severity` für alert rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 severity = "warning"
+# Was: Setzt die Einstellung `enabled` für alert rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `labels` für alert rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 labels = { source = "netcore-observability" }
+# Was: Setzt die Einstellung `annotations` für alert rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 annotations = { runbook = "Check dependencies and /health/ready" }
 
+# Was: Öffnet den Konfigurationsabschnitt `alert_rules`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[alert_rules]]
+# Was: Setzt die Einstellung `rule_id` für alert rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 rule_id = "repeated-scrape-errors"
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "Repeated scrape errors"
+# Was: Beschreibt kurz den Zweck der Komponente.
+# Warum: Menschen und Paketwerkzeuge können die Aufgabe dadurch ohne Quellcodeanalyse erkennen.
 description = "The NMS cannot collect metrics from a target repeatedly"
+# Was: Setzt die Einstellung `metric` für alert rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 metric = "netcore_observability_target_consecutive_failures"
+# Was: Setzt die Einstellung `comparator` für alert rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 comparator = ">="
+# Was: Setzt die Einstellung `threshold` für alert rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 threshold = 3.0
+# Was: Setzt die Einstellung `for_secs` für alert rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 for_secs = 0
+# Was: Setzt die Einstellung `severity` für alert rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 severity = "warning"
+# Was: Setzt die Einstellung `enabled` für alert rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `labels` für alert rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 labels = { source = "netcore-observability" }
+# Was: Setzt die Einstellung `annotations` für alert rules.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 annotations = { runbook = "Check the target /metrics endpoint and NMS routing" }

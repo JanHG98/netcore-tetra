@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# NETCORE-KOMMENTAR – Was: Enthält automatische Prüfungen für netcore open lab e2e.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 from __future__ import annotations
 
 import argparse
@@ -24,9 +27,13 @@ DEFAULT_INVENTORY = ROOT / "deploy/open-lab/inventory.example.toml"
 DEFAULT_ARTIFACTS = ROOT / "tests/e2e/artifacts"
 
 
+# Was: Diese Funktion liest und prüft scenarios.
+# Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 def parse_scenarios(args: argparse.Namespace) -> list[str]:
     if args.scenario:
         values: list[str] = []
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for item in args.scenario:
             values.extend(part.strip() for part in item.split(",") if part.strip())
         return values
@@ -37,6 +44,8 @@ def parse_scenarios(args: argparse.Namespace) -> list[str]:
     return list(DEFAULT_FULL)
 
 
+# Was: Startet das Programm, lädt die benötigten Einstellungen und übergibt an den eigentlichen Dienstablauf.
+# Warum: Ein klarer Einstiegspunkt hält Startreihenfolge, Fehlerausgabe und geordnetes Beenden zusammen.
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Run NetCore-Tetra cross-LXC Open-Lab integration scenarios using only the Python standard library."
@@ -58,6 +67,8 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.list_scenarios:
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for name in SCENARIOS:
             print(name)
         return 0
@@ -68,6 +79,8 @@ def main() -> int:
     unknown = [name for name in selected if name not in SCENARIOS]
     errors.extend(f"unknown scenario: {name}" for name in unknown)
     if errors:
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for error in errors:
             print(f"ERROR: {error}", file=sys.stderr)
         return 2
@@ -121,6 +134,8 @@ def main() -> int:
         else:
             node_id = args.node_id or f"tbs-e2e-{uuid.uuid4().hex[:8]}"
             ws_url = f"ws://{node_gateway.host}:{node_gateway.port}/ws/node"
+            # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+            # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
             try:
                 context.mock_tbs = MockTbs(ws_url, node_id=node_id)
                 context.mock_tbs.start()
@@ -130,7 +145,11 @@ def main() -> int:
                 report.add(CheckResult(name="start mock TBS", status="failed", duration_ms=0.0, detail=f"{type(error).__name__}: {error}"))
                 print(f"FAIL  [bootstrap] mock TBS: {error}")
 
+    # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+    # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
     try:
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for name in selected:
             print(f"\n=== Scenario: {name} ===")
             SCENARIOS[name](context)
@@ -156,5 +175,7 @@ def main() -> int:
     return 1 if report.failures else 0
 
 
+# Was: Startet den Programmablauf nur dann, wenn diese Datei direkt ausgeführt wird.
+# Warum: Beim Import als Modul sollen nur Funktionen bereitstehen und keine Nebenwirkungen automatisch starten.
 if __name__ == "__main__":
     raise SystemExit(main())

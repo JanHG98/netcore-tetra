@@ -1,6 +1,13 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use super::*;
 
+// Was: Implementiert das zugehörige Verhalten für `CcBsSubentity`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl CcBsSubentity {
+    // Was: Führt den Arbeitsschritt `reject_setup_request` für reject setup request aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn reject_setup_request(
         &mut self,
         queue: &mut MessageQueue,
@@ -27,6 +34,8 @@ impl CcBsSubentity {
         queue.push_back(msg);
     }
 
+    // Was: Führt den Arbeitsschritt `setup_collision_cause` für setup collision cause aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn setup_collision_cause(&self, calling_issi: u32, called_issi: Option<u32>) -> Option<(u16, IndividualCallState, DisconnectCause)> {
         if let Some((call_id, state)) = self.find_individual_call_by_issi(calling_issi) {
             return Some((call_id, state, DisconnectCause::ConcurrentSetUpNotSupported));
@@ -37,6 +46,8 @@ impl CcBsSubentity {
             .map(|(call_id, state)| (call_id, state, DisconnectCause::CalledPartyBusy))
     }
 
+    // Was: Führt den Arbeitsschritt `abort_individual_setup` für abort individual setup aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn abort_individual_setup(
         &mut self,
         queue: &mut MessageQueue,
@@ -56,6 +67,8 @@ impl CcBsSubentity {
         self.individual_calls.remove(&call_id);
 
         let mut released = Vec::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for &ts in allocated_timeslots {
             if released.contains(&ts) {
                 continue;
@@ -69,6 +82,8 @@ impl CcBsSubentity {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `fsm_on_u_setup_p2p_local_echo` für fsm on u setup p2p local echo aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fsm_on_u_setup_p2p_local_echo(
         &mut self,
         queue: &mut MessageQueue,
@@ -108,6 +123,8 @@ impl CcBsSubentity {
         let traffic_slot_capacity = self.traffic_slot_capacity();
         let circuit = {
             let mut state = self.config.state_write();
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match self.circuits.allocate_circuit_with_capacity(
                 Direction::Both,
                 pdu.basic_service_information.communication_type,
@@ -279,6 +296,8 @@ impl CcBsSubentity {
     }
 
     /// Handle U-SETUP for group calls (non-P2P communication types).
+    // Was: Führt den Arbeitsschritt `fsm_on_u_setup_group` für fsm on u setup Gruppe aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce::subentities::cc_bs) fn fsm_on_u_setup_group(
         &mut self,
         queue: &mut MessageQueue,
@@ -386,6 +405,8 @@ impl CcBsSubentity {
 
         // Allocate circuit (DL+UL for group call)
         let traffic_slot_capacity = self.traffic_slot_capacity();
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let circuit = match {
             let mut state = self.config.state_write();
             self.circuits.allocate_circuit_with_capacity(
@@ -584,6 +605,8 @@ impl CcBsSubentity {
     }
 
     /// Handle U-SETUP for point-to-point (individual) duplex calls.
+    // Was: Führt den Arbeitsschritt `fsm_on_u_setup_p2p` für fsm on u setup p2p aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce::subentities::cc_bs) fn fsm_on_u_setup_p2p(
         &mut self,
         queue: &mut MessageQueue,
@@ -700,6 +723,8 @@ impl CcBsSubentity {
         let traffic_slot_capacity = self.traffic_slot_capacity();
         let (circuit_calling, circuit_called) = {
             let mut state = self.config.state_write();
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let circuit_calling = match self.circuits.allocate_circuit_with_capacity(
                 Direction::Both,
                 pdu.basic_service_information.communication_type,
@@ -729,6 +754,8 @@ impl CcBsSubentity {
             };
 
             let circuit_called = if pdu.simplex_duplex_selection {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match self.circuits.allocate_circuit_for_call_with_capacity(
                     circuit_calling.call_id,
                     Direction::Both,
@@ -863,6 +890,8 @@ impl CcBsSubentity {
                 queued_tx_demand: None,
             },
         ) {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match err {
                 IndividualTransitionError::DuplicateCall(_) => {
                     tracing::warn!("CMCE: duplicate call_id={} while creating local P2P setup", call_id);
@@ -899,6 +928,8 @@ impl CcBsSubentity {
     }
 
     /// Handle U-SETUP for non-local ISSI, PBX and phone calls via Brew.
+    // Was: Führt den Arbeitsschritt `fsm_on_u_setup_p2p_over_brew` für fsm on u setup p2p over Brew-Verbindung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce::subentities::cc_bs) fn fsm_on_u_setup_p2p_over_brew(
         &mut self,
         queue: &mut MessageQueue,
@@ -1078,6 +1109,8 @@ impl CcBsSubentity {
         let traffic_slot_capacity = self.traffic_slot_capacity();
         let circuit_calling = {
             let mut state = self.config.state_write();
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match self.circuits.allocate_circuit_with_capacity(
                 Direction::Both,
                 pdu.basic_service_information.communication_type,
@@ -1169,6 +1202,8 @@ impl CcBsSubentity {
                 queued_tx_demand: None,
             },
         ) {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match err {
                 IndividualTransitionError::DuplicateCall(_) => {
                     tracing::warn!("CMCE: duplicate call_id={} while creating Brew P2P setup", call_id);

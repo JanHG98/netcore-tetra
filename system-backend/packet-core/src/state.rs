@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für SNDCP-Kontexte und TETRA-Paketdaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fs;
 use std::io::Write;
@@ -18,12 +21,18 @@ use crate::protocol::{
     EDGE_PROTOCOL_VERSION, EdgeActionPayload, EdgeEventInput, GatewaySnapshot,
 };
 
+// Was: Legt den festen Wert `DATABASE_SCHEMA_VERSION` für Datenbank schema version fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const DATABASE_SCHEMA_VERSION: u32 = 1;
+// Was: Legt den festen Wert `OPEN_LAB_WARNING` für open lab warning fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const OPEN_LAB_WARNING: &str =
     "OPEN LAB: no authentication, no tokens and no TLS; isolated test network only";
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für Kontext Zustand auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum ContextState {
     Activating,
     Standby,
@@ -37,6 +46,8 @@ pub enum ContextState {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für action Zustand auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum ActionState {
     Pending,
     InFlight,
@@ -47,6 +58,8 @@ pub enum ActionState {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für PDP-Paketdatenkontext Kontext Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PdpContextRecord {
     pub id: String,
     pub issi: u32,
@@ -84,13 +97,19 @@ pub struct PdpContextRecord {
     pub revision: u64,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `PdpContextRecord`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl PdpContextRecord {
+    // Was: Führt den Arbeitsschritt `key` für key aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn key(issi: u32, nsapi: u8) -> String {
         format!("{issi}:{nsapi}")
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Datenpaket Netzknoten Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PacketNodeRecord {
     pub node_id: String,
     pub station_name: String,
@@ -119,6 +138,8 @@ pub struct PacketNodeRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Paketdatenkanal (PDCH) Übertragungskanal Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PdchBearerRecord {
     pub id: String,
     pub node_id: String,
@@ -135,6 +156,8 @@ pub struct PdchBearerRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für edge action Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct EdgeActionRecord {
     pub id: String,
     pub sequence: u64,
@@ -154,6 +177,8 @@ pub struct EdgeActionRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für reassembly Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ReassemblyRecord {
     pub id: String,
     pub node_id: String,
@@ -172,6 +197,8 @@ pub struct ReassemblyRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für npdu Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct NpduRecord {
     pub id: String,
     pub node_id: String,
@@ -185,6 +212,8 @@ pub struct NpduRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Datenpaket Ereignis Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PacketEventRecord {
     pub sequence: u64,
     pub timestamp: String,
@@ -195,6 +224,8 @@ pub struct PacketEventRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Datenpaket Datenbank in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct PacketDatabase {
     schema_version: u32,
     revision: u64,
@@ -210,7 +241,11 @@ struct PacketDatabase {
     events: VecDeque<PacketEventRecord>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for PacketDatabase`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for PacketDatabase {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             schema_version: DATABASE_SCHEMA_VERSION,
@@ -229,6 +264,8 @@ impl Default for PacketDatabase {
     }
 }
 
+// Was: Bündelt die zusammengehörigen Werte für Datenpaket core Zustand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct PacketCoreState {
     config: PacketCoreConfig,
     database: PacketDatabase,
@@ -241,11 +278,15 @@ struct PacketCoreState {
 }
 
 #[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für shared Datenpaket core in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SharedPacketCore {
     inner: Arc<Mutex<PacketCoreState>>,
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Datenpaket core Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PacketCoreStatus {
     pub service: &'static str,
     pub version: &'static str,
@@ -274,8 +315,14 @@ pub struct PacketCoreStatus {
     pub reassembly_failed: u64,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SharedPacketCore`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SharedPacketCore {
+    // Was: Diese Funktion lädt den vorgesehenen Arbeitsschritt.
+    // Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
     pub fn load(config: PacketCoreConfig) -> Result<Self, Box<dyn std::error::Error>> {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let database = match fs::read(&config.storage.database_path) {
             Ok(bytes) => match serde_json::from_slice::<PacketDatabase>(&bytes) {
                 Ok(database) if database.schema_version == DATABASE_SCHEMA_VERSION => database,
@@ -302,6 +349,8 @@ impl SharedPacketCore {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `gateway_connected` für Gateway connected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn gateway_connected(&self) {
         let mut state = self.lock();
         state.node_gateway_connected = true;
@@ -309,6 +358,8 @@ impl SharedPacketCore {
         state.event("node_gateway_connected", None, None, json!({}));
     }
 
+    // Was: Führt den Arbeitsschritt `gateway_disconnected` für Gateway disconnected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn gateway_disconnected(&self, error: String) {
         let mut state = self.lock();
         state.node_gateway_connected = false;
@@ -316,31 +367,45 @@ impl SharedPacketCore {
         state.event("node_gateway_disconnected", None, None, json!({"error": error}));
     }
 
+    // Was: Führt den Arbeitsschritt `status` für Status aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn status(&self) -> PacketCoreStatus {
         let state = self.lock();
         state.status()
     }
 
+    // Was: Führt den Arbeitsschritt `config` für Konfiguration aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn config(&self) -> PacketCoreConfig {
         self.lock().config.clone()
     }
 
+    // Was: Führt den Arbeitsschritt `nodes` für nodes aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn nodes(&self) -> Vec<PacketNodeRecord> {
         self.lock().database.nodes.values().cloned().collect()
     }
 
+    // Was: Führt den Arbeitsschritt `contexts` für contexts aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn contexts(&self) -> Vec<PdpContextRecord> {
         self.lock().database.contexts.values().cloned().collect()
     }
 
+    // Was: Führt den Arbeitsschritt `context` für Kontext aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn context(&self, id: &str) -> Option<PdpContextRecord> {
         self.lock().database.contexts.get(id).cloned()
     }
 
+    // Was: Führt den Arbeitsschritt `bearers` für bearers aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn bearers(&self) -> Vec<PdchBearerRecord> {
         self.lock().database.bearers.values().cloned().collect()
     }
 
+    // Was: Führt den Arbeitsschritt `actions` für actions aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn actions(&self, node_id: Option<&str>, after: u64, limit: usize) -> Vec<EdgeActionRecord> {
         self.lock()
             .database
@@ -353,20 +418,30 @@ impl SharedPacketCore {
             .collect()
     }
 
+    // Was: Führt den Arbeitsschritt `reassemblies` für reassemblies aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn reassemblies(&self) -> Vec<ReassemblyRecord> {
         self.lock().database.reassemblies.values().cloned().collect()
     }
 
+    // Was: Führt den Arbeitsschritt `npdu_outbox` für npdu outbox aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn npdu_outbox(&self, limit: usize) -> Vec<NpduRecord> {
         self.lock().database.npdu_outbox.iter().take(limit).cloned().collect()
     }
 
+    // Was: Führt den Arbeitsschritt `recent_events` für recent events aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn recent_events(&self, limit: usize) -> Vec<PacketEventRecord> {
         self.lock().database.events.iter().rev().take(limit).cloned().collect()
     }
 
+    // Was: Diese Funktion verarbeitet Hintergrunddienst Ereignis.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     pub fn handle_backend_event(&self, event: BackendEvent) {
         let mut state = self.lock();
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match event {
             BackendEvent::Snapshot { snapshot } => state.apply_gateway_snapshot(snapshot),
             BackendEvent::Event { event } => {
@@ -391,6 +466,8 @@ impl SharedPacketCore {
         state.persist_logged();
     }
 
+    // Was: Führt den Arbeitsschritt `ingest_edge_event` für ingest edge Ereignis aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn ingest_edge_event(&self, event: EdgeEventInput) -> Result<Vec<EdgeActionRecord>, String> {
         let mut state = self.lock();
         let actions = state.ingest_edge_event(event)?;
@@ -398,6 +475,8 @@ impl SharedPacketCore {
         Ok(actions)
     }
 
+    // Was: Führt den Arbeitsschritt `acknowledge_action` für acknowledge action aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn acknowledge_action(&self, id: &str, input: ActionAckInput) -> Result<EdgeActionRecord, String> {
         let mut state = self.lock();
         let now = now_iso();
@@ -426,6 +505,8 @@ impl SharedPacketCore {
         Ok(result)
     }
 
+    // Was: Führt den Arbeitsschritt `queue_downlink` für Warteschlange Downlink (Netz zum Funkgerät) aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn queue_downlink(&self, input: DownlinkNpduInput) -> Result<Vec<EdgeActionRecord>, String> {
         let mut state = self.lock();
         let actions = state.queue_downlink(input)?;
@@ -433,6 +514,8 @@ impl SharedPacketCore {
         Ok(actions)
     }
 
+    // Was: Führt den Arbeitsschritt `context_action` für Kontext action aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn context_action(
         &self,
         context_id: &str,
@@ -445,6 +528,8 @@ impl SharedPacketCore {
         Ok(result)
     }
 
+    // Was: Diese Funktion löscht npdu.
+    // Warum: Das Entfernen wird dadurch kontrolliert durchgeführt und hinterlässt keine verwaisten Verweise.
     pub fn delete_npdu(&self, id: &str) -> Result<(), String> {
         let mut state = self.lock();
         let before = state.database.npdu_outbox.len();
@@ -456,6 +541,8 @@ impl SharedPacketCore {
         state.persist().map_err(|error| error.to_string())
     }
 
+    // Was: Diese Funktion bearbeitet den vorgesehenen Arbeitsschritt.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn tick(&self) -> Vec<BackendRequest> {
         let mut state = self.lock();
         let requests = state.tick();
@@ -463,6 +550,8 @@ impl SharedPacketCore {
         requests
     }
 
+    // Was: Führt den Arbeitsschritt `metrics` für Messwerte aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn metrics(&self) -> String {
         let status = self.status();
         format!(
@@ -496,6 +585,8 @@ impl SharedPacketCore {
         )
     }
 
+    // Was: Führt den Arbeitsschritt `export` für export aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn export(&self) -> Value {
         let state = self.lock();
         json!({
@@ -510,12 +601,18 @@ impl SharedPacketCore {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `lock` für lock aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn lock(&self) -> std::sync::MutexGuard<'_, PacketCoreState> {
         self.inner.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `PacketCoreState`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl PacketCoreState {
+    // Was: Führt den Arbeitsschritt `status` für Status aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn status(&self) -> PacketCoreStatus {
         let contexts_ready = self
             .database
@@ -569,9 +666,13 @@ impl PacketCoreState {
         }
     }
 
+    // Was: Diese Funktion wendet Gateway snapshot.
+    // Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
     fn apply_gateway_snapshot(&mut self, snapshot: GatewaySnapshot) {
         let now = now_iso();
         let mut seen = BTreeSet::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for node in snapshot.nodes {
             seen.insert(node.node_id.clone());
             let record = self.database.nodes.entry(node.node_id.clone()).or_insert_with(|| PacketNodeRecord {
@@ -611,6 +712,8 @@ impl PacketCoreState {
             record.last_seen = node.last_seen;
             record.last_error = node.disconnect_reason;
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for node in self.database.nodes.values_mut() {
             if !seen.contains(&node.node_id) {
                 node.connected = false;
@@ -620,7 +723,11 @@ impl PacketCoreState {
         self.touch();
     }
 
+    // Was: Diese Funktion verarbeitet Netzknoten Nachricht.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_node_message(&mut self, node_id: &str, message: NodeToControlRoomMessage) {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match message {
             NodeToControlRoomMessage::Telemetry { envelope } => match envelope.event {
                 TelemetryEvent::PacketDataSnapshot { gateway, contexts, bearers } => {
@@ -692,6 +799,8 @@ impl PacketCoreState {
         self.touch();
     }
 
+    // Was: Führt den Arbeitsschritt `import_packet_snapshot` für import Datenpaket snapshot aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn import_packet_snapshot(
         &mut self,
         node_id: &str,
@@ -743,6 +852,8 @@ impl PacketCoreState {
         node.io_errors = gateway.io_errors;
 
         let mut seen_contexts = BTreeSet::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for item in contexts {
             let key = PdpContextRecord::key(item.issi, item.nsapi);
             seen_contexts.insert(key.clone());
@@ -809,11 +920,15 @@ impl PacketCoreState {
             .filter(|(key, _)| !seen_contexts.contains(*key))
             .map(|(key, _)| key.clone())
             .collect::<Vec<_>>();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for key in stale {
             self.database.contexts.remove(&key);
         }
 
         self.database.bearers.retain(|_, bearer| bearer.node_id != node_id);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for bearer in bearers {
             let id = format!("{}:{}:{}", node_id, bearer.issi, bearer.logical_ts);
             self.database.bearers.insert(id.clone(), PdchBearerRecord {
@@ -834,6 +949,8 @@ impl PacketCoreState {
         self.touch();
     }
 
+    // Was: Diese Funktion verarbeitet Steuerung response.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_control_response(&mut self, node_id: &str, response: ControlResponse) {
         if let ControlResponse::PacketDataActionResult {
             handle,
@@ -867,6 +984,8 @@ impl PacketCoreState {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `ingest_edge_event` für ingest edge Ereignis aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn ingest_edge_event(&mut self, event: EdgeEventInput) -> Result<Vec<EdgeActionRecord>, String> {
         let node_id = event.node_id().to_string();
         let now = now_iso();
@@ -876,6 +995,8 @@ impl PacketCoreState {
             node.last_seen = now.clone();
         }
         let mut actions = Vec::new();
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match event {
             EdgeEventInput::Hello {
                 protocol_version,
@@ -900,6 +1021,8 @@ impl PacketCoreState {
                 self.event("edge_heartbeat", Some(node_id), None, json!({"sequence":sequence}));
             }
             EdgeEventInput::SubscriberLocation { node_id, issi } => {
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for context in self.database.contexts.values_mut().filter(|context| context.issi == issi) {
                     context.node_id = node_id.clone();
                     context.updated_at = now.clone();
@@ -1028,6 +1151,8 @@ impl PacketCoreState {
             }
             EdgeEventInput::DataTransmitRequest { node_id, issi, nsapis } => {
                 let mut accepted = Vec::new();
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for nsapi in nsapis {
                     validate_nsapi(nsapi)?;
                     let key = PdpContextRecord::key(issi, nsapi);
@@ -1151,6 +1276,8 @@ impl PacketCoreState {
                     age_secs: 0,
                     idle_secs: 0,
                 });
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for nsapi in nsapis {
                     if let Some(context) = self.database.contexts.get_mut(&PdpContextRecord::key(issi, nsapi)) {
                         context.carrier_num = active.then_some(carrier_num);
@@ -1212,6 +1339,8 @@ impl PacketCoreState {
         Ok(actions)
     }
 
+    // Was: Führt den Arbeitsschritt `queue_downlink` für Warteschlange Downlink (Netz zum Funkgerät) aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn queue_downlink(&mut self, input: DownlinkNpduInput) -> Result<Vec<EdgeActionRecord>, String> {
         let key = PdpContextRecord::key(input.issi, input.nsapi);
         let context = self.database.contexts.get(&key).cloned().ok_or_else(|| "context not found".to_string())?;
@@ -1255,6 +1384,8 @@ impl PacketCoreState {
             ));
         }
         let mut fragment_count = 0usize;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (index, part) in payload.chunks(chunk).enumerate() {
             let offset = index * chunk;
             fragment_count = fragment_count.saturating_add(1);
@@ -1296,6 +1427,8 @@ impl PacketCoreState {
         Ok(actions)
     }
 
+    // Was: Führt den Arbeitsschritt `context_action` für Kontext action aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn context_action(
         &mut self,
         context_id: &str,
@@ -1304,6 +1437,8 @@ impl PacketCoreState {
     ) -> Result<(Vec<EdgeActionRecord>, Vec<BackendRequest>), String> {
         let context = self.database.contexts.get(context_id).cloned().ok_or_else(|| "context not found".to_string())?;
         let mut actions = Vec::new();
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let payload = match action {
             "deactivate" => EdgeActionPayload::Deactivate {
                 issi: context.issi,
@@ -1343,6 +1478,8 @@ impl PacketCoreState {
                 nsapis: vec![context.nsapi],
             },
             "flush" => {
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for record in self.database.actions.values_mut() {
                     if record.context_id.as_deref() == Some(context_id)
                         && matches!(record.state, ActionState::Pending | ActionState::InFlight)
@@ -1364,6 +1501,8 @@ impl PacketCoreState {
         let queued = self.queue_action(context.node_id.clone(), Some(context_id.to_string()), payload);
         let backend = self.backend_command_for_action(&queued);
         if let Some(current) = self.database.contexts.get_mut(context_id) {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match action {
                 "deactivate" => current.state = ContextState::Deactivating,
                 "suspend" => {
@@ -1403,6 +1542,8 @@ impl PacketCoreState {
         Ok((actions, backend.into_iter().collect()))
     }
 
+    // Was: Führt den Arbeitsschritt `backend_command_for_action` für Hintergrunddienst command for action aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn backend_command_for_action(
         &mut self,
         action: &EdgeActionRecord,
@@ -1411,6 +1552,8 @@ impl PacketCoreState {
             return None;
         }
         let handle = self.allocate_handle();
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let command = match &action.payload {
             EdgeActionPayload::Deactivate { issi, nsapi, reason } => {
                 ControlCommand::PacketDataContextDeactivate {
@@ -1467,6 +1610,8 @@ impl PacketCoreState {
         })
     }
 
+    // Was: Diese Funktion sammelt due Hintergrunddienst requests.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn collect_due_backend_requests(&mut self) -> Vec<BackendRequest> {
         if !self.node_gateway_connected {
             return Vec::new();
@@ -1479,6 +1624,8 @@ impl PacketCoreState {
             .cloned()
             .collect::<Vec<_>>();
         let mut requests = Vec::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for action in actions {
             if let Some(request) = self.backend_command_for_action(&action) {
                 requests.push(request);
@@ -1487,6 +1634,8 @@ impl PacketCoreState {
         requests
     }
 
+    // Was: Führt den Arbeitsschritt `ingest_fragment` für ingest fragment aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn ingest_fragment(
         &mut self,
         node_id: String,
@@ -1641,6 +1790,8 @@ impl PacketCoreState {
         Ok(())
     }
 
+    // Was: Führt den Arbeitsschritt `settle_npdu_action` für settle npdu action aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn settle_npdu_action(&mut self, action: &EdgeActionRecord, delivered: bool) {
         let EdgeActionPayload::NpduFragment {
             payload_hex,
@@ -1669,6 +1820,8 @@ impl PacketCoreState {
         context.revision = context.revision.saturating_add(1);
     }
 
+    // Was: Führt den Arbeitsschritt `queue_action` für Warteschlange action aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn queue_action(
         &mut self,
         node_id: String,
@@ -1718,12 +1871,16 @@ impl PacketCoreState {
         action
     }
 
+    // Was: Diese Funktion bearbeitet den vorgesehenen Arbeitsschritt.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn tick(&mut self) -> Vec<BackendRequest> {
         let now = Utc::now();
         let mut ready_to_standby = Vec::new();
         let mut context_to_quiescent = Vec::new();
         let mut response_wait_expired = Vec::new();
         let mut expired_contexts = Vec::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for context in self.database.contexts.values() {
             if matches!(context.state, ContextState::Ready | ContextState::Quiescent)
                 && is_due(context.ready_deadline.as_deref(), &now)
@@ -1745,6 +1902,8 @@ impl PacketCoreState {
                 expired_contexts.push((context.id.clone(), context.node_id.clone(), context.issi, context.nsapi));
             }
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (id, issi, nsapi) in context_to_quiescent {
             if let Some(context) = self.database.contexts.get_mut(&id) {
                 context.state = ContextState::Quiescent;
@@ -1754,6 +1913,8 @@ impl PacketCoreState {
             }
             self.event("context_ready_timer_expired", None, Some(id), json!({"issi":issi,"nsapi":nsapi}));
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (id, issi, nsapi) in response_wait_expired {
             if let Some(context) = self.database.contexts.get_mut(&id) {
                 context.state = ContextState::Standby;
@@ -1765,6 +1926,8 @@ impl PacketCoreState {
             }
             self.event("response_wait_timer_expired", None, Some(id), json!({"issi":issi,"nsapi":nsapi}));
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (id, node_id, issi, nsapi) in ready_to_standby {
             if let Some(context) = self.database.contexts.get_mut(&id) {
                 context.state = ContextState::Standby;
@@ -1782,6 +1945,8 @@ impl PacketCoreState {
             }
             self.event("ready_timer_expired", None, Some(id), json!({"issi":issi,"nsapi":nsapi}));
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (id, node_id, issi, nsapi) in expired_contexts {
             self.database.contexts.remove(&id);
             if self.config.packet.mode == MODE_AUTHORITATIVE {
@@ -1804,6 +1969,8 @@ impl PacketCoreState {
             .filter(|(_, assembly)| is_due(Some(&assembly.expires_at), &now))
             .map(|(id, assembly)| (id.clone(), assembly.node_id.clone(), assembly.issi, assembly.nsapi))
             .collect::<Vec<_>>();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (id, node_id, issi, nsapi) in expired_reassemblies {
             self.database.reassemblies.remove(&id);
             self.reassembly_failed = self.reassembly_failed.saturating_add(1);
@@ -1815,6 +1982,8 @@ impl PacketCoreState {
             );
         }
         let mut settled_actions = Vec::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for action in self.database.actions.values_mut() {
             if matches!(action.state, ActionState::Applied | ActionState::Failed | ActionState::Expired | ActionState::Cancelled) {
                 continue;
@@ -1839,6 +2008,8 @@ impl PacketCoreState {
                 action.updated_at = now_iso();
             }
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for action in &settled_actions {
             self.settle_npdu_action(action, false);
         }
@@ -1846,8 +2017,12 @@ impl PacketCoreState {
         self.collect_due_backend_requests()
     }
 
+    // Was: Führt den Arbeitsschritt `enter_ready` für enter ready aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn enter_ready(&mut self, issi: u32, nsapis: &[u8]) {
         let now = now_iso();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for nsapi in nsapis {
             if let Some(context) = self.database.contexts.get_mut(&PdpContextRecord::key(issi, *nsapi)) {
                 context.state = ContextState::Ready;
@@ -1862,8 +2037,12 @@ impl PacketCoreState {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `enter_standby` für enter standby aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn enter_standby(&mut self, issi: u32, nsapis: &[u8]) {
         let now = now_iso();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for nsapi in nsapis {
             if let Some(context) = self.database.contexts.get_mut(&PdpContextRecord::key(issi, *nsapi)) {
                 context.state = ContextState::Standby;
@@ -1878,6 +2057,8 @@ impl PacketCoreState {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `deactivate_contexts` für deactivate contexts aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn deactivate_contexts(&mut self, issi: u32, nsapi: Option<u8>, reason: &str) {
         let keys = self
             .database
@@ -1886,6 +2067,8 @@ impl PacketCoreState {
             .filter(|(_, context)| context.issi == issi && nsapi.map_or(true, |nsapi| context.nsapi == nsapi))
             .map(|(key, _)| key.clone())
             .collect::<Vec<_>>();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for key in keys {
             self.database.contexts.remove(&key);
             self.event("context_removed", None, Some(key), json!({"reason":reason}));
@@ -1893,10 +2076,14 @@ impl PacketCoreState {
         self.database.bearers.retain(|_, bearer| bearer.issi != issi);
     }
 
+    // Was: Diese Funktion entfernt contexts for Teilnehmer.
+    // Warum: Das Entfernen bleibt damit vollständig und hinterlässt keinen widersprüchlichen Zustand.
     fn remove_contexts_for_subscriber(&mut self, issi: u32, reason: &str) {
         self.deactivate_contexts(issi, None, reason);
     }
 
+    // Was: Diese Funktion kennzeichnet Netzknoten lost.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn mark_node_lost(&mut self, node_id: &str, reason: &str) {
         if let Some(node) = self.database.nodes.get_mut(node_id) {
             node.connected = false;
@@ -1911,10 +2098,14 @@ impl PacketCoreState {
                 .filter(|(_, context)| context.node_id == node_id)
                 .map(|(key, _)| key.clone())
                 .collect::<Vec<_>>();
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for key in keys {
                 self.database.contexts.remove(&key);
             }
         } else {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for context in self.database.contexts.values_mut().filter(|context| context.node_id == node_id) {
                 context.state = ContextState::Suspended;
                 context.available = false;
@@ -1926,6 +2117,8 @@ impl PacketCoreState {
         self.event("node_lost", Some(node_id.to_string()), None, json!({"reason":reason}));
     }
 
+    // Was: Führt den Arbeitsschritt `upsert_context_from_edge` für upsert Kontext from edge aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn upsert_context_from_edge(
         &mut self,
         node_id: &str,
@@ -1990,6 +2183,8 @@ impl PacketCoreState {
         context.revision = context.revision.saturating_add(1);
     }
 
+    // Was: Diese Funktion weist ipv4.
+    // Warum: Knapp vorhandene Ressourcen werden dadurch nachvollziehbar und konfliktfrei vergeben.
     fn allocate_ipv4(&self, requested: Option<&str>) -> Result<String, String> {
         let used = self
             .database
@@ -2011,6 +2206,8 @@ impl PacketCoreState {
             }
             return Ok(requested.to_string());
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for host in self.config.address_pool.first_host..=self.config.address_pool.last_host {
             let prefix = self.config.address_pool.network_prefix;
             let candidate = Ipv4Addr::new(prefix[0], prefix[1], prefix[2], host).to_string();
@@ -2021,6 +2218,8 @@ impl PacketCoreState {
         Err("IPv4 pool exhausted".to_string())
     }
 
+    // Was: Diese Funktion weist snei.
+    // Warum: Knapp vorhandene Ressourcen werden dadurch nachvollziehbar und konfliktfrei vergeben.
     fn allocate_snei(&self, issi: u32) -> u16 {
         let base = ((issi % 65_534) + 1) as u16;
         let used = self
@@ -2035,12 +2234,16 @@ impl PacketCoreState {
             .unwrap_or(base)
     }
 
+    // Was: Diese Funktion weist handle.
+    // Warum: Knapp vorhandene Ressourcen werden dadurch nachvollziehbar und konfliktfrei vergeben.
     fn allocate_handle(&mut self) -> u32 {
         let handle = self.database.next_handle.max(1);
         self.database.next_handle = handle.wrapping_add(1).max(1);
         handle
     }
 
+    // Was: Diese Funktion stellt Netzknoten.
+    // Warum: So wird die notwendige Voraussetzung hergestellt, bevor abhängiger Code weiterläuft.
     fn ensure_node(&mut self, node_id: &str) {
         let now = now_iso();
         self.database.nodes.entry(node_id.to_string()).or_insert_with(|| PacketNodeRecord {
@@ -2071,6 +2274,8 @@ impl PacketCoreState {
         });
     }
 
+    // Was: Führt den Arbeitsschritt `event` für Ereignis aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn event(&mut self, kind: &str, node_id: Option<String>, context_id: Option<String>, detail: Value) {
         let event = PacketEventRecord {
             sequence: self.database.next_event_sequence,
@@ -2082,6 +2287,8 @@ impl PacketCoreState {
         };
         self.database.next_event_sequence = self.database.next_event_sequence.saturating_add(1);
         self.database.events.push_back(event);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while self.database.events.len() > self.config.server.history_limit
             || self.database.events.len() > self.config.limits.max_events
         {
@@ -2089,16 +2296,22 @@ impl PacketCoreState {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `touch` für touch aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn touch(&mut self) {
         self.database.revision = self.database.revision.saturating_add(1);
     }
 
+    // Was: Diese Funktion speichert logged.
+    // Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
     fn persist_logged(&self) {
         if let Err(error) = self.persist() {
             tracing::error!("Packet Core state persistence failed: {error}");
         }
     }
 
+    // Was: Diese Funktion speichert den vorgesehenen Arbeitsschritt.
+    // Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
     fn persist(&self) -> std::io::Result<()> {
         if let Some(parent) = self.config.storage.database_path.parent() {
             fs::create_dir_all(parent)?;
@@ -2119,6 +2332,8 @@ impl PacketCoreState {
     }
 }
 
+// Was: Diese Funktion liest backup.
+// Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
 fn read_backup(config: &PacketCoreConfig) -> Result<PacketDatabase, Box<dyn std::error::Error>> {
     let bytes = fs::read(&config.storage.backup_path)?;
     let database = serde_json::from_slice::<PacketDatabase>(&bytes)?;
@@ -2128,10 +2343,14 @@ fn read_backup(config: &PacketCoreConfig) -> Result<PacketDatabase, Box<dyn std:
     Ok(database)
 }
 
+// Was: Führt den Arbeitsschritt `complete_reassembly` für complete reassembly aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn complete_reassembly(assembly: &ReassemblyRecord) -> Option<Vec<u8>> {
     let total_len = assembly.total_len?;
     let mut cursor = 0usize;
     let mut payload = Vec::with_capacity(total_len);
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (offset, segment) in &assembly.segments {
         if *offset != cursor {
             return None;
@@ -2145,6 +2364,8 @@ fn complete_reassembly(assembly: &ReassemblyRecord) -> Option<Vec<u8>> {
     (cursor == total_len).then_some(payload)
 }
 
+// Was: Diese Funktion prüft SNDCP-Kontextkennung (NSAPI).
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_nsapi(nsapi: u8) -> Result<(), String> {
     if (1..=14).contains(&nsapi) {
         Ok(())
@@ -2153,7 +2374,11 @@ fn validate_nsapi(nsapi: u8) -> Result<(), String> {
     }
 }
 
+// Was: Diese Funktion liest und prüft Kontext Zustand.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_context_state(state: &str) -> ContextState {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match state.to_ascii_uppercase().as_str() {
         "READY" => ContextState::Ready,
         "QUIESCENT" => ContextState::Quiescent,
@@ -2166,15 +2391,21 @@ fn parse_context_state(state: &str) -> ContextState {
     }
 }
 
+// Was: Führt den Arbeitsschritt `now_iso` für now iso aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn now_iso() -> String {
     Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
 }
 
+// Was: Führt den Arbeitsschritt `deadline` für deadline aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn deadline(seconds: u64) -> String {
     (Utc::now() + ChronoDuration::seconds(seconds.min(i64::MAX as u64) as i64))
         .to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
 }
 
+// Was: Prüft, ob due zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
 fn is_due(value: Option<&str>, now: &DateTime<Utc>) -> bool {
     value
         .and_then(|value| DateTime::parse_from_rfc3339(value).ok())
@@ -2182,6 +2413,8 @@ fn is_due(value: Option<&str>, now: &DateTime<Utc>) -> bool {
         .unwrap_or(false)
 }
 
+// Was: Diese Funktion dekodiert hex.
+// Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
 pub fn decode_hex(value: &str) -> Result<Vec<u8>, String> {
     let filtered = value
         .chars()
@@ -2196,15 +2429,21 @@ pub fn decode_hex(value: &str) -> Result<Vec<u8>, String> {
         .collect()
 }
 
+// Was: Diese Funktion kodiert hex.
+// Warum: Alle Gegenstellen erhalten dadurch dasselbe erwartete Protokollformat.
 pub fn encode_hex(value: &[u8]) -> String {
     value.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
     #[test]
+    // Was: Führt den Arbeitsschritt `reassembly_requires_gap_free_segments` für reassembly requires gap free segments aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn reassembly_requires_gap_free_segments() {
         let mut assembly = ReassemblyRecord {
             id: "a".to_string(),
@@ -2228,6 +2467,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `hex_roundtrip` für hex roundtrip aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn hex_roundtrip() {
         let value = vec![0x00, 0x12, 0xab, 0xff];
         assert_eq!(decode_hex(&encode_hex(&value)).unwrap(), value);

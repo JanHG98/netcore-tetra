@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 
 use crate::cmce::enums::{cmce_pdu_type_ul::CmcePduTypeUl, party_type_identifier::PartyTypeIdentifier, type3_elem_id::CmceType3ElemId};
@@ -16,6 +19,8 @@ use tetra_saps::control::enums::sds_user_data::SdsUserData;
 // note 4: Any combination of address and user defined data type is allowed; recommended to choose the shortest appropriate user defined data type to fit one sub-slot when possible.
 // note 5: The length of User Defined Data-4 is between 0 and 2 047 bits (longest recommended: 1 017 bits on basic link with Short SSI and FCS on π/4-DQPSK).
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für usds data in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct USdsData {
     /// Type1, 4 bits, See note 1,
     pub area_selection: u8,
@@ -35,8 +40,12 @@ pub struct USdsData {
     pub dm_ms_address: Option<Type3FieldGeneric>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `USdsData`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl USdsData {
     /// Parse from BitBuffer
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buffer: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let pdu_type = buffer.read_field(5, "pdu_type")?;
         expect_pdu_type!(pdu_type, CmcePduTypeUl::USdsData)?;
@@ -71,6 +80,8 @@ impl USdsData {
 
         // Type1
         let short_data_type_identifier = buffer.read_field(2, "short_data_type_identifier")? as u8;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let user_defined_data = match short_data_type_identifier {
             0 => SdsUserData::Type1(buffer.read_field(16, "user_defined_data_1")? as u16),
             1 => SdsUserData::Type2(buffer.read_field(32, "user_defined_data_2")? as u32),
@@ -117,6 +128,8 @@ impl USdsData {
     }
 
     /// Serialize this PDU into the given BitBuffer.
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buffer: &mut BitBuffer) -> Result<(), PduParseErr> {
         // PDU Type
         buffer.write_bits(CmcePduTypeUl::USdsData.into_raw(), 5);
@@ -141,6 +154,8 @@ impl USdsData {
         let short_data_type_identifier = self.user_defined_data.type_identifier();
         buffer.write_bits(short_data_type_identifier as u64, 2);
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match &self.user_defined_data {
             SdsUserData::Type1(value) => buffer.write_bits(*value as u64, 16),
             SdsUserData::Type2(value) => buffer.write_bits(*value as u64, 32),
@@ -149,6 +164,8 @@ impl USdsData {
                 buffer.write_bits(*len_bits as u64, 11);
                 let full_bytes = (*len_bits as usize) / 8;
                 let remaining_bits = len_bits % 8;
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for i in 0..full_bytes {
                     buffer.write_bits(data[i] as u64, 8);
                 }
@@ -177,7 +194,11 @@ impl USdsData {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for USdsData`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for USdsData {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -195,10 +216,14 @@ impl fmt::Display for USdsData {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
     use tetra_core::BitBuffer;
 
+    // Was: Führt den Arbeitsschritt `round_trip` für round trip aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn round_trip(pdu: &USdsData) -> USdsData {
         let mut buf = BitBuffer::new_autoexpand(256);
         pdu.to_bitbuf(&mut buf).expect("serialize failed");
@@ -207,6 +232,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall u TETRA-Kurznachricht (SDS) data sdti0 cpti1.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_u_sds_data_sdti0_cpti1() {
         let pdu = USdsData {
             area_selection: 0,
@@ -227,6 +254,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall u TETRA-Kurznachricht (SDS) data sdti3 cpti1.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_u_sds_data_sdti3_cpti1() {
         let payload = vec![0x01, 0x02, 0x03];
         let pdu = USdsData {
@@ -246,6 +275,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall u TETRA-Kurznachricht (SDS) data cpti0 sna.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_u_sds_data_cpti0_sna() {
         let pdu = USdsData {
             area_selection: 0,
@@ -265,6 +296,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall u TETRA-Kurznachricht (SDS) data cpti2 extension.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_u_sds_data_cpti2_extension() {
         let pdu = USdsData {
             area_selection: 0,

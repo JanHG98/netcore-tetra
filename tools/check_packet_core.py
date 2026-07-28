@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für check Datenpaket core.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 from pathlib import Path
 import sys
 
@@ -29,8 +32,12 @@ markers = {
     'system-backend/packet-core/src/http.rs': '/api/v1/edge/events',
 }
 errors=[]
+# Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+# Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
 for rel in required:
     if not (ROOT/rel).is_file(): errors.append(f'missing {rel}')
+# Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+# Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
 for rel, marker in markers.items():
     p=ROOT/rel
     if not p.is_file() or marker not in p.read_text(errors='replace'):

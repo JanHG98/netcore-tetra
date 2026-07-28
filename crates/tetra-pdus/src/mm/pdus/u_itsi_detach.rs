@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 
 use tetra_core::expect_pdu_type;
@@ -13,6 +16,8 @@ use crate::mm::enums::type34_elem_id_ul::MmType34ElemIdUl;
 /// Response to: -
 
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für uitsi detach in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct UItsiDetach {
     /// Type2, 24 bits, MNI of the MS (MCC followed by MNC)
     pub address_extension: Option<u64>,
@@ -21,8 +26,12 @@ pub struct UItsiDetach {
 }
 
 #[allow(unreachable_code)] // TODO FIXME review, finalize and remove this
+// Was: Implementiert das zugehörige Verhalten für `UItsiDetach`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl UItsiDetach {
     /// Parse from BitBuffer
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buffer: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let pdu_type = buffer.read_field(4, "pdu_type")?;
         expect_pdu_type!(pdu_type, MmPduTypeUl::UItsiDetach)?;
@@ -49,6 +58,8 @@ impl UItsiDetach {
     }
 
     /// Serialize this PDU into the given BitBuffer.
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buffer: &mut BitBuffer) -> Result<(), PduParseErr> {
         // PDU Type
         buffer.write_bits(MmPduTypeUl::UItsiDetach.into_raw(), 4);
@@ -72,7 +83,11 @@ impl UItsiDetach {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for UItsiDetach`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for UItsiDetach {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -83,12 +98,16 @@ impl fmt::Display for UItsiDetach {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use tetra_core::debug;
 
     use super::*;
 
     #[test]
+    // Was: Prüft automatisch den Fall u itsi detach.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_u_itsi_detach() {
         debug::setup_logging_verbose();
         let test_vec = "0001110011001100000101001110010";

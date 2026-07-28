@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für gespeicherte Aufzeichnungen, TTS- und Mediendateien.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 from __future__ import annotations
 
 import base64
@@ -8,6 +11,8 @@ import struct
 FRAME_BYTES = 35
 
 
+# Was: Führt den Arbeitsschritt `canonical_wav` für canonical wav aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def canonical_wav(samples: list[int], rate: int = 8000) -> bytes:
     data = b"".join(struct.pack("<h", sample) for sample in samples)
     return (
@@ -17,10 +22,14 @@ def canonical_wav(samples: list[int], rate: int = 8000) -> bytes:
     )
 
 
+# Was: Führt den Arbeitsschritt `inspect_wav` für inspect wav aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def inspect_wav(raw: bytes) -> tuple[int, int, int, int]:
     assert raw[:4] == b"RIFF" and raw[8:12] == b"WAVE"
     offset = 12
     channels = rate = bits = data_len = None
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     while offset + 8 <= len(raw):
         chunk = raw[offset:offset + 4]
         length = struct.unpack_from("<I", raw, offset + 4)[0]
@@ -34,6 +43,8 @@ def inspect_wav(raw: bytes) -> tuple[int, int, int, int]:
     return channels, rate, bits, data_len
 
 
+# Was: Führt den Arbeitsschritt `waveform` für waveform aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def waveform(raw: bytes, points: int) -> list[float]:
     data_start = raw.index(b"data") + 8
     samples = [x[0] for x in struct.iter_unpack("<h", raw[data_start:])]
@@ -41,6 +52,8 @@ def waveform(raw: bytes, points: int) -> list[float]:
     return [max(abs(v) for v in samples[i:i + chunk]) / 32767 for i in range(0, len(samples), chunk)]
 
 
+# Was: Startet das Programm, lädt die benötigten Einstellungen und übergibt an den eigentlichen Dienstablauf.
+# Warum: Ein klarer Einstiegspunkt hält Startreihenfolge, Fehlerausgabe und geordnetes Beenden zusammen.
 def main() -> None:
     wav = canonical_wav([0, 1000, -2000, 32767, -32768] * 100)
     assert inspect_wav(wav)[:3] == (1, 8000, 16)
@@ -58,6 +71,8 @@ def main() -> None:
 
     job = {"frame_index": 0, "frame_count": 12, "state": "queued"}
     job["state"] = "playing"
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for _ in range(job["frame_count"]):
         job["frame_index"] += 1
     job["state"] = "completed"
@@ -66,5 +81,7 @@ def main() -> None:
     print("Media Library reference model: OK")
 
 
+# Was: Startet den Programmablauf nur dann, wenn diese Datei direkt ausgeführt wird.
+# Warum: Beim Import als Modul sollen nur Funktionen bereitstehen und keine Nebenwirkungen automatisch starten.
 if __name__ == "__main__":
     main()

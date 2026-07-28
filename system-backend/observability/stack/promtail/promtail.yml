@@ -1,19 +1,60 @@
+# NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Metriken, Protokolle und Betriebsüberwachung.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+# Was: Legt den YAML-Bereich oder Wert `server` fest.
+# Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
 server:
+  # Was: Legt den YAML-Bereich oder Wert `http_listen_port` fest.
+  # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
   http_listen_port: 9080
+  # Was: Legt den YAML-Bereich oder Wert `grpc_listen_port` fest.
+  # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
   grpc_listen_port: 0
+# Was: Legt den YAML-Bereich oder Wert `positions` fest.
+# Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
 positions:
+  # Was: Legt den YAML-Bereich oder Wert `filename` fest.
+  # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
   filename: /var/lib/promtail/positions.yml
+# Was: Legt den YAML-Bereich oder Wert `clients` fest.
+# Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
 clients:
+  # Was: Legt den YAML-Bereich oder Wert `url` fest.
+  # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
   - url: http://127.0.0.1:3100/loki/api/v1/push
+# Was: Legt den YAML-Bereich oder Wert `scrape_configs` fest.
+# Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
 scrape_configs:
+  # Was: Legt den YAML-Bereich oder Wert `job_name` fest.
+  # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
   - job_name: systemd-journal
+    # Was: Legt den YAML-Bereich oder Wert `journal` fest.
+    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
     journal:
+      # Was: Legt den YAML-Bereich oder Wert `max_age` fest.
+      # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
       max_age: 12h
+      # Was: Legt den YAML-Bereich oder Wert `labels` fest.
+      # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
       labels:
+        # Was: Legt den YAML-Bereich oder Wert `job` fest.
+        # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
         job: systemd-journal
+        # Was: Legt den YAML-Bereich oder Wert `system` fest.
+        # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
         system: netcore-tetra
+    # Was: Legt den YAML-Bereich oder Wert `relabel_configs` fest.
+    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
     relabel_configs:
+      # Was: Legt den YAML-Bereich oder Wert `source_labels` fest.
+      # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
       - source_labels: [__journal__systemd_unit]
+        # Was: Legt den YAML-Bereich oder Wert `target_label` fest.
+        # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
         target_label: unit
+      # Was: Legt den YAML-Bereich oder Wert `source_labels` fest.
+      # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
       - source_labels: [__journal_hostname]
+        # Was: Legt den YAML-Bereich oder Wert `target_label` fest.
+        # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
         target_label: host

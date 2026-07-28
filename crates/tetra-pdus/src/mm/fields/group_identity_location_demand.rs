@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 
 use tetra_core::expect_value;
@@ -13,6 +16,8 @@ use crate::mm::fields::group_identity_uplink::GroupIdentityUplink;
 /// Response to:
 
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für Gruppe identity location demand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GroupIdentityLocationDemand {
     /// Type1, 1 bits, reserved
     // pub reserved: bool,
@@ -23,8 +28,12 @@ pub struct GroupIdentityLocationDemand {
 }
 
 #[allow(unreachable_code)] // TODO FIXME review, finalize and remove this
+// Was: Implementiert das zugehörige Verhalten für `GroupIdentityLocationDemand`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl GroupIdentityLocationDemand {
     /// Parse from BitBuffer
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buffer: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let reserved = buffer.read_field(1, "reserved")?;
         expect_value!(reserved, 0)?;
@@ -56,6 +65,8 @@ impl GroupIdentityLocationDemand {
     }
 
     /// Serialize this PDU into the given BitBuffer.
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buffer: &mut BitBuffer) -> Result<(), PduParseErr> {
         // Type1
         buffer.write_bits(0, 1);
@@ -85,7 +96,11 @@ impl GroupIdentityLocationDemand {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for GroupIdentityLocationDemand`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for GroupIdentityLocationDemand {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -96,10 +111,14 @@ impl fmt::Display for GroupIdentityLocationDemand {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
     #[test]
+    // Was: Prüft automatisch den Fall parse from bitstring.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_parse_from_bitstring() {
         // Same vec as under U-LOCATION UPDATE DEMAND subfield test
         let bitstring = "00111000000001001000000010100000000000000000000000110100";

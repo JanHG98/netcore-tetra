@@ -1,81 +1,208 @@
+// NETCORE-KOMMENTAR – Was: Beschreibt Installation oder Betrieb von dependency graph.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+// Was: Beginnt die Beschreibung des Abhängigkeitsdiagramms.
+// Warum: Komponenten und ihre Verbindungen können dadurch automatisch als Grafik dargestellt werden.
 digraph netcore_open_lab {
   rankdir=LR;
   "node-gateway" [label="node-gateway\n10.0.20.10:8080"];
   "mobility-core" [label="mobility-core\n10.0.20.11:8090"];
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "node-gateway" -> "mobility-core";
   "subscriber-core" [label="subscriber-core\n10.0.20.12:8100"];
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "node-gateway" -> "subscriber-core";
   "group-core" [label="group-core\n10.0.20.13:8110"];
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "node-gateway" -> "group-core";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "subscriber-core" -> "group-core";
   "call-control" [label="call-control\n10.0.20.14:8120"];
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "node-gateway" -> "call-control";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "subscriber-core" -> "call-control";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "group-core" -> "call-control";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "mobility-core" -> "call-control";
   "media-switch" [label="media-switch\n10.0.20.15:8130"];
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "node-gateway" -> "media-switch";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "call-control" -> "media-switch";
   "recorder" [label="recorder\n10.0.20.16:8140"];
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "media-switch" -> "recorder";
   "sds-router" [label="sds-router\n10.0.20.17:8150"];
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "node-gateway" -> "sds-router";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "subscriber-core" -> "sds-router";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "group-core" -> "sds-router";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "mobility-core" -> "sds-router";
   "packet-core" [label="packet-core\n10.0.20.18:8160"];
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "node-gateway" -> "packet-core";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "subscriber-core" -> "packet-core";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "mobility-core" -> "packet-core";
   "ip-gateway" [label="ip-gateway\n10.0.20.19:8170"];
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "packet-core" -> "ip-gateway";
   "security-core" [label="security-core\n10.0.20.20:8180"];
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "node-gateway" -> "security-core";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "subscriber-core" -> "security-core";
   "kmf" [label="kmf\n10.0.20.21:8190"];
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "security-core" -> "kmf";
   "transit" [label="transit\n10.0.20.22:8200"];
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "mobility-core" -> "transit";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "call-control" -> "transit";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "media-switch" -> "transit";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "sds-router" -> "transit";
   "application-gateway" [label="application-gateway\n10.0.20.23:8220"];
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "sds-router" -> "application-gateway";
   "media-library" [label="media-library\n10.0.20.24:8230"];
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "media-switch" -> "media-library";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "recorder" -> "media-library";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "application-gateway" -> "media-library";
   "control-room" [label="control-room\n10.0.20.25:9010"];
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "node-gateway" -> "control-room";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "subscriber-core" -> "control-room";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "group-core" -> "control-room";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "mobility-core" -> "control-room";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "call-control" -> "control-room";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "media-switch" -> "control-room";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "recorder" -> "control-room";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "sds-router" -> "control-room";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "packet-core" -> "control-room";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "ip-gateway" -> "control-room";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "security-core" -> "control-room";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "kmf" -> "control-room";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "transit" -> "control-room";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "application-gateway" -> "control-room";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "media-library" -> "control-room";
   "observability" [label="observability\n10.0.20.26:8210"];
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "node-gateway" -> "observability";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "subscriber-core" -> "observability";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "group-core" -> "observability";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "mobility-core" -> "observability";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "call-control" -> "observability";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "media-switch" -> "observability";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "recorder" -> "observability";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "sds-router" -> "observability";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "packet-core" -> "observability";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "ip-gateway" -> "observability";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "security-core" -> "observability";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "kmf" -> "observability";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "transit" -> "observability";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "application-gateway" -> "observability";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "media-library" -> "observability";
+    // Was: Beschreibt eine gerichtete Abhängigkeit zwischen zwei Komponenten.
+    // Warum: Die Pfeilrichtung zeigt, welcher Dienst den anderen benötigt oder anspricht.
   "control-room" -> "observability";
 }

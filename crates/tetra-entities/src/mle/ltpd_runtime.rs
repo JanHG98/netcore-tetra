@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! Local LTPD runtime between SNDCP and MLE.
 //!
 //! The runtime owns packet-data link state inside one TBS process. It deliberately
@@ -24,29 +27,45 @@ use crate::MessageQueue;
 
 /// Maximum age of an outgoing LTPD request before it is failed locally.
 /// 432 timeslots are six multiframes and bound a stuck LLC/MAC transaction.
+// Was: Legt den festen Wert `TRANSFER_TIMEOUT_SLOTS` für transfer timeout slots fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const TRANSFER_TIMEOUT_SLOTS: i32 = 432;
 
 /// Completed request handles remain guarded for one hyperframe. This prevents
 /// delayed or replayed SNDCP requests from being transmitted twice.
+// Was: Legt den festen Wert `COMPLETED_HANDLE_RETENTION_SLOTS` für completed handle retention slots fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const COMPLETED_HANDLE_RETENTION_SLOTS: i32 = 4 * 18 * 60;
 
+// Was: Legt den festen Wert `RESULT_UNKNOWN_HANDLE` für result unknown handle fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const RESULT_UNKNOWN_HANDLE: u8 = 1;
+// Was: Legt den festen Wert `RESULT_DUPLICATE_HANDLE` für result duplicate handle fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const RESULT_DUPLICATE_HANDLE: u8 = 2;
+// Was: Legt den festen Wert `RESULT_CANCEL_TOO_LATE` für result cancel too late fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const RESULT_CANCEL_TOO_LATE: u8 = 3;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für TETRA-Paketdatentransport Laufzeit role auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum LtpdRuntimeRole {
     MobileStation,
     Swmi,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+// Was: Bündelt die zusammengehörigen Werte für link key in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct LinkKey {
     endpoint_id: EndpointId,
     link_id: LinkId,
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für link Kontext in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct LinkContext {
     address: TetraAddress,
     endpoint_id: EndpointId,
@@ -61,6 +80,8 @@ struct LinkContext {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für pending transfer in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct PendingTransfer {
     endpoint_id: EndpointId,
     link_id: LinkId,
@@ -69,12 +90,16 @@ struct PendingTransfer {
 }
 
 #[derive(Debug, Clone, Copy)]
+// Was: Bündelt die zusammengehörigen Werte für completed transfer in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct CompletedTransfer {
     result: TransferResult,
     completed_at: TdmaTime,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Paketdatentransport pending transfer snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LtpdPendingTransferSnapshot {
     pub handle: RequestHandle,
     pub endpoint_id: EndpointId,
@@ -84,6 +109,8 @@ pub struct LtpdPendingTransferSnapshot {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Paketdatentransport completed transfer snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LtpdCompletedTransferSnapshot {
     pub handle: RequestHandle,
     pub result: TransferResult,
@@ -91,6 +118,8 @@ pub struct LtpdCompletedTransferSnapshot {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Paketdatentransport link snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LtpdLinkSnapshot {
     pub address: TetraAddress,
     pub endpoint_id: EndpointId,
@@ -104,6 +133,8 @@ pub struct LtpdLinkSnapshot {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Paketdatentransport Laufzeit snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LtpdRuntimeSnapshot {
     pub role: LtpdRuntimeRole,
     pub network_open: bool,
@@ -125,6 +156,8 @@ pub struct LtpdRuntimeSnapshot {
     pub links: Vec<LtpdLinkSnapshot>,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Paketdatentransport Laufzeit in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LtpdRuntime {
     role: LtpdRuntimeRole,
     mcc: u16,
@@ -147,7 +180,11 @@ pub struct LtpdRuntime {
     invalid_transition_rejections: u64,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `LtpdRuntime`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl LtpdRuntime {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(
         role: LtpdRuntimeRole,
         mcc: u16,
@@ -177,6 +214,8 @@ impl LtpdRuntime {
         }
     }
 
+    // Was: Diese Funktion erzeugt den vorgesehenen Arbeitsschritt.
+    // Warum: Die Oberfläche und andere Dienste erhalten dadurch eine in sich stimmige Momentaufnahme.
     pub fn snapshot(&self) -> LtpdRuntimeSnapshot {
         let mut links = self
             .links
@@ -242,6 +281,8 @@ impl LtpdRuntime {
     }
 
     /// Learn or refresh the basic-link route used by an incoming SNDCP PDU.
+    // Was: Führt den Arbeitsschritt `observe_inbound` für observe inbound aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn observe_inbound(
         &mut self,
         address: TetraAddress,
@@ -273,12 +314,16 @@ impl LtpdRuntime {
         }
     }
 
+    // Was: Diese Funktion meldet break.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn notify_break(&mut self, queue: &mut MessageQueue) {
         if !self.lower_layer_available {
             return;
         }
         self.lower_layer_available = false;
         self.fail_all_pending(queue, TransferResult::FailedRemovedFromBuffer);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for context in self.links.values_mut() {
             if !matches!(context.state, LtpdLinkState::Closed | LtpdLinkState::Disabled) {
                 context.state = LtpdLinkState::Broken;
@@ -287,11 +332,15 @@ impl LtpdRuntime {
         self.to_sndcp(queue, SapMsgInner::LtpdMleBreakInd(LtpdMleBreakInd));
     }
 
+    // Was: Diese Funktion meldet resume.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn notify_resume(&mut self, queue: &mut MessageQueue) {
         if self.lower_layer_available {
             return;
         }
         self.lower_layer_available = true;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for context in self.links.values_mut() {
             if context.state == LtpdLinkState::Broken {
                 context.state = LtpdLinkState::Open;
@@ -306,12 +355,16 @@ impl LtpdRuntime {
         );
     }
 
+    // Was: Diese Funktion setzt busy.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_busy(&mut self, queue: &mut MessageQueue, busy: bool) {
         if self.busy == busy {
             return;
         }
         self.busy = busy;
         if busy {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for context in self.links.values_mut() {
                 if context.state == LtpdLinkState::Connected {
                     context.state = LtpdLinkState::Busy;
@@ -319,6 +372,8 @@ impl LtpdRuntime {
             }
             self.to_sndcp(queue, SapMsgInner::LtpdMleBusyInd(LtpdMleBusyInd));
         } else {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for context in self.links.values_mut() {
                 if context.state == LtpdLinkState::Busy {
                     context.state = LtpdLinkState::Connected;
@@ -328,6 +383,8 @@ impl LtpdRuntime {
         }
     }
 
+    // Was: Diese Funktion setzt disabled.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_disabled(
         &mut self,
         queue: &mut MessageQueue,
@@ -340,6 +397,8 @@ impl LtpdRuntime {
         self.disabled = disabled;
         if disabled {
             self.fail_all_pending(queue, TransferResult::FailedRemovedFromBuffer);
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for context in self.links.values_mut() {
                 context.state = LtpdLinkState::Disabled;
             }
@@ -348,6 +407,8 @@ impl LtpdRuntime {
                 SapMsgInner::LtpdMleDisableInd(LtpdMleDisableInd { permitted_services }),
             );
         } else {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for context in self.links.values_mut() {
                 if context.state == LtpdLinkState::Disabled {
                     context.state = if self.lower_layer_available {
@@ -361,18 +422,24 @@ impl LtpdRuntime {
         }
     }
 
+    // Was: Diese Funktion schließt network.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn close_network(&mut self, queue: &mut MessageQueue) {
         if !self.network_open {
             return;
         }
         self.network_open = false;
         self.fail_all_pending(queue, TransferResult::FailedRemovedFromBuffer);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for context in self.links.values_mut() {
             context.state = LtpdLinkState::Closed;
         }
         self.to_sndcp(queue, SapMsgInner::LtpdMleCloseInd(LtpdMleCloseInd));
     }
 
+    // Was: Diese Funktion öffnet network.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn open_network(&mut self, queue: &mut MessageQueue, mcc: u16, mnc: u16) {
         self.mcc = mcc;
         self.mnc = mnc;
@@ -393,6 +460,8 @@ impl LtpdRuntime {
         );
     }
 
+    // Was: Diese Funktion bearbeitet den vorgesehenen Arbeitsschritt.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn tick(&mut self, queue: &mut MessageQueue, now: TdmaTime) {
         self.current_time = now;
         if self.initial_open_pending {
@@ -404,8 +473,12 @@ impl LtpdRuntime {
 
         let mut finished = Vec::new();
         let mut timed_out = 0_u64;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (handle, pending) in &self.pending {
             let age = pending.queued_at.age(now);
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let result = match pending.tx_reporter.get_state() {
                 TxState::Discarded | TxState::Lost => Some(TransferResult::FailedRemovedFromBuffer),
                 TxState::Acknowledged => Some(TransferResult::SuccessBufferEmpty),
@@ -423,13 +496,19 @@ impl LtpdRuntime {
             }
         }
         self.timed_out_transfers = self.timed_out_transfers.saturating_add(timed_out);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (handle, result) in finished {
             self.complete_transfer(queue, handle, result, now);
         }
     }
 
+    // Was: Diese Funktion verarbeitet primitive.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     pub fn handle_primitive(&mut self, queue: &mut MessageQueue, message: SapMsg, now: TdmaTime) {
         self.current_time = now;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match message.msg {
             SapMsgInner::LtpdMleActivityReq(request) => {
                 self.sleep_mode = request.sleep_mode;
@@ -485,6 +564,8 @@ impl LtpdRuntime {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `configure` für configure aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn configure(&mut self, queue: &mut MessageQueue, request: LtpdMleConfigureReq, now: TdmaTime) {
         let release_requested =
             request.call_release == tetra_saps::common::CallReleaseInstruction::Release;
@@ -502,6 +583,8 @@ impl LtpdRuntime {
         }
         if release_requested {
             let handles = self.pending_handles_for_endpoint(request.endpoint_id);
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for handle in handles {
                 self.complete_transfer(
                     queue,
@@ -528,6 +611,8 @@ impl LtpdRuntime {
         }
     }
 
+    // Was: Diese Funktion verbindet den vorgesehenen Arbeitsschritt.
+    // Warum: Der Verbindungsaufbau wird dadurch zentral überwacht und kann sauber fehlschlagen.
     fn connect(&mut self, queue: &mut MessageQueue, request: LtpdMleConnectReq, now: TdmaTime) {
         let key = LinkKey {
             endpoint_id: request.endpoint_id,
@@ -583,6 +668,8 @@ impl LtpdRuntime {
         );
     }
 
+    // Was: Diese Funktion verbindet response.
+    // Warum: Der Verbindungsaufbau wird dadurch zentral überwacht und kann sauber fehlschlagen.
     fn connect_response(
         &mut self,
         queue: &mut MessageQueue,
@@ -639,6 +726,8 @@ impl LtpdRuntime {
         );
     }
 
+    // Was: Diese Funktion trennt den vorgesehenen Arbeitsschritt.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn disconnect(&mut self, queue: &mut MessageQueue, request: LtpdMleDisconnectReq) {
         let key = LinkKey {
             endpoint_id: request.endpoint_id,
@@ -676,6 +765,8 @@ impl LtpdRuntime {
         );
     }
 
+    // Was: Diese Funktion verbindet den vorgesehenen Arbeitsschritt.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn reconnect(&mut self, queue: &mut MessageQueue, request: LtpdMleReconnectReq, now: TdmaTime) {
         let key = LinkKey {
             endpoint_id: request.endpoint_id,
@@ -719,11 +810,17 @@ impl LtpdRuntime {
         );
     }
 
+    // Was: Diese Funktion gibt den vorgesehenen Arbeitsschritt.
+    // Warum: Ressourcen werden dadurch rechtzeitig freigegeben und blockieren keine weiteren Vorgänge.
     fn release(&mut self, queue: &mut MessageQueue, link_id: LinkId, now: TdmaTime) {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for context in self.links.values_mut().filter(|context| context.link_id == link_id) {
             context.state = LtpdLinkState::Closed;
         }
         let handles = self.pending_handles_for_link(link_id);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for handle in handles {
             self.complete_transfer(
                 queue,
@@ -734,6 +831,8 @@ impl LtpdRuntime {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `unitdata` für unitdata aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn unitdata(&mut self, queue: &mut MessageQueue, mut request: LtpdMleUnitdataReq, now: TdmaTime) {
         if self.pending.contains_key(&request.handle) || self.completed.contains_key(&request.handle) {
             self.duplicate_handle_rejections = self.duplicate_handle_rejections.saturating_add(1);
@@ -802,6 +901,8 @@ impl LtpdRuntime {
             return;
         }
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let tx_reporter = match request.layer2service {
             Layer2Service::Unacknowledged => TxReporter::new_unacked(),
             Layer2Service::Acknowledged | Layer2Service::Todo => TxReporter::new(),
@@ -835,6 +936,8 @@ impl LtpdRuntime {
             tetra_saps::common::StealingPermission::NotRequired
         );
         let request_handle = i32::try_from(request.handle.0).unwrap_or(i32::MAX);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let message = match request.layer2service {
             Layer2Service::Unacknowledged => SapMsgInner::TlaTlUnitdataReqBl(TlaTlUnitdataReqBl {
                 main_address: address,
@@ -879,6 +982,8 @@ impl LtpdRuntime {
         ));
     }
 
+    // Was: Führt den Arbeitsschritt `record_transfer_result` für Datensatz transfer result aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn record_transfer_result(&mut self, endpoint_id: EndpointId, link_id: LinkId, success: bool) {
         if let Some(context) = self.links.get_mut(&LinkKey { endpoint_id, link_id }) {
             if success {
@@ -889,6 +994,8 @@ impl LtpdRuntime {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `complete_transfer` für complete transfer aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn complete_transfer(
         &mut self,
         queue: &mut MessageQueue,
@@ -913,13 +1020,19 @@ impl LtpdRuntime {
         self.report(queue, handle, result);
     }
 
+    // Was: Führt den Arbeitsschritt `fail_all_pending` für fail all pending aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fail_all_pending(&mut self, queue: &mut MessageQueue, result: TransferResult) {
         let handles = self.pending.keys().copied().collect::<Vec<_>>();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for handle in handles {
             self.complete_transfer(queue, handle, result, self.current_time);
         }
     }
 
+    // Was: Führt den Arbeitsschritt `pending_handles_for_link` für pending handles for link aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn pending_handles_for_link(&self, link_id: LinkId) -> Vec<RequestHandle> {
         self.pending
             .iter()
@@ -927,6 +1040,8 @@ impl LtpdRuntime {
             .collect()
     }
 
+    // Was: Führt den Arbeitsschritt `pending_handles_for_endpoint` für pending handles for endpoint aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn pending_handles_for_endpoint(&self, endpoint_id: EndpointId) -> Vec<RequestHandle> {
         self.pending
             .iter()
@@ -936,6 +1051,8 @@ impl LtpdRuntime {
             .collect()
     }
 
+    // Was: Führt den Arbeitsschritt `report` für report aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn report(&self, queue: &mut MessageQueue, handle: RequestHandle, result: TransferResult) {
         self.to_sndcp(
             queue,
@@ -946,6 +1063,8 @@ impl LtpdRuntime {
         );
     }
 
+    // Was: Wandelt den vorhandenen Wert in SNDCP-Paketdaten um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn to_sndcp(&self, queue: &mut MessageQueue, message: SapMsgInner) {
         queue.push_back(SapMsg::new(
             Sap::TlpdSap,
@@ -959,6 +1078,8 @@ impl LtpdRuntime {
 
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
     use tetra_core::SsiType;
@@ -967,6 +1088,8 @@ mod tests {
         StealingPermission,
     };
 
+    // Was: Führt den Arbeitsschritt `runtime` für Laufzeit aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn runtime() -> LtpdRuntime {
         let mut runtime = LtpdRuntime::new(
             LtpdRuntimeRole::Swmi,
@@ -978,6 +1101,8 @@ mod tests {
         runtime
     }
 
+    // Was: Führt den Arbeitsschritt `unitdata` für unitdata aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn unitdata(handle: u32) -> LtpdMleUnitdataReq {
         LtpdMleUnitdataReq {
             sdu: BitBuffer::new(0),
@@ -1002,6 +1127,8 @@ mod tests {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `ready_runtime` für ready Laufzeit aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn ready_runtime() -> LtpdRuntime {
         let mut runtime = runtime();
         runtime.observe_inbound(
@@ -1015,6 +1142,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `unknown_route_is_rejected_and_replay_guarded` für unknown Weiterleitung is rejected and replay guarded aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn unknown_route_is_rejected_and_replay_guarded() {
         let mut runtime = runtime();
         let mut queue = MessageQueue::new();
@@ -1040,6 +1169,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `tx_reporter_completes_acknowledged_transfer` für tx reporter completes acknowledged transfer aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn tx_reporter_completes_acknowledged_transfer() {
         let mut runtime = ready_runtime();
         let mut queue = MessageQueue::new();
@@ -1054,6 +1185,8 @@ mod tests {
             TdmaTime::default(),
         );
         let lower = queue.pop_front().expect("lower-layer request missing");
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let reporter = match lower.msg {
             SapMsgInner::TlaTlDataReqBl(request) => request.tx_reporter.expect("TxReporter missing"),
             other => panic!("unexpected lower-layer primitive: {:?}", other),
@@ -1073,10 +1206,14 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `duplicate_handle_is_rejected_while_pending_and_after_completion` für duplicate handle is rejected while pending and und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn duplicate_handle_is_rejected_while_pending_and_after_completion() {
         let mut runtime = ready_runtime();
         let mut queue = MessageQueue::new();
         let now = TdmaTime::default();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for _ in 0..2 {
             runtime.handle_primitive(
                 &mut queue,
@@ -1123,6 +1260,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Diese Funktion bricht is idempotent and does not orphan pending und weitere Angaben.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn cancel_is_idempotent_and_does_not_orphan_pending_transfer() {
         let mut runtime = ready_runtime();
         let mut queue = MessageQueue::new();
@@ -1174,6 +1313,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `pending_transfer_times_out_without_tx_progress` für pending transfer times out without tx progress aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn pending_transfer_times_out_without_tx_progress() {
         let mut runtime = ready_runtime();
         let mut queue = MessageQueue::new();
@@ -1202,6 +1343,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `illegal_reconnect_from_connected_state_is_rejected` für illegal reconnect from connected Zustand is rejected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn illegal_reconnect_from_connected_state_is_rejected() {
         let mut runtime = ready_runtime();
         let mut queue = MessageQueue::new();

@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für SNDCP-Kontexte und TETRA-Paketdaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tetra_entities::net_control::ControlCommand;
@@ -5,10 +8,16 @@ use tetra_entities::net_control_room::{
     ControlRoomNodeCapabilities, ControlRoomNodeIdentity, NodeToControlRoomMessage,
 };
 
+// Was: Legt den festen Wert `BACKEND_PROTOCOL_VERSION` für Hintergrunddienst protocol version fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const BACKEND_PROTOCOL_VERSION: &str = "netcore-node-gateway-backend-v1";
+// Was: Legt den festen Wert `EDGE_PROTOCOL_VERSION` für edge protocol version fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const EDGE_PROTOCOL_VERSION: &str = "netcore-packet-edge-v1";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Gateway Netzknoten snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GatewayNodeSnapshot {
     pub node_id: String,
     pub session_id: String,
@@ -34,6 +43,8 @@ pub struct GatewayNodeSnapshot {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Gateway Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GatewayStatus {
     pub service: String,
     pub started_at: String,
@@ -55,12 +66,16 @@ pub struct GatewayStatus {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Gateway snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GatewaySnapshot {
     pub status: GatewayStatus,
     pub nodes: Vec<GatewayNodeSnapshot>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Gateway Ereignis Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GatewayEventRecord {
     pub seq: u64,
     pub timestamp: String,
@@ -71,6 +86,8 @@ pub struct GatewayEventRecord {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für Hintergrunddienst Ereignis auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum BackendEvent {
     Snapshot { snapshot: GatewaySnapshot },
     Event { event: GatewayEventRecord },
@@ -85,6 +102,8 @@ pub enum BackendEvent {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für Hintergrunddienst request auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum BackendRequest {
     Ping { request_id: Option<String> },
     Command {
@@ -97,6 +116,8 @@ pub enum BackendRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für edge Ereignis input auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum EdgeEventInput {
     Hello {
         protocol_version: String,
@@ -201,8 +222,14 @@ pub enum EdgeEventInput {
     },
 }
 
+// Was: Implementiert das zugehörige Verhalten für `EdgeEventInput`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl EdgeEventInput {
+    // Was: Führt den Arbeitsschritt `node_id` für Netzknoten Kennung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn node_id(&self) -> &str {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self {
             Self::Hello { node_id, .. }
             | Self::Heartbeat { node_id, .. }
@@ -224,6 +251,8 @@ impl EdgeEventInput {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für edge action payload auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum EdgeActionPayload {
     ActivateAccept {
         issi: u32,
@@ -285,17 +314,23 @@ pub enum EdgeActionPayload {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für action ack input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ActionAckInput {
     #[serde(default = "default_ack_success")]
     pub success: bool,
     pub message: Option<String>,
 }
 
+// Was: Führt den Arbeitsschritt `default_ack_success` für default ack success aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_ack_success() -> bool {
     true
 }
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Downlink (Netz zum Funkgerät) npdu input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DownlinkNpduInput {
     pub issi: u32,
     pub nsapi: u8,
@@ -307,6 +342,8 @@ pub struct DownlinkNpduInput {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Kontext action input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ContextActionInput {
     #[serde(default)]
     pub reason: Option<String>,

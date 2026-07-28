@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Einlesen und Prüfen der TETRA-Konfiguration.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufReader, Read};
@@ -32,6 +35,8 @@ use super::sec_wx::{CfgWxServiceDto, apply_wx_service_patch};
 use super::{PhyIoDto, phy_dto_to_cfg};
 
 /// Build `StackConfig` from a TOML configuration file
+// Was: Wandelt Eingangsdaten in toml str um.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn from_toml_str(toml_str: &str) -> Result<StackConfig, Box<dyn std::error::Error>> {
     // Parse once as raw Value so we can extract neighbor_cells_ca before
     // deserializing into typed DTOs. This avoids a conflict between serde's
@@ -349,6 +354,8 @@ pub fn from_toml_str(toml_str: &str) -> Result<StackConfig, Box<dyn std::error::
 }
 
 /// Build `SharedConfig` from any reader.
+// Was: Wandelt Eingangsdaten in reader um.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn from_reader<R: Read>(reader: R) -> Result<StackConfig, Box<dyn std::error::Error>> {
     let mut contents = String::new();
     let mut reader = BufReader::new(reader);
@@ -357,6 +364,8 @@ pub fn from_reader<R: Read>(reader: R) -> Result<StackConfig, Box<dyn std::error
 }
 
 /// Build `SharedConfig` from a file path.
+// Was: Wandelt Eingangsdaten in file um.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn from_file<P: AsRef<Path>>(path: P) -> Result<StackConfig, Box<dyn std::error::Error>> {
     let f = File::open(path)?;
     let r = BufReader::new(f);
@@ -364,6 +373,8 @@ pub fn from_file<P: AsRef<Path>>(path: P) -> Result<StackConfig, Box<dyn std::er
     Ok(cfg)
 }
 
+// Was: Führt den Arbeitsschritt `sorted_keys` für sorted keys aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn sorted_keys(map: &HashMap<String, Value>) -> Vec<&str> {
     let mut v: Vec<&str> = map.keys().map(|s| s.as_str()).collect();
     v.sort_unstable();
@@ -373,6 +384,8 @@ fn sorted_keys(map: &HashMap<String, Value>) -> Vec<&str> {
 /// ----------------------- DTOs for input shape -----------------------
 
 #[derive(Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für toml Konfiguration root in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct TomlConfigRoot {
     config_version: String,
     stack_mode: StackMode,
@@ -415,6 +428,8 @@ struct TomlConfigRoot {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
@@ -423,6 +438,8 @@ mod tests {
     /// stay valid against the DTOs, and the strict `extra`/`deny`-style flatten maps must not reject
     /// any uncommented key.
     #[test]
+    // Was: Führt den Arbeitsschritt `example_config_parses` für example Konfiguration parses aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn example_config_parses() {
         let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../example_config/config.toml");
         from_file(path).unwrap_or_else(|e| panic!("example_config/config.toml must parse: {e}"));
@@ -431,6 +448,8 @@ mod tests {
     /// Gold-standard guard: every optional block documented (commented) in example_config must
     /// parse against the DTOs when a user UNCOMMENTS it — field names and types must match.
     #[test]
+    // Was: Führt den Arbeitsschritt `documented_optional_blocks_parse_when_uncommented` für documented optional blocks parse when uncommented aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn documented_optional_blocks_parse_when_uncommented() {
         let toml = r#"
 config_version = "0.6"
@@ -715,6 +734,8 @@ sds_queue_critical = 128
         assert!(!cfg.echolink.default_tetra_dest_is_group);
     }
 
+    // Was: Führt den Arbeitsschritt `minimal_toml` für minimal toml aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn minimal_toml(extra_cell: &str) -> String {
         format!(
             r#"
@@ -742,6 +763,8 @@ location_area = 1
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall no neighbor cells.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_no_neighbor_cells() {
         let toml = minimal_toml("");
         let cfg = from_toml_str(&toml).expect("parse failed");
@@ -749,6 +772,8 @@ location_area = 1
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall two neighbor cells.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_two_neighbor_cells() {
         let toml = minimal_toml(
             r#"
@@ -782,6 +807,8 @@ main_carrier_number = 1586
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall too many neighbor cells rejected.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_too_many_neighbor_cells_rejected() {
         // 8 entries — should fail validation
         let entries: String = (1u8..=8)
@@ -795,12 +822,16 @@ main_carrier_number = 1586
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall unrecognized cell info field still rejected.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_unrecognized_cell_info_field_still_rejected() {
         let toml = minimal_toml("bogus_field = 42");
         assert!(from_toml_str(&toml).is_err(), "should reject unknown field");
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `telegram_alerts_section_parses` für telegram alerts section parses aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn telegram_alerts_section_parses() {
         let toml = minimal_toml("")
             + r#"
@@ -823,6 +854,8 @@ alert_critical_logs = false
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `telegram_alerts_unknown_field_rejected` für telegram alerts unknown field rejected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn telegram_alerts_unknown_field_rejected() {
         let toml = minimal_toml("")
             + r#"

@@ -1,3 +1,8 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+// Was: Bindet das Untermodul common in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod common;
 
 use common::ComponentTest;
@@ -20,6 +25,8 @@ use tetra_saps::tla::TlaTlDataIndBl;
 use tetra_saps::tlmc::TlmcConfigureInd;
 use tetra_saps::{SapMsg, SapMsgInner};
 
+// Was: Führt den Arbeitsschritt `incoming_sndcp` für incoming SNDCP-Paketdaten aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn incoming_sndcp(address: TetraAddress, endpoint_id: u32, link_id: u32) -> SapMsg {
     let mut sdu = BitBuffer::new(11);
     sdu.write_bits(0b100, 3);
@@ -47,6 +54,8 @@ fn incoming_sndcp(address: TetraAddress, endpoint_id: u32, link_id: u32) -> SapM
     }
 }
 
+// Was: Führt den Arbeitsschritt `unitdata` für unitdata aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn unitdata(address: Option<TetraAddress>, handle: u32, endpoint_id: u32, link_id: u32) -> SapMsg {
     let mut sdu = BitBuffer::new(8);
     sdu.write_bits(0x42, 8);
@@ -80,6 +89,8 @@ fn unitdata(address: Option<TetraAddress>, handle: u32, endpoint_id: u32, link_i
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `initial_open_and_info_update_the_sndcp_client_snapshot` für initial open and info update the SNDCP-Paketdaten und weitere Angaben aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn initial_open_and_info_update_the_sndcp_client_snapshot() {
     let mut test = ComponentTest::new(StackMode::Bs, Some(TdmaTime::default()));
     test.populate_entities(vec![TetraEntity::Mle, TetraEntity::Sndcp], vec![]);
@@ -103,6 +114,8 @@ fn initial_open_and_info_update_the_sndcp_client_snapshot() {
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `inbound_unitdata_registers_route_and_reaches_sndcp` für inbound unitdata registers Weiterleitung and reaches SNDCP-Paketdaten aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn inbound_unitdata_registers_route_and_reaches_sndcp() {
     let mut test = ComponentTest::new(StackMode::Bs, None);
     test.populate_entities(vec![TetraEntity::Mle], vec![TetraEntity::Sndcp]);
@@ -133,6 +146,8 @@ fn inbound_unitdata_registers_route_and_reaches_sndcp() {
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `downlink_unitdata_is_wrapped_by_mle_and_reported_to_sndcp` für Downlink (Netz zum Funkgerät) unitdata is wrapped by MLE-Verbindungssteuerung and und weitere Angaben aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn downlink_unitdata_is_wrapped_by_mle_and_reported_to_sndcp() {
     let mut test = ComponentTest::new(StackMode::Bs, None);
     test.populate_entities(
@@ -182,6 +197,8 @@ fn downlink_unitdata_is_wrapped_by_mle_and_reported_to_sndcp() {
 }
 
 #[test]
+// Was: Diese Funktion leitet hint rebuilds Kontext after local restart.
+// Warum: Nachrichten und Daten gelangen dadurch nachvollziehbar an das richtige Ziel.
 fn route_hint_rebuilds_context_after_local_restart() {
     let mut test = ComponentTest::new(StackMode::Bs, None);
     test.populate_entities(
@@ -203,6 +220,8 @@ fn route_hint_rebuilds_context_after_local_restart() {
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `unknown_route_without_hint_is_rejected` für unknown Weiterleitung without hint is rejected aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn unknown_route_without_hint_is_rejected() {
     let mut test = ComponentTest::new(StackMode::Bs, None);
     test.populate_entities(
@@ -228,6 +247,8 @@ fn unknown_route_without_hint_is_rejected() {
 }
 
 #[test]
+// Was: Diese Funktion verbindet disconnect and reconnect have explicit results.
+// Warum: Der Verbindungsaufbau wird dadurch zentral überwacht und kann sauber fehlschlagen.
 fn connect_disconnect_and_reconnect_have_explicit_results() {
     let mut test = ComponentTest::new(StackMode::Bs, None);
     test.populate_entities(vec![TetraEntity::Mle], vec![TetraEntity::Sndcp]);
@@ -305,6 +326,8 @@ fn connect_disconnect_and_reconnect_have_explicit_results() {
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `tlmc_resource_edges_drive_break_and_resume` für tlmc resource edges drive break and resume aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn tlmc_resource_edges_drive_break_and_resume() {
     let mut test = ComponentTest::new(StackMode::Bs, Some(TdmaTime::default()));
     test.populate_entities(vec![TetraEntity::Mle], vec![TetraEntity::Sndcp]);
@@ -344,6 +367,8 @@ fn tlmc_resource_edges_drive_break_and_resume() {
 
 
 #[test]
+// Was: Führt den Arbeitsschritt `duplicate_handle_is_rejected_while_original_transfer_is_pending` für duplicate handle is rejected while original transfer und weitere Angaben aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn duplicate_handle_is_rejected_while_original_transfer_is_pending() {
     let mut test = ComponentTest::new(StackMode::Bs, None);
     test.populate_entities(
@@ -385,6 +410,8 @@ fn duplicate_handle_is_rejected_while_original_transfer_is_pending() {
 }
 
 #[test]
+// Was: Diese Funktion bricht removes pending transfer and reports failure.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn cancel_removes_pending_transfer_and_reports_failure() {
     let mut test = ComponentTest::new(StackMode::Bs, None);
     test.populate_entities(
@@ -427,6 +454,8 @@ fn cancel_removes_pending_transfer_and_reports_failure() {
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `pending_transfer_times_out_without_llc_or_mac_progress` für pending transfer times out without LLC-Verbindungsschicht or und weitere Angaben aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn pending_transfer_times_out_without_llc_or_mac_progress() {
     let start = TdmaTime::default();
     let mut test = ComponentTest::new(StackMode::Bs, Some(start));
@@ -462,6 +491,8 @@ fn pending_transfer_times_out_without_llc_or_mac_progress() {
 }
 
 #[test]
+// Was: Diese Funktion verbindet from already connected Zustand is rejected.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn reconnect_from_already_connected_state_is_rejected() {
     let mut test = ComponentTest::new(StackMode::Bs, None);
     test.populate_entities(vec![TetraEntity::Mle], vec![TetraEntity::Sndcp]);

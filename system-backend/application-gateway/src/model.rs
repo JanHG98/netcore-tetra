@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Anwendungsdienste wie TTS und externe Integrationen.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
@@ -6,6 +9,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für connector Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ConnectorRecord {
     pub connector_id: String,
     pub display_name: String,
@@ -38,6 +43,8 @@ pub struct ConnectorRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Weiterleitung rule Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct RouteRuleRecord {
     pub rule_id: String,
     pub name: String,
@@ -56,6 +63,8 @@ pub struct RouteRuleRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für template Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TemplateRecord {
     pub template_id: String,
     pub name: String,
@@ -72,6 +81,8 @@ pub struct TemplateRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Ereignis Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct EventRecord {
     pub event_id: String,
     pub source_connector: String,
@@ -91,6 +102,8 @@ pub struct EventRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für delivery Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DeliveryRecord {
     pub delivery_id: String,
     pub event_id: String,
@@ -121,6 +134,8 @@ pub struct DeliveryRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für tts job Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TtsJobRecord {
     pub job_id: String,
     pub name: String,
@@ -147,6 +162,8 @@ pub struct TtsJobRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für audit Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct AuditRecord {
     pub sequence: u64,
     pub timestamp: DateTime<Utc>,
@@ -160,6 +177,8 @@ pub struct AuditRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für secret entry in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SecretEntry {
     pub value: String,
     pub fingerprint: String,
@@ -167,11 +186,15 @@ pub struct SecretEntry {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+// Was: Bündelt die zusammengehörigen Werte für secret vault in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SecretVault {
     pub connectors: BTreeMap<String, BTreeMap<String, SecretEntry>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für secret Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SecretStatus {
     pub connector_id: String,
     pub name: String,
@@ -182,6 +205,8 @@ pub struct SecretStatus {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für backup Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct BackupRecord {
     pub backup_id: String,
     pub path: PathBuf,
@@ -193,6 +218,8 @@ pub struct BackupRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für persisted Gateway in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PersistedGateway {
     pub schema_version: u32,
     pub connectors: BTreeMap<String, ConnectorRecord>,
@@ -209,6 +236,8 @@ pub struct PersistedGateway {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Gateway Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GatewayStatus {
     pub ready: bool,
     pub security_mode: String,
@@ -238,6 +267,8 @@ pub struct GatewayStatus {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für dispatch input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DispatchInput {
     pub source_connector: Option<String>,
     pub event_type: String,
@@ -256,6 +287,8 @@ pub struct DispatchInput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für connector input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ConnectorInput {
     pub connector_id: String,
     pub display_name: String,
@@ -276,6 +309,8 @@ pub struct ConnectorInput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Weiterleitung rule input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct RouteRuleInput {
     pub rule_id: String,
     pub name: String,
@@ -292,6 +327,8 @@ pub struct RouteRuleInput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für template input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TemplateInput {
     pub template_id: String,
     pub name: String,
@@ -306,6 +343,8 @@ pub struct TemplateInput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für secret set input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SecretSetInput {
     pub name: String,
     pub value: String,
@@ -313,12 +352,16 @@ pub struct SecretSetInput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+// Was: Bündelt die zusammengehörigen Werte für action input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ActionInput {
     pub actor: Option<String>,
     pub reason: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für tts job input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TtsJobInput {
     pub name: String,
     pub text: String,
@@ -333,6 +376,8 @@ pub struct TtsJobInput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+// Was: Bündelt die zusammengehörigen Werte für tts publish input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TtsPublishInput {
     pub actor: Option<String>,
     pub destination_kind: Option<String>,
@@ -341,6 +386,8 @@ pub struct TtsPublishInput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für template render input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TemplateRenderInput {
     pub text: Option<String>,
     pub destination: Option<String>,
@@ -351,12 +398,16 @@ pub struct TemplateRenderInput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+// Was: Bündelt die zusammengehörigen Werte für backup input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct BackupInput {
     pub actor: Option<String>,
     pub note: Option<String>,
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für claimed delivery in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ClaimedDelivery {
     pub delivery: DeliveryRecord,
     pub connector: ConnectorRecord,
@@ -364,6 +415,8 @@ pub struct ClaimedDelivery {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für delivery outcome in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DeliveryOutcome {
     pub success: bool,
     pub status: Option<u16>,
@@ -375,6 +428,8 @@ pub struct DeliveryOutcome {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für connector probe outcome in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ConnectorProbeOutcome {
     pub connector_id: String,
     pub success: bool,

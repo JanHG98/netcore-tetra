@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! WiFi management via NetworkManager (`nmcli`).
 //!
 //! Wraps a small subset of `nmcli` to power the dashboard WiFi tab: scan
@@ -35,10 +38,14 @@ use std::time::Duration;
 /// within 2-3 seconds; we cap at 15 s so a stuck driver can't wedge the HTTP
 /// thread indefinitely. The `--wait` flag we pass to connect commands is set
 /// slightly lower so nmcli itself bails before our outer timeout fires.
+// Was: Legt den festen Wert `NMCLI_TIMEOUT` für nmcli timeout fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const NMCLI_TIMEOUT: Duration = Duration::from_secs(15);
 
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(tag = "kind", content = "msg")]
+// Was: Listet die möglichen Varianten für wifi error auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum WifiError {
     /// nmcli binary is not installed (no NetworkManager on this host).
     NotAvailable,
@@ -50,8 +57,14 @@ pub enum WifiError {
     Timeout,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `std::fmt::Display for WifiError`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl std::fmt::Display for WifiError {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self {
             WifiError::NotAvailable => write!(f, "NetworkManager (nmcli) not installed"),
             WifiError::Failed(s) => write!(f, "nmcli failed: {}", s),
@@ -63,6 +76,8 @@ impl std::fmt::Display for WifiError {
 
 /// A network visible to the radio right now. Returned by `scan()`.
 #[derive(Debug, Clone, serde::Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für wifi scan result in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct WifiScanResult {
     pub ssid: String,
     /// Signal strength as percentage 0-100 (nmcli's SIGNAL field).
@@ -77,6 +92,8 @@ pub struct WifiScanResult {
 
 /// A saved profile (whether or not the AP is currently in range).
 #[derive(Debug, Clone, serde::Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für wifi saved profile in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct WifiSavedProfile {
     pub uuid: String,
     pub name: String,
@@ -89,6 +106,8 @@ pub struct WifiSavedProfile {
 
 /// Snapshot of the current Wi-Fi connection state. Returned by `status()`.
 #[derive(Debug, Clone, serde::Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für wifi Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct WifiStatus {
     /// True if there's a Wi-Fi device the kernel can see (`wlan0` etc).
     pub device_present: bool,
@@ -109,7 +128,11 @@ pub struct WifiStatus {
 /// Cheap one-off probe: is nmcli installed and does it run?
 /// The dashboard calls this once at page-load to decide whether to enable
 /// the WiFi tab at all.
+// Was: Führt den Arbeitsschritt `available` für available aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn available() -> bool {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match run_nmcli(&["--version"]) {
         Ok(_) => true,
         Err(_) => false,
@@ -119,6 +142,8 @@ pub fn available() -> bool {
 /// Trigger a fresh scan and return what's visible. nmcli's `--rescan yes`
 /// forces a new scan rather than returning cached results, which is what
 /// the user expects after pressing "Refresh" in the UI.
+// Was: Führt den Arbeitsschritt `scan` für scan aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn scan() -> Result<Vec<WifiScanResult>, WifiError> {
     // Field order chosen so we can split on the terse colon separator nmcli
     // emits in `-t` (terse) mode. INUSE is '*' when active, blank otherwise.
@@ -146,6 +171,8 @@ pub fn scan() -> Result<Vec<WifiScanResult>, WifiError> {
     let saved_ssids: std::collections::HashSet<String> = list_saved().unwrap_or_default().into_iter().map(|p| p.name).collect();
 
     let mut results = Vec::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for line in out.lines() {
         // nmcli's terse format escapes literal ':' inside fields as '\:', so
         // a naïve split(':') would mangle SSIDs containing colons. We do a
@@ -190,9 +217,13 @@ pub fn scan() -> Result<Vec<WifiScanResult>, WifiError> {
 
 /// List Wi-Fi profiles saved by NetworkManager. Ethernet / VPN profiles are
 /// filtered out — the UI only wants to show Wi-Fi.
+// Was: Diese Funktion liefert saved.
+// Warum: Die Zusammenstellung der Einträge bleibt damit konsistent und wiederverwendbar.
 pub fn list_saved() -> Result<Vec<WifiSavedProfile>, WifiError> {
     let out = run_nmcli(&["-t", "-f", "UUID,NAME,TYPE,ACTIVE", "connection", "show"])?;
     let mut profiles = Vec::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for line in out.lines() {
         let fields = parse_terse_line(line);
         if fields.len() < 4 {
@@ -214,6 +245,8 @@ pub fn list_saved() -> Result<Vec<WifiSavedProfile>, WifiError> {
 
 /// Bring up an already-saved profile. Use this for "reconnect to a network
 /// I've used before" — no password is required because nmcli has it stored.
+// Was: Diese Funktion verbindet saved.
+// Warum: Der Verbindungsaufbau wird dadurch zentral überwacht und kann sauber fehlschlagen.
 pub fn connect_saved(uuid: &str) -> Result<(), WifiError> {
     // --wait gives nmcli up to 12 s to actually associate before returning;
     // without it nmcli returns immediately after starting the connection and
@@ -225,6 +258,8 @@ pub fn connect_saved(uuid: &str) -> Result<(), WifiError> {
 /// Connect to a brand-new SSID. If `psk` is empty we treat it as open Wi-Fi
 /// (no password). nmcli validates the password against the AP before saving
 /// the profile, so a wrong PSK doesn't leave junk behind.
+// Was: Diese Funktion verbindet new.
+// Warum: Der Verbindungsaufbau wird dadurch zentral überwacht und kann sauber fehlschlagen.
 pub fn connect_new(ssid: &str, psk: &str, hidden: bool) -> Result<(), WifiError> {
     // We build the argument vector dynamically because nmcli rejects an
     // empty --password value with a confusing error; open networks need the
@@ -244,12 +279,16 @@ pub fn connect_new(ssid: &str, psk: &str, hidden: bool) -> Result<(), WifiError>
 
 /// Disconnect the active Wi-Fi connection. This *deactivates* the profile but
 /// keeps it saved — calling `connect_saved` later re-uses the stored PSK.
+// Was: Diese Funktion trennt den vorgesehenen Arbeitsschritt.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn disconnect(iface: &str) -> Result<(), WifiError> {
     run_nmcli(&["device", "disconnect", iface])?;
     Ok(())
 }
 
 /// Delete a saved profile entirely. Use this for "forget this network".
+// Was: Führt den Arbeitsschritt `forget` für forget aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn forget(uuid: &str) -> Result<(), WifiError> {
     run_nmcli(&["connection", "delete", "uuid", uuid])?;
     Ok(())
@@ -258,12 +297,16 @@ pub fn forget(uuid: &str) -> Result<(), WifiError> {
 /// Turn Wi-Fi radio on/off at the NetworkManager level. Useful when the
 /// host is on Ethernet and the operator wants to silence Wi-Fi for power
 /// reasons.
+// Was: Diese Funktion setzt radio.
+// Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
 pub fn set_radio(enabled: bool) -> Result<(), WifiError> {
     run_nmcli(&["radio", "wifi", if enabled { "on" } else { "off" }])?;
     Ok(())
 }
 
 /// Current state: device present, radio state, connected SSID, IPv4.
+// Was: Führt den Arbeitsschritt `status` für Status aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn status() -> Result<WifiStatus, WifiError> {
     // Two separate calls because `nmcli general` doesn't expose enough and
     // we'd rather fail one cheap call than try to parse a long composite.
@@ -279,6 +322,8 @@ pub fn status() -> Result<WifiStatus, WifiError> {
     let mut device_present = false;
     let mut connected_ssid: Option<String> = None;
     let mut wifi_dev: Option<String> = None;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for line in dev_out.lines() {
         let fields = parse_terse_line(line);
         if fields.len() < 4 {
@@ -301,6 +346,8 @@ pub fn status() -> Result<WifiStatus, WifiError> {
     if let (Some(_ssid), Some(dev)) = (connected_ssid.as_ref(), wifi_dev.as_ref()) {
         // Active scan entry gives signal strength of the AP we're on.
         if let Ok(out) = run_nmcli(&["-t", "-f", "IN-USE,SIGNAL", "device", "wifi", "list", "ifname", dev]) {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for line in out.lines() {
                 let fields = parse_terse_line(line);
                 if fields.len() >= 2 && fields[0] == "*" {
@@ -310,6 +357,8 @@ pub fn status() -> Result<WifiStatus, WifiError> {
             }
         }
         if let Ok(out) = run_nmcli(&["-t", "-f", "IP4.ADDRESS", "device", "show", dev]) {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for line in out.lines() {
                 // Format: IP4.ADDRESS[1]:192.168.1.42/24
                 if let Some(rest) = line.split(':').nth(1) {
@@ -343,7 +392,11 @@ pub fn status() -> Result<WifiStatus, WifiError> {
 /// stdlib doesn't have a `wait_with_timeout` for `Child` directly. 50 ms
 /// poll interval is short enough that human-perceived latency on success
 /// (nmcli returns in 2-3 s typically) is unaffected.
+// Was: Diese Funktion führt nmcli.
+// Warum: Der Lebenszyklus des Dienstes bleibt so an einer zentralen Stelle steuerbar.
 fn run_nmcli(args: &[&str]) -> Result<String, WifiError> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let mut child = match Command::new("nmcli")
         .args(args)
         .stdout(Stdio::piped())
@@ -363,7 +416,11 @@ fn run_nmcli(args: &[&str]) -> Result<String, WifiError> {
     };
 
     let start = std::time::Instant::now();
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
     loop {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match child.try_wait() {
             Ok(Some(status)) => {
                 let output = child.wait_with_output().map_err(|e| WifiError::Io(e.to_string()))?;
@@ -395,9 +452,13 @@ fn run_nmcli(args: &[&str]) -> Result<String, WifiError> {
 /// Parse one line of nmcli `-t` (terse) output into its colon-separated
 /// fields, handling the `\:` escape that nmcli uses for literal colons
 /// inside field values (most commonly in SSIDs).
+// Was: Diese Funktion liest und prüft terse line.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_terse_line(line: &str) -> Vec<String> {
     let mut out: Vec<String> = vec![String::new()];
     let mut chars = line.chars().peekable();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while let Some(c) = chars.next() {
         if c == '\\' {
             // Backslash escapes the next char literally. nmcli only escapes

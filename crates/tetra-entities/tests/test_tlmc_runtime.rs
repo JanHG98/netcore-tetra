@@ -1,3 +1,8 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+// Was: Bindet das Untermodul common in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod common;
 
 use tetra_config::bluestation::StackMode;
@@ -13,6 +18,8 @@ use tetra_entities::umac::umac_ms::UmacMs;
 
 use crate::common::ComponentTest;
 
+// Was: Diese Funktion gleicht Nachricht.
+// Warum: Mehrere Zustandsquellen bleiben dadurch auf demselben Stand.
 fn sync_message(carrier_num: u16, rssi_dbfs: f32) -> SapMsg {
     SapMsg {
         sap: Sap::TmvSap,
@@ -31,6 +38,8 @@ fn sync_message(carrier_num: u16, rssi_dbfs: f32) -> SapMsg {
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `configure_request_returns_confirmation` für configure request returns confirmation aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn configure_request_returns_confirmation() {
     let mut test = ComponentTest::new(StackMode::Ms, None);
     test.populate_entities(vec![TetraEntity::Umac], vec![TetraEntity::Mle]);
@@ -54,6 +63,8 @@ fn configure_request_returns_confirmation() {
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `scan_completes_on_valid_sync_for_requested_carrier` für scan completes on valid sync for requested und weitere Angaben aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn scan_completes_on_valid_sync_for_requested_carrier() {
     let mut test = ComponentTest::new(StackMode::Ms, None);
     test.populate_entities(
@@ -93,6 +104,8 @@ fn scan_completes_on_valid_sync_for_requested_carrier() {
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `resource_loss_and_recovery_are_edge_triggered` für resource loss and recovery are edge triggered aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn resource_loss_and_recovery_are_edge_triggered() {
     let mut test = ComponentTest::new(StackMode::Ms, None);
     test.populate_entities(vec![TetraEntity::Umac], vec![TetraEntity::Mle]);
@@ -130,6 +143,8 @@ fn resource_loss_and_recovery_are_edge_triggered() {
     }));
 }
 #[test]
+// Was: Führt den Arbeitsschritt `runtime_snapshot_is_available_for_tbs_diagnostics` für Laufzeit snapshot is available for TETRA-Basisstation diagnostics aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn runtime_snapshot_is_available_for_tbs_diagnostics() {
     let mut test = ComponentTest::new(StackMode::Ms, None);
     test.populate_entities(vec![TetraEntity::Umac], vec![]);
@@ -145,6 +160,8 @@ fn runtime_snapshot_is_available_for_tbs_diagnostics() {
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `scan_times_out_with_negative_confirmation` für scan times out with negative confirmation aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn scan_times_out_with_negative_confirmation() {
     let mut test = ComponentTest::new(StackMode::Ms, None);
     test.populate_entities(vec![TetraEntity::Umac], vec![TetraEntity::Mle, TetraEntity::Lmac]);

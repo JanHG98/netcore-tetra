@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Einlesen und Prüfen der TETRA-Konfiguration.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use serde::Deserialize;
 use std::collections::{BTreeMap, HashMap};
 
@@ -9,6 +12,8 @@ use crate::bluestation::SecretField;
 /// `/api/action/tpg2200?token=...`, FlowStation sends a configured Type-4 SDS to the configured
 /// TPG2200 ISSI, and the raw Call-Out ID byte advances in memory after each successful trigger.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für cfg tpg2200 action in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgTpg2200Action {
     pub enabled: bool,
     pub token: SecretField,
@@ -25,7 +30,11 @@ pub struct CfgTpg2200Action {
     pub max_text_chars: usize,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for CfgTpg2200Action`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for CfgTpg2200Action {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             enabled: false,
@@ -44,6 +53,8 @@ impl Default for CfgTpg2200Action {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für cfg tpg2200 action dto in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgTpg2200ActionDto {
     #[serde(default)]
     pub enabled: bool,
@@ -80,7 +91,11 @@ pub struct CfgTpg2200ActionDto {
     pub extra: std::collections::HashMap<String, toml::Value>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for CfgTpg2200ActionDto`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for CfgTpg2200ActionDto {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             enabled: false,
@@ -103,22 +118,32 @@ impl Default for CfgTpg2200ActionDto {
     }
 }
 
+// Was: Führt den Arbeitsschritt `default_source_issi` für default source Teilnehmerkennung (ISSI) aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_source_issi() -> u32 {
     4010001
 }
 
+// Was: Führt den Arbeitsschritt `default_incident_base` für default incident base aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_incident_base() -> u16 {
     1
 }
 
+// Was: Führt den Arbeitsschritt `default_tpg2200_ric` für default tpg2200 ric aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_tpg2200_ric() -> u32 {
     0x0009_0D10
 }
 
+// Was: Führt den Arbeitsschritt `default_priority` für default Priorität aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_priority() -> u8 {
     15
 }
 
+// Was: Führt den Arbeitsschritt `incident_from_selector_byte` für incident from selector byte aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn incident_from_selector_byte(selector: u16) -> u16 {
     let selector = selector.min(255) as u8;
     let major = (selector >> 4) as u16;
@@ -128,6 +153,8 @@ fn incident_from_selector_byte(selector: u16) -> u16 {
     ((block - 1) * 16) + slot
 }
 
+// Was: Diese Funktion wählt incident base.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn select_incident_base(dto: &CfgTpg2200ActionDto) -> u16 {
     dto.incident_base
         .map(|incident| incident.clamp(1, 256))
@@ -135,20 +162,28 @@ fn select_incident_base(dto: &CfgTpg2200ActionDto) -> u16 {
         .unwrap_or_else(default_incident_base)
 }
 
+// Was: Diese Funktion führt Priorität maps.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn merge_priority_maps(legacy: HashMap<String, u8>, preferred: HashMap<String, u8>) -> HashMap<String, u8> {
     let mut merged = legacy;
     merged.extend(preferred);
     merged
 }
 
+// Was: Führt den Arbeitsschritt `default_text` für default text aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_text() -> String {
     "ALARM".to_string()
 }
 
+// Was: Führt den Arbeitsschritt `default_max_text_chars` für default max text chars aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_max_text_chars() -> usize {
     80
 }
 
+// Was: Diese Funktion wendet tpg2200 action patch.
+// Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
 pub fn apply_tpg2200_action_patch(dto: CfgTpg2200ActionDto) -> Result<CfgTpg2200Action, String> {
     let incident_base = select_incident_base(&dto);
     if dto.enabled {
@@ -183,8 +218,12 @@ pub fn apply_tpg2200_action_patch(dto: CfgTpg2200ActionDto) -> Result<CfgTpg2200
     })
 }
 
+// Was: Führt den Arbeitsschritt `normalize_issi_priorities` für normalize Teilnehmerkennung (ISSI) priorities aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn normalize_issi_priorities(values: HashMap<String, u8>) -> Result<BTreeMap<u32, u8>, String> {
     let mut out = BTreeMap::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (raw_issi, priority) in values {
         let issi = raw_issi
             .trim()
@@ -201,8 +240,12 @@ fn normalize_issi_priorities(values: HashMap<String, u8>) -> Result<BTreeMap<u32
     Ok(out)
 }
 
+// Was: Führt den Arbeitsschritt `normalize_ric_priorities` für normalize ric priorities aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn normalize_ric_priorities(values: HashMap<String, u8>) -> Result<BTreeMap<u32, u8>, String> {
     let mut out = BTreeMap::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (raw_ric, priority) in values {
         let ric = parse_tpg_ric_key(&raw_ric)?;
         if priority > 15 {
@@ -213,6 +256,8 @@ fn normalize_ric_priorities(values: HashMap<String, u8>) -> Result<BTreeMap<u32,
     Ok(out)
 }
 
+// Was: Diese Funktion liest und prüft tpg ric key.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_tpg_ric_key(raw: &str) -> Result<u32, String> {
     let key = raw.trim();
     if key.is_empty() {

@@ -1,9 +1,16 @@
+# NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für Konfiguration toml.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 # FlowStation TETRA configuration file
 # DO NOT START without editing to comply with the legal limits in your jurisdiction
 
+# Was: Setzt die Einstellung `config_version` für diesen abschnitt.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 config_version = "0.6"
 
 # Stack operating mode: "Bs" (Base Station), "Ms" (Mobile Station), or "Mon" (Monitor)
+# Was: Setzt die Einstellung `stack_mode` für diesen abschnitt.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 stack_mode = "Bs"
 
 # Uncomment to enable verbose logging. Files grow fast and generate additional load.
@@ -14,6 +21,8 @@ stack_mode = "Bs"
 # tries to auto-detect via /proc/self/cgroup, then falls back to
 # "tetra-bluestation.service". Set this if your unit has a custom name.
 # Environment variable FLOWSTATION_SERVICE_UNIT also works.
+# Was: Setzt die Einstellung `service_name` für diesen abschnitt.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 service_name = "tetra"
 
 ###############################################################################
@@ -35,9 +44,13 @@ service_name = "tetra"
 
 ###############################################################################
 
+# Was: Öffnet den Konfigurationsabschnitt `phy_io`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [phy_io]
 
 # Input type: set to SoapySdr.
+# Was: Setzt die Einstellung `backend` für phy io.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 backend = "SoapySdr"
 
 # DEBUG/TEST CODE. Capture files grow fast.
@@ -49,10 +62,16 @@ backend = "SoapySdr"
 # ul_input_file = "./ul_input.bin"  # Debug; feed recorded UL RF samples in place of the radio
 # dl_input_file = "./dl_input.bin"  # Debug; feed recorded DL RF samples in place of generation
 
+# Was: Öffnet den Konfigurationsabschnitt `phy_io.soapysdr`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [phy_io.soapysdr]
 # Transmit tx(dl) and receive rx(ul) frequencies in Hz
 # !!! Make sure to also edit the corresponding fields in the cell_info section.
+# Was: Setzt die Einstellung `tx_freq` für phy io soapysdr.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 tx_freq = 418000000
+# Was: Setzt die Einstellung `rx_freq` für phy io soapysdr.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 rx_freq = 408000000
 
 # Adjust if your SDR has a non-negligible tuning error
@@ -112,48 +131,78 @@ rx_freq = 408000000
 
 ###############################################################################
 
+# Was: Öffnet den Konfigurationsabschnitt `net_info`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [net_info]
 # Mobile Country Code (MCC) - identifies your country
+# Was: Setzt die Einstellung `mcc` für net info.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 mcc = 901
 
 # Mobile Network Code (MNC) - identifies the TETRA network
 # MAKE SURE THE MNC CAN BE USED, CONSULT RELEVANT AUTHORITIES IF NECESSARY
+# Was: Setzt die Einstellung `mnc` für net info.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 mnc = 1510
 
 ###############################################################################
 
+# Was: Öffnet den Konfigurationsabschnitt `cell_info`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [cell_info]
 
 # See ETSI TS 100 392-15 V1.5.1 Clause 6: Duplex spacing
+# Was: Setzt die Einstellung `freq_band` für cell info.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 freq_band = 4                       # 400MHz band
+# Was: Setzt die Einstellung `main_carrier` für cell info.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 main_carrier = 720                  # + 1521 * 25kHz = 38250kHz
 # secondary_carrier = 721             # Optional second carrier, typically adjacent (+/- 25 kHz)
+# Was: Setzt die Einstellung `duplex_spacing` für cell info.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 duplex_spacing = 0                  # Use 5MHz spacing between ul and dl (for 400 MHz band)
 # custom_duplex_spacing = 7600000   # Do not uncomment unless you have programmed a custom duplex spacing entry in your radios
+# Was: Setzt die Einstellung `freq_offset` für cell info.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 freq_offset = 0                     # Carrier offset. Usually 0. Options: 0, 6250, -6250, 12500 Hz.
+# Was: Setzt die Einstellung `reverse_operation` für cell info.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 reverse_operation = false           # False: UL below DL. True: UL above DL.
 
 # Location area identifier
+# Was: Setzt die Einstellung `location_area` für cell info.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 location_area = 1
 
 # Colour code (0-63), helps distinguish adjacent cells on the same frequency
+# Was: Setzt die Einstellung `colour_code` für cell info.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 colour_code = 1
 
 # IANA timezone for time broadcasting via D-NWRK-BROADCAST. When set, the BS will
 # broadcast UTC time and local time offset once per hyperframe (~61s) so that
 # radios can synchronize their clocks. Daylight saving time is handled automatically.
+# Was: Setzt die Einstellung `timezone` für cell info.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 timezone = "Europe/Berlin"
 
 # Local SSI ranges for this cell. Traffic for these ranges will not leave the cell.
 # Overrides any settings in the brew section, if enabled.
 # Incoming brew traffic on these ranges will also be rejected.
 # The end of the range is INCLUSIVE — the end number IS in the range.
+# Was: Setzt die Einstellung `local_ssi_ranges` für cell info.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 local_ssi_ranges = [
     [0, 90],
 ]
 
 # Cell services. Leave the defaults unless you know what you're changing.
+# Was: Setzt die Einstellung `system_wide_services` für cell info.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 system_wide_services = true  # If false, radios will operate in fallback mode (ignored when Brew is enabled)
+# Was: Setzt die Einstellung `voice_service` für cell info.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 voice_service = true
 
 # Group call hangtime in seconds.
@@ -199,14 +248,28 @@ voice_service = true
 # ─────────────────────────────────────────────────────────────────────────────
 # OPTIONAL: additional cell service flags (advertised in the SYSINFO broadcast).
 # Leave at their defaults unless you know what you are changing.
+# Was: Setzt die Einstellung `registration` für cell info.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 registration              = true   # cell accepts MS registration (location updating)
+# Was: Setzt die Einstellung `deregistration` für cell info.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 deregistration            = true   # cell accepts MS deregistration
 # priority_cell             = false  # advertise this cell as a priority cell for reselection
+# Was: Setzt die Einstellung `no_minimum_mode` für cell info.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 no_minimum_mode           = true  # cell never falls back to minimum mode
+# Was: Setzt die Einstellung `migration` für cell info.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 migration                 = true  # cell supports inter-network migration
+# Was: Setzt die Einstellung `circuit_mode_data_service` für cell info.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 circuit_mode_data_service = true  # advertise circuit-mode data service
 # aie_service               = false  # advertise Air Interface Encryption (AIE) service
+# Was: Setzt die Einstellung `sndcp_service` für cell info.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 sndcp_service             = true  # advertise TETRA packet-data (SNDCP) service
+# Was: Setzt die Einstellung `advanced_link` für cell info.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 advanced_link              = true  # required for the terminal-browser WAP/IP profile
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -214,6 +277,8 @@ advanced_link              = true  # required for the terminal-browser WAP/IP pr
 # deployments — only touch these if you understand the ETSI MAC/MLE fields.
 # neighbor_cell_broadcast = 0       # 2-bit D-MLE-SYNC neighbor-cell broadcast mode (default 0)
 # late_entry_supported    = false   # advertise late-entry support in D-MLE-SYNC (default false)
+# Was: Setzt die Einstellung `system_code` für cell info.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 system_code             = 1       # SYNC system code; 3 = ETSI EN 300 392-2 V3.1.1 (default 3)
 # sharing_mode            = 0       # carrier sharing mode (0 = continuous transmission; default 0)
 # ts_reserved_frames      = 0       # timeshare reserved frames per multiframe (default 0)
@@ -318,30 +383,78 @@ system_code             = 1       # SYNC system code; 3 = ETSI EN 300 392-2 V3.1
 ###############################################################################
 # OPTIONAL: WAP browser over SNDCP packet data
 ###############################################################################
+# Was: Öffnet den Konfigurationsabschnitt `cell_info.wap_ip`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [cell_info.wap_ip]
+# Was: Setzt die Einstellung `enabled` für cell info WAP-Dienst IP-Daten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `address` für cell info WAP-Dienst IP-Daten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 address = "10.0.0.1"
+# Was: Setzt die Einstellung `port` für cell info WAP-Dienst IP-Daten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 port = 9200
+# Was: Setzt die Einstellung `response_ttl` für cell info WAP-Dienst IP-Daten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 response_ttl = 32
+# Was: Setzt die Einstellung `dynamic_pool_prefix` für cell info WAP-Dienst IP-Daten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 dynamic_pool_prefix = "10.0.0"
+# Was: Setzt die Einstellung `dynamic_pool_first_host` für cell info WAP-Dienst IP-Daten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 dynamic_pool_first_host = 2
+# Was: Setzt die Einstellung `dynamic_pool_last_host` für cell info WAP-Dienst IP-Daten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 dynamic_pool_last_host = 254
+# Was: Setzt die Einstellung `allow_static_ipv4` für cell info WAP-Dienst IP-Daten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 allow_static_ipv4 = true
+# Was: Setzt die Einstellung `accept_empty_probe` für cell info WAP-Dienst IP-Daten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 accept_empty_probe = true
+# Was: Setzt die Einstellung `accept_root_path` für cell info WAP-Dienst IP-Daten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 accept_root_path = true
+# Was: Setzt die Einstellung `accept_status_path` für cell info WAP-Dienst IP-Daten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 accept_status_path = true
+# Was: Setzt die Einstellung `accept_status_wml_path` für cell info WAP-Dienst IP-Daten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 accept_status_wml_path = true
+# Was: Setzt die Einstellung `max_request_payload_bytes` für cell info WAP-Dienst IP-Daten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_request_payload_bytes = 1024
+# Was: Setzt die Einstellung `assume_pdch_ready_after_data_transmit` für cell info WAP-Dienst IP-Daten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 assume_pdch_ready_after_data_transmit = false
 # ETSI SNDCP profile (ACTIVATE ACCEPT and runtime limits)
+# Was: Setzt die Einstellung `pdu_priority_max` für cell info WAP-Dienst IP-Daten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 pdu_priority_max = 4
+# Was: Setzt die Einstellung `ready_timer_code` für cell info WAP-Dienst IP-Daten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 ready_timer_code = 8
+# Was: Setzt die Einstellung `standby_timer_code` für cell info WAP-Dienst IP-Daten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 standby_timer_code = 4
+# Was: Setzt die Einstellung `response_wait_timer_code` für cell info WAP-Dienst IP-Daten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 response_wait_timer_code = 7
+# Was: Setzt die Einstellung `mtu_code` für cell info WAP-Dienst IP-Daten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 mtu_code = 2
+# Was: Setzt die Einstellung `network_default_data_priority` für cell info WAP-Dienst IP-Daten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 network_default_data_priority = 4
+# Was: Setzt die Einstellung `max_contexts_per_issi` für cell info WAP-Dienst IP-Daten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_contexts_per_issi = 4
+# Was: Setzt die Einstellung `max_total_contexts` für cell info WAP-Dienst IP-Daten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_total_contexts = 64
+# Was: Setzt die Einstellung `strict_source_address` für cell info WAP-Dienst IP-Daten.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 strict_source_address = true
 
 ###############################################################################
@@ -349,35 +462,83 @@ strict_source_address = true
 #
 # SNDCP assigns the subscriber IPv4 address during PDP activation; DHCP is not
 # used on this raw-IP bearer. DNS is negotiated through PPP IPCP in the PCO.
+# Was: Öffnet den Konfigurationsabschnitt `cell_info.packet_data_gateway`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [cell_info.packet_data_gateway]
+# Was: Setzt die Einstellung `enabled` für cell info Datenpaket data Gateway.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `interface_name` für cell info Datenpaket data Gateway.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 interface_name = "ntetra0"
+# Was: Setzt die Einstellung `prefix_len` für cell info Datenpaket data Gateway.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 prefix_len = 24
 # mtu = 576                   # omitted = negotiated SNDCP MTU
+# Was: Setzt die Einstellung `auto_configure` für cell info Datenpaket data Gateway.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 auto_configure = true
+# Was: Setzt die Einstellung `enable_ipv4_forwarding` für cell info Datenpaket data Gateway.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enable_ipv4_forwarding = true
+# Was: Setzt die Einstellung `managed_forwarding` für cell info Datenpaket data Gateway.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 managed_forwarding = true
 # Default-safe: only replies/established flows may enter from the external interface.
+# Was: Setzt die Einstellung `allow_unsolicited_inbound` für cell info Datenpaket data Gateway.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 allow_unsolicited_inbound = false
+# Was: Setzt die Einstellung `nat_mode` für cell info Datenpaket data Gateway.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 nat_mode = "masquerade"       # "disabled" or "masquerade"
+# Was: Setzt die Einstellung `firewall_backend` für cell info Datenpaket data Gateway.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 firewall_backend = "auto"     # "auto", "nftables", "iptables", "none"
 # external_interface = "eth0" # omitted = interface carrying the default route
+# Was: Setzt die Einstellung `dns_servers` für cell info Datenpaket data Gateway.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 dns_servers = ["1.1.1.1", "9.9.9.9"]
+# Was: Setzt die Einstellung `channel_capacity` für cell info Datenpaket data Gateway.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 channel_capacity = 256
 # 0 = dynamisch bis zur verfügbaren PDCH-Kapazität; sonst 1-6
+# Was: Setzt die Einstellung `max_pdch_bearers` für cell info Datenpaket data Gateway.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_pdch_bearers = 0
 # Mindestens so viele Traffic-Slots bleiben für Sprache/Notruf frei
+# Was: Setzt die Einstellung `reserved_voice_slots` für cell info Datenpaket data Gateway.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 reserved_voice_slots = 1
 # Bei Dual Carrier zuerst Carrier 2 nutzen und Carrier 1 für Sprache freihalten
+# Was: Setzt die Einstellung `prefer_secondary_carrier` für cell info Datenpaket data Gateway.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 prefer_secondary_carrier = true
+# Was: Setzt die Einstellung `downlink_queue_packets_per_context` für cell info Datenpaket data Gateway.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 downlink_queue_packets_per_context = 64
+# Was: Setzt die Einstellung `downlink_queue_bytes_per_context` für cell info Datenpaket data Gateway.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 downlink_queue_bytes_per_context = 262144
+# Was: Setzt die Einstellung `downlink_queue_ttl_secs` für cell info Datenpaket data Gateway.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 downlink_queue_ttl_secs = 30
+# Was: Setzt die Einstellung `page_retry_secs` für cell info Datenpaket data Gateway.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 page_retry_secs = 5
+# Was: Setzt die Einstellung `fragment_reassembly_timeout_secs` für cell info Datenpaket data Gateway.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 fragment_reassembly_timeout_secs = 30
+# Was: Setzt die Einstellung `fragment_reassembly_max_datagrams` für cell info Datenpaket data Gateway.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 fragment_reassembly_max_datagrams = 128
+# Was: Setzt die Einstellung `fragment_reassembly_max_bytes` für cell info Datenpaket data Gateway.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 fragment_reassembly_max_bytes = 4194304
+# Was: Setzt die Einstellung `automatic_filter_ttl_secs` für cell info Datenpaket data Gateway.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 automatic_filter_ttl_secs = 300
+# Was: Setzt die Einstellung `automatic_filter_max_bindings` für cell info Datenpaket data Gateway.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 automatic_filter_max_bindings = 4096
 
 ###############################################################################
@@ -401,31 +562,71 @@ automatic_filter_max_bindings = 4096
 # can query a station (e.g. on a hotspot with an unknown IP) straight from the radio menu.
 # Only authorized_issis get a reply.
 #
+# Was: Öffnet den Konfigurationsabschnitt `cell_info.sds_command_control`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [cell_info.sds_command_control]
+# Was: Setzt die Einstellung `authorized_issis` für cell info TETRA-Kurznachricht (SDS) command Steuerung.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 authorized_issis = [2010001, 2010002, 2020001, 2020002, 5102]   # ISSIs allowed to send commands
 #
+# Was: Öffnet den Konfigurationsabschnitt `cell_info.sds_command_control.commands`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[cell_info.sds_command_control.commands]]
+# Was: Setzt die Einstellung `status_code` für cell info TETRA-Kurznachricht (SDS) command Steuerung commands.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 status_code = 33001             # U-STATUS code sent from the radio to ISSI 4010001
+# Was: Setzt die Einstellung `action` für cell info TETRA-Kurznachricht (SDS) command Steuerung commands.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 action = "restart"
 #
+# Was: Öffnet den Konfigurationsabschnitt `cell_info.sds_command_control.commands`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[cell_info.sds_command_control.commands]]
+# Was: Setzt die Einstellung `status_code` für cell info TETRA-Kurznachricht (SDS) command Steuerung commands.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 status_code = 33002
+# Was: Setzt die Einstellung `action` für cell info TETRA-Kurznachricht (SDS) command Steuerung commands.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 action = "shutdown"
 #
+# Was: Öffnet den Konfigurationsabschnitt `cell_info.sds_command_control.commands`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[cell_info.sds_command_control.commands]]
+# Was: Setzt die Einstellung `status_code` für cell info TETRA-Kurznachricht (SDS) command Steuerung commands.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 status_code = 33003
+# Was: Setzt die Einstellung `action` für cell info TETRA-Kurznachricht (SDS) command Steuerung commands.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 action = "kick_all"
 #
+# Was: Öffnet den Konfigurationsabschnitt `cell_info.sds_command_control.commands`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[cell_info.sds_command_control.commands]]
+# Was: Setzt die Einstellung `status_code` für cell info TETRA-Kurznachricht (SDS) command Steuerung commands.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 status_code = 33004
+# Was: Setzt die Einstellung `action` für cell info TETRA-Kurznachricht (SDS) command Steuerung commands.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 action = "ip"
 #
+# Was: Öffnet den Konfigurationsabschnitt `cell_info.sds_command_control.commands`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[cell_info.sds_command_control.commands]]
+# Was: Setzt die Einstellung `status_code` für cell info TETRA-Kurznachricht (SDS) command Steuerung commands.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 status_code = 33005
+# Was: Setzt die Einstellung `action` für cell info TETRA-Kurznachricht (SDS) command Steuerung commands.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 action = "temp"
 #
+# Was: Öffnet den Konfigurationsabschnitt `cell_info.sds_command_control.commands`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[cell_info.sds_command_control.commands]]
+# Was: Setzt die Einstellung `status_code` für cell info TETRA-Kurznachricht (SDS) command Steuerung commands.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 status_code = 33006
+# Was: Setzt die Einstellung `action` für cell info TETRA-Kurznachricht (SDS) command Steuerung commands.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 action = "info"
 ###############################################################################
 
@@ -460,7 +661,11 @@ action = "info"
 # only in response to a radio that is demonstrably present, so it is RF-cheap and heals the common
 # "PTT does nothing after a BS restart" case the cache can miss. Honours the same whitelist /
 # issi_allowlist scoping. Set reactive_enabled = false to disable.
+# Was: Öffnet den Konfigurationsabschnitt `recovery`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [recovery]
+# Was: Setzt die Einstellung `enabled` für recovery.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = false                 # proactive boot-time cache replay on/off (default false)
 # issi_allowlist = []             # empty = every cached/seen ISSI; non-empty = only these (both modes)
 # cache_path = ""                 # explicit path; omit/empty = <config-dir>/recovery_cache.json
@@ -468,6 +673,8 @@ enabled = false                 # proactive boot-time cache replay on/off (defau
 # replay_per_frame = 1            # COMMANDs emitted per TDMA frame during the sweep (1..=18)
 # debounce_secs = 5               # coalesce registry changes into one cache write (1..=300)
 # max_cached_issis = 1024         # hard cap on cached terminals (1..=65535)
+# Was: Setzt die Einstellung `reactive_enabled` für recovery.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 reactive_enabled = false        # command unknown radios to re-register on sight (default true)
 # reactive_cooldown_secs = 10     # min gap between reactive COMMANDs to the same ISSI (2..=120)
 
@@ -485,8 +692,14 @@ reactive_enabled = false        # command unknown radios to re-register on sight
 # that is RF-/service-affecting, so it defaults OFF and is a deliberate operator choice. The
 # whole block can be omitted; these are the defaults.
 #
+# Was: Öffnet den Konfigurationsabschnitt `health`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [health]
+# Was: Setzt die Einstellung `enabled` für health.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true                    # master on/off for the monitor (default true)
+# Was: Setzt die Einstellung `snapshot_interval_secs` für health.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 snapshot_interval_secs = 300        # how often a snapshot is emitted (1..=300)
 # restart_on_core_stall = false     # software watchdog: restart if the core loop stalls (default false)
 # core_stall_secs = 10              # core is Critical after no TDMA tick for this long (2..=600)
@@ -514,8 +727,14 @@ snapshot_interval_secs = 300        # how often a snapshot is emitted (1..=300)
 # Everything here can also be toggled/edited live from the dashboard (Config page),
 # which writes the values back to this section.
 #
+# Was: Öffnet den Konfigurationsabschnitt `wx_service`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [wx_service]
+# Was: Setzt die Einstellung `enabled` für wx Dienst.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true                 # master on/off for the on-demand responder
+# Was: Setzt die Einstellung `service_issi` für wx Dienst.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 service_issi = 4010001            # ISSI that radios address to request weather
 # periodic_enabled = false       # auto-broadcast a fixed station periodically
 # periodic_issi = 1001           # destination (ISSI, or a GSSI if periodic_is_group)
@@ -544,15 +763,35 @@ service_issi = 4010001            # ISSI that radios address to request weather
 # chat_ids: positive = a private chat; negative = a group/channel. Each receives every
 # enabled alert. The per-category flags below default to true.
 #
+# Was: Öffnet den Konfigurationsabschnitt `telegram_alerts`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [telegram_alerts]
+# Was: Setzt die Einstellung `enabled` für telegram alerts.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `bot_token` für telegram alerts.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 bot_token = ""
+# Was: Setzt die Einstellung `chat_ids` für telegram alerts.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 chat_ids = [89135013]          # one or more; negative IDs are groups/channels
+# Was: Setzt die Einstellung `alert_connect` für telegram alerts.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 alert_connect = true            # radio attached
+# Was: Setzt die Einstellung `alert_disconnect` für telegram alerts.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 alert_disconnect = true         # radio detached
+# Was: Setzt die Einstellung `alert_t351` für telegram alerts.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 alert_t351 = true               # radio dropped (no response to T351)
+# Was: Setzt die Einstellung `alert_lip` für telegram alerts.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 alert_lip = true                # LIP/APRS position beacon
+# Was: Setzt die Einstellung `alert_backhaul` für telegram alerts.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 alert_backhaul = true           # Brew backhaul up/down
+# Was: Setzt die Einstellung `alert_critical_logs` für telegram alerts.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 alert_critical_logs = true      # forward the stack's WARN/ERROR log lines
 
 ###############################################################################
@@ -578,8 +817,14 @@ alert_critical_logs = true      # forward the stack's WARN/ERROR log lines
 #
 # Live view of terminals, active calls, log, config editor, kick and SDS.
 #
+# Was: Öffnet den Konfigurationsabschnitt `dashboard`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [dashboard]
+# Was: Setzt die Einstellung `port` für dashboard.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 port = 8080                    # HTTP port the dashboard listens on (default: 8080; must not be 0)
+# Was: Setzt die Einstellung `bind` für dashboard.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 bind = "0.0.0.0"               # bind address (default: 0.0.0.0 = all interfaces; use 127.0.0.1 for localhost-only)
 #
 # OPTIONAL: HTTP Basic Auth — protect the dashboard with a username and password.
@@ -591,7 +836,11 @@ bind = "0.0.0.0"               # bind address (default: 0.0.0.0 = all interfaces
 # the public internet without TLS. For internet-facing use, put a reverse proxy
 # with HTTPS (e.g. nginx, Caddy) in front of the dashboard.
 #
+# Was: Setzt die Einstellung `username` für dashboard.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 username = "admin"
+# Was: Setzt die Einstellung `password` für dashboard.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 password = "admin"
 #
 # OPTIONAL: public read-only overview (FH-FEAT-033). When true AND username/password
@@ -613,27 +862,59 @@ password = "admin"
 # LOCAL TETRA SPEECH RECORDING (NetCore Phase 1)
 # Records locally received TETRA speech as 8-kHz mono PCM WAV plus a JSON sidecar.
 # Runtime recording can be paused/resumed from INTEGRATIONEN -> AUDIO-ZENTRALE.
+# Was: Öffnet den Konfigurationsabschnitt `recording`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [recording]
+# Was: Setzt die Einstellung `enabled` für recording.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `active` für recording.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 active = true
+# Was: Setzt die Einstellung `directory` für recording.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 directory = "/var/lib/netcore/recordings"
+# Was: Setzt die Einstellung `mode` für recording.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 mode = "all"                    # all | selected_groups
+# Was: Setzt die Einstellung `selected_groups` für recording.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 selected_groups = []             # used only with mode = "selected_groups"
+# Was: Setzt die Einstellung `minimum_free_space_mb` für recording.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 minimum_free_space_mb = 2048
+# Was: Setzt die Einstellung `retention_days` für recording.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 retention_days = 30              # 0 disables automatic cleanup
+# Was: Setzt die Einstellung `max_recording_minutes` für recording.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_recording_minutes = 120
+# Was: Setzt die Einstellung `idle_finalize_secs` für recording.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 idle_finalize_secs = 15
+# Was: Setzt die Einstellung `max_list_entries` für recording.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_list_entries = 2000
 
 # Copy every finalized WAV + JSON sidecar to the already mounted NFS archive.
 # The destination root must already exist and be writable by the service user.
+# Was: Setzt die Einstellung `archive_enabled` für recording.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 archive_enabled = true
+# Was: Setzt die Einstellung `archive_directory` für recording.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 archive_directory = "/mnt/nfs-share/Recordings"
 
 # TTS-WAVs remain in the local recording library for selection/playback, but their
 # server copy is routed separately and never placed in the Recordings archive.
+# Was: Setzt die Einstellung `tts_archive_enabled` für recording.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 tts_archive_enabled = true
+# Was: Setzt die Einstellung `tts_archive_directory` für recording.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 tts_archive_directory = "/mnt/nfs-share/TTS-Dateien"
+# Was: Setzt die Einstellung `archive_retry_seconds` für recording.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 archive_retry_seconds = 60
 
 ###############################################################################
@@ -642,25 +923,59 @@ archive_retry_seconds = 60
 # `directory` is the writable local media library. Additional OS-mounted shares
 # are exposed read-only through `[[audio_player.shares]]`. Files from a share are
 # copied into `cache_directory` and fully ACELP-encoded before a radio call starts.
+# Was: Öffnet den Konfigurationsabschnitt `audio_player`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [audio_player]
+# Was: Setzt die Einstellung `enabled` für audio player.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `directory` für audio player.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 directory = "/var/lib/netcore/audio"
+# Was: Setzt die Einstellung `cache_directory` für audio player.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 cache_directory = "/var/cache/netcore/audio"
+# Was: Setzt die Einstellung `source_issi` für audio player.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 source_issi = 4010099
+# Was: Setzt die Einstellung `default_priority` für audio player.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 default_priority = 5
+# Was: Setzt die Einstellung `max_file_size_mb` für audio player.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_file_size_mb = 100
+# Was: Setzt die Einstellung `max_duration_seconds` für audio player.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_duration_seconds = 1800
 # 12 × 60 ms = 720 ms encoded TCH/S lead-in before the first syllable.
+# Was: Setzt die Einstellung `lead_in_silence_blocks` für audio player.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 lead_in_silence_blocks = 12
+# Was: Setzt die Einstellung `tail_silence_blocks` für audio player.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 tail_silence_blocks = 3
 # CMCE group-call hangtime is 5 seconds; keep AudioPlayer busy slightly longer.
+# Was: Setzt die Einstellung `group_release_guard_seconds` für audio player.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 group_release_guard_seconds = 6
+# Was: Setzt die Einstellung `individual_answer_timeout_seconds` für audio player.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 individual_answer_timeout_seconds = 30
+# Was: Setzt die Einstellung `ffmpeg_path` für audio player.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 ffmpeg_path = "ffmpeg"
 
+# Was: Öffnet den Konfigurationsabschnitt `audio_player.shares`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[audio_player.shares]]
+# Was: Setzt die Einstellung `id` für audio player shares.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 id = "server"
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "NFS-Server"
+# Was: Verweist auf den lokalen Pfad der Komponente.
+# Warum: Cargo findet dadurch den Quellcode innerhalb dieses gemeinsamen Arbeitsbereichs.
 path = "/mnt/nfs-share"
 
 ###############################################################################
@@ -668,54 +983,132 @@ path = "/mnt/nfs-share"
 # LOCAL PIPER TEXT TO SPEECH (NetCore TTS Phase 1)
 # Piper runs as a separate localhost HTTP service. FlowStation creates the complete
 # WAV locally before handing it to the existing TETRA audio dispatcher.
+# Was: Öffnet den Konfigurationsabschnitt `tts`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [tts]
+# Was: Setzt die Einstellung `enabled` für tts.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `endpoint` für tts.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 endpoint = "http://127.0.0.1:5005"
+# Was: Setzt die Einstellung `cache_directory` für tts.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 cache_directory = "/var/cache/netcore/tts"
+# Was: Setzt die Einstellung `template_directory` für tts.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 template_directory = "/var/lib/netcore/tts/templates"
+# Was: Setzt die Einstellung `auto_save_generated_templates` für tts.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 auto_save_generated_templates = true
+# Was: Setzt die Einstellung `default_voice` für tts.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 default_voice = "de-thorsten"
+# Was: Setzt die Einstellung `default_speed` für tts.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 default_speed = 0.95
+# Was: Setzt die Einstellung `default_priority` für tts.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 default_priority = 5
+# Was: Setzt die Einstellung `max_text_characters` für tts.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_text_characters = 2000
+# Was: Setzt die Einstellung `synthesis_timeout_seconds` für tts.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 synthesis_timeout_seconds = 90
+# Was: Setzt die Einstellung `max_output_file_mb` für tts.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_output_file_mb = 25
+# Was: Setzt die Einstellung `cache_retention_minutes` für tts.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 cache_retention_minutes = 1440
+# Was: Setzt die Einstellung `keep_generated_audio` für tts.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 keep_generated_audio = false
 
+# Was: Öffnet den Konfigurationsabschnitt `tts.voices`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[tts.voices]]
+# Was: Setzt die Einstellung `id` für tts voices.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 id = "de-thorsten"
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "Deutsch – Thorsten (mittel)"
+# Was: Setzt die Einstellung `provider_voice` für tts voices.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 provider_voice = "de_DE-thorsten-medium"
 
+# Was: Öffnet den Konfigurationsabschnitt `tts.voices`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[tts.voices]]
+# Was: Setzt die Einstellung `id` für tts voices.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 id = "de-thorsten-high"
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "Deutsch – Thorsten (hoch)"
+# Was: Setzt die Einstellung `provider_voice` für tts voices.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 provider_voice = "de_DE-thorsten-high"
 
+# Was: Öffnet den Konfigurationsabschnitt `tts.voices`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[tts.voices]]
+# Was: Setzt die Einstellung `id` für tts voices.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 id = "de-karlsson"
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "Deutsch – Karlsson"
+# Was: Setzt die Einstellung `provider_voice` für tts voices.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 provider_voice = "de_DE-karlsson-low"
 
+# Was: Öffnet den Konfigurationsabschnitt `tts.voices`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[tts.voices]]
+# Was: Setzt die Einstellung `id` für tts voices.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 id = "de-pavoque"
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "Deutsch – Pavoque"
+# Was: Setzt die Einstellung `provider_voice` für tts voices.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 provider_voice = "de_DE-pavoque-low"
 
+# Was: Öffnet den Konfigurationsabschnitt `tts.voices`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[tts.voices]]
+# Was: Setzt die Einstellung `id` für tts voices.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 id = "de-thorsten-neutral"
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "Deutsch – Thorsten emotional (neutral)"
+# Was: Setzt die Einstellung `provider_voice` für tts voices.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 provider_voice = "de_DE-thorsten_emotional-medium"
+# Was: Setzt die Einstellung `speaker_id` für tts voices.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 speaker_id = 4
 
 ###############################################################################
 
+# Was: Öffnet den Konfigurationsabschnitt `netcore_directory`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [netcore_directory]
 # Local/LAN NetCore Directory Server for device, base-station, group and status labels.
 # Set base_url to the LXC/host running NetCore Directory.
+# Was: Setzt die Einstellung `enabled` für netcore directory.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `base_url` für netcore directory.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 base_url = "http://10.0.1.23:8095"
+# Was: Setzt die Einstellung `timeout_ms` für netcore directory.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 timeout_ms = 2000
 
 ###############################################################################
@@ -761,22 +1154,36 @@ timeout_ms = 2000
 # Uncomment this section to automatically enable the Brew entity.
 # See: https://wiki.tetrapack.online/books/tetra/page/brew
 
+# Was: Öffnet den Konfigurationsabschnitt `brew`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [brew]
 
 # Server address
+# Was: Setzt die Einstellung `host` für Brew-Verbindung.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 host = "10.0.1.22"
+# Was: Setzt die Einstellung `port` für Brew-Verbindung.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 port = 8081
 
 # Use TLS (wss:// / https://)
+# Was: Setzt die Einstellung `tls` für Brew-Verbindung.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 tls = false
 
 # HTTP Digest authentication credentials, registered in BrandMeister.
 # Username should be your SSID (DMR ID + 2-digit suffix).
 # Password is your BrandMeister hotspot password.
+# Was: Setzt die Einstellung `username` für Brew-Verbindung.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 username = 4010001
+# Was: Setzt die Einstellung `password` für Brew-Verbindung.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 password = "012345"
 
 # Reconnect delay (seconds)
+# Was: Setzt die Einstellung `reconnect_delay_secs` für Brew-Verbindung.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 reconnect_delay_secs = 5
 
 # Additional initial latency in frames for inbound Brew jitter playback.
@@ -790,6 +1197,8 @@ reconnect_delay_secs = 5
 # Disabled by default. Enable if your Brew server supports RSSI data ingestion.
 # When enabled, each radio's signal level is sent at most once every 5 seconds.
 # Format: {"issi": 2260570, "rssi_dbfs": -42.3}
+# Was: Setzt die Einstellung `feature_rssi_export` für Brew-Verbindung.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 feature_rssi_export = true
 
 # OPTIONAL: restrict OUTBOUND Brew forwarding to selected SSIs.
@@ -979,25 +1388,65 @@ feature_rssi_export = true
 # and requires the native tetra-codec (outerplane) ACELP library installed. The
 # default build (DAPNET / Snom / GeoAlarm / dashboard) works without it.
 
+# Was: Öffnet den Konfigurationsabschnitt `asterisk`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [asterisk]
+# Was: Setzt die Einstellung `enabled` für asterisk.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `outbound_prefix` für asterisk.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 outbound_prefix = "91"
+# Was: Setzt die Einstellung `strip_outbound_prefix` für asterisk.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 strip_outbound_prefix = true
+# Was: Setzt die Einstellung `inbound_prefix` für asterisk.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 inbound_prefix = "T"
+# Was: Setzt die Einstellung `register` für asterisk.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 register = true
+# Was: Setzt die Einstellung `codec` für asterisk.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 codec = "PCMU"
+# Was: Setzt die Einstellung `service_numbers` für asterisk.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 service_numbers = ["*"]
+# Was: Setzt die Einstellung `rtp_port_min` für asterisk.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 rtp_port_min = 30000
+# Was: Setzt die Einstellung `rtp_port_max` für asterisk.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 rtp_port_max = 30100
+# Was: Setzt die Einstellung `bind_addr` für asterisk.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 bind_addr = "0.0.0.0"
+# Was: Setzt die Einstellung `bind_port` für asterisk.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 bind_port = 5062
+# Was: Setzt die Einstellung `remote_host` für asterisk.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 remote_host = "10.0.1.21"
+# Was: Setzt die Einstellung `remote_port` für asterisk.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 remote_port = 5060
+# Was: Setzt die Einstellung `contact_host` für asterisk.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 contact_host = "10.0.1.20"
+# Was: Setzt die Einstellung `from_domain` für asterisk.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 from_domain = "10.0.1.21"
+# Was: Setzt die Einstellung `local_user` für asterisk.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 local_user = "101"
+# Was: Setzt die Einstellung `auth_user` für asterisk.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 auth_user = "101"
+# Was: Setzt die Einstellung `password` für asterisk.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 password = "101"
+# Was: Setzt die Einstellung `realm` für asterisk.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 realm = "asterisk"
 ###############################################################################
 
@@ -1005,37 +1454,101 @@ realm = "asterisk"
 # The base station keeps local RF, registration, local calls, local SDS and
 # installed security material alive when the Node Gateway or individual Core
 # services are unreachable.  No Internet connection is required for local mode.
+# Was: Öffnet den Konfigurationsabschnitt `edge_fallback`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [edge_fallback]
+# Was: Setzt die Einstellung `enabled` für edge fallback.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Was: Setzt die Einstellung `enter_after_secs` für edge fallback.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enter_after_secs = 15
+# Was: Setzt die Einstellung `recover_after_secs` für edge fallback.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 recover_after_secs = 20
+# Was: Setzt die Einstellung `unknown_service_is_available` für edge fallback.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 unknown_service_is_available = false
+# Was: Setzt die Einstellung `service_matrix_lease_secs` für edge fallback.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 service_matrix_lease_secs = 60
+# Was: Setzt die Einstellung `policy_cache_path` für edge fallback.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 policy_cache_path = "/var/lib/flowstation/edge-policy-cache.json"
+# Was: Setzt die Einstellung `policy_cache_max_age_secs` für edge fallback.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 policy_cache_max_age_secs = 604800
+# Was: Setzt die Einstellung `keep_last_known_policy` für edge fallback.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 keep_last_known_policy = true
+# Was: Setzt die Einstellung `event_spool_path` für edge fallback.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 event_spool_path = "/var/lib/flowstation/edge-event-spool.jsonl"
+# Was: Setzt die Einstellung `event_spool_max_entries` für edge fallback.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 event_spool_max_entries = 10000
+# Was: Setzt die Einstellung `event_spool_max_bytes` für edge fallback.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 event_spool_max_bytes = 16777216
+# Was: Setzt die Einstellung `replay_batch_size` für edge fallback.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 replay_batch_size = 128
+# Was: Setzt die Einstellung `required_services` für edge fallback.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 required_services = ["subscriber-core", "group-core", "mobility-core", "call-control", "media-switch", "sds-router"]
 
+# Was: Öffnet den Konfigurationsabschnitt `edge_fallback.service_fallbacks`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [edge_fallback.service_fallbacks]
+# Was: Setzt die Einstellung `node-gateway` für edge fallback Dienst fallbacks.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 node-gateway = "local_edge_autonomy"
+# Was: Setzt die Einstellung `subscriber-core` für edge fallback Dienst fallbacks.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 subscriber-core = "cached_policy_then_static_config"
+# Was: Setzt die Einstellung `group-core` für edge fallback Dienst fallbacks.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 group-core = "cached_policy_then_local_affiliations"
+# Was: Setzt die Einstellung `mobility-core` für edge fallback Dienst fallbacks.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 mobility-core = "local_registration_and_location_area"
+# Was: Setzt die Einstellung `call-control` für edge fallback Dienst fallbacks.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 call-control = "local_cell_calls_only"
+# Was: Setzt die Einstellung `media-switch` für edge fallback Dienst fallbacks.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 media-switch = "local_air_interface_media_only"
+# Was: Setzt die Einstellung `recorder` für edge fallback Dienst fallbacks.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 recorder = "local_recorder_continues"
+# Was: Setzt die Einstellung `sds-router` für edge fallback Dienst fallbacks.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 sds-router = "local_delivery_and_durable_store_forward"
+# Was: Setzt die Einstellung `packet-core` für edge fallback Dienst fallbacks.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 packet-core = "local_sndcp_contexts"
+# Was: Setzt die Einstellung `ip-gateway` für edge fallback Dienst fallbacks.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 ip-gateway = "local_tun_gateway_when_configured"
+# Was: Setzt die Einstellung `security-core` für edge fallback Dienst fallbacks.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 security-core = "last_known_security_policy_no_downgrade"
+# Was: Setzt die Einstellung `kmf` für edge fallback Dienst fallbacks.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 kmf = "installed_keys_only_no_otar"
+# Was: Setzt die Einstellung `transit` für edge fallback Dienst fallbacks.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 transit = "no_inter_region_routing"
+# Was: Setzt die Einstellung `control-room` für edge fallback Dienst fallbacks.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 control-room = "local_dashboard_and_audit"
+# Was: Setzt die Einstellung `observability` für edge fallback Dienst fallbacks.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 observability = "local_logs_and_health_continue"
+# Was: Setzt die Einstellung `application-gateway` für edge fallback Dienst fallbacks.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 application-gateway = "local_integrations_only"
+# Was: Setzt die Einstellung `media-library` für edge fallback Dienst fallbacks.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 media-library = "local_media_cache_and_playout"
 

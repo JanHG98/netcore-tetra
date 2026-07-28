@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 
 use crate::mm::{enums::type34_elem_id_dl::MmType34ElemIdDl, fields::group_identity_downlink::GroupIdentityDownlink};
@@ -7,6 +10,8 @@ use tetra_core::{BitBuffer, pdu_parse_error::PduParseErr};
 /// Representation of the Group identity location accept PDU (Clause 16.10.23).
 /// The group identity location accept information element shall be a collection of sub elements.
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für Gruppe identity location accept in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GroupIdentityLocationAccept {
     /// Type1, 1 bit. 0 = accept, 1 = reject
     pub group_identity_accept_reject: u8,
@@ -17,8 +22,12 @@ pub struct GroupIdentityLocationAccept {
 }
 
 #[allow(unreachable_code)] // TODO FIXME review, finalize and remove this
+// Was: Implementiert das zugehörige Verhalten für `GroupIdentityLocationAccept`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl GroupIdentityLocationAccept {
     /// Parse from BitBuffer
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buffer: &mut BitBuffer) -> Result<Self, PduParseErr> {
         // Type1
         let group_identity_accept_reject = buffer.read_field(1, "group_identity_accept_reject")? as u8;
@@ -50,6 +59,8 @@ impl GroupIdentityLocationAccept {
     }
 
     /// Serialize this PDU into the given BitBuffer.
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buffer: &mut BitBuffer) -> Result<(), PduParseErr> {
         // Type1
         buffer.write_bits(self.group_identity_accept_reject as u64, 1);
@@ -78,7 +89,11 @@ impl GroupIdentityLocationAccept {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for GroupIdentityLocationAccept`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for GroupIdentityLocationAccept {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,

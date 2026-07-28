@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für die Kopplung von TETRA-Paketdaten an IP-Netze.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpStream, ToSocketAddrs};
 use std::time::Duration;
@@ -8,24 +11,34 @@ use crate::config::PacketCoreClientConfig;
 use crate::protocol::{DownlinkNpduInput, PacketCoreContext, PacketCoreNpdu, PacketCoreStatus};
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für Datenpaket core client in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PacketCoreClient {
     base: HttpBase,
     timeout: Duration,
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für HTTP base in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct HttpBase {
     host: String,
     port: u16,
     base_path: String,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für HTTP response in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct HttpResponse {
     status: u16,
     body: Vec<u8>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `PacketCoreClient`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl PacketCoreClient {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(config: &PacketCoreClientConfig) -> Result<Self, String> {
         Ok(Self {
             base: HttpBase::parse(&config.url)?,
@@ -33,18 +46,26 @@ impl PacketCoreClient {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `status` für Status aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn status(&self) -> Result<PacketCoreStatus, String> {
         self.get_json("/api/v1/status")
     }
 
+    // Was: Führt den Arbeitsschritt `contexts` für contexts aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn contexts(&self) -> Result<Vec<PacketCoreContext>, String> {
         self.get_json("/api/v1/contexts")
     }
 
+    // Was: Führt den Arbeitsschritt `npdu_outbox` für npdu outbox aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn npdu_outbox(&self, limit: usize) -> Result<Vec<PacketCoreNpdu>, String> {
         self.get_json(&format!("/api/v1/npdu-outbox?limit={limit}"))
     }
 
+    // Was: Diese Funktion löscht npdu.
+    // Warum: Das Entfernen wird dadurch kontrolliert durchgeführt und hinterlässt keine verwaisten Verweise.
     pub fn delete_npdu(&self, id: &str) -> Result<(), String> {
         let response = self.request("DELETE", &format!("/api/v1/npdu-outbox/{id}"), None)?;
         if matches!(response.status, 200 | 204 | 404) {
@@ -58,6 +79,8 @@ impl PacketCoreClient {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `queue_downlink` für Warteschlange Downlink (Netz zum Funkgerät) aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn queue_downlink(&self, input: &DownlinkNpduInput) -> Result<(), String> {
         let body = serde_json::to_vec(input).map_err(|error| error.to_string())?;
         let response = self.request("POST", "/api/v1/downlink", Some(&body))?;
@@ -72,6 +95,8 @@ impl PacketCoreClient {
         }
     }
 
+    // Was: Diese Funktion liest JSON-Daten.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     fn get_json<T: DeserializeOwned>(&self, path: &str) -> Result<T, String> {
         let response = self.request("GET", path, None)?;
         if response.status != 200 {
@@ -84,6 +109,8 @@ impl PacketCoreClient {
         serde_json::from_slice(&response.body).map_err(|error| error.to_string())
     }
 
+    // Was: Diese Funktion fordert den vorgesehenen Arbeitsschritt.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn request(&self, method: &str, path: &str, body: Option<&[u8]>) -> Result<HttpResponse, String> {
         let address = resolve_one(&self.base.host, self.base.port)?;
         let mut stream = TcpStream::connect_timeout(&address, self.timeout)
@@ -116,15 +143,23 @@ impl PacketCoreClient {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `HttpBase`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl HttpBase {
+    // Was: Diese Funktion liest und prüft den vorgesehenen Arbeitsschritt.
+    // Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     fn parse(value: &str) -> Result<Self, String> {
         let value = value
             .strip_prefix("http://")
             .ok_or_else(|| "only http:// Packet Core URLs are supported".to_string())?;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let (authority, path) = match value.split_once('/') {
             Some((authority, path)) => (authority, format!("/{path}")),
             None => (value, String::new()),
         };
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let (host, port) = match authority.rsplit_once(':') {
             Some((host, port)) => {
                 let port = port
@@ -144,6 +179,8 @@ impl HttpBase {
         })
     }
 
+    // Was: Diese Funktion verknüpft path.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn join_path(&self, path: &str) -> String {
         let path = if path.starts_with('/') {
             path.to_string()
@@ -154,6 +191,8 @@ impl HttpBase {
     }
 }
 
+// Was: Diese Funktion ermittelt one.
+// Warum: Unklare oder indirekte Angaben werden so vor der weiteren Verarbeitung eindeutig gemacht.
 fn resolve_one(host: &str, port: u16) -> Result<SocketAddr, String> {
     (host, port)
         .to_socket_addrs()
@@ -162,6 +201,8 @@ fn resolve_one(host: &str, port: u16) -> Result<SocketAddr, String> {
         .ok_or_else(|| format!("Packet Core {host}:{port} resolved to no address"))
 }
 
+// Was: Diese Funktion liest und prüft HTTP response.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_http_response(bytes: &[u8]) -> Result<HttpResponse, String> {
     let split = bytes
         .windows(4)

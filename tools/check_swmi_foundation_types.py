@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für check TETRA-Netzinfrastruktur (SwMI) foundation types.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 """Static guardrails for SWMI Foundation 1 Package B.
 
 This checker is deliberately dependency-free. It does not replace rustc, but it
@@ -105,26 +108,36 @@ EXPECTED_LTPD = {
 }
 
 
+# Was: Diese Funktion liest den vorgesehenen Arbeitsschritt.
+# Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
 def read(path: Path) -> str:
     if not path.is_file():
         fail(f"missing required file: {path.relative_to(ROOT)}")
     return path.read_text(encoding="utf-8")
 
 
+# Was: Führt den Arbeitsschritt `fail` für fail aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def fail(message: str) -> None:
     print(f"ERROR: {message}", file=sys.stderr)
     raise SystemExit(1)
 
 
+# Was: Führt den Arbeitsschritt `defined_types` für defined types aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def defined_types(text: str) -> set[str]:
     return set(re.findall(r"(?m)^pub\s+(?:struct|enum|type)\s+(\w+)", text))
 
 
+# Was: Diese Funktion prüft delimiters.
+# Warum: Fehler oder unzulässige Zustände werden dadurch früh erkannt.
 def check_delimiters(path: Path, text: str) -> None:
     pairs = {"}": "{", ")": "(", "]": "["}
     stack: list[tuple[str, int]] = []
     state = "code"
     i = 0
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     while i < len(text):
         ch = text[i]
         nxt = text[i + 1] if i + 1 < len(text) else ""
@@ -179,14 +192,20 @@ def check_delimiters(path: Path, text: str) -> None:
         fail(f"unclosed delimiter in {path.relative_to(ROOT)}")
 
 
+# Was: Diese Funktion prüft expected types.
+# Warum: Fehler oder unzulässige Zustände werden dadurch früh erkannt.
 def check_expected_types(path: Path, text: str, expected: set[str]) -> None:
     missing = sorted(expected - defined_types(text))
     if missing:
         fail(f"{path.relative_to(ROOT)} misses types: {', '.join(missing)}")
 
 
+# Was: Diese Funktion prüft no placeholders.
+# Warum: Fehler oder unzulässige Zustände werden dadurch früh erkannt.
 def check_no_placeholders(path: Path, text: str) -> None:
     active = []
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for line_no, line in enumerate(text.splitlines(), start=1):
         code = line.split("//", 1)[0]
         if re.search(r"\bTodo\b|\btodo!\s*\(|\bunimplemented!\s*\(|\bunimplemented_log!\s*\(", code):
@@ -195,6 +214,8 @@ def check_no_placeholders(path: Path, text: str) -> None:
         fail(f"active placeholder remains in {path.relative_to(ROOT)} at lines {active}")
 
 
+# Was: Führt den Arbeitsschritt `variant_names` für variant names aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def variant_names(text: str) -> set[str]:
     enum_match = re.search(r"pub enum SapMsgInner\s*\{", text)
     if not enum_match:
@@ -202,6 +223,8 @@ def variant_names(text: str) -> set[str]:
     start = enum_match.end()
     depth = 1
     i = start
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     while i < len(text) and depth:
         if text[i] == "{":
             depth += 1
@@ -212,6 +235,8 @@ def variant_names(text: str) -> set[str]:
     return set(re.findall(r"(?m)^\s{4}([A-Z][A-Za-z0-9_]*)\s*(?:\(|\{|,)", body))
 
 
+# Was: Diese Funktion prüft sap variants.
+# Warum: Fehler oder unzulässige Zustände werden dadurch früh erkannt.
 def check_sap_variants(text: str) -> None:
     variants = variant_names(text)
     expected = EXPECTED_TLMC | EXPECTED_LTPD
@@ -224,14 +249,20 @@ def check_sap_variants(text: str) -> None:
         fail("SapMsgInner Display has no non-panicking fallback")
 
 
+# Was: Führt den Arbeitsschritt `extract_struct_literals` für extract struct literals aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def extract_struct_literals(text: str, struct_name: str) -> list[str]:
     results: list[str] = []
     pattern = re.compile(rf"\b{re.escape(struct_name)}\s*\{{")
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for match in pattern.finditer(text):
         start = match.end() - 1
         depth = 0
         i = start
         state = "code"
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         while i < len(text):
             ch = text[i]
             nxt = text[i + 1] if i + 1 < len(text) else ""
@@ -262,11 +293,17 @@ def extract_struct_literals(text: str, struct_name: str) -> list[str]:
     return results
 
 
+# Was: Diese Funktion prüft TETRA-Paketdatentransport integration.
+# Warum: Fehler oder unzulässige Zustände werden dadurch früh erkannt.
 def check_ltpd_integration(bs: str, ms: str) -> None:
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for label, text in (("mle_bs.rs", bs), ("mle_ms.rs", ms)):
         literals = extract_struct_literals(text, "LtpdMleUnitdataInd")
         if not literals:
             fail(f"no LtpdMleUnitdataInd construction found in {label}")
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for literal in literals:
             if "received_address_type:" not in literal:
                 fail(f"LtpdMleUnitdataInd misses received_address_type in {label}")
@@ -278,6 +315,8 @@ def check_ltpd_integration(bs: str, ms: str) -> None:
         fail("received_address_type was accidentally added to LcmcMleUnitdataInd")
 
 
+# Was: Startet das Programm, lädt die benötigten Einstellungen und übergibt an den eigentlichen Dienstablauf.
+# Warum: Ein klarer Einstiegspunkt hält Startreihenfolge, Fehlerausgabe und geordnetes Beenden zusammen.
 def main() -> int:
     files = {
         COMMON: read(COMMON),
@@ -290,6 +329,8 @@ def main() -> int:
         TESTS: read(TESTS),
     }
 
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for path, text in files.items():
         check_delimiters(path, text)
 
@@ -297,6 +338,8 @@ def main() -> int:
     check_expected_types(TLMC, files[TLMC], EXPECTED_TLMC)
     check_expected_types(LTPD, files[LTPD], EXPECTED_LTPD)
 
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for path in (COMMON, TLMC, LTPD):
         check_no_placeholders(path, files[path])
 
@@ -320,5 +363,7 @@ def main() -> int:
     return 0
 
 
+# Was: Startet den Programmablauf nur dann, wenn diese Datei direkt ausgeführt wird.
+# Warum: Beim Import als Modul sollen nur Funktionen bereitstehen und keine Nebenwirkungen automatisch starten.
 if __name__ == "__main__":
     raise SystemExit(main())

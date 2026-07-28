@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Nachrichten an den Schnittstellen zwischen TETRA-Protokollschichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! Internal control messages for the infrastructure-side MLE cell-change runtime.
 //!
 //! These commands are deliberately local control-plane messages. They are not
@@ -13,6 +16,8 @@ use crate::common::{
 };
 
 #[derive(Debug, Clone)]
+// Was: Listet die möglichen Varianten für MLE-Verbindungssteuerung cell change Steuerung auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum MleCellChangeControl {
     GrantPrepare {
         subscriber: TetraAddress,

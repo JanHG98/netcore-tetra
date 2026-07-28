@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 // ---------------------------------------------------------------------------
 // Command / CommandResponse — concrete enums sent through the channel
 //
@@ -10,6 +13,8 @@ use serde::{Deserialize, Serialize};
 use tetra_core::{TdmaTime, tetra_entities::TetraEntity};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Encode, Decode, Serialize, Deserialize)]
+// Was: Listet die möglichen Varianten für Mobilität client Zustand auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum MobilityClientState {
     Unknown,
     Attached,
@@ -17,6 +22,8 @@ pub enum MobilityClientState {
 }
 
 #[derive(Debug, Clone, Encode, Decode, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Mobilität class of ms in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MobilityClassOfMs {
     pub freq_simplex_duplex: bool,
     pub multislot_phase_mod: bool,
@@ -43,6 +50,8 @@ pub struct MobilityClassOfMs {
 }
 
 #[derive(Debug, Clone, Encode, Decode, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Mobilität Kontext payload in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MobilityContextPayload {
     pub home_issi: u32,
     pub state: MobilityClientState,
@@ -59,12 +68,16 @@ pub struct MobilityContextPayload {
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Encode, Decode, Serialize, Deserialize)]
+// Was: Listet die möglichen Varianten für managed Ruf kind auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum ManagedCallKind {
     Group,
     Individual,
 }
 
 #[derive(Debug, Clone, Encode, Decode, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für managed network circuit Ruf payload in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ManagedNetworkCircuitCallPayload {
     pub source_issi: u32,
     pub destination: u32,
@@ -83,6 +96,8 @@ pub struct ManagedNetworkCircuitCallPayload {
 }
 
 #[derive(Debug, Clone, Encode, Decode, Serialize, Deserialize)]
+// Was: Listet die möglichen Varianten für managed Ruf Wiederherstellung Kontext payload auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum ManagedCallRestoreContextPayload {
     Group {
         call_id: u16,
@@ -123,6 +138,8 @@ pub enum ManagedCallRestoreContextPayload {
 }
 
 #[derive(Debug, Clone, Encode, Decode, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Gruppe policy definition in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GroupPolicyDefinition {
     pub gssi: u32,
     pub enabled: bool,
@@ -136,6 +153,8 @@ pub struct GroupPolicyDefinition {
 }
 
 #[derive(Debug, Clone, Encode, Decode, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Gruppe membership policy in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GroupMembershipPolicy {
     pub issi: u32,
     pub gssi: u32,
@@ -146,6 +165,8 @@ pub struct GroupMembershipPolicy {
 
 /// Command received from the remote command server.
 #[derive(Debug, Clone, Encode, Decode, Serialize, Deserialize)]
+// Was: Listet die möglichen Varianten für Steuerung command auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum ControlCommand {
     /// Send an SDS for local delivery
     SendSds {
@@ -382,6 +403,8 @@ pub enum ControlCommand {
 
 /// Response sent back after processing a [`ControlCommand`].
 #[derive(Debug, Clone, Encode, Decode, Serialize, Deserialize)]
+// Was: Listet die möglichen Varianten für Steuerung response auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum ControlResponse {
     CommandAResponse { handle: u32, result: u32 },
     SendSdsResponse { handle: u32, success: bool },

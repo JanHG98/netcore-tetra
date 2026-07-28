@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! Device-specific SoapySDR settings
 
 use std::sync::OnceLock;
@@ -6,15 +9,21 @@ use tetra_config::bluestation::{StackMode, sec_phy_soapy::*};
 /// Global record of the SDR device that was auto-detected at startup. Set once by
 /// `SdrSettings::get_settings()` and read by the dashboard to show a hardware badge.
 /// Empty if no SoapySDR backend is in use (e.g. file backend, monitor-only stack).
+// Was: Legt den festen Wert `DETECTED_SDR_NAME` für detected sdr name fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 static DETECTED_SDR_NAME: OnceLock<String> = OnceLock::new();
 
 /// Public accessor for the dashboard / telemetry / logging.
 /// Returns `None` if no SDR has been detected yet.
+// Was: Führt den Arbeitsschritt `detected_sdr_name` für detected sdr name aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn detected_sdr_name() -> Option<String> {
     DETECTED_SDR_NAME.get().cloned()
 }
 
 /// Enum of all supported devices
+// Was: Listet die möglichen Varianten für supported device auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum SupportedDevice {
     LimeSdr(LimeSdrModel),
     SXceiver,
@@ -24,6 +33,8 @@ pub enum SupportedDevice {
 }
 
 #[derive(Debug, PartialEq)]
+// Was: Listet die möglichen Varianten für lime sdr model auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum LimeSdrModel {
     LimeSdrUsb,
     LimeSdrMiniV2,
@@ -35,16 +46,24 @@ pub enum LimeSdrModel {
 }
 
 #[derive(Debug, PartialEq)]
+// Was: Listet die möglichen Varianten für usrp model auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum UsrpModel {
     B200,
     B210,
     Other,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SupportedDevice`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SupportedDevice {
     /// Detect an SDR device based on driver key and hardware key.
     /// Return None if the device is not supported.
+    // Was: Führt den Arbeitsschritt `detect` für detect aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn detect(driver_key: &str, hardware_key: &str) -> Option<Self> {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match (driver_key, hardware_key) {
             ("FX3", "LimeSDR-USB") => Some(Self::LimeSdr(LimeSdrModel::LimeSdrUsb)),
             ("FX3", _) => Some(Self::LimeSdr(LimeSdrModel::OtherFx3)),
@@ -73,6 +92,8 @@ impl SupportedDevice {
 }
 
 #[derive(Clone, Debug)]
+// Was: Bündelt die zusammengehörigen Werte für sdr settings in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SdrSettings {
     /// Settings template, holding which SDR is used
     pub name: String,
@@ -104,12 +125,18 @@ pub struct SdrSettings {
     pub dev_args: Vec<(String, String)>,
 }
 
+// Was: Listet die möglichen Varianten für error auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum Error {
     InvalidConfiguration,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SdrSettings`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SdrSettings {
     /// Get settings based on SDR type and SoapySDR configuration
+    // Was: Diese Funktion liest settings.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     pub fn get_settings(cfg: &CfgSoapySdr, device: SupportedDevice, mode: StackMode) -> Result<Self, Error> {
         let mut settings = Self::get_defaults(cfg, device, mode);
 
@@ -131,6 +158,8 @@ impl SdrSettings {
         }
 
         let mut cfg_gains = cfg.rx_gains.clone();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (name, value) in settings.rx_gain.iter_mut() {
             if let Some(gain) = cfg_gains.remove(&(*name.to_lowercase())) {
                 *value = gain;
@@ -142,6 +171,8 @@ impl SdrSettings {
         }
 
         let mut cfg_gains = cfg.tx_gains.clone();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (name, value) in settings.tx_gain.iter_mut() {
             if let Some(gain) = cfg_gains.remove(&(*name.to_lowercase())) {
                 *value = gain;
@@ -162,7 +193,11 @@ impl SdrSettings {
     }
 
     /// Get default settings based on SDR type
+    // Was: Diese Funktion liest defaults.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     fn get_defaults(cfg: &CfgSoapySdr, device: SupportedDevice, mode: StackMode) -> Self {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match device {
             SupportedDevice::LimeSdr(model) => Self::settings_limesdr(mode, model),
 
@@ -181,6 +216,8 @@ impl SdrSettings {
     /// but are useful as a template for the most common settings.
     /// This reduces changed needed in code in case
     /// more fields are added to SdrSettings to handle some special cases.
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default(mode: StackMode) -> Self {
         Self {
             name: String::new(), // should be always overridden
@@ -212,6 +249,8 @@ impl SdrSettings {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `settings_limesdr` für settings limesdr aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn settings_limesdr(mode: StackMode, model: LimeSdrModel) -> Self {
         Self {
             name: match model {
@@ -224,6 +263,8 @@ impl SdrSettings {
             .to_string(),
 
             rx_ant: Some(
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match model {
                     LimeSdrModel::LimeSdrUsb => "LNAL",
                     _ => "LNAW",
@@ -232,6 +273,8 @@ impl SdrSettings {
             ),
 
             tx_ant: Some(
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match model {
                     LimeSdrModel::LimeSdrUsb => "BAND1",
                     _ => "BAND2",
@@ -250,6 +293,8 @@ impl SdrSettings {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `settings_sxceiver` für settings sxceiver aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn settings_sxceiver(mode: StackMode, fs_override: Option<f64>) -> Self {
         // TODO: pass detected clock rate or list of supported sample rates
         // to get_settings and choose sample rate accordingly.
@@ -277,6 +322,8 @@ impl SdrSettings {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `settings_mucell` für settings mucell aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn settings_mucell(mode: StackMode, fs_override: Option<f64>) -> Self {
         // Similar to SXCeiver for now.
         // Might be adapted later for PA gain and other settings.
@@ -298,6 +345,8 @@ impl SdrSettings {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `settings_usrp` für settings usrp aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn settings_usrp(mode: StackMode, model: UsrpModel) -> Self {
         Self {
             name: match model {
@@ -317,6 +366,8 @@ impl SdrSettings {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `settings_pluto` für settings pluto aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn settings_pluto(mode: StackMode) -> Self {
         Self {
             name: "Pluto".to_string(),
@@ -346,6 +397,8 @@ impl SdrSettings {
 
 /// Get processing block size in samples for a given sample rate.
 /// This can be used to optimize performance for some SDRs.
+// Was: Führt den Arbeitsschritt `block_size` für block size aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn block_size(fs: f64) -> usize {
     // With current FCFB parameters processing blocks are 1.5 ms long.
     // It is a bit bug prone to have it here in case

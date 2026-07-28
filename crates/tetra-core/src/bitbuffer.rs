@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für grundlegende TETRA-Datentypen und Hilfsfunktionen.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::{
     cmp::{max, min},
     fmt,
@@ -7,6 +10,8 @@ use crate::pdu_parse_error::PduParseErr;
 
 #[derive(Clone)]
 
+// Was: Bündelt die zusammengehörigen Werte für bit buffer in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct BitBuffer {
     buffer: Vec<u8>,
     start: usize,          // bits before this are out of window
@@ -15,8 +20,12 @@ pub struct BitBuffer {
     flag_autoexpand: bool, // if true, ignores end pointer on writes and reallocates buffer if insufficient capacity
 }
 
+// Was: Implementiert das zugehörige Verhalten für `BitBuffer`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl BitBuffer {
     /// Create a zeroed buffer capable of holding exactly `len_bits` bits.
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(len_bits: usize) -> Self {
         let byte_len = len_bits.div_ceil(8);
         BitBuffer {
@@ -30,6 +39,8 @@ impl BitBuffer {
 
     /// Create a zeroed buffer with an inital capacity but zero length (end is set to 0).
     /// Writes to this buffer will automatically advance the end pointer and reallocate the buffer if needed
+    // Was: Diese Funktion erstellt autoexpand.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new_autoexpand(initial_max_len_bits: usize) -> Self {
         let byte_len = initial_max_len_bits.div_ceil(8);
         BitBuffer {
@@ -43,6 +54,8 @@ impl BitBuffer {
 
     /// Wrap an existing byte-vector as a BitBuffer (all bits initially readable/writeable).
     /// No new allocation is needed here.
+    // Was: Wandelt Eingangsdaten in vec um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_vec(data: Vec<u8>) -> Self {
         let len_bits = data.len() * 8;
         BitBuffer {
@@ -54,6 +67,8 @@ impl BitBuffer {
         }
     }
 
+    // Was: Wandelt Eingangsdaten in bytes um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bytes(data: &[u8]) -> Self {
         let len_bits = data.len() * 8;
         BitBuffer {
@@ -68,16 +83,24 @@ impl BitBuffer {
     /// Determines whether the buffer is expanded when a write is done that goes beyond the capacity of the buffer
     /// WARNING: Best to use BitBuffer::new_autoexpand() instead of calling this method, as the end pointer behaves
     /// differently.
+    // Was: Diese Funktion setzt auto expand.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_auto_expand(mut self, do_auto_expand: bool) {
         self.flag_autoexpand = do_auto_expand;
     }
 
     /// Construct a BitBuffer directly from a string of '0'/'1' characters.
     /// Panics if any other character is encountered.
+    // Was: Wandelt Eingangsdaten in bitstr um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitstr(bitstr: &str) -> Self {
         let len = bitstr.len();
         let mut buf = BitBuffer::new(len);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for c in bitstr.chars() {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match c {
                 '0' => buf.write_bit(0),
                 '1' => buf.write_bit(1),
@@ -90,6 +113,8 @@ impl BitBuffer {
     }
 
     /// Construct a BitBuffer directly from a byte array of '0'/'1' bytes.
+    // Was: Wandelt Eingangsdaten in bitarr um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitarr(data: &[u8]) -> Self {
         let mut buf = BitBuffer::new(data.len());
         buf.copy_bits_from_bitarr(data);
@@ -102,6 +127,8 @@ impl BitBuffer {
 
     /// Construct a BitBuffer from another bitbuffer, starting at `start` and ending at `end`.
     /// The copy will be performed efficiently as bytes, as such, `start` may not be 0 and heading/trailing data may be present.
+    // Was: Wandelt Eingangsdaten in bitbuffer um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuffer(bitbuffer: &BitBuffer) -> Self {
         // Compute how many bits to copy when we want to perform byte-wise copy.
         let start_byte = bitbuffer.start / 8;
@@ -119,6 +146,8 @@ impl BitBuffer {
 
     /// Construct a BitBuffer from another bitbuffer, starting at `pos` and ending at `end`.
     /// The copy will be performed efficiently as bytes, as such, `start` may not be 0 and heading/trailing data may be present.
+    // Was: Wandelt Eingangsdaten in bitbuffer pos um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuffer_pos(bitbuffer: &BitBuffer) -> Self {
         // Compute how many bits to copy when we want to perform byte-wise copy.
         let start_byte = bitbuffer.pos / 8;
@@ -135,13 +164,19 @@ impl BitBuffer {
     }
 
     /// Takes slice as parameter for output. Reads slice.len() bits from bitbuf[pos], and writes to output slice. 1 bit per byte.
+    // Was: Wandelt den vorhandenen Wert in bitarr um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitarr(&mut self, buf: &mut [u8]) {
         // TODO bounds check here, optimize performance
         let num_bits = buf.len();
         let mut bits_remaining = num_bits;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while bits_remaining > 0 {
             let bits_to_read = usize::min(bits_remaining, 64);
             let v = self.read_bits(bits_to_read).unwrap(); // Guaranteed
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for i in 0..bits_to_read {
                 let bit = ((v >> (bits_to_read - 1 - i)) & 0x1) as u8;
                 buf[buf.len() - bits_remaining + i] = bit;
@@ -151,8 +186,12 @@ impl BitBuffer {
     }
 
     /// Convert the entire window (start to end) into a String of '0'/'1' characters.
+    // Was: Wandelt den vorhandenen Wert in bitstr um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitstr(&self) -> String {
         let mut s = String::with_capacity(self.get_len());
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for i in 0..self.get_len() {
             let bit = self.read_bit_at_unchecked(self.start + i);
             s.push(if bit == 1 { '1' } else { '0' });
@@ -162,6 +201,8 @@ impl BitBuffer {
 
     /// Peek `num_bits` at the current pos, without advancing.
     /// Returns None on overflow or if `num_bits>64`.
+    // Was: Führt den Arbeitsschritt `peek_bits` für peek bits aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn peek_bits(&self, num_bits: usize) -> Option<u64> {
         // tracing::trace!("peek_bits: {} bits", num_bits);
         self.peek_bits_posoffset(0, num_bits)
@@ -169,6 +210,8 @@ impl BitBuffer {
 
     /// Peek `num_bits` at the current pos with signed offset, without advancing.
     /// Returns None on overflow or if `num_bits>64`.
+    // Was: Führt den Arbeitsschritt `peek_bits_posoffset` für peek bits posoffset aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn peek_bits_posoffset(&self, offset: isize, num_bits: usize) -> Option<u64> {
         // let abs_offset = self.pos as isize + offset;
         // tracing::trace!("peek_bits_posoffset: {} bits at {}", num_bits, self.pos as isize + offset);
@@ -179,6 +222,8 @@ impl BitBuffer {
 
     /// Peek `num_bits` with offset from window start, without advancing.
     /// Returns None on overflow or if `num_bits>64`.
+    // Was: Führt den Arbeitsschritt `peek_bits_startoffset` für peek bits startoffset aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn peek_bits_startoffset(&self, offset: usize, num_bits: usize) -> Option<u64> {
         let abs_pos = self.start + offset;
         if num_bits > 64 || self.start + offset + num_bits > self.end {
@@ -190,6 +235,8 @@ impl BitBuffer {
     }
 
     /// Read `num_bits` at the current pos, advancing on success.
+    // Was: Diese Funktion liest bits.
+    // Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
     pub fn read_bits(&mut self, num_bits: usize) -> Option<u64> {
         let v = self.peek_bits_startoffset(self.pos - self.start, num_bits)?;
         self.pos += num_bits;
@@ -197,11 +244,15 @@ impl BitBuffer {
     }
 
     /// Similar to read_bits, but returns a ParseError::BufferEnded with the given error_string if not enough bits are available.
+    // Was: Diese Funktion liest field.
+    // Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
     pub fn read_field(&mut self, num_bits: usize, error_string: &'static str) -> Result<u64, PduParseErr> {
         self.read_bits(num_bits)
             .ok_or(PduParseErr::BufferEnded { field: Some(error_string) })
     }
 
+    // Was: Diese Funktion liest bit.
+    // Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
     pub fn read_bit(&mut self) -> Option<u8> {
         let v = self.peek_bits_startoffset(self.pos - self.start, 1)?;
         self.pos += 1;
@@ -209,11 +260,15 @@ impl BitBuffer {
     }
 
     /// Read `num_bits` at the current pos, advancing pos, and write them into the provided output slice as bytes
+    // Was: Diese Funktion liest bits into slice.
+    // Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
     pub fn read_bits_into_slice(&mut self, num_bits: usize, buf: &mut [u8]) -> Option<()> {
         let num_bytes = num_bits.div_ceil(8);
         assert!(buf.len() >= num_bytes, "output buffer too small for num_bits");
 
         let mut bits_remaining = num_bits;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for i in 0..num_bytes {
             let bits_in_byte = usize::min(bits_remaining, 8);
             let read_byte = self.read_bits(bits_in_byte)? as u8;
@@ -223,6 +278,8 @@ impl BitBuffer {
         Some(())
     }
 
+    // Was: Führt den Arbeitsschritt `_realloc_tail` für realloc tail aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn _realloc_tail(&mut self, new_cap_bits: usize) {
         let new_cap_bytes = new_cap_bits.div_ceil(8);
         assert!(
@@ -251,6 +308,8 @@ impl BitBuffer {
 
     /// When a write would exceed the end, but the BitBuffer is set to automatically expand,
     /// this function is called to increase `end` and if needed, allocate more space in the buffer.
+    // Was: Führt den Arbeitsschritt `_move_end` für move end aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn _move_end(&mut self, needed_extra_bits: usize) {
         // Check if realloc needed, perform if needed
         let free_cap_bits = self.buffer.len() * 8 - self.end;
@@ -269,6 +328,8 @@ impl BitBuffer {
     }
 
     /// Xor the next bit (at pos) with value (0 or 1)
+    // Was: Führt den Arbeitsschritt `xor_bit` für xor bit aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn xor_bit(&mut self, value: u8) {
         let index = self.pos / 8;
         self.buffer[index] ^= value << (7 - (self.pos % 8)) as u8;
@@ -277,9 +338,13 @@ impl BitBuffer {
 
     /// Xors bytearray into a bitbuffer, starting at pos, for num_bits.
     /// Advances pos by num_bits.
+    // Was: Führt den Arbeitsschritt `xor_bytearr` für xor bytearr aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn xor_bytearr(&mut self, data: &[u8], num_bits: usize) -> Option<()> {
         let mut bits_remaining = num_bits;
         let mut data_pos = 0;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while bits_remaining > 0 {
             // Read chunk of bits
             let chunk_bits = usize::min(bits_remaining, 64);
@@ -290,6 +355,8 @@ impl BitBuffer {
             // Convert bytes from data array to u64 and xor with read val
             let mut xor_data = 0u64;
             let db_chunk_bytes = chunk_bits.div_ceil(8);
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for _ in 0..db_chunk_bytes {
                 xor_data <<= 8;
                 xor_data |= data[data_pos] as u64;
@@ -308,6 +375,8 @@ impl BitBuffer {
     }
 
     /// Write a single bit to pos
+    // Was: Diese Funktion schreibt bit.
+    // Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
     pub fn write_bit(&mut self, value: u8) {
         assert!(value == 0 || value == 1, "write_bit: value must be 0 or 1");
         if self.pos + 1 > self.end {
@@ -328,8 +397,12 @@ impl BitBuffer {
     }
 
     /// Write an arbitrary amount of zero-bits
+    // Was: Diese Funktion schreibt zeroes.
+    // Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
     pub fn write_zeroes(&mut self, num_bits: usize) {
         let mut bits_remaining = num_bits;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while bits_remaining > 0 {
             let chunk_size = min(bits_remaining, 64);
             self.write_bits(0, chunk_size);
@@ -338,8 +411,12 @@ impl BitBuffer {
     }
 
     /// Write an arbitrary amount of one-bits
+    // Was: Diese Funktion schreibt ones.
+    // Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
     pub fn write_ones(&mut self, num_bits: usize) {
         let mut bits_remaining = num_bits;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while bits_remaining > 0 {
             let chunk_size = min(bits_remaining, 64);
             let val = 0xFFFFFFFFFFFFFFFF >> (64 - chunk_size);
@@ -351,6 +428,8 @@ impl BitBuffer {
     /// Write up to 64 bits, advancing pos.
     /// If autoexpand is enabled, will advance end as well and/or realloc if buffer full
     /// If disables, panics if exceeds end.
+    // Was: Diese Funktion schreibt bits.
+    // Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
     pub fn write_bits(&mut self, value: u64, num_bits: usize) {
         // tracing::debug!("write_bits: <{} ^{} >{}, write[{}..{}] ({} bits)", self.start, self.pos, self.end, self.pos, self.pos + num_bits, num_bits);
         assert!(num_bits <= 64, "can only write up to 64 bits");
@@ -392,6 +471,8 @@ impl BitBuffer {
         }
 
         // 2) full bytes
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while remaining >= 8 {
             let idx = cur / 8;
             let byte_val = ((v >> (remaining - 8)) & 0xFF) as u8;
@@ -418,8 +499,12 @@ impl BitBuffer {
 
     /// Read `num_bits` from a source bitbuffer, starting at `pos`.
     /// Write this data into the current bitbuffer at the current `pos`.
+    // Was: Führt den Arbeitsschritt `copy_bits` für copy bits aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn copy_bits(&mut self, src_bitbuf: &mut BitBuffer, num_bits: usize) {
         let mut bits_remaining = num_bits;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while bits_remaining > 0 {
             let bits_to_copy = usize::min(bits_remaining, 64);
             assert!(
@@ -432,8 +517,12 @@ impl BitBuffer {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `copy_bits_from_bitarr` für copy bits from bitarr aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn copy_bits_from_bitarr(&mut self, buf: &[u8]) {
         // TODO optimize performance
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for i in 0..buf.len() {
             let bit = buf[i];
             assert!(
@@ -446,13 +535,19 @@ impl BitBuffer {
     }
 
     /// Extract the internal byte-vector (all bytes, including any unused bits).
+    // Was: Wandelt den vorhandenen Wert in bytes um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn into_bytes(self) -> Vec<u8> {
         self.buffer
     }
 
     /// Convert entire window (start to end) into an array with 0 or 1 value per byte
+    // Was: Wandelt den vorhandenen Wert in bitvec um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn into_bitvec(self) -> Vec<u8> {
         let mut ret = Vec::with_capacity(self.get_len());
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for i in 0..self.get_len() {
             ret.push(self.read_bit_at_unchecked(i));
         }
@@ -460,26 +555,36 @@ impl BitBuffer {
     }
 
     /// Active window length (bits), from start to end
+    // Was: Diese Funktion liest len.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     pub fn get_len(&self) -> usize {
         self.end - self.start
     }
 
     /// Number of bits left in the window (bits), from pos to end.
+    // Was: Diese Funktion liest len remaining.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     pub fn get_len_remaining(&self) -> usize {
         self.end - self.pos
     }
 
     /// Number of bits written, from start to pos.
+    // Was: Diese Funktion liest len written.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     pub fn get_len_written(&self) -> usize {
         self.pos - self.start
     }
 
     /// Get the current position, relative to window
+    // Was: Diese Funktion liest pos.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     pub fn get_pos(&self) -> usize {
         self.pos - self.start
     }
 
     /// Seek `pos` to `offset` (relative to window start).
+    // Was: Führt den Arbeitsschritt `seek` für seek aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn seek(&mut self, offset: usize) {
         let abs = self.start + offset;
         assert!(
@@ -494,6 +599,8 @@ impl BitBuffer {
 
     /// Move the current bit‐pointer by `offset` bits (can be negative).
     /// Panics if the resulting position would lie outside the window `[start..=end]`.
+    // Was: Führt den Arbeitsschritt `seek_rel` für seek rel aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn seek_rel(&mut self, offset: isize) {
         let new_pos = (self.pos as isize + offset) as usize;
         assert!(
@@ -509,19 +616,27 @@ impl BitBuffer {
     // Raw operations that do not take start, end cursors into account ///////////////////////////////////////
 
     /// Get absolute value of window start
+    // Was: Diese Funktion liest raw start.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     pub fn get_raw_start(&self) -> usize {
         self.start
     }
     /// Get absolute value of window end, disregarding start of window
+    // Was: Diese Funktion liest raw end.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     pub fn get_raw_end(&self) -> usize {
         self.end
     }
     /// Get absolute current position, disregarding start and end of window
+    // Was: Diese Funktion liest raw pos.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     pub fn get_raw_pos(&self) -> usize {
         self.pos
     }
 
     /// Move window start. Ensure new_start <= min(end, pos)
+    // Was: Diese Funktion setzt raw start.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_raw_start(&mut self, s: usize) {
         assert!(s <= self.end, "start must not exceed end");
         assert!(s <= self.pos, "start must not exceed pos");
@@ -529,6 +644,8 @@ impl BitBuffer {
     }
 
     /// Move window end. Ensure new_end >= max(pos, start) and new_end <= capacity
+    // Was: Diese Funktion setzt raw end.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_raw_end(&mut self, e: usize) {
         let max_bits = self.buffer.len() * 8;
         assert!(e <= max_bits, "end must not exceed capacity");
@@ -538,6 +655,8 @@ impl BitBuffer {
     }
 
     /// Move pos to absolute location, irrespective of window. Ensure start <= pos <= end
+    // Was: Diese Funktion setzt raw pos.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_raw_pos(&mut self, p: usize) {
         assert!(self.start <= p, "pos must not be before start");
         assert!(p <= self.end, "pos must not exceed end");
@@ -551,10 +670,14 @@ impl BitBuffer {
     /// a multiple of 4, the last nibble is padded on the right with zeros.
 
     /// --- Dumps only the [start..end) window in hex ---
+    // Was: Führt den Arbeitsschritt `dump_hex` für dump hex aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn dump_hex(&self) -> String {
         let len = self.end - self.start;
         let n_nibbles = len.div_ceil(4);
         let mut s = String::with_capacity(n_nibbles);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for i in 0..n_nibbles {
             let bit_pos = self.start + i * 4;
             let bits_left = len - i * 4;
@@ -568,12 +691,16 @@ impl BitBuffer {
     }
 
     /// Dump bits in window [start, end) as a binary string of '0'/'1'.
+    // Was: Führt den Arbeitsschritt `dump_bin_unformatted` für dump bin unformatted aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn dump_bin_unformatted(&self) -> String {
         self.raw_dump_bin(false, false, self.start, self.end)
     }
 
     /// Dump bits in window [start, end) as a binary string of '0'/'1'.
     /// Adds a ^ marker before the current pos.
+    // Was: Führt den Arbeitsschritt `dump_bin` für dump bin aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn dump_bin(&self) -> String {
         self.raw_dump_bin(false, true, self.start, self.end)
     }
@@ -584,14 +711,20 @@ impl BitBuffer {
     ///  - '^' just before bit `pos`
     ///  - '>' just before bit `end` (or at end if `end == capacity`)
     /// If trim_to_window is true, contents outside of start/end are not printed.
+    // Was: Führt den Arbeitsschritt `dump_bin_full` für dump bin full aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn dump_bin_full(&self, print_markers: bool) -> String {
         self.raw_dump_bin(print_markers, print_markers, 0, self.buffer.len() * 8)
     }
 
+    // Was: Führt den Arbeitsschritt `raw_dump_bin` für raw dump bin aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn raw_dump_bin(&self, print_window: bool, print_pos: bool, start: usize, end: usize) -> String {
         let len = end - start;
         let mut s = String::with_capacity(len + if print_window { 2 } else { 0 } + if print_pos { 1 } else { 0 });
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for i in start..end {
             if print_window && i == self.start {
                 s.push('<');
@@ -622,6 +755,8 @@ impl BitBuffer {
     /// Reads exactly `num_bits` bits starting at absolute `bit_pos`,
     /// returning them as the low `num_bits` of a `u64`, regardless of window
     /// **Caller must ensure** `num_bits <= 64` and `bit_pos + num_bits <= end`.
+    // Was: Diese Funktion liest bits at unchecked.
+    // Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
     fn read_bits_at_unchecked(&self, mut bit_pos: usize, num_bits: usize) -> u64 {
         // tracing::debug!("read_bits_at_unchecked: {} bits at {}", num_bits, bit_pos);
         // println!("read_bits_at_unchecked: {} bits at {}", num_bits, bit_pos);
@@ -642,6 +777,8 @@ impl BitBuffer {
         }
 
         // 2) full bytes
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while bits_remaining >= 8 {
             let byte = self.buffer[bit_pos / 8] as u64;
             result = (result << 8) | byte;
@@ -652,6 +789,8 @@ impl BitBuffer {
         // 3) tail bits
         if bits_remaining > 0 {
             let byte = self.buffer[bit_pos / 8];
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for i in 0..bits_remaining {
                 let shift = 7 - ((bit_pos % 8) + i);
                 let bit = ((byte >> shift) & 1) as u64;
@@ -665,22 +804,32 @@ impl BitBuffer {
     /// --- Low‐level unsafe reader: no bounds checks! ---
     /// Reads 1 bit at absolute `bit_pos`,
     /// **Caller must ensure** `bit_pos + num_bits <= end`.
+    // Was: Diese Funktion liest bit at unchecked.
+    // Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
     fn read_bit_at_unchecked(&self, bit_pos: usize) -> u8 {
         (self.buffer[bit_pos / 8] >> (7 - (bit_pos % 8))) & 1
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Debug for BitBuffer`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Debug for BitBuffer {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "BitBuffer {{ <{} ^{} >{} {} }}", self.start, self.pos, self.end, self.dump_bin())
     }
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
     #[test]
+    // Was: Prüft automatisch den Fall full byte read write.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_full_byte_read_write() {
         let mut bb = BitBuffer::new(16);
         bb.write_bits(0xAB, 8);
@@ -691,6 +840,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall partial boundary read write.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_partial_boundary_read_write() {
         let mut bb = BitBuffer::new(16);
         bb.write_bits(0xA, 4); // 1010
@@ -703,6 +854,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall read overflow.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_read_overflow() {
         let mut bb = BitBuffer::new(10);
         assert!(bb.read_bits(11).is_none());
@@ -711,6 +864,8 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "write would exceed buffer end")]
+    // Was: Prüft automatisch den Fall write overflow.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_write_overflow() {
         let mut bb = BitBuffer::new(10);
         bb.write_bits(1, 11);
@@ -718,12 +873,16 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "value exceeds num_bits")]
+    // Was: Prüft automatisch den Fall value above num bits.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_value_above_num_bits() {
         let mut bb = BitBuffer::new(4);
         bb.write_bits(0b11111, 4);
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall write autoexpand.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_write_autoexpand() {
         let mut bb = BitBuffer::new_autoexpand(10);
         bb.write_bits(1, 5);
@@ -738,6 +897,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall windowing and seek.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_windowing_and_seek() {
         let mut bb = BitBuffer::from_vec(vec![0xFF, 0x00]);
         bb.set_raw_pos(4);
@@ -751,6 +912,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall unaligned read write across bytes.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_unaligned_read_write_across_bytes() {
         let mut bb = BitBuffer::new(48);
         bb.seek(5);
@@ -762,6 +925,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall multi byte bulk read write.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_multi_byte_bulk_read_write() {
         let mut bb = BitBuffer::new(64);
         bb.write_bits(0xDEADBEEF, 32);
@@ -772,6 +937,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall zero bit read write.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_zero_bit_read_write() {
         let mut bb = BitBuffer::new(16);
         bb.write_bits(0, 0);
@@ -781,6 +948,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall read write entire buffer.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_read_write_entire_buffer() {
         let mut bb = BitBuffer::new(24);
         bb.write_bits(0xAAAAAA, 24);
@@ -790,6 +959,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall dump hex.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_dump_hex() {
         let mut bb = BitBuffer::from_vec(vec![0xAB, 0xCD]);
         assert_eq!(bb.dump_hex(), "ABCD");
@@ -800,6 +971,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall dump funcs.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_dump_funcs() {
         let mut bb = BitBuffer::from_vec(vec![0xA0]); // 10100000
         // start=0, pos=0, end=8
@@ -816,6 +989,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall peek bits basic.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_peek_bits_basic() {
         // pattern = 0b1011_0110
         let mut bb = BitBuffer::from_bitstr("10110110");
@@ -831,6 +1006,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall peek bits across bytes.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_peek_bits_across_bytes() {
         // 16-bit pattern: 0xABCD = 1010_1011 1100_1101
         let mut bb = BitBuffer::from_bitstr("1010101111001101");
@@ -845,6 +1022,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall peek zero bits.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_peek_zero_bits() {
         let bb = BitBuffer::new(8);
         // peek zero bits always returns Some(0) and does not advance
@@ -854,6 +1033,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall peek bits overflow.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_peek_bits_overflow() {
         let bb = BitBuffer::new(10);
         // asking for more than end-start bits should be None
@@ -867,6 +1048,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall to bitarr.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_to_bitarr() {
         let mut bb = BitBuffer::from_bitstr("10110011");
         let mut arr = vec![0u8; 8];
@@ -875,6 +1058,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall read bits into slice.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_read_bits_into_slice() {
         let mut bb = BitBuffer::from_bitstr("10110011011");
         let mut out = [0u8; 2];
@@ -886,6 +1071,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall xor bit.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_xor_bit() {
         let mut bb = BitBuffer::from_bitstr("10110000");
         // XOR first bit (1) with 0 -> should remain 1
@@ -900,6 +1087,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall xor bits.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_xor_bits() {
         let mut bb = BitBuffer::from_bitstr("0000000000000000");
         let xor_buf = vec![0b11000000, 0b11110000]; // Two bits are set OUTSIDE the xor area
@@ -910,6 +1099,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall xor bits twochunks.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_xor_bits_twochunks() {
         let mut bb = BitBuffer::from_bitstr("000000000000000000000000000000000000000000000000000000000000000000000000");
         let xor_buf = vec![

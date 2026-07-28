@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! Infrastructure-side MM mobility transaction state.
 //!
 //! This module owns the local, air-interface-adjacent part of migration and
@@ -17,10 +20,14 @@ use super::components::client_state::MmClientMobilityContext;
 
 /// Pending mobility transactions are bounded to the same conservative window
 /// used by the Foundation runtimes: 432 timeslots (one multiframe).
+// Was: Legt den festen Wert `MM_MOBILITY_TIMEOUT_SLOTS` für Mobilitätsverwaltung Mobilität timeout slots fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const MM_MOBILITY_TIMEOUT_SLOTS: i32 = 432;
 
 /// Terminal transactions remain visible for diagnostics for two multiframes and
 /// are then removed so VASSIs and subscriber keys can be reused safely.
+// Was: Legt den festen Wert `MM_MOBILITY_HISTORY_SLOTS` für Mobilitätsverwaltung Mobilität history slots fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const MM_MOBILITY_HISTORY_SLOTS: i32 = MM_MOBILITY_TIMEOUT_SLOTS * 2;
 
 /// Default local VASSI pool used by the standalone/test profile.
@@ -29,10 +36,16 @@ pub const MM_MOBILITY_HISTORY_SLOTS: i32 = MM_MOBILITY_TIMEOUT_SLOTS * 2;
 /// Subscriber/Mobility Core will make this pool configurable and globally
 /// authoritative.  Until then allocation is collision checked against the
 /// local client registry and all active transactions.
+// Was: Legt den festen Wert `DEFAULT_VASSI_MIN` für default vassi min fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const DEFAULT_VASSI_MIN: u32 = 0xE0_0000;
+// Was: Legt den festen Wert `DEFAULT_VASSI_MAX` für default vassi max fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const DEFAULT_VASSI_MAX: u32 = 0xEF_FFFE;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für Mobilitätsverwaltung Mobilität phase auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum MmMobilityPhase {
     MigrationRequested,
     ProceedingSent,
@@ -47,6 +60,8 @@ pub enum MmMobilityPhase {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für migration transaction in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct MigrationTransaction {
     original_layer2_address: TetraAddress,
     vassi: u32,
@@ -63,6 +78,8 @@ struct MigrationTransaction {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für forward registration transaction in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct ForwardRegistrationTransaction {
     subscriber: TetraAddress,
     target_location_area: u16,
@@ -75,6 +92,8 @@ struct ForwardRegistrationTransaction {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für migration completion in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MigrationCompletion {
     pub local_issi: u32,
     pub home_issi: u32,
@@ -84,6 +103,8 @@ pub struct MigrationCompletion {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für forward registration completion in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ForwardRegistrationCompletion {
     pub subscriber: TetraAddress,
     pub target_location_area: u16,
@@ -92,6 +113,8 @@ pub struct ForwardRegistrationCompletion {
 }
 
 #[derive(Debug, Clone)]
+// Was: Listet die möglichen Varianten für Mobilitätsverwaltung Mobilität timeout auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum MmMobilityTimeout {
     Migration {
         subscriber: TetraAddress,
@@ -105,6 +128,8 @@ pub enum MmMobilityTimeout {
 }
 
 #[derive(Debug, Clone, Default)]
+// Was: Bündelt die zusammengehörigen Werte für Mobilitätsverwaltung Mobilität counters in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MmMobilityCounters {
     pub migration_requests: u64,
     pub proceeding_sent: u64,
@@ -121,6 +146,8 @@ pub struct MmMobilityCounters {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für Mobilitätsverwaltung migration snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MmMigrationSnapshot {
     pub original_layer2_address: TetraAddress,
     pub vassi: u32,
@@ -134,6 +161,8 @@ pub struct MmMigrationSnapshot {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für Mobilitätsverwaltung forward registration snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MmForwardRegistrationSnapshot {
     pub subscriber: TetraAddress,
     pub target_location_area: u16,
@@ -145,6 +174,8 @@ pub struct MmForwardRegistrationSnapshot {
 }
 
 #[derive(Debug, Clone, Default)]
+// Was: Bündelt die zusammengehörigen Werte für Mobilitätsverwaltung Mobilität Laufzeit snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MmMobilityRuntimeSnapshot {
     pub migrations: Vec<MmMigrationSnapshot>,
     pub forward_registrations: Vec<MmForwardRegistrationSnapshot>,
@@ -152,6 +183,8 @@ pub struct MmMobilityRuntimeSnapshot {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für Mobilitätsverwaltung Mobilität error auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum MmMobilityError {
     MissingHomeMni,
     MissingHomeIssi,
@@ -164,6 +197,8 @@ pub enum MmMobilityError {
 }
 
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für Mobilitätsverwaltung Mobilität Laufzeit in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MmMobilityRuntime {
     migrations_by_vassi: HashMap<u32, MigrationTransaction>,
     vassi_by_original_ssi: HashMap<u32, u32>,
@@ -179,13 +214,21 @@ pub struct MmMobilityRuntime {
     counters: MmMobilityCounters,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for MmMobilityRuntime`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for MmMobilityRuntime {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self::new()
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `MmMobilityRuntime`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl MmMobilityRuntime {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new() -> Self {
         Self {
             migrations_by_vassi: HashMap::new(),
@@ -203,6 +246,8 @@ impl MmMobilityRuntime {
     /// admission policies are expressed in home identities, so callers must
     /// translate the local VASSI before deciding whether an existing
     /// registration is still authorized.
+    // Was: Führt den Arbeitsschritt `home_issi_for_local` für home Teilnehmerkennung (ISSI) for local aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn home_issi_for_local(&self, local_issi: u32) -> Option<u32> {
         self.home_issi_by_local_issi
             .get(&local_issi)
@@ -216,6 +261,8 @@ impl MmMobilityRuntime {
 
     /// Register a durable identity mapping for a locally imported or migrated
     /// subscriber context.
+    // Was: Diese Funktion registriert local identity.
+    // Warum: Die Zuordnung bleibt dadurch eindeutig und kann später sauber wieder entfernt werden.
     pub fn register_local_identity(&mut self, local_issi: u32, home_issi: u32) {
         if local_issi != home_issi {
             self.home_issi_by_local_issi.insert(local_issi, home_issi);
@@ -226,10 +273,14 @@ impl MmMobilityRuntime {
 
     /// Remove a durable local-to-home mapping when the local mobility context
     /// is explicitly detached or transferred away.
+    // Was: Führt den Arbeitsschritt `forget_local_identity` für forget local identity aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn forget_local_identity(&mut self, local_issi: u32) {
         self.home_issi_by_local_issi.remove(&local_issi);
     }
 
+    // Was: Führt den Arbeitsschritt `begin_migration` für begin migration aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn begin_migration<F>(
         &mut self,
         subscriber: TetraAddress,
@@ -295,6 +346,8 @@ impl MmMobilityRuntime {
         Ok((vassi, home_mni))
     }
 
+    // Was: Prüft, ob pending vassi zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     pub fn has_pending_vassi(&self, vassi: u32) -> bool {
         self.migrations_by_vassi
             .get(&vassi)
@@ -306,6 +359,8 @@ impl MmMobilityRuntime {
             })
     }
 
+    // Was: Führt den Arbeitsschritt `provide_migration_context` für provide migration Kontext aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn provide_migration_context(
         &mut self,
         vassi: u32,
@@ -322,6 +377,8 @@ impl MmMobilityRuntime {
         Ok(())
     }
 
+    // Was: Führt den Arbeitsschritt `complete_migration` für complete migration aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn complete_migration(
         &mut self,
         vassi: u32,
@@ -374,6 +431,8 @@ impl MmMobilityRuntime {
         Ok(completion)
     }
 
+    // Was: Führt den Arbeitsschritt `reject_migration` für reject migration aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn reject_migration(
         &mut self,
         vassi: u32,
@@ -391,6 +450,8 @@ impl MmMobilityRuntime {
         Ok(())
     }
 
+    // Was: Führt den Arbeitsschritt `begin_forward_registration` für begin forward registration aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn begin_forward_registration(
         &mut self,
         subscriber: TetraAddress,
@@ -443,6 +504,8 @@ impl MmMobilityRuntime {
         Ok(completion)
     }
 
+    // Was: Diese Funktion nimmt forward registration.
+    // Warum: Eingehende Verbindungen und Daten werden dadurch an einer klaren Stelle angenommen.
     pub fn accept_forward_registration(
         &mut self,
         issi: u32,
@@ -458,6 +521,8 @@ impl MmMobilityRuntime {
         Ok(())
     }
 
+    // Was: Führt den Arbeitsschritt `reject_forward_registration` für reject forward registration aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn reject_forward_registration(
         &mut self,
         issi: u32,
@@ -475,6 +540,8 @@ impl MmMobilityRuntime {
         Ok(())
     }
 
+    // Was: Führt den Arbeitsschritt `take_forward_context` für take forward Kontext aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn take_forward_context(&mut self, issi: u32) -> Option<MmClientMobilityContext> {
         let transaction = self.forward_registrations.get_mut(&issi)?;
         transaction.phase = MmMobilityPhase::ContextTransferred;
@@ -482,6 +549,8 @@ impl MmMobilityRuntime {
         Some(transaction.context.clone())
     }
 
+    // Was: Diese Funktion bearbeitet den vorgesehenen Arbeitsschritt.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn tick(&mut self, now: TdmaTime) -> Vec<MmMobilityTimeout> {
         let mut timeouts = Vec::new();
 
@@ -501,6 +570,8 @@ impl MmMobilityRuntime {
                     .then_some(vassi)
             })
             .collect();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for vassi in expired_migrations {
             if let Some(transaction) = self.migrations_by_vassi.get_mut(&vassi) {
                 transaction.phase = MmMobilityPhase::TimedOut;
@@ -530,6 +601,8 @@ impl MmMobilityRuntime {
                     .then_some(issi)
             })
             .collect();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for issi in expired_forwards {
             if let Some(transaction) = self.forward_registrations.get_mut(&issi) {
                 transaction.phase = MmMobilityPhase::TimedOut;
@@ -558,6 +631,8 @@ impl MmMobilityRuntime {
                     .then_some(vassi)
             })
             .collect();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for vassi in stale_migrations {
             if let Some(transaction) = self.migrations_by_vassi.remove(&vassi) {
                 self.vassi_by_original_ssi
@@ -577,6 +652,8 @@ impl MmMobilityRuntime {
                     .then_some(issi)
             })
             .collect();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for issi in stale_forwards {
             self.forward_registrations.remove(&issi);
         }
@@ -584,6 +661,8 @@ impl MmMobilityRuntime {
         timeouts
     }
 
+    // Was: Diese Funktion erzeugt den vorgesehenen Arbeitsschritt.
+    // Warum: Die Oberfläche und andere Dienste erhalten dadurch eine in sich stimmige Momentaufnahme.
     pub fn snapshot(&self, now: TdmaTime) -> MmMobilityRuntimeSnapshot {
         let mut migrations = self
             .migrations_by_vassi
@@ -624,11 +703,15 @@ impl MmMobilityRuntime {
         }
     }
 
+    // Was: Diese Funktion weist vassi.
+    // Warum: Knapp vorhandene Ressourcen werden dadurch nachvollziehbar und konfliktfrei vergeben.
     fn allocate_vassi<F>(&mut self, is_local_ssi_in_use: F) -> Result<u32, MmMobilityError>
     where
         F: Fn(u32) -> bool,
     {
         let pool_size = DEFAULT_VASSI_MAX - DEFAULT_VASSI_MIN + 1;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for _ in 0..pool_size {
             let candidate = self.next_vassi;
             self.next_vassi = if self.next_vassi >= DEFAULT_VASSI_MAX {

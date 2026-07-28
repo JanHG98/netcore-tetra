@@ -1,3 +1,6 @@
+# NETCORE-KOMMENTAR – Was: Beschreibt Installation oder Betrieb von hosts.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 10.0.20.10	netcore-node-gateway
 10.0.20.11	netcore-mobility-core
 10.0.20.12	netcore-subscriber-core

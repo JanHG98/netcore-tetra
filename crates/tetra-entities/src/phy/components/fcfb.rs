@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use num::Zero;
 use rustfft;
 use std::sync::Arc;
@@ -5,7 +8,11 @@ use std::vec::Vec;
 
 use super::dsp_types::*;
 
+// Was: Vergibt für block count einen fachlich verständlichen Typnamen.
+// Warum: Der Alias macht Signaturen lesbarer und hält technische Details aus dem aufrufenden Code heraus.
 pub type BlockCount = i64;
+// Was: Vergibt für weights einen fachlich verständlichen Typnamen.
+// Warum: Der Alias macht Signaturen lesbarer und hält technische Details aus dem aufrufenden Code heraus.
 type Weights = Arc<[RealSample]>;
 
 // ------------------------------------------------
@@ -13,6 +20,8 @@ type Weights = Arc<[RealSample]>;
 // ------------------------------------------------
 
 #[derive(Copy, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für input block size in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct InputBlockSize {
     /// Number of new input samples in each input block.
     pub new: usize,
@@ -24,12 +33,18 @@ pub struct InputBlockSize {
     pub overlap: usize,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für input buffer in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct InputBuffer {
     size: InputBlockSize,
     buffer: Vec<ComplexSample>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `InputBuffer`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl InputBuffer {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(size: InputBlockSize) -> Self {
         Self {
             size,
@@ -39,6 +54,8 @@ impl InputBuffer {
 
     /// Prepare buffer for a new input block.
     /// Return a slice for writing new input samples.
+    // Was: Diese Funktion bereitet for new samples.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn prepare_for_new_samples(&mut self) -> &mut [ComplexSample] {
         // Move overlapping part from the end of the previous block to the beginning
         self.buffer.copy_within(self.size.new..self.size.new + self.size.overlap, 0);
@@ -47,12 +64,16 @@ impl InputBuffer {
     }
 
     /// Return a slice which can be passed to the process() method of a filter bank.
+    // Was: Führt den Arbeitsschritt `buffer` für buffer aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn buffer(&self) -> &[ComplexSample] {
         &self.buffer[..]
     }
 
     /// Return a slice for writing new samples into the buffer.
     /// This is the same as the one returned by the latest prepare_for_new_samples call.
+    // Was: Führt den Arbeitsschritt `buffer_in` für buffer in aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn buffer_in(&mut self) -> &mut [ComplexSample] {
         &mut self.buffer[self.size.overlap..self.size.new + self.size.overlap]
     }
@@ -64,6 +85,8 @@ impl InputBuffer {
 
 /// Overlap factor
 #[derive(Copy, Clone, PartialEq)]
+// Was: Listet die möglichen Varianten für overlap auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum Overlap {
     // Overlap factor of 1/2
     O1_2,
@@ -74,7 +97,11 @@ pub enum Overlap {
 /// Overlapping amount needs to be an integer number of samples.
 /// This means FFT size must be a multiple of the denominator
 /// of overlap factor.
+// Was: Führt den Arbeitsschritt `required_fft_size_factor` für required fft size factor aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn required_fft_size_factor(overlap: Overlap) -> usize {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match overlap {
         Overlap::O1_2 => 2,
         Overlap::O1_4 => 4,
@@ -83,6 +110,8 @@ fn required_fft_size_factor(overlap: Overlap) -> usize {
 
 /// Check that FFT size is a multiple of required_fft_size_factor.
 /// For now it panics but the code could be changed to return errors too.
+// Was: Diese Funktion prüft fft size.
+// Warum: Fehler oder unzulässige Zustände werden dadurch früh erkannt.
 fn check_fft_size(fft_size: usize, overlap: Overlap) {
     let required = required_fft_size_factor(overlap);
     if fft_size % required != 0 {
@@ -91,7 +120,11 @@ fn check_fft_size(fft_size: usize, overlap: Overlap) {
 }
 
 /// Compute input block size for a given FFT/IFFT size and overlap factor.
+// Was: Führt den Arbeitsschritt `input_block_size` für input block size aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn input_block_size(fft_size: usize, overlap: Overlap) -> InputBlockSize {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match overlap {
         Overlap::O1_2 => InputBlockSize {
             new: fft_size / 2,
@@ -104,8 +137,12 @@ fn input_block_size(fft_size: usize, overlap: Overlap) -> InputBlockSize {
     }
 }
 
+// Was: Führt den Arbeitsschritt `slice_middle_samples` für slice middle samples aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn slice_middle_samples(samples: &[ComplexSample], overlap: Overlap) -> &[ComplexSample] {
     let len = samples.len();
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let (first_sample, n_samples) = match overlap {
         Overlap::O1_2 => ((len + 2) / 4, len / 2),
         Overlap::O1_4 => ((len + 4) / 8, len / 4 * 3),
@@ -120,6 +157,8 @@ fn slice_middle_samples(samples: &[ComplexSample], overlap: Overlap) -> &[Comple
 /// 1 means 90° phase shift. Values are multipled by i.
 /// 2 means 180° phase shift. Values are multipled by -1.
 /// 3 means 270° phase shift. Values are multipled by -i.
+// Was: Diese Funktion liest phase rotation.
+// Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
 fn get_phase_rotation(center_bin: isize, block_count: BlockCount, overlap: Overlap) -> i8 {
     (center_bin.rem_euclid(4) as i8
         * block_count.rem_euclid(4) as i8
@@ -135,6 +174,8 @@ fn get_phase_rotation(center_bin: isize, block_count: BlockCount, overlap: Overl
 // ----------------------------------------
 
 #[derive(Copy, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für analysis input parameters in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct AnalysisInputParameters {
     pub fft_size: usize,
     /// Input sample rate.
@@ -145,6 +186,8 @@ pub struct AnalysisInputParameters {
     pub overlap: Overlap,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für analysis intermediate result in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct AnalysisIntermediateResult {
     fft_result: Vec<ComplexSample>,
     /// Block counter to implement output phase rotation.
@@ -152,13 +195,19 @@ pub struct AnalysisIntermediateResult {
 }
 
 /// Fast-convolution analysis filter bank.
+// Was: Bündelt die zusammengehörigen Werte für analysis input processor in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct AnalysisInputProcessor {
     parameters: AnalysisInputParameters,
     fft_plan: Arc<dyn rustfft::Fft<RealSample>>,
     result: AnalysisIntermediateResult,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `AnalysisInputProcessor`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl AnalysisInputProcessor {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(fft_planner: &mut rustfft::FftPlanner<RealSample>, parameters: AnalysisInputParameters) -> Self {
         check_fft_size(parameters.fft_size, parameters.overlap);
         Self {
@@ -171,10 +220,14 @@ impl AnalysisInputProcessor {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `input_block_size` für input block size aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn input_block_size(&self) -> InputBlockSize {
         input_block_size(self.parameters.fft_size, self.parameters.overlap)
     }
 
+    // Was: Führt den Arbeitsschritt `make_input_buffer` für make input buffer aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn make_input_buffer(&self) -> InputBuffer {
         InputBuffer::new(self.input_block_size())
     }
@@ -198,6 +251,8 @@ impl AnalysisInputProcessor {
     /// Passing it as a parameter allows input blocks to be skipped
     /// (for example, due to missing samples from a receiver)
     /// while keeping correct phase relationship between blocks.
+    // Was: Diese Funktion verarbeitet den vorgesehenen Arbeitsschritt.
+    // Warum: Die einzelnen Verarbeitungsschritte bleiben damit gebündelt und leichter testbar.
     pub fn process(&mut self, input: &[ComplexSample], block_count: BlockCount) -> &AnalysisIntermediateResult {
         self.result.fft_result.copy_from_slice(input);
         self.fft_plan.process(&mut self.result.fft_result[..]);
@@ -208,16 +263,22 @@ impl AnalysisInputProcessor {
 }
 
 #[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für analysis output parameters in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct AnalysisOutputParameters {
     pub center_bin: isize,
     pub weights: Weights,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `AnalysisOutputParameters`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl AnalysisOutputParameters {
     /// Design analysis bank output parameters
     /// for a given output sample rate and frequency.
     /// If bandwidth is given, it will determine the width
     /// of the flat part of the frequency response.
+    // Was: Führt den Arbeitsschritt `for_frequency` für for frequency aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn for_frequency(
         analysis_in_params: AnalysisInputParameters,
         output_sample_rate: f64,
@@ -244,6 +305,8 @@ impl AnalysisOutputParameters {
     }
 }
 
+// Was: Bündelt die zusammengehörigen Werte für analysis output processor in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct AnalysisOutputProcessor {
     input_parameters: AnalysisInputParameters,
     parameters: AnalysisOutputParameters,
@@ -253,7 +316,11 @@ pub struct AnalysisOutputProcessor {
     scaling: RealSample,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `AnalysisOutputProcessor`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl AnalysisOutputProcessor {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(
         fft_planner: &mut rustfft::FftPlanner<RealSample>,
         input_parameters: AnalysisInputParameters,
@@ -270,6 +337,8 @@ impl AnalysisOutputProcessor {
         }
     }
 
+    // Was: Diese Funktion verarbeitet den vorgesehenen Arbeitsschritt.
+    // Warum: Die einzelnen Verarbeitungsschritte bleiben damit gebündelt und leichter testbar.
     pub fn process(&mut self, intermediate_result: &AnalysisIntermediateResult) -> &[ComplexSample] {
         assert!(intermediate_result.fft_result.len() == self.input_parameters.fft_size);
 
@@ -294,6 +363,8 @@ impl AnalysisOutputProcessor {
 
         // This could probably be optimized a lot.
         // Now it computes each index using modulos which might be slow.
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for bin_number in -half_size..half_size {
             let bin_index_in = (self.parameters.center_bin + bin_number).rem_euclid(fft_size as isize) as usize;
             let bin_index_out = bin_number.rem_euclid(ifft_size as isize) as usize;
@@ -318,6 +389,8 @@ impl AnalysisOutputProcessor {
         slice_middle_samples(&self.buffer, self.input_parameters.overlap)
     }
 
+    // Was: Diese Funktion erstellt with frequency.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new_with_frequency(
         fft_planner: &mut rustfft::FftPlanner<RealSample>,
         analysis_in_params: AnalysisInputParameters,
@@ -338,6 +411,8 @@ impl AnalysisOutputProcessor {
 // ----------------------------------------
 
 #[derive(Copy, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für synthesis output parameters in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SynthesisOutputParameters {
     pub ifft_size: usize,
     /// Output sample rate of synthesis bank.
@@ -348,6 +423,8 @@ pub struct SynthesisOutputParameters {
     pub overlap: Overlap,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für synthesis output processor in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SynthesisOutputProcessor {
     parameters: SynthesisOutputParameters,
     ifft_plan: Arc<dyn rustfft::Fft<RealSample>>,
@@ -361,6 +438,8 @@ pub struct SynthesisOutputProcessor {
 }
 
 #[derive(PartialEq)]
+// Was: Listet die möglichen Varianten für synthesis buffer Zustand auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 enum SynthesisBufferState {
     /// Buffer is full of zeros.
     /// This is the case if no inputs have been added
@@ -374,6 +453,8 @@ enum SynthesisBufferState {
     Output,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für synthesis intermediate result in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SynthesisIntermediateResult {
     /// Where in synthesis output IFFT input buffer
     /// to add the input FFT results.
@@ -382,7 +463,11 @@ pub struct SynthesisIntermediateResult {
     fft_result: Vec<ComplexSample>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SynthesisOutputProcessor`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SynthesisOutputProcessor {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(fft_planner: &mut rustfft::FftPlanner<RealSample>, parameters: SynthesisOutputParameters) -> Self {
         check_fft_size(parameters.ifft_size, parameters.overlap);
         Self {
@@ -393,13 +478,19 @@ impl SynthesisOutputProcessor {
         }
     }
 
+    // Was: Diese Funktion leert den vorgesehenen Arbeitsschritt.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn clear(&mut self) {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for b in self.buffer.iter_mut() {
             *b = ComplexSample::ZERO;
         }
         self.buffer_state = SynthesisBufferState::Clear;
     }
 
+    // Was: Diese Funktion fügt den vorgesehenen Arbeitsschritt.
+    // Warum: Das Einfügen wird so einheitlich geprüft und verwaltet.
     pub fn add(&mut self, intermediate_result: &SynthesisIntermediateResult) {
         // If previous result is still in the buffer, clear it
         // before starting to add inputs.
@@ -409,6 +500,8 @@ impl SynthesisOutputProcessor {
         }
 
         let ifft_size = self.buffer.len();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (index, value) in intermediate_result.fft_result.iter().enumerate() {
             // TODO: handle wrap-around without computing a modulo for each bin
             let out_index = (intermediate_result.offset + index).rem_euclid(ifft_size);
@@ -418,7 +511,11 @@ impl SynthesisOutputProcessor {
         self.buffer_state = SynthesisBufferState::Input;
     }
 
+    // Was: Diese Funktion verarbeitet den vorgesehenen Arbeitsschritt.
+    // Warum: Die einzelnen Verarbeitungsschritte bleiben damit gebündelt und leichter testbar.
     pub fn process(&mut self) -> &[ComplexSample] {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.buffer_state {
             SynthesisBufferState::Clear => {
                 // No inputs have been added. Buffer is full of zeros.
@@ -442,20 +539,28 @@ impl SynthesisOutputProcessor {
         slice_middle_samples(&self.buffer, self.parameters.overlap)
     }
 
+    // Was: Führt den Arbeitsschritt `output_block_size` für output block size aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn output_block_size(&self) -> usize {
         slice_middle_samples(&self.buffer, self.parameters.overlap).len()
     }
 }
 
 #[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für synthesis input parameters in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SynthesisInputParameters {
     pub center_bin: isize,
     pub weights: Weights,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SynthesisInputParameters`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SynthesisInputParameters {
     /// Design synthesis bank input parameters
     /// for a given input sample rate and frequency.
+    // Was: Führt den Arbeitsschritt `for_frequency` für for frequency aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn for_frequency(
         output_parameters: SynthesisOutputParameters,
         input_sample_rate: f64,
@@ -482,6 +587,8 @@ impl SynthesisInputParameters {
     }
 }
 
+// Was: Bündelt die zusammengehörigen Werte für synthesis input processor in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SynthesisInputProcessor {
     weights: Weights,
     fft_plan: Arc<dyn rustfft::Fft<RealSample>>,
@@ -497,7 +604,11 @@ pub struct SynthesisInputProcessor {
     overlap: Overlap,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SynthesisInputProcessor`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SynthesisInputProcessor {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(
         fft_planner: &mut rustfft::FftPlanner<RealSample>,
         output_parameters: SynthesisOutputParameters,
@@ -518,6 +629,8 @@ impl SynthesisInputProcessor {
         }
     }
 
+    // Was: Diese Funktion verarbeitet den vorgesehenen Arbeitsschritt.
+    // Warum: Die einzelnen Verarbeitungsschritte bleiben damit gebündelt und leichter testbar.
     pub fn process(&mut self, input: &[ComplexSample], block_count: BlockCount) -> &SynthesisIntermediateResult {
         self.result.fft_result.copy_from_slice(input);
         self.fft_plan.process(&mut self.result.fft_result[..]);
@@ -529,6 +642,8 @@ impl SynthesisInputProcessor {
         let multiply_by_i = phasenum % 2 == 1;
 
         // Apply weights
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (value, weight) in self.result.fft_result.iter_mut().zip(self.weights.iter()) {
             *value = *value * weight * scaling;
             // Apply 90° phase rotation if needed.
@@ -543,6 +658,8 @@ impl SynthesisInputProcessor {
         // Swap halves for simpler indexing when results are added
         // to IFFT input. This might not be the most efficient way to do it.
         let fft_size_half = self.result.fft_result.len() / 2;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for i in 0..fft_size_half {
             self.result.fft_result.swap(i, fft_size_half + i);
         }
@@ -550,14 +667,20 @@ impl SynthesisInputProcessor {
         &self.result
     }
 
+    // Was: Führt den Arbeitsschritt `input_block_size` für input block size aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn input_block_size(&self) -> InputBlockSize {
         input_block_size(self.result.fft_result.len(), self.overlap)
     }
 
+    // Was: Führt den Arbeitsschritt `make_input_buffer` für make input buffer aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn make_input_buffer(&self) -> InputBuffer {
         InputBuffer::new(self.input_block_size())
     }
 
+    // Was: Diese Funktion erstellt with frequency.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new_with_frequency(
         fft_planner: &mut rustfft::FftPlanner<RealSample>,
         output_parameters: SynthesisOutputParameters,
@@ -579,6 +702,8 @@ impl SynthesisInputProcessor {
 
 /// Design raised cosine weights for a given IFFT size,
 /// passband width and transition band width (given as number of bins).
+// Was: Führt den Arbeitsschritt `raised_cosine_weights` für raised cosine weights aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn raised_cosine_weights(ifft_size: usize, passband_bins: usize, transition_bins: usize) -> Weights {
     // I am not sure if it this would work correctly for an odd size,
     // but currently supported overlap factors needs an even IFFT size anyway.
@@ -591,12 +716,16 @@ pub fn raised_cosine_weights(ifft_size: usize, passband_bins: usize, transition_
     assert!(passband_half + transition_bins <= ifft_size / 2);
 
     let mut weights = vec![RealSample::zero(); ifft_size];
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for i in 0..passband_half {
         weights[i] = 1.0;
         if i != 0 {
             weights[ifft_size - i] = 1.0;
         }
     }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for i in 0..transition_bins {
         let v = 0.5 + 0.5 * (sample_consts::PI * (i + 1) as RealSample / (transition_bins + 1) as RealSample).cos();
         let j = passband_half + i;
@@ -627,12 +756,16 @@ pub fn raised_cosine_weights(ifft_size: usize, passband_bins: usize, transition_
 /// If IFFT size is too small to fit a transition band of the default width,
 /// the whole bandwidth will be made transition band and there will be no
 /// flat part in the frequency response.
+// Was: Führt den Arbeitsschritt `raised_cosine_weights_default` für raised cosine weights default aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn raised_cosine_weights_default(
     ifft_size: usize,
     passband_bins: Option<usize>,
     transition_bins: Option<usize>,
     overlap: Overlap,
 ) -> Weights {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let (p, t) = match (passband_bins, transition_bins) {
         (Some(p), Some(t)) => (p, t),
         (Some(p), None) => (p, (ifft_size - p / 2 * 2) / 2 - 1),

@@ -1,3 +1,8 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+// Was: Bindet das Untermodul common in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod common;
 
 use std::time::Duration;
@@ -24,16 +29,22 @@ use tetra_saps::sapmsg::{SapMsg, SapMsgInner};
 use crate::common::ComponentTest;
 
 /// Helper: register a subscriber ISSI in the StackState subscriber registry
+// Was: Diese Funktion registriert Teilnehmer.
+// Warum: Die Zuordnung bleibt dadurch eindeutig und kann später sauber wieder entfernt werden.
 fn register_subscriber(test: &mut ComponentTest, issi: u32) {
     test.config.state_write().subscribers.register(issi);
 }
 
 /// Helper: affiliate a subscriber with a GSSI in the StackState subscriber registry
+// Was: Führt den Arbeitsschritt `affiliate_subscriber` für affiliate Teilnehmer aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn affiliate_subscriber(test: &mut ComponentTest, issi: u32, gssi: u32) {
     test.config.state_write().subscribers.affiliate(issi, gssi);
 }
 
 /// Helper: build a U-SDS-DATA message from a source ISSI to a dest SSI with 16-bit payload
+// Was: Diese Funktion erstellt u TETRA-Kurznachricht (SDS) data msg.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
 fn build_u_sds_data_msg(source_issi: u32, dest_ssi: u32, payload: u16) -> SapMsg {
     let u_sds = USdsData {
         area_selection: 0,
@@ -67,6 +78,8 @@ fn build_u_sds_data_msg(source_issi: u32, dest_ssi: u32, payload: u16) -> SapMsg
 }
 
 /// Count D-SDS-DATA messages (LcmcMleUnitdataReq to Mle) in sink output
+// Was: Führt den Arbeitsschritt `count_d_sds_data` für count d TETRA-Kurznachricht (SDS) data aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn count_d_sds_data(msgs: &[SapMsg]) -> usize {
     msgs.iter()
         .filter(|m| m.dest == TetraEntity::Mle && matches!(&m.msg, SapMsgInner::LcmcMleUnitdataReq(_)))
@@ -74,6 +87,8 @@ fn count_d_sds_data(msgs: &[SapMsg]) -> usize {
 }
 
 /// Count CmceSdsData messages to Brew in sink output
+// Was: Führt den Arbeitsschritt `count_brew_sds` für count Brew-Verbindung TETRA-Kurznachricht (SDS) aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn count_brew_sds(msgs: &[SapMsg]) -> usize {
     msgs.iter()
         .filter(|m| m.dest == TetraEntity::Brew && matches!(&m.msg, SapMsgInner::CmceSdsData(_)))
@@ -81,6 +96,8 @@ fn count_brew_sds(msgs: &[SapMsg]) -> usize {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall TETRA-Kurznachricht (SDS) local delivery.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_sds_local_delivery() {
     debug::setup_logging_verbose();
 
@@ -104,6 +121,8 @@ fn test_sds_local_delivery() {
     assert_eq!(d_sds_count, 1, "Expected 1 D-SDS-DATA at Mle sink for local delivery");
 
     // Verify the address is ISSI
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for m in &sink_msgs {
         if m.dest == TetraEntity::Mle
             && let SapMsgInner::LcmcMleUnitdataReq(ref prim) = m.msg
@@ -115,6 +134,8 @@ fn test_sds_local_delivery() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall TETRA-Kurznachricht (SDS) Brew-Verbindung forward.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_sds_brew_forward() {
     debug::setup_logging_verbose();
 
@@ -155,6 +176,8 @@ fn test_sds_brew_forward() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall TETRA-Kurznachricht (SDS) from Brew-Verbindung to local.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_sds_from_brew_to_local() {
     debug::setup_logging_verbose();
 
@@ -188,6 +211,8 @@ fn test_sds_from_brew_to_local() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall TETRA-Kurznachricht (SDS) from Brew-Verbindung unregistered.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_sds_from_brew_unregistered() {
     debug::setup_logging_verbose();
 
@@ -218,6 +243,8 @@ fn test_sds_from_brew_unregistered() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall TETRA-Kurznachricht (SDS) Gruppe delivery.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_sds_group_delivery() {
     debug::setup_logging_verbose();
 
@@ -231,6 +258,8 @@ fn test_sds_group_delivery() {
     let gssi = 100;
 
     // Register 3 ISSIs and affiliate them with the GSSI in StackState
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for issi in [1000001, 1000002, 1000003] {
         register_subscriber(&mut test, issi);
         affiliate_subscriber(&mut test, issi, gssi);
@@ -246,6 +275,8 @@ fn test_sds_group_delivery() {
     assert_eq!(d_sds_count, 1, "Expected exactly 1 GSSI-addressed D-SDS-DATA (not per-member)");
 
     // Verify the address is GSSI
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for m in &sink_msgs {
         if m.dest == TetraEntity::Mle
             && let SapMsgInner::LcmcMleUnitdataReq(ref prim) = m.msg
@@ -257,6 +288,8 @@ fn test_sds_group_delivery() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall TETRA-Kurznachricht (SDS) from Brew-Verbindung to Gruppe.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_sds_from_brew_to_group() {
     // FH-FEAT-032 R2: a group-addressed (GSSI) SDS arriving from Brew must be delivered to the MS
     // camped on that group. Previously dropped, because rx_sds_from_brew only checked is_registered()
@@ -271,6 +304,8 @@ fn test_sds_from_brew_to_group() {
     test.populate_entities(components, sinks);
 
     let gssi = 100;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for issi in [1000001, 1000002, 1000003] {
         register_subscriber(&mut test, issi);
         affiliate_subscriber(&mut test, issi, gssi);
@@ -296,6 +331,8 @@ fn test_sds_from_brew_to_group() {
         1,
         "Expected exactly 1 GSSI-addressed D-SDS-DATA from Brew (not dropped, not per-member)"
     );
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for m in &sink_msgs {
         if m.dest == TetraEntity::Mle
             && let SapMsgInner::LcmcMleUnitdataReq(ref prim) = m.msg
@@ -307,6 +344,8 @@ fn test_sds_from_brew_to_group() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall Brew-Verbindung inbound allowed bypasses whitelist but honors und weitere Angaben.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_brew_inbound_allowed_bypasses_whitelist_but_honors_local_ranges() {
     // FH-FEAT-032 R3: inbound admission must ignore the outbound-only `whitelisted_ssis`, but still
     // honour `local_ssi_ranges` (documented as local-only / "incoming brew traffic ... rejected").
@@ -353,6 +392,8 @@ fn test_brew_inbound_allowed_bypasses_whitelist_but_honors_local_ranges() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall u Status forwarded as d Status.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_u_status_forwarded_as_d_status() {
     debug::setup_logging_verbose();
 
@@ -417,6 +458,8 @@ fn test_u_status_forwarded_as_d_status() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall u Status Brew-Verbindung forward.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_u_status_brew_forward() {
     debug::setup_logging_verbose();
 
@@ -500,6 +543,8 @@ fn test_u_status_brew_forward() {
 }
 
 #[test]
+// Was: Prüft automatisch den Fall u Status unregistered dest dropped.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_u_status_unregistered_dest_dropped() {
     debug::setup_logging_verbose();
 
@@ -551,6 +596,8 @@ fn test_u_status_unregistered_dest_dropped() {
 }
 
 /// Build a U-SETUP for a group call from `calling_issi` to `dest_gssi`.
+// Was: Diese Funktion erstellt u setup Gruppe msg.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
 fn build_u_setup_group_msg(calling_issi: u32, dest_gssi: u32) -> SapMsg {
     let u_setup = USetup {
         area_selection: 0,
@@ -595,6 +642,8 @@ fn build_u_setup_group_msg(calling_issi: u32, dest_gssi: u32) -> SapMsg {
 }
 
 /// Build a U-DISCONNECT for `call_id` from the call owner, to release a group call.
+// Was: Diese Funktion erstellt u disconnect msg.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
 fn build_u_disconnect_msg(owner_issi: u32, call_id: u16) -> SapMsg {
     let pdu = UDisconnect {
         call_identifier: call_id,
@@ -622,6 +671,8 @@ fn build_u_disconnect_msg(owner_issi: u32, call_id: u16) -> SapMsg {
 }
 
 /// Count D-SDS-DATA (LcmcMleUnitdataReq to Mle) addressed to a specific ISSI.
+// Was: Führt den Arbeitsschritt `d_sds_to` für d TETRA-Kurznachricht (SDS) to aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn d_sds_to(msgs: &[SapMsg], issi: u32) -> Vec<&LcmcMleUnitdataReq> {
     msgs.iter()
         .filter_map(|m| match &m.msg {
@@ -641,6 +692,8 @@ fn d_sds_to(msgs: &[SapMsg], issi: u32) -> Vec<&LcmcMleUnitdataReq> {
 ///   (1) while the talker is in the call, the SDS is deferred (nothing addressed to it is emitted);
 ///   (2) after the call releases, it is delivered on the MCCH (no stealing / no chan_alloc).
 #[test]
+// Was: Prüft automatisch den Fall TETRA-Kurznachricht (SDS) to in Ruf ms is deferred und weitere Angaben.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_sds_to_in_call_ms_is_deferred_then_delivered_on_mcch() {
     debug::setup_logging_verbose();
 
@@ -655,6 +708,8 @@ fn test_sds_to_in_call_ms_is_deferred_then_delivered_on_mcch() {
     let gssi = 100;
 
     // A listener affiliated via the MM control path so the BS accepts the group call.
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for action in [BrewSubscriberAction::Register, BrewSubscriberAction::Affiliate] {
         test.submit_message(SapMsg {
             sap: Sap::Control,
@@ -712,6 +767,8 @@ fn test_sds_to_in_call_ms_is_deferred_then_delivered_on_mcch() {
 /// SDS fails cleanly instead, which is wall-clock-timed and covered by the field log rather than a
 /// unit test.)
 #[test]
+// Was: Prüft automatisch den Fall TETRA-Kurznachricht (SDS) to in Ruf ee ms waits und weitere Angaben.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_sds_to_in_call_ee_ms_waits_for_window_after_call() {
     debug::setup_logging_verbose();
     let dltime = TdmaTime { h: 0, m: 1, f: 1, t: 1 };
@@ -723,6 +780,8 @@ fn test_sds_to_in_call_ee_ms_waits_for_window_after_call() {
     let gssi = 100;
 
     // Listener affiliated via MM control path so the BS accepts the group call.
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for action in [BrewSubscriberAction::Register, BrewSubscriberAction::Affiliate] {
         test.submit_message(SapMsg {
             sap: Sap::Control,
@@ -794,6 +853,8 @@ fn test_sds_to_in_call_ee_ms_waits_for_window_after_call() {
 /// window must be DEFERRED until the window opens, then delivered on the MCCH — so the BS respects
 /// the MS's reduced monitoring schedule (ETSI EN 300 392-2 §16.7) instead of transmitting blindly.
 #[test]
+// Was: Prüft automatisch den Fall TETRA-Kurznachricht (SDS) to ee ms defers until monitoring und weitere Angaben.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_sds_to_ee_ms_defers_until_monitoring_window() {
     debug::setup_logging_verbose();
 
@@ -844,6 +905,8 @@ fn test_sds_to_ee_ms_defers_until_monitoring_window() {
 }
 
 /// Helper: build a U-STATUS SAP message from `src` to `dest` carrying a pre-coded status value.
+// Was: Diese Funktion erstellt u Status msg.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
 fn build_u_status_msg(src: u32, dest: u32, status: u16) -> SapMsg {
     let u_status = UStatus {
         area_selection: 0,
@@ -877,6 +940,8 @@ fn build_u_status_msg(src: u32, dest: u32, status: u16) -> SapMsg {
 /// FH-FEAT-014: an authorized ISSI sending a U-STATUS to 9999 whose status code maps to the "ip"
 /// action gets a text-SDS reply addressed back to it.
 #[test]
+// Was: Prüft automatisch den Fall u Status command IP-Daten replies to authorized.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_u_status_command_ip_replies_to_authorized() {
     debug::setup_logging_verbose();
     let dltime = TdmaTime { h: 0, m: 1, f: 1, t: 1 };
@@ -905,6 +970,8 @@ fn test_u_status_command_ip_replies_to_authorized() {
 
 /// FH-FEAT-014: a U-STATUS from an ISSI that is NOT in authorized_issis must be ignored — no reply.
 #[test]
+// Was: Prüft automatisch den Fall u Status command unauthorized no reply.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_u_status_command_unauthorized_no_reply() {
     debug::setup_logging_verbose();
     let dltime = TdmaTime { h: 0, m: 1, f: 1, t: 1 };
@@ -934,6 +1001,8 @@ fn test_u_status_command_unauthorized_no_reply() {
 // (reuses the existing `build_u_status_msg(src, dest, status: u16)` helper above; the emergency
 //  pre-coded status is raw value 0, ETSI EN 300 392-2 table 14.72.)
 
+// Was: Führt den Arbeitsschritt `brew_test_config` für Brew-Verbindung test Konfiguration aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn brew_test_config() -> tetra_config::bluestation::StackConfig {
     let mut config = ComponentTest::get_default_test_config(StackMode::Bs);
     config.brew = Some(CfgBrew {
@@ -959,6 +1028,8 @@ fn brew_test_config() -> tetra_config::bluestation::StackConfig {
 /// subsequent NON-emergency status from the same ISSI clears the session and forwards normally,
 /// proving the gate only affects emergency and the normal status path is intact.
 #[test]
+// Was: Prüft automatisch den Fall emergency Status not forwarded to Brew-Verbindung by und weitere Angaben.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_emergency_status_not_forwarded_to_brew_by_default() {
     debug::setup_logging_verbose();
     let dltime = TdmaTime { h: 0, m: 1, f: 1, t: 1 };
@@ -990,6 +1061,8 @@ fn test_emergency_status_not_forwarded_to_brew_by_default() {
 
 /// With forward_to_brew = true the operator opts the emergency status back into Brew forwarding.
 #[test]
+// Was: Prüft automatisch den Fall emergency Status forwarded to Brew-Verbindung when opted und weitere Angaben.
+// Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_emergency_status_forwarded_to_brew_when_opted_in() {
     debug::setup_logging_verbose();
     let dltime = TdmaTime { h: 0, m: 1, f: 1, t: 1 };

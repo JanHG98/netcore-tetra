@@ -1,6 +1,13 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use super::*;
 
+// Was: Implementiert das zugehörige Verhalten für `CcBsSubentity`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl CcBsSubentity {
+    // Was: Führt den Arbeitsschritt `rx_call_control` für rx Ruf Steuerung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn rx_call_control(&mut self, queue: &mut MessageQueue, message: SapMsg) {
         let network_entity = message.src;
         let SapMsgInner::CmceCallControl(call_control) = message.msg else {
@@ -8,6 +15,8 @@ impl CcBsSubentity {
             return;
         };
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match call_control {
             CallControl::NetworkCallStart {
                 brew_uuid,

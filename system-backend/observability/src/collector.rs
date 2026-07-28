@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Metriken, Protokolle und Betriebsüberwachung.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::BTreeMap;
 use std::io::{Read, Write};
 use std::net::{TcpStream, ToSocketAddrs};
@@ -10,6 +13,8 @@ use crate::config::{ObservabilityConfig, StackConfig};
 use crate::state::{MetricPointInput, SharedObservability, StackProbe, TargetRecord};
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für scrape result in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ScrapeResult {
     pub target_id: String,
     pub timestamp: chrono::DateTime<Utc>,
@@ -21,6 +26,8 @@ pub struct ScrapeResult {
     pub error: Option<String>,
 }
 
+// Was: Diese Funktion startet collector.
+// Warum: Länger laufende Arbeit blockiert dadurch nicht den aufrufenden Ablauf.
 pub fn spawn_collector(
     config: ObservabilityConfig,
     observability: SharedObservability,
@@ -29,6 +36,8 @@ pub fn spawn_collector(
         if !config.collection.scrape_on_start {
             thread::sleep(StdDuration::from_secs(config.collection.scrape_interval_secs));
         }
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             let started = std::time::Instant::now();
             run_cycle(&config, &observability);
@@ -41,14 +50,20 @@ pub fn spawn_collector(
     })
 }
 
+// Was: Diese Funktion führt cycle.
+// Warum: Der Lebenszyklus des Dienstes bleibt so an einer zentralen Stelle steuerbar.
 pub fn run_cycle(config: &ObservabilityConfig, observability: &SharedObservability) {
     let targets = observability.targets_for_scrape();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for target in targets {
         let result = scrape_target(config, &target);
         if let Err(error) = observability.record_scrape(result) {
             tracing::warn!(target=%target.target_id, "failed to persist scrape: {}", error);
         }
     }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for probe in probe_stack(&config.stack, config.collection.request_timeout_ms, config.collection.max_response_bytes) {
         observability.record_stack_probe(probe);
     }
@@ -57,6 +72,8 @@ pub fn run_cycle(config: &ObservabilityConfig, observability: &SharedObservabili
     }
 }
 
+// Was: Führt den Arbeitsschritt `scrape_target` für scrape target aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn scrape_target(config: &ObservabilityConfig, target: &TargetRecord) -> ScrapeResult {
     let started = std::time::Instant::now();
     let timeout_ms = config.collection.request_timeout_ms;
@@ -70,8 +87,12 @@ pub fn scrape_target(config: &ObservabilityConfig, target: &TargetRecord) -> Scr
     let metrics_response = http_get(&join_url(&target.base_url, &target.metrics_path), timeout_ms, limit);
     let mut error = None;
     let mut metrics = Vec::new();
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let metrics_ok = match metrics_response {
         Ok(response) if (200..300).contains(&response.status) => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match String::from_utf8(response.body) {
                 Ok(text) => {
                     metrics = parse_prometheus(&text, target);
@@ -104,6 +125,8 @@ pub fn scrape_target(config: &ObservabilityConfig, target: &TargetRecord) -> Scr
     }
 }
 
+// Was: Führt den Arbeitsschritt `probe_stack` für probe stack aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn probe_stack(config: &StackConfig, timeout_ms: u64, limit: usize) -> Vec<StackProbe> {
     [
         ("prometheus", &config.prometheus_url, &config.prometheus_ready_path),
@@ -114,6 +137,8 @@ fn probe_stack(config: &StackConfig, timeout_ms: u64, limit: usize) -> Vec<Stack
     .into_iter()
     .map(|(component, base, path)| {
         let started = std::time::Instant::now();
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match http_get(&join_url(base, path), timeout_ms, limit) {
             Ok(response) => StackProbe {
                 component: component.to_string(),
@@ -136,15 +161,21 @@ fn probe_stack(config: &StackConfig, timeout_ms: u64, limit: usize) -> Vec<Stack
     .collect()
 }
 
+// Was: Diese Funktion verknüpft url.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn join_url(base: &str, path: &str) -> String {
     format!("{}{}", base.trim_end_matches('/'), if path.starts_with('/') { path.to_string() } else { format!("/{path}") })
 }
 
+// Was: Bündelt die zusammengehörigen Werte für HTTP result in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct HttpResult {
     status: u16,
     body: Vec<u8>,
 }
 
+// Was: Führt den Arbeitsschritt `http_get` für HTTP get aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn http_get(url: &str, timeout_ms: u64, max_bytes: usize) -> Result<HttpResult, String> {
     let parsed = ParsedUrl::parse(url)?;
     let mut addresses = (parsed.host.as_str(), parsed.port)
@@ -163,6 +194,8 @@ fn http_get(url: &str, timeout_ms: u64, max_bytes: usize) -> Result<HttpResult, 
     stream.write_all(request.as_bytes()).map_err(|error| error.to_string())?;
     let mut raw = Vec::new();
     let mut buffer = [0u8; 8192];
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
     loop {
         let count = stream.read(&mut buffer).map_err(|error| error.to_string())?;
         if count == 0 { break; }
@@ -186,9 +219,13 @@ fn http_get(url: &str, timeout_ms: u64, max_bytes: usize) -> Result<HttpResult, 
     Ok(HttpResult { status, body })
 }
 
+// Was: Diese Funktion dekodiert chunked.
+// Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
 fn decode_chunked(raw: &[u8]) -> Result<Vec<u8>, String> {
     let mut output = Vec::new();
     let mut cursor = 0usize;
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
     loop {
         let line_end = raw[cursor..].windows(2).position(|window| window == b"\r\n")
             .map(|value| cursor + value)
@@ -205,12 +242,18 @@ fn decode_chunked(raw: &[u8]) -> Result<Vec<u8>, String> {
     Ok(output)
 }
 
+// Was: Bündelt die zusammengehörigen Werte für parsed url in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct ParsedUrl {
     host: String,
     port: u16,
     path: String,
 }
+// Was: Implementiert das zugehörige Verhalten für `ParsedUrl`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl ParsedUrl {
+    // Was: Diese Funktion liest und prüft den vorgesehenen Arbeitsschritt.
+    // Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     fn parse(url: &str) -> Result<Self, String> {
         let rest = url.strip_prefix("http://").ok_or_else(|| "only http:// URLs are supported in open_lab".to_string())?;
         let (authority, path) = rest.split_once('/').map(|(a, p)| (a, format!("/{p}"))).unwrap_or((rest, "/".to_string()));
@@ -229,9 +272,13 @@ impl ParsedUrl {
     }
 }
 
+// Was: Diese Funktion liest und prüft prometheus.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 pub fn parse_prometheus(text: &str, target: &TargetRecord) -> Vec<MetricPointInput> {
     let timestamp = Utc::now();
     let mut points = Vec::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for line in text.lines() {
         let line = line.trim();
         if line.is_empty() || line.starts_with('#') { continue; }
@@ -242,16 +289,22 @@ pub fn parse_prometheus(text: &str, target: &TargetRecord) -> Vec<MetricPointInp
         if name.is_empty() { continue; }
         labels.insert("target_id".to_string(), target.target_id.clone());
         labels.insert("service".to_string(), target.service.clone());
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (key, value) in &target.labels { labels.entry(key.clone()).or_insert_with(|| value.clone()); }
         points.push(MetricPointInput { name, labels, value, timestamp });
     }
     points
 }
 
+// Was: Führt den Arbeitsschritt `split_sample` für split sample aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn split_sample(line: &str) -> Option<(&str, &str)> {
     let mut braces = 0i32;
     let mut quoted = false;
     let mut escaped = false;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (index, ch) in line.char_indices() {
         if escaped { escaped = false; continue; }
         if ch == '\\' && quoted { escaped = true; continue; }
@@ -267,11 +320,15 @@ fn split_sample(line: &str) -> Option<(&str, &str)> {
     None
 }
 
+// Was: Diese Funktion liest und prüft metric lhs.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_metric_lhs(lhs: &str) -> (String, BTreeMap<String, String>) {
     let Some(open) = lhs.find('{') else { return (lhs.to_string(), BTreeMap::new()); };
     let close = lhs.rfind('}').unwrap_or(lhs.len());
     let mut labels = BTreeMap::new();
     if close > open {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for part in split_labels(&lhs[open + 1..close]) {
             if let Some((key, raw)) = part.split_once('=') {
                 labels.insert(key.trim().to_string(), unquote(raw.trim()));
@@ -281,11 +338,15 @@ fn parse_metric_lhs(lhs: &str) -> (String, BTreeMap<String, String>) {
     (lhs[..open].to_string(), labels)
 }
 
+// Was: Führt den Arbeitsschritt `split_labels` für split labels aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn split_labels(input: &str) -> Vec<&str> {
     let mut output = Vec::new();
     let mut start = 0usize;
     let mut quoted = false;
     let mut escaped = false;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (index, ch) in input.char_indices() {
         if escaped { escaped = false; continue; }
         if ch == '\\' && quoted { escaped = true; continue; }
@@ -296,11 +357,15 @@ fn split_labels(input: &str) -> Vec<&str> {
     output
 }
 
+// Was: Führt den Arbeitsschritt `unquote` für unquote aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn unquote(input: &str) -> String {
     let value = input.strip_prefix('"').and_then(|v| v.strip_suffix('"')).unwrap_or(input);
     value.replace("\\n", "\n").replace("\\\"", "\"").replace("\\\\", "\\")
 }
 
+// Was: Diese Funktion liest und prüft value.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_value(value: &str) -> Result<f64, ()> {
     let parsed = value.parse::<f64>().map_err(|_| ())?;
     if parsed.is_finite() { Ok(parsed) } else { Err(()) }

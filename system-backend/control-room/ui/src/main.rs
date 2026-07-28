@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Leitstellenfunktionen und Bedienoberflächen.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use eframe::egui;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -9,15 +12,33 @@ use std::sync::mpsc::{self, Receiver, TryRecvError};
 use std::thread;
 use std::time::{Duration, Instant};
 
+// Was: Legt den festen Wert `DEFAULT_API` für default API-Schnittstelle fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const DEFAULT_API: &str = "http://127.0.0.1:9010";
+// Was: Legt den festen Wert `DEFAULT_PROFILE` für default profile fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const DEFAULT_PROFILE: &str = "default";
+// Was: Legt den festen Wert `DEFAULT_NODE` für default Netzknoten fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const DEFAULT_NODE: &str = "SRV-M_TBS-01";
+// Was: Legt den festen Wert `DEFAULT_OPERATOR` für default operator fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const DEFAULT_OPERATOR: &str = "jan";
+// Was: Legt den festen Wert `UI_VERSION_LABEL` für ui version label fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const UI_VERSION_LABEL: &str = "Native UI v5.15.0 · Packet Data / Multi-PDCH";
+// Was: Legt den festen Wert `DEFAULT_TILE_URL` für default tile url fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const DEFAULT_TILE_URL: &str = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+// Was: Legt den festen Wert `DEFAULT_TILE_ATTRIBUTION` für default tile attribution fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const DEFAULT_TILE_ATTRIBUTION: &str = "© OpenStreetMap contributors";
+// Was: Legt den festen Wert `TILE_SIZE` für tile size fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const TILE_SIZE: f64 = 256.0;
 
+// Was: Startet das Programm, lädt die benötigten Einstellungen und übergibt an den eigentlichen Dienstablauf.
+// Warum: Ein klarer Einstiegspunkt hält Startreihenfolge, Fehlerausgabe und geordnetes Beenden zusammen.
 fn main() -> eframe::Result<()> {
     let (settings, startup_warning) = ResolvedSettings::load();
     let native_options = eframe::NativeOptions {
@@ -35,6 +56,8 @@ fn main() -> eframe::Result<()> {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für resolved settings in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct ResolvedSettings {
     profile: String,
     api: String,
@@ -46,6 +69,8 @@ struct ResolvedSettings {
 }
 
 #[derive(Debug, Default, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für operator Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct OperatorConfig {
     profiles: HashMap<String, ProfileConfig>,
     ui: Option<UiConfig>,
@@ -53,11 +78,15 @@ struct OperatorConfig {
 }
 
 #[derive(Debug, Default, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für ui Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct UiConfig {
     map: Option<MapSettingsConfig>,
 }
 
 #[derive(Debug, Default, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für map settings Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct MapSettingsConfig {
     online_tiles: Option<bool>,
     tile_url: Option<String>,
@@ -72,6 +101,8 @@ struct MapSettingsConfig {
 
 
 #[derive(Debug, Default, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für directory Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct DirectoryConfig {
     #[serde(default)]
     subscribers: HashMap<String, DirectorySubscriberConfig>,
@@ -85,6 +116,8 @@ struct DirectoryConfig {
 }
 
 #[derive(Debug, Default, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für directory Teilnehmer Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct DirectorySubscriberConfig {
     name: Option<String>,
     label: Option<String>,
@@ -106,6 +139,8 @@ struct DirectorySubscriberConfig {
 }
 
 #[derive(Debug, Default, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für directory label Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct DirectoryLabelConfig {
     name: Option<String>,
     label: Option<String>,
@@ -114,6 +149,8 @@ struct DirectoryLabelConfig {
 }
 
 #[derive(Debug, Default, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für directory Status Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct DirectoryStatusConfig {
     name: Option<String>,
     label: Option<String>,
@@ -122,6 +159,8 @@ struct DirectoryStatusConfig {
 }
 
 #[derive(Debug, Default, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für directory settings in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct DirectorySettings {
     subscribers: HashMap<String, DirectorySubscriberConfig>,
     groups: HashMap<String, DirectoryLabelConfig>,
@@ -130,7 +169,11 @@ struct DirectorySettings {
     hide_infrastructure: bool,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `DirectorySettings`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl DirectorySettings {
+    // Was: Wandelt Eingangsdaten in Konfiguration um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn from_config(config: Option<&DirectoryConfig>) -> Self {
         let Some(config) = config else {
             return Self { hide_infrastructure: true, ..Default::default() };
@@ -144,7 +187,11 @@ impl DirectorySettings {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `subscriber` für Teilnehmer aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn subscriber(&self, issi: u64) -> Option<&DirectorySubscriberConfig> {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for key in id_key_variants(issi) {
             if let Some(entry) = self.subscribers.get(&key) {
                 return Some(entry);
@@ -153,7 +200,11 @@ impl DirectorySettings {
         None
     }
 
+    // Was: Führt den Arbeitsschritt `group` für Gruppe aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn group(&self, gssi: u64) -> Option<&DirectoryLabelConfig> {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for key in id_key_variants(gssi) {
             if let Some(entry) = self.groups.get(&key) {
                 return Some(entry);
@@ -162,7 +213,11 @@ impl DirectorySettings {
         None
     }
 
+    // Was: Führt den Arbeitsschritt `status` für Status aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn status(&self, code: u64) -> Option<&DirectoryStatusConfig> {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for key in id_key_variants(code) {
             if let Some(entry) = self.statuses.get(&key) {
                 return Some(entry);
@@ -172,25 +227,35 @@ impl DirectorySettings {
     }
 
 
+    // Was: Diese Funktion führt from.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn merge_from(&mut self, other: &Self) {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (key, other_entry) in &other.subscribers {
             self.subscribers
                 .entry(key.clone())
                 .and_modify(|entry| merge_subscriber_missing(entry, other_entry))
                 .or_insert_with(|| other_entry.clone());
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (key, other_entry) in &other.groups {
             self.groups
                 .entry(key.clone())
                 .and_modify(|entry| merge_label_missing(entry, other_entry))
                 .or_insert_with(|| other_entry.clone());
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (key, other_entry) in &other.status_groups {
             self.status_groups
                 .entry(key.clone())
                 .and_modify(|entry| merge_label_missing(entry, other_entry))
                 .or_insert_with(|| other_entry.clone());
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (key, other_entry) in &other.statuses {
             self.statuses
                 .entry(key.clone())
@@ -200,21 +265,33 @@ impl DirectorySettings {
         self.hide_infrastructure = self.hide_infrastructure && other.hide_infrastructure;
     }
 
+    // Was: Führt den Arbeitsschritt `fill_missing_from` für fill missing from aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fill_missing_from(&mut self, other: &Self) {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (key, value) in &other.subscribers {
             self.subscribers.entry(key.clone()).or_insert_with(|| value.clone());
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (key, value) in &other.groups {
             self.groups.entry(key.clone()).or_insert_with(|| value.clone());
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (key, value) in &other.status_groups {
             self.status_groups.entry(key.clone()).or_insert_with(|| value.clone());
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (key, value) in &other.statuses {
             self.statuses.entry(key.clone()).or_insert_with(|| value.clone());
         }
     }
 
+    // Was: Führt den Arbeitsschritt `subscriber_issis` für Teilnehmer issis aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn subscriber_issis(&self) -> Vec<u64> {
         let mut ids = self.subscribers
             .keys()
@@ -225,6 +302,8 @@ impl DirectorySettings {
         ids
     }
 
+    // Was: Führt den Arbeitsschritt `group_gssis` für Gruppe gssis aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn group_gssis(&self) -> Vec<u64> {
         let mut ids = self.groups
             .keys()
@@ -235,6 +314,8 @@ impl DirectorySettings {
         ids
     }
 
+    // Was: Führt den Arbeitsschritt `status_group` für Status Gruppe aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn status_group(&self, id_or_name: &str) -> Option<&DirectoryLabelConfig> {
         let trimmed = id_or_name.trim();
         if trimmed.is_empty() {
@@ -244,6 +325,8 @@ impl DirectorySettings {
             return Some(entry);
         }
         if let Ok(id) = trimmed.parse::<u64>() {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for key in id_key_variants(id) {
                 if let Some(entry) = self.status_groups.get(&key) {
                     return Some(entry);
@@ -255,6 +338,8 @@ impl DirectorySettings {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für map settings in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct MapSettings {
     online_tiles: bool,
     tile_url: String,
@@ -267,7 +352,11 @@ struct MapSettings {
     cache_dir: PathBuf,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for MapSettings`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for MapSettings {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             online_tiles: true,
@@ -283,7 +372,11 @@ impl Default for MapSettings {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `MapSettings`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl MapSettings {
+    // Was: Wandelt Eingangsdaten in Konfiguration um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn from_config(config: Option<&MapSettingsConfig>) -> Self {
         let mut settings = Self::default();
         if let Some(config) = config {
@@ -305,6 +398,8 @@ impl MapSettings {
     }
 }
 
+// Was: Führt den Arbeitsschritt `default_tile_cache_dir` für default tile Zwischenspeicher dir aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_tile_cache_dir() -> PathBuf {
     dirs_next::cache_dir()
         .unwrap_or_else(|| PathBuf::from("."))
@@ -314,6 +409,8 @@ fn default_tile_cache_dir() -> PathBuf {
 }
 
 #[derive(Debug, Default, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für profile Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct ProfileConfig {
     api: Option<String>,
     username: Option<String>,
@@ -322,6 +419,8 @@ struct ProfileConfig {
 }
 
 #[derive(Debug, Default)]
+// Was: Bündelt die zusammengehörigen Werte für cli args in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct CliArgs {
     api: Option<String>,
     username: Option<String>,
@@ -329,7 +428,11 @@ struct CliArgs {
     profile: String,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `ResolvedSettings`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl ResolvedSettings {
+    // Was: Diese Funktion lädt den vorgesehenen Arbeitsschritt.
+    // Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
     fn load() -> (Self, Option<String>) {
         let cli = parse_args();
         let (_config_path, config, warning) = load_operator_config(cli.config.as_deref());
@@ -381,13 +484,19 @@ impl ResolvedSettings {
     }
 }
 
+// Was: Diese Funktion liest und prüft args.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_args() -> CliArgs {
     let mut args = CliArgs {
         profile: DEFAULT_PROFILE.to_string(),
         ..Default::default()
     };
     let mut iter = env::args().skip(1);
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while let Some(arg) = iter.next() {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match arg.as_str() {
             "--api" => args.api = iter.next(),
             "--username" => args.username = iter.next(),
@@ -407,6 +516,8 @@ fn parse_args() -> CliArgs {
     args
 }
 
+// Was: Diese Funktion lädt operator Konfiguration.
+// Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
 fn load_operator_config(explicit_path: Option<&Path>) -> (Option<PathBuf>, OperatorConfig, Option<String>) {
     let mut candidates = Vec::new();
     if let Some(path) = explicit_path {
@@ -418,8 +529,12 @@ fn load_operator_config(explicit_path: Option<&Path>) -> (Option<PathBuf>, Opera
         candidates.push(system_config_path());
     }
 
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for path in candidates {
         if path.exists() {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match fs::read_to_string(&path) {
                 Ok(text) => match toml::from_str::<OperatorConfig>(&text) {
                     Ok(config) => return (Some(path), config, None),
@@ -445,6 +560,8 @@ fn load_operator_config(explicit_path: Option<&Path>) -> (Option<PathBuf>, Opera
     (None, OperatorConfig::default(), Some("kein operator.toml gefunden; UI nutzt Defaults oder CLI/env Werte".to_string()))
 }
 
+// Was: Führt den Arbeitsschritt `default_user_config_path` für default Benutzer Konfiguration path aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_user_config_path() -> PathBuf {
     dirs_next::config_dir()
         .unwrap_or_else(|| PathBuf::from("."))
@@ -453,16 +570,22 @@ fn default_user_config_path() -> PathBuf {
         .join("operator.toml")
 }
 
+// Was: Führt den Arbeitsschritt `system_config_path` für system Konfiguration path aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn system_config_path() -> PathBuf {
     PathBuf::from("/etc/netcore-control-room/operator.toml")
 }
 
+// Was: Führt den Arbeitsschritt `env_nonempty` für env nonempty aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn env_nonempty(name: &str) -> Option<String> {
     env::var(name).ok().map(|value| value.trim().to_string()).filter(|value| !value.is_empty())
 }
 
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+// Was: Listet die möglichen Varianten für tab auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 enum Tab {
     Overview,
     Subscribers,
@@ -478,7 +601,11 @@ enum Tab {
     Raw,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Tab`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Tab {
+    // Was: Legt den festen Wert `ALL` für all fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const ALL: [Tab; 12] = [
         Tab::Overview,
         Tab::Subscribers,
@@ -494,7 +621,11 @@ impl Tab {
         Tab::Raw,
     ];
 
+    // Was: Führt den Arbeitsschritt `label` für label aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn label(self) -> &'static str {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self {
             Tab::Overview => "Übersicht",
             Tab::Subscribers => "Teilnehmer",
@@ -511,7 +642,11 @@ impl Tab {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `icon` für icon aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn icon(self) -> &'static str {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self {
             Tab::Overview => "⌂",
             Tab::Subscribers => "●",
@@ -529,6 +664,8 @@ impl Tab {
     }
 }
 
+// Was: Bündelt die zusammengehörigen Werte für API-Schnittstelle client in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct ApiClient {
     base: String,
     username: Option<String>,
@@ -536,7 +673,11 @@ struct ApiClient {
     http: reqwest::blocking::Client,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `ApiClient`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl ApiClient {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     fn new(settings: &ResolvedSettings) -> Self {
         let http = reqwest::blocking::Client::builder()
             .timeout(Duration::from_secs(4))
@@ -550,53 +691,73 @@ impl ApiClient {
         }
     }
 
+    // Was: Diese Funktion liest den vorgesehenen Arbeitsschritt.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     fn get(&self, path: &str) -> Result<Value, String> {
         let url = self.url(path);
         let request = self.with_auth(self.http.get(&url));
         self.read(url, request.send().map_err(|error| error.to_string())?)
     }
 
+    // Was: Führt den Arbeitsschritt `post` für post aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn post<T: Serialize + ?Sized>(&self, path: &str, body: &T) -> Result<Value, String> {
         let url = self.url(path);
         let request = self.with_auth(self.http.post(&url).json(body));
         self.read(url, request.send().map_err(|error| error.to_string())?)
     }
 
+    // Was: Führt den Arbeitsschritt `patch` für patch aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn patch<T: Serialize + ?Sized>(&self, path: &str, body: &T) -> Result<Value, String> {
         let url = self.url(path);
         let request = self.with_auth(self.http.patch(&url).json(body));
         self.read(url, request.send().map_err(|error| error.to_string())?)
     }
 
+    // Was: Diese Funktion löscht den vorgesehenen Arbeitsschritt.
+    // Warum: Das Entfernen wird dadurch kontrolliert durchgeführt und hinterlässt keine verwaisten Verweise.
     fn delete(&self, path: &str) -> Result<Value, String> {
         let url = self.url(path);
         let request = self.with_auth(self.http.delete(&url));
         self.read(url, request.send().map_err(|error| error.to_string())?)
     }
 
+    // Was: Diese Funktion setzt login.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     fn set_login(&mut self, username: String, password: String) {
         self.username = Some(username);
         self.password = Some(password);
     }
 
+    // Was: Diese Funktion leert login.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn clear_login(&mut self) {
         self.username = None;
         self.password = None;
     }
 
+    // Was: Führt den Arbeitsschritt `login` für login aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn login(&self, username: &str, password: &str) -> Result<Value, String> {
         let url = self.url("/api/login");
         let body = json!({ "username": username, "password": password });
         self.read(url.clone(), self.http.post(&url).json(&body).send().map_err(|error| error.to_string())?)
     }
 
+    // Was: Führt den Arbeitsschritt `with_auth` für with Anmeldung und Berechtigung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn with_auth(&self, request: reqwest::blocking::RequestBuilder) -> reqwest::blocking::RequestBuilder {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match (self.username.as_ref(), self.password.as_ref()) {
             (Some(username), Some(password)) => request.basic_auth(username, Some(password)),
             _ => request,
         }
     }
 
+    // Was: Diese Funktion liest den vorgesehenen Arbeitsschritt.
+    // Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
     fn read(&self, url: String, response: reqwest::blocking::Response) -> Result<Value, String> {
         let status = response.status();
         let body = response.text().map_err(|error| error.to_string())?;
@@ -613,6 +774,8 @@ impl ApiClient {
         serde_json::from_str(&body).map_err(|error| format!("JSON Fehler von {url}: {error}; body={body}"))
     }
 
+    // Was: Führt den Arbeitsschritt `url` für url aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn url(&self, path: &str) -> String {
         if path.starts_with('/') {
             format!("{}{}", self.base, path)
@@ -622,6 +785,8 @@ impl ApiClient {
     }
 }
 
+// Was: Bündelt die zusammengehörigen Werte für Steuerung room app in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct ControlRoomApp {
     settings: ResolvedSettings,
     api: ApiClient,
@@ -685,7 +850,11 @@ struct ControlRoomApp {
 }
 
 
+// Was: Implementiert das zugehörige Verhalten für `ControlRoomApp`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl ControlRoomApp {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     fn new(settings: ResolvedSettings, startup_warning: Option<String>) -> Self {
         let api = ApiClient::new(&settings);
         let local_directory = settings.directory.clone();
@@ -752,6 +921,8 @@ impl ControlRoomApp {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `current_role` für current role aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn current_role(&self) -> &str {
         self.current_user
             .as_ref()
@@ -759,7 +930,11 @@ impl ControlRoomApp {
             .unwrap_or("viewer")
     }
 
+    // Was: Führt den Arbeitsschritt `role_label` für role label aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn role_label(&self) -> String {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.current_role() {
             "admin" => "Admin".to_string(),
             "operator" => "Operator".to_string(),
@@ -768,15 +943,23 @@ impl ControlRoomApp {
         }
     }
 
+    // Was: Prüft, ob admin zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     fn is_admin(&self) -> bool {
         self.current_role() == "admin"
     }
 
+    // Was: Prüft, ob operate zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     fn can_operate(&self) -> bool {
         matches!(self.current_role(), "admin" | "operator")
     }
 
+    // Was: Prüft, ob access tab zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     fn can_access_tab(&self, tab: Tab) -> bool {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match tab {
             Tab::AdminUsers | Tab::Raw => self.is_admin(),
             Tab::Commands => self.can_operate(),
@@ -784,6 +967,8 @@ impl ControlRoomApp {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `visible_tabs` für visible tabs aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn visible_tabs(&self) -> Vec<Tab> {
         Tab::ALL
             .iter()
@@ -792,6 +977,8 @@ impl ControlRoomApp {
             .collect()
     }
 
+    // Was: Führt den Arbeitsschritt `enforce_rbac_view` für enforce rbac view aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn enforce_rbac_view(&mut self) {
         if !self.can_access_tab(self.tab) {
             self.tab = Tab::Overview;
@@ -802,14 +989,20 @@ impl ControlRoomApp {
             .copied()
             .filter(|tab| !self.can_access_tab(*tab))
             .collect::<Vec<_>>();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for tab in denied {
             self.detached_windows.insert(tab, false);
         }
     }
 
+    // Was: Führt den Arbeitsschritt `refresh_all` für refresh all aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn refresh_all(&mut self) {
         let mut errors = Vec::new();
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.api.get("/api/me") {
             Ok(value) => self.current_user = Some(value),
             Err(error) => self.current_user = Some(json!({ "error": error })),
@@ -834,6 +1027,8 @@ impl ControlRoomApp {
         }
 
         if self.is_admin() {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match self.api.get("/api/admin/users") {
                 Ok(value) => self.admin_users = Some(value),
                 Err(error) => self.admin_users = Some(json!({ "error": error })),
@@ -853,7 +1048,11 @@ impl ControlRoomApp {
     }
 
 
+    // Was: Führt den Arbeitsschritt `refresh_directory` für refresh directory aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn refresh_directory(&mut self, errors: &mut Vec<String>) {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.api.get("/api/directory/resolved") {
             Ok(value) => {
                 self.raw_directory = value.get("directory").cloned().or_else(|| Some(value.clone()));
@@ -861,6 +1060,8 @@ impl ControlRoomApp {
                 let directory_value = value.get("directory").cloned().unwrap_or_else(|| value.clone());
                 let normalized = normalize_directory_value(directory_value);
 
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match serde_json::from_value::<DirectoryConfig>(normalized) {
                     Ok(config) => {
                         let mut directory = DirectorySettings::from_config(Some(&config));
@@ -889,12 +1090,16 @@ impl ControlRoomApp {
             }
         }
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.api.get("/api/directory") {
             Ok(raw_value) => {
                 let deep_index = build_directory_name_index(&raw_value);
                 let normalized = normalize_directory_value(raw_value);
                 self.raw_directory = Some(normalized.clone());
 
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match serde_json::from_value::<DirectoryConfig>(normalized) {
                     Ok(config) => {
                         let mut directory = DirectorySettings::from_config(Some(&config));
@@ -924,14 +1129,22 @@ impl ControlRoomApp {
     }
 
 
+    // Was: Diese Funktion liest into.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     fn get_into(&mut self, path: &str, slot: DataSlot, errors: &mut Vec<String>) {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.api.get(path) {
             Ok(value) => self.set_slot(slot, value),
             Err(error) => errors.push(format!("{path}: {error}")),
         }
     }
 
+    // Was: Diese Funktion setzt slot.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     fn set_slot(&mut self, slot: DataSlot, value: Value) {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match slot {
             DataSlot::Overview => self.overview = Some(value),
             DataSlot::Subscribers => self.subscribers = Some(value),
@@ -945,11 +1158,15 @@ impl ControlRoomApp {
         }
     }
 
+    // Was: Diese Funktion sendet kick.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_kick(&mut self) {
         if !self.can_operate() {
             self.command_result = Some("Kein Zugriff: deine Rolle darf keine Befehle senden".to_string());
             return;
         }
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let issi = match parse_u32(&self.kick_issi, "ISSI") {
             Ok(value) => value,
             Err(error) => {
@@ -965,11 +1182,15 @@ impl ControlRoomApp {
         self.refresh_all();
     }
 
+    // Was: Diese Funktion sendet dgna.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_dgna(&mut self) {
         if !self.can_operate() {
             self.command_result = Some("Kein Zugriff: deine Rolle darf keine Befehle senden".to_string());
             return;
         }
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let issi = match parse_u32(&self.dgna_issi, "ISSI") {
             Ok(value) => value,
             Err(error) => {
@@ -977,6 +1198,8 @@ impl ControlRoomApp {
                 return;
             }
         };
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let gssi = match parse_u32(&self.dgna_gssi, "GSSI") {
             Ok(value) => value,
             Err(error) => {
@@ -997,6 +1220,8 @@ impl ControlRoomApp {
         self.refresh_all();
     }
 
+    // Was: Diese Funktion sendet clear emergency.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_clear_emergency(&mut self) {
         if !self.can_operate() {
             self.command_result = Some("Kein Zugriff: deine Rolle darf keine Befehle senden".to_string());
@@ -1005,6 +1230,8 @@ impl ControlRoomApp {
         let issi = if self.clear_issi.trim().is_empty() {
             0
         } else {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_u32(&self.clear_issi, "ISSI") {
                 Ok(value) => value,
                 Err(error) => {
@@ -1021,11 +1248,15 @@ impl ControlRoomApp {
         self.refresh_all();
     }
 
+    // Was: Diese Funktion sendet legacy WAP-Dienst.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_legacy_wap(&mut self) {
         if !self.can_operate() {
             self.legacy_wap_result = Some("Kein Zugriff: deine Rolle darf keine WAP-SDS senden".to_string());
             return;
         }
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let dest_issi = match parse_u32(&self.legacy_wap_dest_issi, "Ziel-ISSI") {
             Ok(value) if value != 0 => value,
             Ok(_) => {
@@ -1062,6 +1293,8 @@ impl ControlRoomApp {
         self.refresh_all();
     }
 
+    // Was: Führt den Arbeitsschritt `login` für login aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn login(&mut self) {
         let username = self.login_username.trim().to_string();
         let password = self.login_password.clone();
@@ -1069,6 +1302,8 @@ impl ControlRoomApp {
             self.login_result = Some("Benutzername und Passwort sind erforderlich".to_string());
             return;
         }
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.api.login(&username, &password) {
             Ok(value) => {
                 self.api.set_login(username, password);
@@ -1081,6 +1316,8 @@ impl ControlRoomApp {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `logout` für logout aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn logout(&mut self) {
         self.api.clear_login();
         self.logged_in = false;
@@ -1098,6 +1335,8 @@ impl ControlRoomApp {
         self.admin_users = None;
     }
 
+    // Was: Diese Funktion erstellt Benutzer.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     fn create_user(&mut self) {
         if !self.is_admin() {
             self.user_result = Some("Kein Zugriff: nur Admins dürfen Benutzer anlegen".to_string());
@@ -1128,6 +1367,8 @@ impl ControlRoomApp {
         self.refresh_all();
     }
 
+    // Was: Diese Funktion setzt Benutzer enabled.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     fn set_user_enabled(&mut self, username: &str, enabled: bool) {
         if !self.is_admin() {
             self.user_result = Some("Kein Zugriff: nur Admins dürfen Benutzer ändern".to_string());
@@ -1141,6 +1382,8 @@ impl ControlRoomApp {
         self.refresh_all();
     }
 
+    // Was: Diese Funktion löscht Benutzer.
+    // Warum: Das Entfernen wird dadurch kontrolliert durchgeführt und hinterlässt keine verwaisten Verweise.
     fn delete_user(&mut self, username: &str) {
         if !self.is_admin() {
             self.user_result = Some("Kein Zugriff: nur Admins dürfen Benutzer löschen".to_string());
@@ -1155,6 +1398,8 @@ impl ControlRoomApp {
 }
 
 #[derive(Debug, Copy, Clone)]
+// Was: Listet die möglichen Varianten für data slot auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 enum DataSlot {
     Overview,
     Subscribers,
@@ -1167,7 +1412,11 @@ enum DataSlot {
     Emergencies,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `eframe::App for ControlRoomApp`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl eframe::App for ControlRoomApp {
+    // Was: Diese Funktion aktualisiert den vorgesehenen Arbeitsschritt.
+    // Warum: Bestehender Zustand wird dadurch kontrolliert und nach einheitlichen Regeln geändert.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         ctx.style_mut(|style| {
             style.spacing.item_spacing = egui::vec2(8.0, 7.0);
@@ -1228,6 +1477,8 @@ impl eframe::App for ControlRoomApp {
                     ui.heading("Module");
                     ui.small(format!("angemeldet: {} / {}", self.login_username, self.role_label()));
                     ui.separator();
+                    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                     for tab in self.visible_tabs() {
                         self.render_nav_button(ui, tab);
                     }
@@ -1236,6 +1487,8 @@ impl eframe::App for ControlRoomApp {
                     ui.small("Module auf andere Monitore ziehen");
                     if ui.add_sized([ui.available_width(), 30.0], egui::Button::new("Alle erlaubten Fenster öffnen")).clicked() {
                         self.window_mode = true;
+                        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                         for tab in self.visible_tabs() {
                             if tab != Tab::Raw {
                                 self.detached_windows.insert(tab, true);
@@ -1266,7 +1519,11 @@ impl eframe::App for ControlRoomApp {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `ControlRoomApp`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl ControlRoomApp {
+    // Was: Diese Funktion erzeugt elz header.
+    // Warum: Darstellung und Fachdaten bleiben dadurch voneinander getrennt.
     fn render_elz_header(&mut self, ui: &mut egui::Ui, screen_width: f32, compact_layout: bool) {
         let compact = compact_layout || screen_width < 1350.0;
 
@@ -1374,6 +1631,8 @@ impl ControlRoomApp {
             });
     }
 
+    // Was: Diese Funktion erzeugt nav button.
+    // Warum: Darstellung und Fachdaten bleiben dadurch voneinander getrennt.
     fn render_nav_button(&mut self, ui: &mut egui::Ui, tab: Tab) {
         let selected = self.tab == tab;
         let row_height = 32.0;
@@ -1454,6 +1713,8 @@ impl ControlRoomApp {
         response.on_hover_text("Modul öffnen · Pfeil: als OS-Fenster öffnen/schließen");
     }
 
+    // Was: Diese Funktion leert command inputs.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn clear_command_inputs(&mut self) {
         self.kick_issi.clear();
         self.dgna_issi.clear();
@@ -1464,12 +1725,16 @@ impl ControlRoomApp {
         self.last_ok = Some("Maske geleert".to_string());
     }
 
+    // Was: Diese Funktion erzeugt module content.
+    // Warum: Darstellung und Fachdaten bleiben dadurch voneinander getrennt.
     fn render_module_content(&mut self, ui: &mut egui::Ui, tab: Tab) {
         if !self.can_access_tab(tab) {
             ui.heading("Kein Zugriff");
             ui.label(format!("Deine Rolle '{}' darf dieses Modul nicht öffnen.", self.current_role()));
             return;
         }
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match tab {
             Tab::Overview => self.render_overview(ui),
             Tab::Subscribers => self.render_subscribers(ui),
@@ -1486,6 +1751,8 @@ impl ControlRoomApp {
         }
     }
 
+    // Was: Diese Funktion erzeugt detached windows.
+    // Warum: Darstellung und Fachdaten bleiben dadurch voneinander getrennt.
     fn render_detached_windows(&mut self, ctx: &egui::Context) {
         if !self.window_mode {
             return;
@@ -1498,9 +1765,13 @@ impl ControlRoomApp {
             .filter(|tab| self.can_access_tab(*tab))
             .collect::<Vec<_>>();
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for tab in open_tabs {
             let mut close_requested = false;
             let title = format!("{} – NetCore Control Room", tab.label());
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let default_size = match tab {
                 Tab::Map => [1100.0, 760.0],
                 Tab::Overview => [1180.0, 760.0],
@@ -1509,6 +1780,8 @@ impl ControlRoomApp {
                 Tab::Raw => [980.0, 720.0],
                 _ => [900.0, 640.0],
             };
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let min_size = match tab {
                 Tab::Map => [760.0, 520.0],
                 Tab::Overview => [820.0, 520.0],
@@ -1558,6 +1831,8 @@ impl ControlRoomApp {
         }
     }
 
+    // Was: Diese Funktion erzeugt command box.
+    // Warum: Darstellung und Fachdaten bleiben dadurch voneinander getrennt.
     fn render_command_box(&mut self, ui: &mut egui::Ui) {
         if !self.can_operate() {
             ui.heading("Lesezugriff");
@@ -1602,6 +1877,8 @@ impl ControlRoomApp {
         }
     }
 
+    // Was: Diese Funktion erzeugt overview.
+    // Warum: Darstellung und Fachdaten bleiben dadurch voneinander getrennt.
     fn render_overview(&self, ui: &mut egui::Ui) {
         ui.heading("Einsatzleitplatz / Funklage");
         let Some(overview) = &self.overview else {
@@ -1626,6 +1903,8 @@ impl ControlRoomApp {
                 egui::ScrollArea::both().auto_shrink([false, false]).show(ui, |ui| {
                     egui::Grid::new("nodes_grid_elz").striped(true).min_col_width(72.0).show(ui, |ui| {
                         header_row(ui, &["Node", "Online", "Health", "Carrier", "Subs", "Calls", "Brew", "RF", "Seen"]);
+                        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                         for node in array_at(overview, &["nodes"]) {
                             ui.monospace(str_at(node, &["node_id"]).unwrap_or("?"));
                             bool_label(ui, bool_at(node, &["connected"]).unwrap_or(false));
@@ -1650,6 +1929,8 @@ impl ControlRoomApp {
                     ui.label("Keine aktuellen Commands");
                 } else {
                     egui::ScrollArea::vertical().max_height(260.0).show(ui, |ui| {
+                        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                         for row in recent.iter().take(10) {
                             ui.horizontal_wrapped(|ui| {
                                 ui.monospace(str_at(row, &["status"]).unwrap_or("?"));
@@ -1664,6 +1945,8 @@ impl ControlRoomApp {
         });
     }
 
+    // Was: Diese Funktion erzeugt subscribers.
+    // Warum: Darstellung und Fachdaten bleiben dadurch voneinander getrennt.
     fn render_subscribers(&self, ui: &mut egui::Ui) {
         ui.heading("Teilnehmer");
         let live_rows = self.subscribers
@@ -1678,6 +1961,8 @@ impl ControlRoomApp {
             .collect();
 
         let mut directory_only_count = 0usize;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for issi in self.settings.directory.subscriber_issis() {
             if seen.contains(&issi) {
                 continue;
@@ -1727,6 +2012,8 @@ impl ControlRoomApp {
         });
     }
 
+    // Was: Diese Funktion erzeugt groups.
+    // Warum: Darstellung und Fachdaten bleiben dadurch voneinander getrennt.
     fn render_groups(&self, ui: &mut egui::Ui) {
         ui.heading("Gruppen");
         let live_rows = self.groups
@@ -1739,6 +2026,8 @@ impl ControlRoomApp {
             .filter_map(|row| u64_at(row, &["gssi"]).or_else(|| u64_at(row, &["group"])))
             .collect();
         let mut directory_only_count = 0usize;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for gssi in self.settings.directory.group_gssis() {
             if seen.contains(&gssi) {
                 continue;
@@ -1768,6 +2057,8 @@ impl ControlRoomApp {
         });
     }
 
+    // Was: Diese Funktion erzeugt calls.
+    // Warum: Darstellung und Fachdaten bleiben dadurch voneinander getrennt.
     fn render_calls(&self, ui: &mut egui::Ui) {
         ui.heading("Aktive Rufe");
         let Some(value) = &self.calls else { ui.label("Noch keine Daten"); return; };
@@ -1787,6 +2078,8 @@ impl ControlRoomApp {
         });
     }
 
+    // Was: Diese Funktion erzeugt TETRA-Kurznachricht (SDS).
+    // Warum: Darstellung und Fachdaten bleiben dadurch voneinander getrennt.
     fn render_sds(&self, ui: &mut egui::Ui) {
         ui.heading("SDS / Nachrichten");
         let Some(value) = &self.sds else { ui.label("Noch keine Daten"); return; };
@@ -1800,6 +2093,8 @@ impl ControlRoomApp {
         });
     }
 
+    // Was: Diese Funktion erzeugt Datenpaket data.
+    // Warum: Darstellung und Fachdaten bleiben dadurch voneinander getrennt.
     fn render_packet_data(&mut self, ui: &mut egui::Ui) {
         ui.heading("Paketdaten / Multi-PDCH");
         ui.label("Live-Zustand von TUN-Gateway, PDP-Kontexten und dynamisch belegten Paketdatenkanälen.");
@@ -1811,6 +2106,8 @@ impl ControlRoomApp {
             if nodes.is_empty() {
                 ui.label("Noch keine Paketdaten-Telemetrie empfangen.");
             }
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for node in nodes {
                 let node_id = str_at(node, &["node_id"]).unwrap_or("-");
                 let station_name = str_at(node, &["station_name"]).unwrap_or(node_id);
@@ -1880,10 +2177,14 @@ impl ControlRoomApp {
                         egui::Grid::new(format!("packet_bearer_grid_{node_id}"))
                             .striped(true)
                             .show(ui, |ui| {
+                                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                                 for heading in ["ISSI", "Carrier", "Air-TS", "Logisch", "NSAPI", "Alter", "Idle"] {
                                     ui.strong(heading);
                                 }
                                 ui.end_row();
+                                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                                 for bearer in array_at(packet_data, &["bearers"]) {
                                     ui.monospace(display_u64(bearer, &["issi"]));
                                     ui.label(display_u64(bearer, &["carrier_num"]));
@@ -1903,10 +2204,14 @@ impl ControlRoomApp {
                         egui::Grid::new(format!("packet_context_grid_{node_id}"))
                             .striped(true)
                             .show(ui, |ui| {
+                                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                                 for heading in ["ISSI", "NSAPI", "IPv4", "State", "SNEI", "MTU", "Priorität", "Carrier/TS", "Queue"] {
                                     ui.strong(heading);
                                 }
                                 ui.end_row();
+                                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                                 for context in array_at(packet_data, &["contexts"]) {
                                     ui.monospace(display_u64(context, &["issi"]));
                                     ui.label(display_u64(context, &["nsapi"]));
@@ -1962,6 +2267,8 @@ impl ControlRoomApp {
         }
     }
 
+    // Was: Diese Funktion erzeugt locations.
+    // Warum: Darstellung und Fachdaten bleiben dadurch voneinander getrennt.
     fn render_locations(&mut self, ui: &mut egui::Ui) {
         ui.heading("Standorte");
         let Some(value) = self.locations.clone() else { ui.label("Noch keine Daten"); return; };
@@ -2006,6 +2313,8 @@ impl ControlRoomApp {
     }
 
 
+    // Was: Diese Funktion erzeugt Status tableau.
+    // Warum: Darstellung und Fachdaten bleiben dadurch voneinander getrennt.
     fn render_status_tableau(&mut self, ui: &mut egui::Ui) {
         ui.heading("Status-Tableau");
         ui.small("Statusgruppen, Namen, Statuslabels und Gruppen kommen aus dem zentralen NetCore Directory-Server (/api/directory). Falls Live-Teilnehmer noch keinen Statuscode liefern, nutzt das Tableau den letzten passenden SDS-Status (z. B. Proto 218) als Fallback.");
@@ -2063,6 +2372,8 @@ impl ControlRoomApp {
             let mut column_heights = vec![0.0_f32; column_count];
             let mut placements: Vec<(StatusTableauCard, egui::Pos2, f32)> = Vec::new();
 
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for card in cards {
                 let height = estimate_status_card_height(&card);
                 let column = column_heights
@@ -2081,6 +2392,8 @@ impl ControlRoomApp {
                 .fold(420.0_f32, |acc, value| acc.max(value + 80.0));
             let (canvas_rect, _) = ui.allocate_exact_size(egui::vec2(available_width, canvas_height), egui::Sense::hover());
 
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for (card, base_pos, height) in placements {
                 let offset = *self.status_card_offsets.entry(card.id.clone()).or_insert(egui::Vec2::ZERO);
                 let rect = egui::Rect::from_min_size(
@@ -2092,6 +2405,8 @@ impl ControlRoomApp {
         });
     }
 
+    // Was: Führt den Arbeitsschritt `sds_status_tableau_counts` für TETRA-Kurznachricht (SDS) Status tableau counts aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn sds_status_tableau_counts(&self) -> Option<(usize, usize)> {
         let value = self.sds.as_ref()?;
         let rows = array_at(value, &["sds"]);
@@ -2107,11 +2422,15 @@ impl ControlRoomApp {
         Some((total, status))
     }
 
+    // Was: Diese Funktion erstellt Status tableau cards.
+    // Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
     fn build_status_tableau_cards(&self) -> Vec<StatusTableauCard> {
         let mut ids = self.settings.directory.subscriber_issis();
 
         if let Some(value) = &self.subscribers {
             let live_rows = array_at(value, &["subscribers"]);
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for row in live_rows {
                 if let Some(issi) = u64_any_at(row, &["issi"]).or_else(|| u64_any_at(row, &["individual_issi"])).or_else(|| u64_any_at(row, &["source_issi"])) {
                     ids.push(issi);
@@ -2120,6 +2439,8 @@ impl ControlRoomApp {
         }
 
         if let Some(value) = &self.sds {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for row in array_at(value, &["sds"]) {
                 let proto = sds_protocol(row);
                 let text = first_string(row, &["text", "message", "body", "payload_text", "payload"]).unwrap_or_default();
@@ -2137,6 +2458,8 @@ impl ControlRoomApp {
         let mut by_group: std::collections::BTreeMap<String, Vec<StatusTableauDevice>> = std::collections::BTreeMap::new();
         let mut single_cards: Vec<StatusTableauCard> = Vec::new();
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for issi in ids {
             let pseudo = json!({ "issi": issi, "directory_only": true });
             let live_row = self.find_live_subscriber_row(issi);
@@ -2165,6 +2488,8 @@ impl ControlRoomApp {
 
         let mut cards = Vec::new();
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (group_id, mut devices) in by_group {
             devices.sort_by(|left, right| left.name.cmp(&right.name).then(left.issi.cmp(&right.issi)));
             let title = self.status_group_display_name(&group_id);
@@ -2184,10 +2509,14 @@ impl ControlRoomApp {
         cards
     }
 
+    // Was: Diese Funktion sucht live Teilnehmer row.
+    // Warum: Die Suchlogik bleibt damit wiederverwendbar und muss nicht an mehreren Stellen kopiert werden.
     fn find_live_subscriber_row(&self, issi: u64) -> Option<&Value> {
         let value = self.subscribers.as_ref()?;
         let live_rows = array_at(value, &["subscribers"]);
         let clean_rows = self.clean_subscriber_rows(live_rows);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for row in clean_rows {
             if u64_any_at(row, &["issi"]).or_else(|| u64_any_at(row, &["individual_issi"])) == Some(issi) {
                 return Some(row);
@@ -2196,6 +2525,8 @@ impl ControlRoomApp {
         None
     }
 
+    // Was: Führt den Arbeitsschritt `status_group_key_for_issi_or_row` für Status Gruppe key for Teilnehmerkennung (ISSI) or row aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn status_group_key_for_issi_or_row(&self, issi: u64, row: Option<&Value>) -> Option<String> {
         self.settings.directory
             .subscriber(issi)
@@ -2207,6 +2538,8 @@ impl ControlRoomApp {
             })
     }
 
+    // Was: Führt den Arbeitsschritt `status_group_display_name` für Status Gruppe display name aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn status_group_display_name(&self, raw: &str) -> String {
         if let Some(entry) = self.settings.directory.status_group(raw) {
             if let Some(label) = first_config_text(&[entry.label.as_ref(), entry.name.as_ref()]) {
@@ -2216,6 +2549,8 @@ impl ControlRoomApp {
         raw.to_string()
     }
 
+    // Was: Führt den Arbeitsschritt `status_code_for_issi_or_row` für Status code for Teilnehmerkennung (ISSI) or row aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn status_code_for_issi_or_row(&self, issi: u64, row: Option<&Value>) -> Option<u64> {
         row.and_then(|row| u64_any_at(row, &["status"]).or_else(|| u64_any_at(row, &["status_code"])))
             .or_else(|| {
@@ -2231,11 +2566,15 @@ impl ControlRoomApp {
             .or_else(|| self.latest_sds_status_for_issi(issi).and_then(|(code, _)| code))
     }
 
+    // Was: Führt den Arbeitsschritt `latest_sds_status_for_issi` für latest TETRA-Kurznachricht (SDS) Status for Teilnehmerkennung (ISSI) aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn latest_sds_status_for_issi(&self, issi: u64) -> Option<(Option<u64>, String)> {
         let value = self.sds.as_ref()?;
         let rows = array_at(value, &["sds"]);
         let mut latest: Option<&Value> = None;
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for row in rows {
             let source = sds_source_issi(row);
             if source != Some(issi) {
@@ -2248,6 +2587,8 @@ impl ControlRoomApp {
                 continue;
             }
 
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match latest {
                 Some(current) if !sds_row_is_newer(row, current) => {}
                 _ => latest = Some(row),
@@ -2265,18 +2606,24 @@ impl ControlRoomApp {
         Some((code, text))
     }
 
+    // Was: Führt den Arbeitsschritt `infer_status_code_from_text` für infer Status code from text aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn infer_status_code_from_text(&self, text: &str) -> Option<u64> {
         let normalized = normalize_status_text(text);
         if normalized.is_empty() {
             return None;
         }
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (key, entry) in &self.settings.directory.statuses {
             let candidates = [
                 entry.label.as_deref(),
                 entry.name.as_deref(),
                 entry.description.as_deref(),
             ];
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for candidate in candidates.into_iter().flatten() {
                 if normalize_status_text(candidate) == normalized {
                     return parse_status_code(key);
@@ -2294,6 +2641,8 @@ impl ControlRoomApp {
             (2, &["bereit"]),
             (1, &["frei auf wache", "frei auf funk", "auf wache", "auf funk", "frei"]),
         ];
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (code, patterns) in checks {
             if patterns.iter().any(|pattern| normalized.contains(*pattern)) {
                 return Some(*code);
@@ -2302,6 +2651,8 @@ impl ControlRoomApp {
         None
     }
 
+    // Was: Führt den Arbeitsschritt `status_tableau_device` für Status tableau device aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn status_tableau_device(&self, issi: u64, live_row: Option<&Value>) -> StatusTableauDevice {
         let pseudo = json!({ "issi": issi, "directory_only": true });
         let row = live_row.unwrap_or(&pseudo);
@@ -2366,6 +2717,8 @@ impl ControlRoomApp {
     }
 
 
+    // Was: Diese Funktion erzeugt Status card.
+    // Warum: Darstellung und Fachdaten bleiben dadurch voneinander getrennt.
     fn render_status_card(&mut self, ui: &mut egui::Ui, card: &StatusTableauCard, rect: egui::Rect) {
         let response = ui.allocate_rect(rect, egui::Sense::click_and_drag());
         if response.dragged() {
@@ -2404,6 +2757,8 @@ impl ControlRoomApp {
                         });
 
                     ui.add_space(5.0);
+                    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                     for device in &card.devices {
                         self.render_status_device_row(ui, device, rect.width() - 18.0, card.is_single_bucket);
                         ui.add_space(3.0);
@@ -2413,6 +2768,8 @@ impl ControlRoomApp {
     }
 
 
+    // Was: Diese Funktion erzeugt Status device row.
+    // Warum: Darstellung und Fachdaten bleiben dadurch voneinander getrennt.
     fn render_status_device_row(&self, ui: &mut egui::Ui, device: &StatusTableauDevice, width: f32, single_bucket: bool) {
         let row_height = 46.0;
         let status_width = 52.0;
@@ -2486,6 +2843,8 @@ impl ControlRoomApp {
         ));
     }
 
+    // Was: Diese Funktion erzeugt map.
+    // Warum: Darstellung und Fachdaten bleiben dadurch voneinander getrennt.
     fn render_map(&mut self, ui: &mut egui::Ui) {
         ui.heading("Live-Karte / LIP-Standorte");
         ui.horizontal_wrapped(|ui| {
@@ -2514,6 +2873,8 @@ impl ControlRoomApp {
         self.render_location_map(ui, &rows);
     }
 
+    // Was: Diese Funktion erzeugt location map.
+    // Warum: Darstellung und Fachdaten bleiben dadurch voneinander getrennt.
     fn render_location_map(&mut self, ui: &mut egui::Ui, rows: &[&Value]) {
         let points = collect_points(rows);
         let desired_size = egui::vec2(ui.available_width().max(620.0), ui.available_height().clamp(430.0, 760.0));
@@ -2590,6 +2951,8 @@ Cluster anklicken = auffächern",
     }
 
 
+    // Was: Diese Funktion verarbeitet map interaction.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_map_interaction(&mut self, ui: &egui::Ui, response: &egui::Response, map_rect: egui::Rect, viewport: &MapViewport) {
         let pointer_pos = ui.input(|input| input.pointer.hover_pos());
         let pointer_in_map = pointer_pos.map(|pos| map_rect.contains(pos)).unwrap_or(false);
@@ -2626,6 +2989,8 @@ Cluster anklicken = auffächern",
             // to be applied over several frames, which felt like jumping through many zoom levels.
             let scroll_y = ui.input(|input| input.raw_scroll_delta.y);
             if scroll_y.abs() > 0.0 {
+                // Was: Legt den festen Wert `WHEEL_ZOOM_THRESHOLD` für wheel zoom threshold fest.
+                // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
                 const WHEEL_ZOOM_THRESHOLD: f32 = 120.0;
                 self.map_wheel_zoom_accum = (self.map_wheel_zoom_accum + scroll_y).clamp(-WHEEL_ZOOM_THRESHOLD, WHEEL_ZOOM_THRESHOLD);
 
@@ -2657,6 +3022,8 @@ Cluster anklicken = auffächern",
         }
     }
 
+    // Was: Diese Funktion verarbeitet marker selection.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_marker_selection(&mut self, ui: &egui::Ui, response: &egui::Response, map_rect: egui::Rect, viewport: &MapViewport, points: &[LocationPoint]) {
         if !response.clicked() {
             return;
@@ -2671,8 +3038,12 @@ Cluster anklicken = auffächern",
         let clusters = build_map_clusters(points, map_rect, viewport, 32.0);
 
         if let Some(selected_issi) = self.selected_location_issi {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for cluster in &clusters {
                 if cluster.members.len() > 1 && cluster_contains_issi(cluster, points, selected_issi) {
+                    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                     for (member_index, point_index) in cluster.members.iter().enumerate() {
                         let spider_pos = spider_position(cluster.center, member_index, cluster.members.len());
                         if (spider_pos - pos).length_sq() <= 18.0 * 18.0 {
@@ -2685,6 +3056,8 @@ Cluster anklicken = auffächern",
         }
 
         let mut best: Option<(f32, u64)> = None;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for cluster in &clusters {
             let distance_sq = (cluster.center - pos).length_sq();
             let radius = if cluster.members.len() > 1 { cluster_radius(cluster.members.len()) + 8.0 } else { 18.0 };
@@ -2699,6 +3072,8 @@ Cluster anklicken = auffächern",
         self.selected_location_issi = best.map(|(_, issi)| issi);
     }
 
+    // Was: Führt den Arbeitsschritt `draw_tiles` für draw tiles aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn draw_tiles(&mut self, ui: &egui::Ui, painter: &egui::Painter, map_rect: egui::Rect, viewport: &MapViewport) {
         painter.rect_filled(map_rect, egui::Rounding::same(6.0), egui::Color32::from_rgb(210, 218, 222));
 
@@ -2711,10 +3086,14 @@ Cluster anklicken = auffächern",
         let tile_limit = zoom_scale as i32;
         let mut tile_errors = Vec::new();
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for tile_y in min_tile_y..=max_tile_y {
             if tile_y < 0 || tile_y >= tile_limit {
                 continue;
             }
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for tile_x_raw in min_tile_x..=max_tile_x {
                 let tile_x = tile_x_raw.rem_euclid(tile_limit);
                 let screen_x = map_rect.left() + ((tile_x_raw as f64 * TILE_SIZE - viewport.top_left_world.x) as f32);
@@ -2727,6 +3106,8 @@ Cluster anklicken = auffächern",
                     continue;
                 }
 
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match self.map_cache.texture_id(ctx, viewport.zoom, tile_x as u32, tile_y as u32, self.map_tiles_enabled) {
                     Ok(Some(texture_id)) => {
                         let clipped = tile_rect.intersect(map_rect);
@@ -2768,8 +3149,12 @@ Cluster anklicken = auffächern",
         }
     }
 
+    // Was: Führt den Arbeitsschritt `draw_fallback_map_grid` für draw fallback map grid aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn draw_fallback_map_grid(&self, painter: &egui::Painter, map_rect: egui::Rect, viewport: &MapViewport) {
         painter.rect_filled(map_rect, egui::Rounding::same(6.0), egui::Color32::from_rgb(24, 36, 44));
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for i in 0..=8 {
             let t = i as f32 / 8.0;
             let x = egui::lerp(map_rect.left()..=map_rect.right(), t);
@@ -2792,6 +3177,8 @@ Cluster anklicken = auffächern",
         );
     }
 
+    // Was: Führt den Arbeitsschritt `draw_map_overlay` für draw map overlay aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn draw_map_overlay(&self, painter: &egui::Painter, rect: egui::Rect, map_rect: egui::Rect, viewport: &MapViewport, points: &[LocationPoint], selected_issi: Option<u64>) {
         painter.rect_stroke(map_rect, egui::Rounding::same(6.0), egui::Stroke::new(1.0, egui::Color32::from_black_alpha(140)));
 
@@ -2799,6 +3186,8 @@ Cluster anklicken = auffächern",
         let selected_point = selected_issi.and_then(|issi| points.iter().find(|point| point.issi == issi));
         let selected_cluster = selected_issi.and_then(|issi| clusters.iter().find(|cluster| cluster.members.len() > 1 && cluster_contains_issi(cluster, points, issi)));
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for cluster in &clusters {
             if cluster.members.len() <= 1 {
                 let point = &points[cluster.members[0]];
@@ -2826,6 +3215,8 @@ Cluster anklicken = auffächern",
                     egui::Color32::WHITE,
                 );
 
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for (member_index, point_index) in cluster.members.iter().enumerate() {
                     let point = &points[*point_index];
                     let pos = spider_position(cluster.center, member_index, cluster.members.len());
@@ -2886,6 +3277,8 @@ Cluster anklicken = auffächern",
         );
     }
 
+    // Was: Führt den Arbeitsschritt `draw_device_marker` für draw device marker aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn draw_device_marker(&self, painter: &egui::Painter, pos: egui::Pos2, point: &LocationPoint, selected: bool, show_label: bool) {
         let fill = if selected { egui::Color32::from_rgb(255, 191, 0) } else { egui::Color32::from_rgb(0, 210, 80) };
         let radius = if selected { 9.0 } else { 7.0 };
@@ -2911,6 +3304,8 @@ Cluster anklicken = auffächern",
         }
     }
 
+    // Was: Führt den Arbeitsschritt `draw_cluster_marker` für draw cluster marker aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn draw_cluster_marker(&self, painter: &egui::Painter, pos: egui::Pos2, count: usize) {
         let radius = cluster_radius(count);
         painter.circle_filled(pos, radius + 4.0, egui::Color32::from_white_alpha(215));
@@ -2925,12 +3320,18 @@ Cluster anklicken = auffächern",
         );
     }
 
+    // Was: Diese Funktion ordnet hover text.
+    // Warum: Die Zuordnung wird so überall nach denselben Regeln vorgenommen.
     fn map_hover_text(&self, pos: egui::Pos2, points: &[LocationPoint], map_rect: egui::Rect, viewport: &MapViewport) -> Option<String> {
         let clusters = build_map_clusters(points, map_rect, viewport, 32.0);
 
         if let Some(selected_issi) = self.selected_location_issi {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for cluster in &clusters {
                 if cluster.members.len() > 1 && cluster_contains_issi(cluster, points, selected_issi) {
+                    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                     for (member_index, point_index) in cluster.members.iter().enumerate() {
                         let spider_pos = spider_position(cluster.center, member_index, cluster.members.len());
                         if (spider_pos - pos).length_sq() <= 18.0 * 18.0 {
@@ -2943,6 +3344,8 @@ Cluster anklicken = auffächern",
         }
 
         let mut best_cluster: Option<(f32, &MapCluster)> = None;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for cluster in &clusters {
             let distance_sq = (cluster.center - pos).length_sq();
             let radius = if cluster.members.len() > 1 { cluster_radius(cluster.members.len()) + 8.0 } else { 18.0 };
@@ -2954,6 +3357,8 @@ Cluster anklicken = auffächern",
         let (_, cluster) = best_cluster?;
         if cluster.members.len() > 1 {
             let mut lines = vec![format!("{} Geräte an diesem Punkt", cluster.members.len()), "Klick = auffächern".to_string()];
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for point_index in cluster.members.iter().take(8) {
                 let point = &points[*point_index];
                 let name = self.directory_name_for_issi(point.issi).unwrap_or_else(|| point.issi.to_string());
@@ -2969,6 +3374,8 @@ Cluster anklicken = auffächern",
         }
     }
 
+    // Was: Führt den Arbeitsschritt `device_hover_text` für device hover text aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn device_hover_text(&self, point: &LocationPoint) -> String {
         let name = self.directory_name_for_issi(point.issi).unwrap_or_else(|| point.issi.to_string());
         format!(
@@ -2988,6 +3395,8 @@ Klick = Gerätedetails",
         )
     }
 
+    // Was: Führt den Arbeitsschritt `draw_cluster_device_card` für draw cluster device card aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn draw_cluster_device_card(&self, painter: &egui::Painter, map_rect: egui::Rect, cluster: &MapCluster, points: &[LocationPoint], selected_issi: Option<u64>) {
         let width = 380.0;
         let max_rows = cluster.members.len().min(9);
@@ -3018,6 +3427,8 @@ Klick = Gerätedetails",
         );
         y += 24.0;
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for point_index in cluster.members.iter().take(max_rows) {
             let point = &points[*point_index];
             let selected = selected_issi == Some(point.issi);
@@ -3043,6 +3454,8 @@ Klick = Gerätedetails",
         }
     }
 
+    // Was: Führt den Arbeitsschritt `draw_selected_location_card` für draw selected location card aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn draw_selected_location_card(&self, painter: &egui::Painter, map_rect: egui::Rect, point: &LocationPoint) {
         let width = 350.0;
         let height = 178.0;
@@ -3063,6 +3476,8 @@ Klick = Gerätedetails",
             egui::Color32::WHITE,
         );
         y += 28.0;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (label, value) in self.location_detail_lines(point) {
             painter.text(
                 egui::pos2(x, y),
@@ -3075,6 +3490,8 @@ Klick = Gerätedetails",
         }
     }
 
+    // Was: Führt den Arbeitsschritt `location_detail_lines` für location detail lines aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn location_detail_lines(&self, point: &LocationPoint) -> Vec<(String, String)> {
         let mut lines = Vec::new();
         if let Some(name) = self.directory_name_for_issi(point.issi) {
@@ -3105,8 +3522,12 @@ Klick = Gerätedetails",
         lines
     }
 
+    // Was: Führt den Arbeitsschritt `subscriber_for_issi` für Teilnehmer for Teilnehmerkennung (ISSI) aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn subscriber_for_issi(&self, issi: u64) -> Option<&Value> {
         let value = self.subscribers.as_ref()?;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for row in array_at(value, &["subscribers"]) {
             if u64_at(row, &["issi"]) == Some(issi)
                 || u64_at(row, &["individual_issi"]) == Some(issi)
@@ -3120,10 +3541,14 @@ Klick = Gerätedetails",
 
 
 
+    // Was: Führt den Arbeitsschritt `clean_subscriber_rows` für clean Teilnehmer rows aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn clean_subscriber_rows<'a>(&self, rows: Vec<&'a Value>) -> Vec<&'a Value> {
         let mut latest_by_issi: HashMap<u64, &'a Value> = HashMap::new();
         let mut out_without_issi = Vec::new();
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for row in rows {
             let Some(issi) = u64_at(row, &["issi"]).or_else(|| u64_at(row, &["individual_issi"])) else {
                 out_without_issi.push(row);
@@ -3146,6 +3571,8 @@ Klick = Gerätedetails",
         rows
     }
 
+    // Was: Führt den Arbeitsschritt `subscriber_is_hidden` für Teilnehmer is hidden aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn subscriber_is_hidden(&self, row: &Value, issi: u64) -> bool {
         if let Some(entry) = self.settings.directory.subscriber(issi) {
             if entry.hidden.unwrap_or(false) || entry.hide_in_subscribers.unwrap_or(false) {
@@ -3162,6 +3589,8 @@ Klick = Gerätedetails",
                     return true;
                 }
             }
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for field in ["type", "device_type", "kind", "role", "class", "device_class"] {
                 if let Some(text) = str_at(row, &[field]) {
                     let lower = text.to_ascii_lowercase();
@@ -3182,11 +3611,15 @@ Klick = Gerätedetails",
         false
     }
 
+    // Was: Führt den Arbeitsschritt `subscriber_display_name` für Teilnehmer display name aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn subscriber_display_name(&self, row: &Value) -> String {
         let issi = u64_at(row, &["issi"]).or_else(|| u64_at(row, &["individual_issi"])).unwrap_or(0);
         self.best_device_name_for_issi_or_row(issi, Some(row)).unwrap_or_else(|| "-".to_string())
     }
 
+    // Was: Führt den Arbeitsschritt `directory_name_for_issi` für directory name for Teilnehmerkennung (ISSI) aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn directory_name_for_issi(&self, issi: u64) -> Option<String> {
         if let Some(value) = self.directory_name_index.get(&issi) {
             let value = value.trim();
@@ -3217,6 +3650,8 @@ Klick = Gerätedetails",
     }
 
 
+    // Was: Führt den Arbeitsschritt `best_device_name_for_issi_or_row` für best device name for Teilnehmerkennung (ISSI) or row aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn best_device_name_for_issi_or_row(&self, issi: u64, row: Option<&Value>) -> Option<String> {
         let directory_name = self.directory_name_for_issi(issi)
             .map(|value| value.trim().to_string())
@@ -3246,6 +3681,8 @@ Klick = Gerätedetails",
             .filter(|value| !value.is_empty() && value != "-" && value != &issi.to_string())
     }
 
+    // Was: Führt den Arbeitsschritt `subscriber_type_label` für Teilnehmer type label aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn subscriber_type_label(&self, row: &Value) -> String {
         let issi = u64_at(row, &["issi"]).or_else(|| u64_at(row, &["individual_issi"])).unwrap_or(0);
         if let Some(entry) = self.settings.directory.subscriber(issi) {
@@ -3258,6 +3695,8 @@ Klick = Gerätedetails",
             .unwrap_or_else(|| "-".to_string())
     }
 
+    // Was: Führt den Arbeitsschritt `subscriber_status_label` für Teilnehmer Status label aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn subscriber_status_label(&self, row: &Value) -> String {
         let issi = u64_at(row, &["issi"]).or_else(|| u64_at(row, &["individual_issi"])).unwrap_or(0);
         if let Some(entry) = self.settings.directory.subscriber(issi) {
@@ -3286,6 +3725,8 @@ Klick = Gerätedetails",
         if subscriber_online(row) { "online".to_string() } else { "offline".to_string() }
     }
 
+    // Was: Führt den Arbeitsschritt `subscriber_status_group_label` für Teilnehmer Status Gruppe label aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn subscriber_status_group_label(&self, row: &Value) -> String {
         let issi = u64_at(row, &["issi"]).or_else(|| u64_at(row, &["individual_issi"])).unwrap_or(0);
         let raw = self.settings.directory.subscriber(issi)
@@ -3304,6 +3745,8 @@ Klick = Gerätedetails",
         raw
     }
 
+    // Was: Führt den Arbeitsschritt `subscriber_groups_label` für Teilnehmer groups label aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn subscriber_groups_label(&self, row: &Value) -> String {
         let issi = u64_at(row, &["issi"]).or_else(|| u64_at(row, &["individual_issi"])).unwrap_or(0);
         let mut groups = group_ids_from_row(row);
@@ -3324,6 +3767,8 @@ Klick = Gerätedetails",
         truncate(&joined, 110)
     }
 
+    // Was: Führt den Arbeitsschritt `group_display_name` für Gruppe display name aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn group_display_name(&self, gssi: u64) -> String {
         if let Some(entry) = self.settings.directory.group(gssi) {
             if let Some(name) = first_config_text(&[entry.name.as_ref(), entry.label.as_ref()]) {
@@ -3333,12 +3778,16 @@ Klick = Gerätedetails",
         if gssi > 0 { format!("GSSI {gssi}") } else { "-".to_string() }
     }
 
+    // Was: Führt den Arbeitsschritt `group_type_label` für Gruppe type label aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn group_type_label(&self, gssi: u64) -> String {
         self.settings.directory.group(gssi)
             .and_then(|entry| first_config_text(&[entry.kind.as_ref(), entry.description.as_ref()]))
             .unwrap_or_else(|| "-".to_string())
     }
 
+    // Was: Führt den Arbeitsschritt `format_group` für format Gruppe aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn format_group(&self, gssi: u64) -> String {
         let name = self.group_display_name(gssi);
         if name == format!("GSSI {gssi}") {
@@ -3348,6 +3797,8 @@ Klick = Gerätedetails",
         }
     }
 
+    // Was: Führt den Arbeitsschritt `group_members_label` für Gruppe members label aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn group_members_label(&self, row: &Value) -> String {
         let members = group_ids_from_path(row, &["members"]);
         if members.is_empty() {
@@ -3361,10 +3812,14 @@ Klick = Gerätedetails",
         truncate(&joined, 120)
     }
 
+    // Was: Führt den Arbeitsschritt `format_issi_with_name` für format Teilnehmerkennung (ISSI) with name aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn format_issi_with_name(&self, issi: u64) -> String {
         if issi == 0 {
             return "-".to_string();
         }
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.directory_name_for_issi(issi) {
             Some(name) => format!("{name} ({issi})"),
             None => issi.to_string(),
@@ -3372,6 +3827,8 @@ Klick = Gerätedetails",
     }
 
 
+    // Was: Diese Funktion erzeugt commands.
+    // Warum: Darstellung und Fachdaten bleiben dadurch voneinander getrennt.
     fn render_commands(&self, ui: &mut egui::Ui) {
         ui.heading("Command-/Audit-Log");
         let Some(value) = &self.commands else { ui.label("Noch keine Daten"); return; };
@@ -3387,6 +3844,8 @@ Klick = Gerätedetails",
         });
     }
 
+    // Was: Diese Funktion erzeugt login screen.
+    // Warum: Darstellung und Fachdaten bleiben dadurch voneinander getrennt.
     fn render_login_screen(&mut self, ctx: &egui::Context) {
         ctx.style_mut(|style| {
             style.spacing.item_spacing = egui::vec2(10.0, 9.0);
@@ -3449,6 +3908,8 @@ Klick = Gerätedetails",
             });
     }
 
+    // Was: Diese Funktion erzeugt admin users.
+    // Warum: Darstellung und Fachdaten bleiben dadurch voneinander getrennt.
     fn render_admin_users(&mut self, ui: &mut egui::Ui) {
         if !self.is_admin() {
             ui.heading("Kein Zugriff");
@@ -3475,6 +3936,8 @@ Klick = Gerätedetails",
                 egui::ComboBox::from_id_source("user_role_combo")
                     .selected_text(&self.new_user_role)
                     .show_ui(ui, |ui| {
+                        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                         for role in ["viewer", "operator", "admin"] {
                             ui.selectable_value(&mut self.new_user_role, role.to_string(), role);
                         }
@@ -3503,6 +3966,8 @@ Klick = Gerätedetails",
         egui::ScrollArea::vertical().show(ui, |ui| {
             egui::Grid::new("users_grid").striped(true).show(ui, |ui| {
                 header_row(ui, &["Username", "Name", "Role", "Enabled", "Created", "Last login", "Aktion"]);
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for user in array_at(value, &["users"]) {
                     let username = str_at(user, &["username"]).unwrap_or("?").to_string();
                     let enabled = bool_at(user, &["enabled"]).unwrap_or(false);
@@ -3529,6 +3994,8 @@ Klick = Gerätedetails",
             });
         });
         if let Some(action) = action {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match action {
                 UserAction::SetEnabled(username, enabled) => self.set_user_enabled(&username, enabled),
                 UserAction::Delete(username) => self.delete_user(&username),
@@ -3536,6 +4003,8 @@ Klick = Gerätedetails",
         }
     }
 
+    // Was: Diese Funktion erzeugt raw.
+    // Warum: Darstellung und Fachdaten bleiben dadurch voneinander getrennt.
     fn render_raw(&self, ui: &mut egui::Ui) {
         ui.heading("Raw JSON");
         egui::ScrollArea::vertical().show(ui, |ui| {
@@ -3553,6 +4022,8 @@ Klick = Gerätedetails",
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für Status tableau card in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct StatusTableauCard {
     id: String,
     title: String,
@@ -3562,6 +4033,8 @@ struct StatusTableauCard {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für Status tableau device in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct StatusTableauDevice {
     issi: u64,
     name: String,
@@ -3574,6 +4047,8 @@ struct StatusTableauDevice {
     online: bool,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für location point in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct LocationPoint {
     issi: u64,
     lat: f64,
@@ -3583,31 +4058,43 @@ struct LocationPoint {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für map cluster in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct MapCluster {
     center: egui::Pos2,
     members: Vec<usize>,
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+// Was: Bündelt die zusammengehörigen Werte für tile key in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct TileKey {
     z: u8,
     x: u32,
     y: u32,
 }
 
+// Was: Listet die möglichen Varianten für tile entry auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 enum TileEntry {
     Ready(egui::TextureHandle),
     Loading(Receiver<Result<Vec<u8>, String>>),
     Failed { message: String, last_try: Instant },
 }
 
+// Was: Bündelt die zusammengehörigen Werte für map tile Zwischenspeicher in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct MapTileCache {
     settings: MapSettings,
     entries: HashMap<TileKey, TileEntry>,
     http: reqwest::blocking::Client,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `MapTileCache`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl MapTileCache {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     fn new(settings: MapSettings) -> Self {
         let http = reqwest::blocking::Client::builder()
             .timeout(Duration::from_secs(8))
@@ -3621,13 +4108,19 @@ impl MapTileCache {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `texture_id` für texture Kennung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn texture_id(&mut self, ctx: &egui::Context, z: u8, x: u32, y: u32, allow_online: bool) -> Result<Option<egui::TextureId>, String> {
         let key = TileKey { z, x, y };
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let entry = match self.entries.remove(&key) {
             Some(entry) => entry,
             None => TileEntry::Loading(self.spawn_loading(key, allow_online)),
         };
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match entry {
             TileEntry::Ready(texture) => {
                 let id = texture.id();
@@ -3674,6 +4167,8 @@ impl MapTileCache {
         }
     }
 
+    // Was: Diese Funktion startet loading.
+    // Warum: Länger laufende Arbeit blockiert dadurch nicht den aufrufenden Ablauf.
     fn spawn_loading(&self, key: TileKey, allow_online: bool) -> Receiver<Result<Vec<u8>, String>> {
         let path = self.tile_path(key);
         let url = self.tile_url(key);
@@ -3687,6 +4182,8 @@ impl MapTileCache {
         receiver
     }
 
+    // Was: Führt den Arbeitsschritt `tile_url` für tile url aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn tile_url(&self, key: TileKey) -> String {
         self.settings
             .tile_url
@@ -3695,6 +4192,8 @@ impl MapTileCache {
             .replace("{y}", &key.y.to_string())
     }
 
+    // Was: Führt den Arbeitsschritt `tile_path` für tile path aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn tile_path(&self, key: TileKey) -> PathBuf {
         self.settings
             .cache_dir
@@ -3704,6 +4203,8 @@ impl MapTileCache {
     }
 }
 
+// Was: Diese Funktion lädt tile bytes.
+// Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
 fn load_tile_bytes(client: reqwest::blocking::Client, path: PathBuf, url: String, key: TileKey, allow_online: bool) -> Result<Vec<u8>, String> {
     if let Ok(bytes) = fs::read(&path) {
         return Ok(bytes);
@@ -3725,6 +4226,8 @@ fn load_tile_bytes(client: reqwest::blocking::Client, path: PathBuf, url: String
 }
 
 
+// Was: Diese Funktion dekodiert tile.
+// Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
 fn decode_tile(bytes: &[u8]) -> Result<egui::ColorImage, image::ImageError> {
     let image = image::load_from_memory(bytes)?.to_rgba8();
     let size = [image.width() as usize, image.height() as usize];
@@ -3732,12 +4235,16 @@ fn decode_tile(bytes: &[u8]) -> Result<egui::ColorImage, image::ImageError> {
 }
 
 #[derive(Debug, Copy, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für world point in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct WorldPoint {
     x: f64,
     y: f64,
 }
 
 #[derive(Debug, Copy, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für map viewport in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct MapViewport {
     center_lat: f64,
     center_lon: f64,
@@ -3745,7 +4252,11 @@ struct MapViewport {
     top_left_world: WorldPoint,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `MapViewport`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl MapViewport {
+    // Was: Führt den Arbeitsschritt `for_state` für for Zustand aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn for_state(
         points: &[LocationPoint],
         map_rect: egui::Rect,
@@ -3771,6 +4282,8 @@ impl MapViewport {
             let mut max_lat = f64::NEG_INFINITY;
             let mut min_lon = f64::INFINITY;
             let mut max_lon = f64::NEG_INFINITY;
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for point in points {
                 min_lat = min_lat.min(point.lat);
                 max_lat = max_lat.max(point.lat);
@@ -3798,6 +4311,8 @@ impl MapViewport {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `lat_lon_to_screen` für lat lon to screen aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn lat_lon_to_screen(&self, lat: f64, lon: f64, map_rect: egui::Rect) -> egui::Pos2 {
         let world = lat_lon_to_world(lat, lon, self.zoom);
         egui::pos2(
@@ -3806,6 +4321,8 @@ impl MapViewport {
         )
     }
 
+    // Was: Führt den Arbeitsschritt `screen_to_lat_lon` für screen to lat lon aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn screen_to_lat_lon(&self, pos: egui::Pos2, map_rect: egui::Rect) -> (f64, f64) {
         let world = WorldPoint {
             x: self.top_left_world.x + (pos.x - map_rect.left()) as f64,
@@ -3815,11 +4332,15 @@ impl MapViewport {
     }
 }
 
+// Was: Führt den Arbeitsschritt `choose_zoom` für choose zoom aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn choose_zoom(min_lat: f64, max_lat: f64, min_lon: f64, max_lon: f64, map_rect: egui::Rect, settings: &MapSettings) -> u8 {
     if (max_lat - min_lat).abs() < 0.000_1 && (max_lon - min_lon).abs() < 0.000_1 {
         return settings.default_zoom.clamp(settings.min_zoom, settings.max_zoom);
     }
     let padding = 0.82;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for zoom in (settings.min_zoom..=settings.max_zoom).rev() {
         let p1 = lat_lon_to_world(min_lat, min_lon, zoom);
         let p2 = lat_lon_to_world(max_lat, max_lon, zoom);
@@ -3832,6 +4353,8 @@ fn choose_zoom(min_lat: f64, max_lat: f64, min_lon: f64, max_lon: f64, map_rect:
     settings.min_zoom
 }
 
+// Was: Führt den Arbeitsschritt `lat_lon_to_world` für lat lon to world aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn lat_lon_to_world(lat: f64, lon: f64, zoom: u8) -> WorldPoint {
     let lat = lat.clamp(-85.051_128_78, 85.051_128_78);
     let lon = normalize_lon(lon);
@@ -3842,6 +4365,8 @@ fn lat_lon_to_world(lat: f64, lon: f64, zoom: u8) -> WorldPoint {
     WorldPoint { x, y }
 }
 
+// Was: Führt den Arbeitsschritt `world_to_lat_lon` für world to lat lon aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn world_to_lat_lon(world: WorldPoint, zoom: u8) -> (f64, f64) {
     let scale = TILE_SIZE * 2.0_f64.powi(zoom as i32);
     let lon = world.x / scale * 360.0 - 180.0;
@@ -3850,13 +4375,21 @@ fn world_to_lat_lon(world: WorldPoint, zoom: u8) -> (f64, f64) {
     (lat, normalize_lon(lon))
 }
 
+// Was: Führt den Arbeitsschritt `normalize_lon` für normalize lon aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn normalize_lon(lon: f64) -> f64 {
     let mut lon = lon;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while lon < -180.0 { lon += 360.0; }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while lon > 180.0 { lon -= 360.0; }
     lon
 }
 
+// Was: Diese Funktion sammelt points.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn collect_points(rows: &[&Value]) -> Vec<LocationPoint> {
     rows.iter()
         .filter_map(|row| {
@@ -3877,10 +4410,14 @@ fn collect_points(rows: &[&Value]) -> Vec<LocationPoint> {
 }
 
 
+// Was: Führt den Arbeitsschritt `latest_location_rows` für latest location rows aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn latest_location_rows<'a>(rows: &[&'a Value]) -> Vec<&'a Value> {
     let mut latest_by_issi: HashMap<u64, &'a Value> = HashMap::new();
     let mut unkeyed_rows: Vec<&'a Value> = Vec::new();
 
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for &row in rows {
         if let Some(issi) = u64_at(row, &["issi"]) {
             let replace = latest_by_issi
@@ -3906,6 +4443,8 @@ fn latest_location_rows<'a>(rows: &[&'a Value]) -> Vec<&'a Value> {
     latest
 }
 
+// Was: Führt den Arbeitsschritt `location_row_is_newer` für location row is newer aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn location_row_is_newer(candidate: &Value, current: &Value) -> bool {
     let candidate_time = location_timestamp(candidate);
     let current_time = location_timestamp(current);
@@ -3919,6 +4458,8 @@ fn location_row_is_newer(candidate: &Value, current: &Value) -> bool {
     true
 }
 
+// Was: Führt den Arbeitsschritt `location_timestamp` für location timestamp aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn location_timestamp(row: &Value) -> &str {
     str_at(row, &["updated_at"])
         .or_else(|| str_at(row, &["timestamp"]))
@@ -3928,10 +4469,14 @@ fn location_timestamp(row: &Value) -> &str {
 
 
 
+// Was: Diese Funktion erstellt map clusters.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
 fn build_map_clusters(points: &[LocationPoint], map_rect: egui::Rect, viewport: &MapViewport, threshold: f32) -> Vec<MapCluster> {
     let mut clusters: Vec<MapCluster> = Vec::new();
     let threshold_sq = threshold * threshold;
 
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (index, point) in points.iter().enumerate() {
         let pos = viewport.lat_lon_to_screen(point.lat, point.lon, map_rect);
         if !map_rect.expand(48.0).contains(pos) {
@@ -3954,14 +4499,20 @@ fn build_map_clusters(points: &[LocationPoint], map_rect: egui::Rect, viewport: 
     clusters
 }
 
+// Was: Führt den Arbeitsschritt `cluster_contains_issi` für cluster contains Teilnehmerkennung (ISSI) aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn cluster_contains_issi(cluster: &MapCluster, points: &[LocationPoint], issi: u64) -> bool {
     cluster.members.iter().any(|index| points[*index].issi == issi)
 }
 
+// Was: Führt den Arbeitsschritt `cluster_radius` für cluster radius aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn cluster_radius(count: usize) -> f32 {
     (15.0 + (count as f32).sqrt() * 3.5).clamp(18.0, 34.0)
 }
 
+// Was: Führt den Arbeitsschritt `spider_position` für spider position aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn spider_position(center: egui::Pos2, index: usize, total: usize) -> egui::Pos2 {
     if total <= 1 {
         return center;
@@ -3971,6 +4522,8 @@ fn spider_position(center: egui::Pos2, index: usize, total: usize) -> egui::Pos2
     center + egui::vec2(angle.cos() * radius, angle.sin() * radius)
 }
 
+// Was: Führt den Arbeitsschritt `compact_marker_label` für compact marker label aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn compact_marker_label(label: &str) -> String {
     let label = label.trim();
     if label.is_empty() {
@@ -3978,6 +4531,8 @@ fn compact_marker_label(label: &str) -> String {
     }
     let mut chars = label.chars();
     let mut out = String::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for _ in 0..18 {
         if let Some(ch) = chars.next() {
             out.push(ch);
@@ -3990,6 +4545,8 @@ fn compact_marker_label(label: &str) -> String {
 }
 
 
+// Was: Diese Funktion führt Teilnehmer missing.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn merge_subscriber_missing(entry: &mut DirectorySubscriberConfig, other: &DirectorySubscriberConfig) {
     if entry.name.is_none() { entry.name = other.name.clone(); }
     if entry.label.is_none() { entry.label = other.label.clone(); }
@@ -4004,11 +4561,15 @@ fn merge_subscriber_missing(entry: &mut DirectorySubscriberConfig, other: &Direc
     if entry.static_groups.is_empty() { entry.static_groups = other.static_groups.clone(); }
     if entry.hidden.is_none() { entry.hidden = other.hidden; }
     if entry.hide_in_subscribers.is_none() { entry.hide_in_subscribers = other.hide_in_subscribers; }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (key, value) in &other.extra {
         entry.extra.entry(key.clone()).or_insert_with(|| value.clone());
     }
 }
 
+// Was: Diese Funktion führt label missing.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn merge_label_missing(entry: &mut DirectoryLabelConfig, other: &DirectoryLabelConfig) {
     if entry.name.is_none() { entry.name = other.name.clone(); }
     if entry.label.is_none() { entry.label = other.label.clone(); }
@@ -4016,6 +4577,8 @@ fn merge_label_missing(entry: &mut DirectoryLabelConfig, other: &DirectoryLabelC
     if entry.description.is_none() { entry.description = other.description.clone(); }
 }
 
+// Was: Diese Funktion führt Status missing.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn merge_status_missing(entry: &mut DirectoryStatusConfig, other: &DirectoryStatusConfig) {
     if entry.name.is_none() { entry.name = other.name.clone(); }
     if entry.label.is_none() { entry.label = other.label.clone(); }
@@ -4023,10 +4586,14 @@ fn merge_status_missing(entry: &mut DirectoryStatusConfig, other: &DirectoryStat
     if entry.description.is_none() { entry.description = other.description.clone(); }
 }
 
+// Was: Führt den Arbeitsschritt `directory_entry_has_name` für directory entry has name aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn directory_entry_has_name(entry: &DirectorySubscriberConfig) -> bool {
     directory_name_from_entry(entry).is_some()
 }
 
+// Was: Führt den Arbeitsschritt `directory_name_from_entry` für directory name from entry aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn directory_name_from_entry(entry: &DirectorySubscriberConfig) -> Option<String> {
     first_config_text(&[entry.display_name.as_ref(), entry.name.as_ref(), entry.label.as_ref(), entry.alias.as_ref()])
         .or_else(|| first_extra_string(&entry.extra, &[
@@ -4038,9 +4605,15 @@ fn directory_name_from_entry(entry: &DirectorySubscriberConfig) -> Option<String
         .filter(|value| !value.is_empty() && value != "-")
 }
 
+// Was: Führt den Arbeitsschritt `raw_directory_name_for_id` für raw directory name for Kennung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn raw_directory_name_for_id(value: &Value, id: u64) -> Option<String> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match value {
         Value::Object(object) => {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for (key, child) in object {
                 if text_matches_directory_id(key, id) {
                     if let Some(name) = raw_directory_name_from_value(child, id) {
@@ -4053,6 +4626,8 @@ fn raw_directory_name_for_id(value: &Value, id: u64) -> Option<String> {
                     return Some(name);
                 }
             }
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for child in object.values() {
                 if let Some(name) = raw_directory_name_for_id(child, id) {
                     return Some(name);
@@ -4061,6 +4636,8 @@ fn raw_directory_name_for_id(value: &Value, id: u64) -> Option<String> {
             None
         }
         Value::Array(items) => {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for item in items {
                 if let Some(name) = raw_directory_name_for_id(item, id) {
                     return Some(name);
@@ -4072,7 +4649,11 @@ fn raw_directory_name_for_id(value: &Value, id: u64) -> Option<String> {
     }
 }
 
+// Was: Führt den Arbeitsschritt `raw_directory_name_from_value` für raw directory name from value aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn raw_directory_name_from_value(value: &Value, id: u64) -> Option<String> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match value {
         Value::Object(object) => raw_directory_name_from_object(object, id),
         Value::String(text) => clean_directory_name_candidate(text, id),
@@ -4080,6 +4661,8 @@ fn raw_directory_name_from_value(value: &Value, id: u64) -> Option<String> {
     }
 }
 
+// Was: Führt den Arbeitsschritt `raw_directory_name_from_object` für raw directory name from object aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn raw_directory_name_from_object(object: &serde_json::Map<String, Value>, id: u64) -> Option<String> {
     let direct_keys = [
         "display_name", "displayName", "name", "label", "alias", "rufname", "Rufname",
@@ -4087,6 +4670,8 @@ fn raw_directory_name_from_object(object: &serde_json::Map<String, Value>, id: u
         "shortName", "shortLabel", "terminal_name", "terminalName", "bezeichnung", "Bezeichnung",
         "description", "title",
     ];
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for key in direct_keys {
         if let Some(value) = object.get(key) {
             if let Some(text) = value.as_str().and_then(|text| clean_directory_name_candidate(text, id)) {
@@ -4100,6 +4685,8 @@ fn raw_directory_name_from_object(object: &serde_json::Map<String, Value>, id: u
             }
         }
     }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for nested_key in ["subscriber", "terminal", "radio", "device", "meta", "profile"] {
         if let Some(Value::Object(nested)) = object.get(nested_key) {
             if let Some(name) = raw_directory_name_from_object(nested, id) {
@@ -4110,6 +4697,8 @@ fn raw_directory_name_from_object(object: &serde_json::Map<String, Value>, id: u
     None
 }
 
+// Was: Führt den Arbeitsschritt `object_matches_directory_id` für object matches directory Kennung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn object_matches_directory_id(object: &serde_json::Map<String, Value>, id: u64) -> bool {
     let id_keys = [
         "issi", "individual_issi", "source_issi", "subscriber_issi", "address", "id",
@@ -4118,22 +4707,30 @@ fn object_matches_directory_id(object: &serde_json::Map<String, Value>, id: u64)
     id_keys.iter().any(|key| object.get(*key).and_then(value_as_directory_id) == Some(id))
 }
 
+// Was: Führt den Arbeitsschritt `value_as_directory_id` für value as directory Kennung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn value_as_directory_id(value: &Value) -> Option<u64> {
     if let Some(number) = value.as_u64() { return Some(number); }
     if let Some(number) = value.as_i64() { return u64::try_from(number).ok(); }
     value.as_str().and_then(parse_directory_id_text)
 }
 
+// Was: Diese Funktion liest und prüft directory Kennung text.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_directory_id_text(text: &str) -> Option<u64> {
     let trimmed = text.trim();
     if trimmed.is_empty() { return None; }
     trimmed.parse::<u64>().ok().or_else(|| trimmed.trim_start_matches('0').parse::<u64>().ok())
 }
 
+// Was: Führt den Arbeitsschritt `text_matches_directory_id` für text matches directory Kennung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn text_matches_directory_id(text: &str, id: u64) -> bool {
     parse_directory_id_text(text) == Some(id) || id_key_variants(id).iter().any(|key| key == text.trim())
 }
 
+// Was: Führt den Arbeitsschritt `clean_directory_name_candidate` für clean directory name candidate aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn clean_directory_name_candidate(text: &str, id: u64) -> Option<String> {
     let candidate = text.trim();
     if candidate.is_empty() || candidate == "-" { return None; }
@@ -4141,6 +4738,8 @@ fn clean_directory_name_candidate(text: &str, id: u64) -> Option<String> {
     Some(candidate.to_string())
 }
 
+// Was: Diese Funktion erstellt directory name index.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
 fn build_directory_name_index(value: &Value) -> HashMap<u64, String> {
     let mut index = HashMap::new();
     collect_directory_names(value, &mut index);
@@ -4151,9 +4750,15 @@ fn build_directory_name_index(value: &Value) -> HashMap<u64, String> {
     index
 }
 
+// Was: Diese Funktion sammelt directory names.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn collect_directory_names(value: &Value, index: &mut HashMap<u64, String>) {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match value {
         Value::Array(items) => {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for item in items {
                 collect_directory_names(item, index);
             }
@@ -4165,6 +4770,8 @@ fn collect_directory_names(value: &Value, index: &mut HashMap<u64, String>) {
                 }
             }
 
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for (key, child) in map {
                 if let Ok(issi) = key.trim().parse::<u64>() {
                     if let Some(child_map) = child.as_object() {
@@ -4184,7 +4791,11 @@ fn collect_directory_names(value: &Value, index: &mut HashMap<u64, String>) {
     }
 }
 
+// Was: Führt den Arbeitsschritt `directory_object_issi` für directory object Teilnehmerkennung (ISSI) aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn directory_object_issi(map: &serde_json::Map<String, Value>) -> Option<u64> {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for key in [
         "issi",
         "individual_issi",
@@ -4214,7 +4825,11 @@ fn directory_object_issi(map: &serde_json::Map<String, Value>) -> Option<u64> {
     None
 }
 
+// Was: Führt den Arbeitsschritt `directory_object_name` für directory object name aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn directory_object_name(map: &serde_json::Map<String, Value>, issi: u64) -> Option<String> {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for key in [
         "name",
         "display_name",
@@ -4236,6 +4851,8 @@ fn directory_object_name(map: &serde_json::Map<String, Value>, issi: u64) -> Opt
         "title",
     ] {
         let Some(value) = map.get(key) else { continue; };
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let text = match value {
             Value::String(text) => text.trim().to_string(),
             Value::Number(number) => number.to_string(),
@@ -4248,11 +4865,15 @@ fn directory_object_name(map: &serde_json::Map<String, Value>, issi: u64) -> Opt
     None
 }
 
+// Was: Führt den Arbeitsschritt `estimate_status_card_height` für estimate Status card height aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn estimate_status_card_height(card: &StatusTableauCard) -> f32 {
     let row_count = card.devices.len().max(1) as f32;
     42.0 + row_count * 49.0 + 12.0
 }
 
+// Was: Führt den Arbeitsschritt `normalize_directory_value` für normalize directory value aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn normalize_directory_value(mut value: Value) -> Value {
     if let Some(inner) = value.get("directory").cloned() {
         value = inner;
@@ -4270,6 +4891,8 @@ fn normalize_directory_value(mut value: Value) -> Value {
     value
 }
 
+// Was: Führt den Arbeitsschritt `normalize_directory_collection` für normalize directory collection aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn normalize_directory_collection(object: &mut serde_json::Map<String, Value>, field: &str, key_fields: &[&str]) {
     let Some(value) = object.get_mut(field) else {
         return;
@@ -4279,6 +4902,8 @@ fn normalize_directory_collection(object: &mut serde_json::Map<String, Value>, f
     };
 
     let mut map = serde_json::Map::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for item in items {
         let Some(key) = directory_item_key(item, key_fields) else {
             continue;
@@ -4288,7 +4913,11 @@ fn normalize_directory_collection(object: &mut serde_json::Map<String, Value>, f
     *value = Value::Object(map);
 }
 
+// Was: Führt den Arbeitsschritt `directory_item_key` für directory item key aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn directory_item_key(item: &Value, key_fields: &[&str]) -> Option<String> {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for key in key_fields {
         if let Some(text) = str_at(item, &[*key]).map(str::trim).filter(|text| !text.is_empty()) {
             return Some(text.to_string());
@@ -4300,6 +4929,8 @@ fn directory_item_key(item: &Value, key_fields: &[&str]) -> Option<String> {
     None
 }
 
+// Was: Führt den Arbeitsschritt `id_key_variants` für Kennung key variants aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn id_key_variants(id: u64) -> Vec<String> {
     let mut keys = vec![id.to_string(), format!("{id:07}"), format!("{id:08}")];
     keys.sort();
@@ -4307,6 +4938,8 @@ fn id_key_variants(id: u64) -> Vec<String> {
     keys
 }
 
+// Was: Führt den Arbeitsschritt `first_config_text` für first Konfiguration text aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn first_config_text(values: &[Option<&String>]) -> Option<String> {
     values
         .iter()
@@ -4316,7 +4949,11 @@ fn first_config_text(values: &[Option<&String>]) -> Option<String> {
         .map(|value| value.to_string())
 }
 
+// Was: Führt den Arbeitsschritt `first_extra_string` für first extra string aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn first_extra_string(values: &HashMap<String, Value>, keys: &[&str]) -> Option<String> {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for key in keys {
         let Some(value) = values.get(*key) else { continue; };
         if let Some(text) = value.as_str().map(str::trim).filter(|text| !text.is_empty()) {
@@ -4329,7 +4966,11 @@ fn first_extra_string(values: &HashMap<String, Value>, keys: &[&str]) -> Option<
     None
 }
 
+// Was: Führt den Arbeitsschritt `first_string` für first string aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn first_string(value: &Value, keys: &[&str]) -> Option<String> {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for key in keys {
         if let Some(text) = str_at(value, &[*key]).map(str::trim).filter(|text| !text.is_empty()) {
             return Some(text.to_string());
@@ -4341,10 +4982,14 @@ fn first_string(value: &Value, keys: &[&str]) -> Option<String> {
     None
 }
 
+// Was: Führt den Arbeitsschritt `issi_class_label` für Teilnehmerkennung (ISSI) class label aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn issi_class_label(issi: u64) -> Option<&'static str> {
     if issi == 0 {
         return None;
     }
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match (issi / 1_000_000) % 10 {
         1 => Some("LST"),
         2 => Some("HRT"),
@@ -4355,10 +5000,14 @@ fn issi_class_label(issi: u64) -> Option<&'static str> {
     }
 }
 
+// Was: Führt den Arbeitsschritt `subscriber_online` für Teilnehmer online aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn subscriber_online(row: &Value) -> bool {
     if let Some(value) = bool_at(row, &["online"]) {
         return value;
     }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for key in ["state", "status", "registration_state"] {
         if let Some(text) = str_at(row, &[key]) {
             let lower = text.to_ascii_lowercase();
@@ -4368,6 +5017,8 @@ fn subscriber_online(row: &Value) -> bool {
     false
 }
 
+// Was: Führt den Arbeitsschritt `subscriber_row_is_newer` für Teilnehmer row is newer aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn subscriber_row_is_newer(candidate: &Value, current: &Value) -> bool {
     let candidate_time = subscriber_timestamp(candidate);
     let current_time = subscriber_timestamp(current);
@@ -4377,6 +5028,8 @@ fn subscriber_row_is_newer(candidate: &Value, current: &Value) -> bool {
     true
 }
 
+// Was: Führt den Arbeitsschritt `subscriber_timestamp` für Teilnehmer timestamp aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn subscriber_timestamp(row: &Value) -> &str {
     str_at(row, &["last_seen"])
         .or_else(|| str_at(row, &["updated_at"]))
@@ -4385,6 +5038,8 @@ fn subscriber_timestamp(row: &Value) -> &str {
         .unwrap_or("")
 }
 
+// Was: Führt den Arbeitsschritt `group_ids_from_row` für Gruppe ids from row aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn group_ids_from_row(row: &Value) -> Vec<u64> {
     let mut ids = group_ids_from_path(row, &["groups"]);
     ids.extend(group_ids_from_path(row, &["static_groups"]));
@@ -4395,11 +5050,15 @@ fn group_ids_from_row(row: &Value) -> Vec<u64> {
     ids
 }
 
+// Was: Führt den Arbeitsschritt `group_ids_from_path` für Gruppe ids from path aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn group_ids_from_path(value: &Value, path: &[&str]) -> Vec<u64> {
     let Some(values) = get_at(value, path).and_then(Value::as_array) else {
         return Vec::new();
     };
     let mut ids = Vec::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for value in values {
         if let Some(id) = value.as_u64() {
             ids.push(id);
@@ -4416,6 +5075,8 @@ fn group_ids_from_path(value: &Value, path: &[&str]) -> Vec<u64> {
     ids
 }
 
+// Was: Führt den Arbeitsschritt `sds_source_issi` für TETRA-Kurznachricht (SDS) source Teilnehmerkennung (ISSI) aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn sds_source_issi(row: &Value) -> Option<u64> {
     u64_any_at(row, &["source_issi"])
         .or_else(|| u64_any_at(row, &["source"]))
@@ -4428,6 +5089,8 @@ fn sds_source_issi(row: &Value) -> Option<u64> {
         .or_else(|| u64_any_at(row, &["issi"]))
 }
 
+// Was: Führt den Arbeitsschritt `sds_protocol` für TETRA-Kurznachricht (SDS) protocol aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn sds_protocol(row: &Value) -> Option<u64> {
     u64_any_at(row, &["protocol_id"])
         .or_else(|| u64_any_at(row, &["proto"]))
@@ -4435,6 +5098,8 @@ fn sds_protocol(row: &Value) -> Option<u64> {
         .or_else(|| u64_any_at(row, &["pid"]))
 }
 
+// Was: Führt den Arbeitsschritt `sds_row_is_newer` für TETRA-Kurznachricht (SDS) row is newer aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn sds_row_is_newer(candidate: &Value, current: &Value) -> bool {
     let candidate_time = sds_timestamp(candidate);
     let current_time = sds_timestamp(current);
@@ -4444,6 +5109,8 @@ fn sds_row_is_newer(candidate: &Value, current: &Value) -> bool {
     true
 }
 
+// Was: Führt den Arbeitsschritt `sds_timestamp` für TETRA-Kurznachricht (SDS) timestamp aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn sds_timestamp(row: &Value) -> &str {
     str_at(row, &["timestamp"])
         .or_else(|| str_at(row, &["time"]))
@@ -4452,6 +5119,8 @@ fn sds_timestamp(row: &Value) -> &str {
         .unwrap_or("")
 }
 
+// Was: Führt den Arbeitsschritt `looks_like_status_text` für looks like Status text aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn looks_like_status_text(text: &str) -> bool {
     let normalized = normalize_status_text(text);
     normalized.starts_with("status")
@@ -4462,6 +5131,8 @@ fn looks_like_status_text(text: &str) -> bool {
         || normalized.contains("sonderstatus")
 }
 
+// Was: Führt den Arbeitsschritt `extract_status_label_from_text` für extract Status label from text aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn extract_status_label_from_text(text: &str) -> Option<String> {
     let trimmed = text.trim();
     if trimmed.is_empty() {
@@ -4475,6 +5146,8 @@ fn extract_status_label_from_text(text: &str) -> Option<String> {
         value = rest.trim();
     }
 
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for separator in ["—", "–", " - ", " -- ", " => "] {
         if let Some((first, _)) = value.split_once(separator) {
             let candidate = first.trim();
@@ -4487,6 +5160,8 @@ fn extract_status_label_from_text(text: &str) -> Option<String> {
     Some(value.to_string())
 }
 
+// Was: Führt den Arbeitsschritt `normalize_status_text` für normalize Status text aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn normalize_status_text(text: &str) -> String {
     text.to_ascii_lowercase()
         .replace('—', " ")
@@ -4498,11 +5173,15 @@ fn normalize_status_text(text: &str) -> String {
         .join(" ")
 }
 
+// Was: Listet die möglichen Varianten für Benutzer action auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 enum UserAction {
     SetEnabled(String, bool),
     Delete(String),
 }
 
+// Was: Führt den Arbeitsschritt `metric` für metric aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn metric(ui: &mut egui::Ui, label: &str, value: String) {
     egui::Frame::group(ui.style()).show(ui, |ui| {
         ui.set_min_width(110.0);
@@ -4515,6 +5194,8 @@ fn metric(ui: &mut egui::Ui, label: &str, value: String) {
 
 
 
+// Was: Führt den Arbeitsschritt `status_pill` für Status pill aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn status_pill(ui: &mut egui::Ui, label: &str, value: &str, ok: bool) {
     let color = if ok { egui::Color32::from_rgb(0, 130, 70) } else { egui::Color32::from_rgb(185, 40, 40) };
     ui.group(|ui| {
@@ -4527,6 +5208,8 @@ fn status_pill(ui: &mut egui::Ui, label: &str, value: &str, ok: bool) {
 }
 
 
+// Was: Diese Funktion liest und prüft Status code.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_status_code(value: &str) -> Option<u64> {
     let trimmed = value.trim();
     if trimmed.is_empty() {
@@ -4535,7 +5218,11 @@ fn parse_status_code(value: &str) -> Option<u64> {
     trimmed.parse::<u64>().ok()
 }
 
+// Was: Führt den Arbeitsschritt `status_label_default` für Status label default aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn status_label_default(code: u64) -> &'static str {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match code {
         1 => "Frei",
         2 => "Bereit",
@@ -4549,7 +5236,11 @@ fn status_label_default(code: u64) -> &'static str {
     }
 }
 
+// Was: Führt den Arbeitsschritt `status_colour_for_code` für Status colour for code aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn status_colour_for_code(code: u64) -> egui::Color32 {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match code {
         1 => egui::Color32::from_rgb(0, 230, 0),
         2 => egui::Color32::from_rgb(170, 235, 30),
@@ -4563,6 +5254,8 @@ fn status_colour_for_code(code: u64) -> egui::Color32 {
     }
 }
 
+// Was: Führt den Arbeitsschritt `status_badge` für Status badge aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn status_badge(ui: &mut egui::Ui, code: &str, label: &str, colour: egui::Color32) {
     ui.horizontal(|ui| {
         let (rect, _) = ui.allocate_exact_size(egui::vec2(28.0, 22.0), egui::Sense::hover());
@@ -4578,6 +5271,8 @@ fn status_badge(ui: &mut egui::Ui, code: &str, label: &str, colour: egui::Color3
     });
 }
 
+// Was: Führt den Arbeitsschritt `table` für table aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn table<F>(ui: &mut egui::Ui, id: &str, headers: &[&str], rows: Vec<&Value>, mut row_fn: F)
 where
     F: FnMut(&mut egui::Ui, &Value),
@@ -4589,6 +5284,8 @@ where
     egui::ScrollArea::both().auto_shrink([false, false]).show(ui, |ui| {
         egui::Grid::new(id).striped(true).min_col_width(110.0).spacing(egui::vec2(12.0, 6.0)).show(ui, |ui| {
             header_row(ui, headers);
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for row in rows {
                 row_fn(ui, row);
                 ui.end_row();
@@ -4597,13 +5294,19 @@ where
     });
 }
 
+// Was: Führt den Arbeitsschritt `header_row` für header row aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn header_row(ui: &mut egui::Ui, headers: &[&str]) {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for header in headers {
         ui.strong(*header);
     }
     ui.end_row();
 }
 
+// Was: Führt den Arbeitsschritt `bool_label` für bool label aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn bool_label(ui: &mut egui::Ui, value: bool) {
     if value {
         ui.colored_label(egui::Color32::GREEN, "ja");
@@ -4612,7 +5315,11 @@ fn bool_label(ui: &mut egui::Ui, value: bool) {
     }
 }
 
+// Was: Führt den Arbeitsschritt `tri_label` für tri label aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn tri_label(ui: &mut egui::Ui, value: Option<&Value>) {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match value.and_then(Value::as_bool) {
         Some(true) => ui.colored_label(egui::Color32::GREEN, "ja"),
         Some(false) => ui.colored_label(egui::Color32::RED, "nein"),
@@ -4620,6 +5327,8 @@ fn tri_label(ui: &mut egui::Ui, value: Option<&Value>) {
     };
 }
 
+// Was: Führt den Arbeitsschritt `raw_block` für raw block aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn raw_block(ui: &mut egui::Ui, name: &str, value: &Option<Value>) {
     ui.collapsing(name, |ui| {
         if let Some(value) = value {
@@ -4630,34 +5339,50 @@ fn raw_block(ui: &mut egui::Ui, name: &str, value: &Option<Value>) {
     });
 }
 
+// Was: Führt den Arbeitsschritt `pretty` für pretty aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn pretty(value: &Value) -> String {
     serde_json::to_string_pretty(value).unwrap_or_else(|_| value.to_string())
 }
 
+// Was: Diese Funktion liest und prüft u32.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_u32(value: &str, label: &str) -> Result<u32, String> {
     value.trim().parse::<u32>().map_err(|_| format!("{label} ist keine gültige Zahl: {value}"))
 }
 
+// Was: Führt den Arbeitsschritt `now_label` für now label aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn now_label() -> String {
     format!("{:?}", std::time::SystemTime::now())
 }
 
+// Was: Diese Funktion liest at.
+// Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
 fn get_at<'a>(value: &'a Value, path: &[&str]) -> Option<&'a Value> {
     let mut cursor = value;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for key in path {
         cursor = cursor.get(*key)?;
     }
     Some(cursor)
 }
 
+// Was: Führt den Arbeitsschritt `str_at` für str at aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn str_at<'a>(value: &'a Value, path: &[&str]) -> Option<&'a str> {
     get_at(value, path)?.as_str()
 }
 
+// Was: Führt den Arbeitsschritt `u64_at` für u64 at aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn u64_at(value: &Value, path: &[&str]) -> Option<u64> {
     get_at(value, path)?.as_u64()
 }
 
+// Was: Führt den Arbeitsschritt `u64_any_at` für u64 any at aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn u64_any_at(value: &Value, path: &[&str]) -> Option<u64> {
     let value = get_at(value, path)?;
     if let Some(number) = value.as_u64() {
@@ -4672,14 +5397,20 @@ fn u64_any_at(value: &Value, path: &[&str]) -> Option<u64> {
     None
 }
 
+// Was: Führt den Arbeitsschritt `f64_at` für f64 at aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn f64_at(value: &Value, path: &[&str]) -> Option<f64> {
     get_at(value, path)?.as_f64()
 }
 
+// Was: Führt den Arbeitsschritt `bool_at` für bool at aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn bool_at(value: &Value, path: &[&str]) -> Option<bool> {
     get_at(value, path)?.as_bool()
 }
 
+// Was: Führt den Arbeitsschritt `array_at` für array at aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn array_at<'a>(value: &'a Value, path: &[&str]) -> Vec<&'a Value> {
     get_at(value, path)
         .and_then(Value::as_array)
@@ -4687,14 +5418,20 @@ fn array_at<'a>(value: &'a Value, path: &[&str]) -> Vec<&'a Value> {
         .unwrap_or_default()
 }
 
+// Was: Führt den Arbeitsschritt `display_u64` für display u64 aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn display_u64(value: &Value, path: &[&str]) -> String {
     u64_at(value, path).map(|v| v.to_string()).unwrap_or_else(|| "-".to_string())
 }
 
+// Was: Führt den Arbeitsschritt `display_f64` für display f64 aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn display_f64(value: &Value, path: &[&str]) -> String {
     f64_at(value, path).map(|v| format!("{v:.2}")).unwrap_or_else(|| "-".to_string())
 }
 
+// Was: Diese Funktion verknüpft array.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn join_array(value: &Value, path: &[&str]) -> String {
     let Some(values) = get_at(value, path).and_then(Value::as_array) else {
         return "-".to_string();
@@ -4713,6 +5450,8 @@ fn join_array(value: &Value, path: &[&str]) -> String {
     truncate(&joined, 80)
 }
 
+// Was: Führt den Arbeitsschritt `truncate` für truncate aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn truncate(value: &str, max_chars: usize) -> String {
     if value.chars().count() <= max_chars {
         return value.to_string();

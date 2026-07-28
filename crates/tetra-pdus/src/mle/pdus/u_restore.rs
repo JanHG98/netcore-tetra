@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 
 use tetra_core::typed_pdu_fields::{delimiters, typed};
@@ -8,6 +11,8 @@ use crate::mle::pdus::trailing_sdu::{read_trailing_sdu, write_trailing_sdu};
 
 /// U-RESTORE PDU (ETSI EN 300 392-2, clause 18.4.1.4.7).
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für urestore in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct URestore {
     pub mcc: Option<u16>,
     pub mnc: Option<u16>,
@@ -16,7 +21,11 @@ pub struct URestore {
     pub sdu: Option<BitBuffer>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `URestore`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl URestore {
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buffer: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let pdu_type = buffer.read_field(3, "pdu_type")?;
         expect_pdu_type!(pdu_type, MlePduTypeUl::URestore)?;
@@ -34,6 +43,8 @@ impl URestore {
         })
     }
 
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buffer: &mut BitBuffer) -> Result<(), PduParseErr> {
         validate_range(self.mcc, 10, "mcc")?;
         validate_range(self.mnc, 14, "mnc")?;
@@ -50,6 +61,8 @@ impl URestore {
     }
 }
 
+// Was: Diese Funktion prüft range.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_range(
     value: Option<u16>,
     bits: usize,
@@ -67,7 +80,11 @@ fn validate_range(
     Ok(())
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for URestore`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for URestore {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,

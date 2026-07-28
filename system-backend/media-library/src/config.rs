@@ -1,15 +1,26 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für gespeicherte Aufzeichnungen, TTS- und Mediendateien.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::fs;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
+// Was: Legt den festen Wert `OPEN_LAB_MODE` für open lab mode fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const OPEN_LAB_MODE: &str = "open_lab";
+// Was: Legt den festen Wert `SHADOW_MODE` für shadow mode fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const SHADOW_MODE: &str = "shadow";
+// Was: Legt den festen Wert `AUTHORITATIVE_MODE` für authoritative mode fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const AUTHORITATIVE_MODE: &str = "authoritative";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für Audio- und Mediendaten library Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MediaLibraryConfig {
     pub server: ServerConfig,
     pub security: SecurityConfig,
@@ -19,7 +30,11 @@ pub struct MediaLibraryConfig {
     pub dependencies: DependencyConfig,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for MediaLibraryConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for MediaLibraryConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             server: ServerConfig::default(),
@@ -32,8 +47,14 @@ impl Default for MediaLibraryConfig {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `MediaLibraryConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl MediaLibraryConfig {
+    // Was: Diese Funktion lädt den vorgesehenen Arbeitsschritt.
+    // Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
     pub fn load(path: Option<&Path>) -> Result<Self, Box<dyn std::error::Error>> {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let mut config = match path {
             Some(path) => toml::from_str::<Self>(&fs::read_to_string(path)?)?,
             None => Self::default(),
@@ -44,6 +65,8 @@ impl MediaLibraryConfig {
         Ok(config)
     }
 
+    // Was: Diese Funktion wendet bind override.
+    // Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
     pub fn apply_bind_override(&mut self, bind: Option<SocketAddr>) -> Result<(), String> {
         if let Some(bind) = bind {
             self.server.bind = bind;
@@ -51,6 +74,8 @@ impl MediaLibraryConfig {
         self.normalise()
     }
 
+    // Was: Führt den Arbeitsschritt `normalise` für normalise aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn normalise(&mut self) -> Result<(), String> {
         if self.security.mode != OPEN_LAB_MODE {
             return Err(format!(
@@ -91,6 +116,8 @@ impl MediaLibraryConfig {
         if self.codec.frame_bytes != 35 {
             return Err("codec.frame_bytes must remain 35 for packed TETRA speech service 0".into());
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for url in [
             &mut self.dependencies.media_switch_base_url,
             &mut self.dependencies.recorder_base_url,
@@ -105,6 +132,8 @@ impl MediaLibraryConfig {
     }
 }
 
+// Was: Führt den Arbeitsschritt `clean_command` für clean command aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn clean_command(command: &[String]) -> Vec<String> {
     command
         .iter()
@@ -115,13 +144,19 @@ fn clean_command(command: &[String]) -> Vec<String> {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für server Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ServerConfig {
     pub bind: SocketAddr,
     pub public_base_url: String,
     pub max_body_bytes: usize,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for ServerConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for ServerConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             bind: "0.0.0.0:8230".parse().expect("valid media-library bind"),
@@ -133,6 +168,8 @@ impl Default for ServerConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für Sicherheit Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SecurityConfig {
     pub mode: String,
     pub token_auth: bool,
@@ -143,7 +180,11 @@ pub struct SecurityConfig {
     pub allow_private_import_urls: bool,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for SecurityConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for SecurityConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             mode: OPEN_LAB_MODE.to_string(),
@@ -159,6 +200,8 @@ impl Default for SecurityConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für storage Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct StorageConfig {
     pub root: PathBuf,
     pub state_file: PathBuf,
@@ -170,7 +213,11 @@ pub struct StorageConfig {
     pub fsync_imports: bool,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for StorageConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for StorageConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             root: PathBuf::from("/var/lib/netcore-media-library/assets"),
@@ -187,6 +234,8 @@ impl Default for StorageConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für Laufzeit Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct RuntimeConfig {
     pub operating_mode: String,
     pub worker_interval_ms: u64,
@@ -201,7 +250,11 @@ pub struct RuntimeConfig {
     pub auto_approve_tts: bool,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for RuntimeConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for RuntimeConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             operating_mode: SHADOW_MODE.to_string(),
@@ -221,6 +274,8 @@ impl Default for RuntimeConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für codec Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CodecConfig {
     pub frame_bytes: usize,
     pub ffmpeg_command: Vec<String>,
@@ -228,7 +283,11 @@ pub struct CodecConfig {
     pub decoder_command: Vec<String>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for CodecConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for CodecConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             frame_bytes: 35,
@@ -256,13 +315,19 @@ impl Default for CodecConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für dependency Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DependencyConfig {
     pub media_switch_base_url: String,
     pub recorder_base_url: String,
     pub application_gateway_base_url: String,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for DependencyConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for DependencyConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             media_switch_base_url: "http://127.0.0.1:8130".to_string(),
@@ -273,10 +338,14 @@ impl Default for DependencyConfig {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
     #[test]
+    // Was: Führt den Arbeitsschritt `default_is_open_lab_shadow_on_port_8230` für default is open lab shadow on port und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default_is_open_lab_shadow_on_port_8230() {
         let mut config = MediaLibraryConfig::default();
         config.normalise().expect("default configuration");
@@ -289,6 +358,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `non_tetra_frame_timing_is_rejected` für non TETRA Funkrahmen timing is rejected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn non_tetra_frame_timing_is_rejected() {
         let mut config = MediaLibraryConfig::default();
         config.runtime.frame_interval_ms = 20;
@@ -296,6 +367,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `loopback_management_remains_valid` für loopback management remains valid aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn loopback_management_remains_valid() {
         let mut config = MediaLibraryConfig::default();
         config.security.allow_remote_management = false;

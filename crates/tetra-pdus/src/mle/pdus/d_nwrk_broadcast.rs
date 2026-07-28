@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 
 use tetra_core::typed_pdu_fields::*;
@@ -15,6 +18,8 @@ use crate::mle::fields::neighbour_cell_information_for_ca::NeighbourCellInformat
 // note 2: If present, the element shall indicate how many "Neighbour cell information for CA" elements follow. If not present, no neighbour cell information shall follow.
 // note 3: The element definition is contained in clause 18.5 which gives the type and length for each sub-element which is included in this element. The element shall be present as many times as indicated by the "number of CA neighbour cells" element. There shall be no P-bit preceding each "neighbour cell information for CA" element which is carried by this PDU.
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für dnwrk broadcast in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DNwrkBroadcast {
     /// Type1, 16 bits, See note 1,
     pub cell_re_select_parameters: u16,
@@ -28,8 +33,12 @@ pub struct DNwrkBroadcast {
     pub neighbour_cell_information_for_ca: Vec<NeighbourCellInformationForCa>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `DNwrkBroadcast`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl DNwrkBroadcast {
     /// Parse from BitBuffer
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buffer: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let pdu_type = buffer.read_field(3, "pdu_type")?;
         expect_pdu_type!(pdu_type, MlePduTypeDl::DNwrkBroadcast)?;
@@ -56,6 +65,8 @@ impl DNwrkBroadcast {
                     value: count as u64,
                 });
             }
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for _ in 0..count {
                 neighbour_cell_information_for_ca.push(NeighbourCellInformationForCa::from_bitbuf(buffer)?);
             }
@@ -73,6 +84,8 @@ impl DNwrkBroadcast {
     }
 
     /// Serialize this PDU into the given BitBuffer.
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buffer: &mut BitBuffer) -> Result<(), PduParseErr> {
         let neighbour_count = self.neighbour_cell_information_for_ca.len();
 
@@ -119,6 +132,8 @@ impl DNwrkBroadcast {
 
         // Conditional: write neighbour cell info elements (no P-bit per note 3)
         if self.number_of_ca_neighbour_cells.unwrap_or(0) > 0 {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for neighbour in &self.neighbour_cell_information_for_ca {
                 neighbour.to_bitbuf(buffer)?;
             }
@@ -129,7 +144,11 @@ impl DNwrkBroadcast {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for DNwrkBroadcast`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for DNwrkBroadcast {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,

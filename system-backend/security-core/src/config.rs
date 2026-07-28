@@ -1,16 +1,29 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Sicherheitsrichtlinien und Authentifizierungsabläufe.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::fs;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
+// Was: Legt den festen Wert `OPEN_LAB_MODE` für open lab mode fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const OPEN_LAB_MODE: &str = "open_lab";
+// Was: Legt den festen Wert `OPERATING_MODE_SHADOW` für operating mode shadow fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const OPERATING_MODE_SHADOW: &str = "shadow";
+// Was: Legt den festen Wert `OPERATING_MODE_AUTHORITATIVE` für operating mode authoritative fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const OPERATING_MODE_AUTHORITATIVE: &str = "authoritative";
+// Was: Legt den festen Wert `LAB_PROVIDER_HMAC_SHA256` für lab provider hmac sha256 fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const LAB_PROVIDER_HMAC_SHA256: &str = "lab_hmac_sha256";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für Sicherheit core Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SecurityCoreConfig {
     pub server: ServerConfig,
     pub node_gateway: NodeGatewayConfig,
@@ -22,7 +35,11 @@ pub struct SecurityCoreConfig {
     pub limits: LimitsConfig,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for SecurityCoreConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for SecurityCoreConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             server: ServerConfig::default(),
@@ -37,8 +54,14 @@ impl Default for SecurityCoreConfig {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SecurityCoreConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SecurityCoreConfig {
+    // Was: Diese Funktion lädt den vorgesehenen Arbeitsschritt.
+    // Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
     pub fn load(path: Option<&Path>) -> Result<Self, Box<dyn std::error::Error>> {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let mut config = match path {
             Some(path) => toml::from_str::<Self>(&fs::read_to_string(path)?)?,
             None => Self::default(),
@@ -49,6 +72,8 @@ impl SecurityCoreConfig {
         Ok(config)
     }
 
+    // Was: Diese Funktion wendet bind override.
+    // Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
     pub fn apply_bind_override(&mut self, bind: Option<SocketAddr>) -> Result<(), String> {
         if let Some(bind) = bind {
             self.server.bind = bind;
@@ -56,6 +81,8 @@ impl SecurityCoreConfig {
         self.normalise()
     }
 
+    // Was: Führt den Arbeitsschritt `normalise` für normalise aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn normalise(&mut self) -> Result<(), String> {
         if self.security.mode != OPEN_LAB_MODE {
             return Err(format!(
@@ -122,11 +149,17 @@ impl SecurityCoreConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für server Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ServerConfig {
     pub bind: SocketAddr,
     pub history_limit: usize,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for ServerConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for ServerConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             bind: "0.0.0.0:8180".parse().expect("valid default bind"),
@@ -137,12 +170,18 @@ impl Default for ServerConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für Netzknoten Gateway Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct NodeGatewayConfig {
     pub url: String,
     pub reconnect_secs: u64,
     pub observe_nodes: bool,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for NodeGatewayConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for NodeGatewayConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             url: "ws://127.0.0.1:8080/ws/backend".to_string(),
@@ -154,12 +193,18 @@ impl Default for NodeGatewayConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für storage Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct StorageConfig {
     pub database_path: PathBuf,
     pub backup_path: PathBuf,
     pub lab_seed_path: PathBuf,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for StorageConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for StorageConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             database_path: "/var/lib/netcore-security-core/state.json".into(),
@@ -171,6 +216,8 @@ impl Default for StorageConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für policy Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PolicyConfig {
     pub operating_mode: String,
     pub default_security_class: u8,
@@ -180,7 +227,11 @@ pub struct PolicyConfig {
     pub reject_unknown_subscribers: bool,
     pub disable_after_failures: bool,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for PolicyConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for PolicyConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             operating_mode: OPERATING_MODE_SHADOW.to_string(),
@@ -196,6 +247,8 @@ impl Default for PolicyConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für authentication Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct AuthenticationConfig {
     pub provider: String,
     pub challenge_bytes: usize,
@@ -205,7 +258,11 @@ pub struct AuthenticationConfig {
     pub lockout_secs: u64,
     pub issue_dck_on_success: bool,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for AuthenticationConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for AuthenticationConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             provider: LAB_PROVIDER_HMAC_SHA256.to_string(),
@@ -221,13 +278,19 @@ impl Default for AuthenticationConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für dck Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DckConfig {
     pub key_bytes: usize,
     pub ttl_secs: u64,
     pub rotate_before_secs: u64,
     pub max_active_per_subscriber: usize,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for DckConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for DckConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             key_bytes: 16,
@@ -240,12 +303,18 @@ impl Default for DckConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für management Sicherheit Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ManagementSecurityConfig {
     pub mode: String,
     pub allow_remote_management: bool,
     pub expose_ephemeral_edge_material: bool,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for ManagementSecurityConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for ManagementSecurityConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             mode: OPEN_LAB_MODE.to_string(),
@@ -257,6 +326,8 @@ impl Default for ManagementSecurityConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für limits Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LimitsConfig {
     pub max_body_bytes: usize,
     pub max_profiles: usize,
@@ -265,7 +336,11 @@ pub struct LimitsConfig {
     pub max_alarms: usize,
     pub max_audit: usize,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for LimitsConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for LimitsConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             max_body_bytes: 1_048_576,

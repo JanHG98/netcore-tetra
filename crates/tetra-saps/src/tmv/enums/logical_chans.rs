@@ -1,5 +1,10 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Nachrichten an den Schnittstellen zwischen TETRA-Protokollschichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 /// Logical channels as defined in the standard
 #[derive(Debug, Clone, Copy, PartialEq)]
+// Was: Listet die möglichen Varianten für logical Kanal auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum LogicalChannel {
     /// Access Assignment CHannel
     Aach,
@@ -33,8 +38,12 @@ pub enum LogicalChannel {
     Clch,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `LogicalChannel`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl LogicalChannel {
     /// Returns the number of bits required to represent the logical channel
+    // Was: Prüft, ob Nutzdatenverkehr zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     pub fn is_traffic(self) -> bool {
         matches!(
             self,
@@ -43,7 +52,11 @@ impl LogicalChannel {
     }
 
     /// TODO FIXME actually, BNCH, BSCH, AACH are also part of CP
+    // Was: Prüft, ob Steuerung Kanal zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     pub fn is_control_channel(self) -> bool {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self {
             LogicalChannel::Aach | // Odd one since very different decoding, but actually part of CP
             LogicalChannel::Bsch | // Also not containing regular mac blocks but still CP
@@ -57,12 +70,18 @@ impl LogicalChannel {
     }
 
     /// Returns true if channel is a linearization channel
+    // Was: Prüft, ob linearization Kanal zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     pub fn is_linearization_channel(self) -> bool {
         self == LogicalChannel::Clch || self == LogicalChannel::Blch
     }
 
     /// Returns true if channel may be encountered on the downlink
+    // Was: Prüft, ob dl Kanal zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     pub fn is_dl_channel(self) -> bool {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self {
             LogicalChannel::Aach
             | LogicalChannel::SchHd
@@ -80,7 +99,11 @@ impl LogicalChannel {
     }
 
     /// Returns true if channel may be encountered on the uplink
+    // Was: Prüft, ob ul Kanal zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     pub fn is_ul_channel(self) -> bool {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self {
             LogicalChannel::SchHu
             | LogicalChannel::SchF

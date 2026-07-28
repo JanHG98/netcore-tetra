@@ -1,3 +1,6 @@
+# NETCORE-KOMMENTAR – Was: Enthält automatische Prüfungen für report.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 from __future__ import annotations
 
 import json
@@ -8,11 +11,15 @@ from pathlib import Path
 from .model import RunReport
 
 
+# Was: Diese Funktion schreibt JSON-Daten.
+# Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 def write_json(report: RunReport, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(asdict(report), indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
+# Was: Diese Funktion schreibt junit.
+# Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 def write_junit(report: RunReport, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     suite = ET.Element(
@@ -24,6 +31,8 @@ def write_junit(report: RunReport, path: Path) -> None:
             "skipped": str(report.skipped),
         },
     )
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for result in report.results:
         case = ET.SubElement(
             suite,

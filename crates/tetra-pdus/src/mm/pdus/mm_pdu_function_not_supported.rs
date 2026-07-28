@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 
 use tetra_core::typed_pdu_fields::*;
@@ -16,6 +19,8 @@ use crate::mm::enums::mm_pdu_type_dl::MmPduTypeDl;
 // note 3: The length of this element is indicated by the Length of the copied PDU element. This element is not present if the Length of the copied PDU element is not present.
 // note 4: This element contains the received PDU beginning from and excluding the PDU type element.
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für Mobilitätsverwaltung Protokollnachricht (PDU) function not supported in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MmPduFunctionNotSupported {
     /// Type1, 4 bits, See note 1,
     pub not_supported_pdu_type: u8,
@@ -29,8 +34,12 @@ pub struct MmPduFunctionNotSupported {
 
 #[allow(unreachable_code)] // TODO FIXME review, finalize and remove this
 #[allow(unused_variables)]
+// Was: Implementiert das zugehörige Verhalten für `MmPduFunctionNotSupported`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl MmPduFunctionNotSupported {
     /// Parse from BitBuffer
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buffer: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let pdu_type = buffer.read_field(4, "pdu_type")?;
         expect_pdu_type!(pdu_type, MmPduTypeDl::MmPduFunctionNotSupported)?;
@@ -74,6 +83,8 @@ impl MmPduFunctionNotSupported {
     }
 
     /// Serialize this PDU into the given BitBuffer.
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buffer: &mut BitBuffer) -> Result<(), PduParseErr> {
         // PDU Type
         buffer.write_bits(MmPduTypeDl::MmPduFunctionNotSupported.into_raw(), 4);
@@ -115,7 +126,11 @@ impl MmPduFunctionNotSupported {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for MmPduFunctionNotSupported`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for MmPduFunctionNotSupported {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // write!(f, "MmPduFunctionNotSupported {{ not_supported_pdu_type: {:?} not_supported_sub_pdu_type: {:?} length_of_the_copied_pdu: {:?} received_pdu_contents: {:?} }}",
         write!(
@@ -130,6 +145,8 @@ impl fmt::Display for MmPduFunctionNotSupported {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use tetra_core::debug;
 
@@ -138,6 +155,8 @@ mod tests {
     use super::*;
 
     #[test]
+    // Was: Prüft automatisch den Fall Mobilitätsverwaltung Protokollnachricht (PDU) function not supported parse.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_mm_pdu_function_not_supported_parse() {
         // Self-generated vec!!!
         debug::setup_logging_verbose();
@@ -157,6 +176,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall Mobilitätsverwaltung Protokollnachricht (PDU) function not support write.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_mm_pdu_function_not_support_write() {
         // Self-generated vec!!!
         // 1111 0011 1 10000010

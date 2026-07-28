@@ -1,14 +1,23 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use super::super::dtmf::{DtmfKind, decode_dtmf, pack_type3_bits_to_bytes};
 use super::*;
 
 #[derive(Clone, Copy)]
+// Was: Bündelt die zusammengehörigen Werte für individual floor party in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct IndividualFloorParty {
     addr: TetraAddress,
     ts: u8,
     usage: u8,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `CcBsSubentity`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl CcBsSubentity {
+    // Was: Führt den Arbeitsschritt `individual_floor_parties` für individual floor parties aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn individual_floor_parties(call: &IndividualCall, party: TetraAddress) -> Option<(IndividualFloorParty, IndividualFloorParty)> {
         if party.ssi == call.calling_addr.ssi {
             Some((
@@ -41,10 +50,14 @@ impl CcBsSubentity {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `individual_floor_party_is_local` für individual floor party is local aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn individual_floor_party_is_local(call: &IndividualCall, party: IndividualFloorParty) -> bool {
         !call.is_network_party(party.addr) && !(call.is_local_echo_call() && party.addr.ssi == LOCAL_ECHO_ISSI)
     }
 
+    // Was: Diese Funktion sendet individual d tx granted.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_individual_d_tx_granted(
         &self,
         queue: &mut MessageQueue,
@@ -95,6 +108,8 @@ impl CcBsSubentity {
         queue.push_back(msg);
     }
 
+    // Was: Diese Funktion sendet individual d tx ceased.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_individual_d_tx_ceased(&self, queue: &mut MessageQueue, call: &IndividualCall, call_id: u16, target: IndividualFloorParty) {
         if !Self::individual_floor_party_is_local(call, target) {
             tracing::trace!(
@@ -127,6 +142,8 @@ impl CcBsSubentity {
         queue.push_back(msg);
     }
 
+    // Was: Diese Funktion meldet individual floor granted.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn notify_individual_floor_granted(
         &self,
         queue: &mut MessageQueue,
@@ -165,6 +182,8 @@ impl CcBsSubentity {
         }
     }
 
+    // Was: Diese Funktion meldet individual floor released.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn notify_individual_floor_released(
         &self,
         queue: &mut MessageQueue,
@@ -191,6 +210,8 @@ impl CcBsSubentity {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `brew_individual_floor_parties` für Brew-Verbindung individual floor parties aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn brew_individual_floor_parties(call: &IndividualCall) -> Option<(IndividualFloorParty, IndividualFloorParty)> {
         if call.calling_over_brew && !call.called_over_brew {
             Self::individual_floor_parties(call, call.calling_addr)
@@ -201,6 +222,8 @@ impl CcBsSubentity {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `fsm_on_network_circuit_simplex_granted` für fsm on network circuit simplex granted aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce::subentities::cc_bs) fn fsm_on_network_circuit_simplex_granted(
         &mut self,
         queue: &mut MessageQueue,
@@ -284,6 +307,8 @@ impl CcBsSubentity {
         });
     }
 
+    // Was: Führt den Arbeitsschritt `fsm_on_network_circuit_simplex_idle` für fsm on network circuit simplex idle aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce::subentities::cc_bs) fn fsm_on_network_circuit_simplex_idle(
         &mut self,
         queue: &mut MessageQueue,
@@ -415,6 +440,8 @@ impl CcBsSubentity {
     }
 
     /// Handle parsed U-SETUP and dispatch into group/individual FSM paths.
+    // Was: Führt den Arbeitsschritt `fsm_on_u_setup` für fsm on u setup aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce::subentities::cc_bs) fn fsm_on_u_setup(
         &mut self,
         queue: &mut MessageQueue,
@@ -447,6 +474,8 @@ impl CcBsSubentity {
     }
 
     /// Handle parsed U-TX CEASED.
+    // Was: Führt den Arbeitsschritt `fsm_on_u_tx_ceased` für fsm on u tx ceased aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce::subentities::cc_bs) fn fsm_on_u_tx_ceased(
         &mut self,
         queue: &mut MessageQueue,
@@ -557,6 +586,8 @@ impl CcBsSubentity {
         }
 
         if let Err(err) = self.fsm_group_on_tx_ceased(queue, call_id, sender) {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match err {
                 GroupTransitionError::UnknownCall(_) => {
                     tracing::warn!("U-TX CEASED for unknown call_id={}", call_id);
@@ -588,6 +619,8 @@ impl CcBsSubentity {
     }
 
     /// Handle parsed U-TX DEMAND.
+    // Was: Führt den Arbeitsschritt `fsm_on_u_tx_demand` für fsm on u tx demand aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce::subentities::cc_bs) fn fsm_on_u_tx_demand(
         &mut self,
         queue: &mut MessageQueue,
@@ -628,6 +661,8 @@ impl CcBsSubentity {
                 call_snapshot.floor_holder
             );
 
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match call_snapshot.floor_holder {
                 None => {
                     if let Some(call) = self.individual_calls.get_mut(&call_id) {
@@ -671,6 +706,8 @@ impl CcBsSubentity {
                         .map(|call| call.queue_tx_demand(requesting_party))
                         .unwrap_or(TxDemandQueueResult::QueueBusy);
 
+                    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                     let grant = match queue_result {
                         TxDemandQueueResult::Queued | TxDemandQueueResult::AlreadyQueuedBySameUser => TransmissionGrant::RequestQueued,
                         TxDemandQueueResult::QueueBusy => TransmissionGrant::NotGranted,
@@ -693,6 +730,8 @@ impl CcBsSubentity {
 
         tracing::info!("U-TX DEMAND: ISSI {} requests floor on call_id={}", requesting_party.ssi, call_id);
         if let Err(err) = self.fsm_group_on_tx_demand(queue, call_id, requesting_party) {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match err {
                 GroupTransitionError::UnknownCall(_) => {
                     tracing::warn!("U-TX DEMAND for unknown call_id={}", call_id);
@@ -715,6 +754,8 @@ impl CcBsSubentity {
     }
 
     /// Handle parsed U-INFO.
+    // Was: Führt den Arbeitsschritt `fsm_on_u_info` für fsm on u info aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce::subentities::cc_bs) fn fsm_on_u_info(
         &mut self,
         queue: &mut MessageQueue,
@@ -799,6 +840,8 @@ impl CcBsSubentity {
             );
         }
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match decoded.kind {
             DtmfKind::ToneStart | DtmfKind::LegacyDigits => {}
             DtmfKind::ToneEnd => {
@@ -844,6 +887,8 @@ impl CcBsSubentity {
             data.len()
         );
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for ch in decoded.digits.chars() {
             let digit = ch as u8;
 
@@ -860,6 +905,8 @@ impl CcBsSubentity {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `fsm_on_u_info_modify` für fsm on u info modify aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fsm_on_u_info_modify(&mut self, queue: &mut MessageQueue, sender: TetraAddress, call: &IndividualCall, call_id: u16, modify: u64) {
         if call.called_over_brew || call.calling_over_brew {
             unimplemented_log!(
@@ -905,6 +952,8 @@ impl CcBsSubentity {
     }
 
     /// Handle parsed U-RELEASE.
+    // Was: Führt den Arbeitsschritt `fsm_on_u_release` für fsm on u release aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce::subentities::cc_bs) fn fsm_on_u_release(
         &mut self,
         queue: &mut MessageQueue,
@@ -939,6 +988,8 @@ impl CcBsSubentity {
     }
 
     /// Handle parsed U-DISCONNECT.
+    // Was: Führt den Arbeitsschritt `fsm_on_u_disconnect` für fsm on u disconnect aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce::subentities::cc_bs) fn fsm_on_u_disconnect(
         &mut self,
         queue: &mut MessageQueue,

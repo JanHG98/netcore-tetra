@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! MeshCom external UDP integration.
 //!
 //! MeshCom nodes can expose an external-client UDP interface that exchanges JSON packets,
@@ -20,12 +23,22 @@ use crate::net_telegram::TelegramAlertSink;
 use crate::net_telemetry::{TelemetryEvent, TelemetrySink};
 use crate::tpg2200::build_sds_text_payload;
 
+// Was: Vergibt für cmd sender einen fachlich verständlichen Typnamen.
+// Warum: Der Alias macht Signaturen lesbarer und hält technische Details aus dem aufrufenden Code heraus.
 type CmdSender = crossbeam_channel::Sender<ControlCommand>;
 
+// Was: Legt den festen Wert `UDP_READ_TIMEOUT` für UDP read timeout fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const UDP_READ_TIMEOUT: Duration = Duration::from_secs(1);
+// Was: Legt den festen Wert `DISABLED_SLEEP` für disabled sleep fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const DISABLED_SLEEP: Duration = Duration::from_secs(1);
+// Was: Legt den festen Wert `ERROR_SLEEP` für error sleep fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const ERROR_SLEEP: Duration = Duration::from_secs(5);
 
+// Was: Diese Funktion startet meshcom Hintergrundverarbeitung.
+// Warum: Länger laufende Arbeit blockiert dadurch nicht den aufrufenden Ablauf.
 pub fn spawn_meshcom_worker(
     cfg: SharedConfig,
     cmce_cmd_tx: Option<CmdSender>,
@@ -34,6 +47,8 @@ pub fn spawn_meshcom_worker(
     geoalarm_sink: Option<GeoAlarmSink>,
     telemetry_sink: Option<TelemetrySink>,
 ) -> Option<thread::JoinHandle<()>> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match thread::Builder::new()
         .name("meshcom-worker".into())
         .spawn(move || MeshcomWorker::new(cfg, cmce_cmd_tx, telegram_sink, snom_sink, geoalarm_sink, telemetry_sink).run())
@@ -46,6 +61,8 @@ pub fn spawn_meshcom_worker(
     }
 }
 
+// Was: Bündelt die zusammengehörigen Werte für meshcom Hintergrundverarbeitung in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct MeshcomWorker {
     cfg: SharedConfig,
     cmce_cmd_tx: Option<CmdSender>,
@@ -61,7 +78,11 @@ struct MeshcomWorker {
     last_enabled: Option<bool>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `MeshcomWorker`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl MeshcomWorker {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     fn new(
         cfg: SharedConfig,
         cmce_cmd_tx: Option<CmdSender>,
@@ -86,7 +107,11 @@ impl MeshcomWorker {
         }
     }
 
+    // Was: Diese Funktion führt den vorgesehenen Arbeitsschritt.
+    // Warum: Der Lebenszyklus des Dienstes bleibt so an einer zentralen Stelle steuerbar.
     fn run(&mut self) {
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             let meshcom = self.cfg.effective_meshcom();
             if !meshcom.enabled {
@@ -129,9 +154,13 @@ impl MeshcomWorker {
             };
             let recv = socket.recv_from(&mut buf);
 
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match recv {
                 Ok((len, from)) => {
                     let text = String::from_utf8_lossy(&buf[..len]).trim().to_string();
+                    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                     match self.handle_packet(&meshcom, &text) {
                         Ok(()) => {
                             tracing::debug!("MeshCom: received {} bytes from {}", len, from);
@@ -156,6 +185,8 @@ impl MeshcomWorker {
         }
     }
 
+    // Was: Diese Funktion stellt socket.
+    // Warum: So wird die notwendige Voraussetzung hergestellt, bevor abhängiger Code weiterläuft.
     fn ensure_socket(&mut self, meshcom: &CfgMeshcom) -> Result<(), String> {
         let key = format!("{}:{}", meshcom.bind_addr.trim(), meshcom.bind_port);
         if self.socket.is_some() && self.bind_key == key {
@@ -181,6 +212,8 @@ impl MeshcomWorker {
         Ok(())
     }
 
+    // Was: Diese Funktion verarbeitet Datenpaket.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_packet(&mut self, meshcom: &CfgMeshcom, text: &str) -> Result<(), String> {
         if text.is_empty() {
             return Err("empty packet".to_string());
@@ -257,12 +290,16 @@ impl MeshcomWorker {
         }
         self.emit_message_log(&event);
         self.messages.push_front(event);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while self.messages.len() > meshcom.max_messages {
             self.messages.pop_back();
         }
         Ok(())
     }
 
+    // Was: Diese Funktion gibt Nachricht log.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn emit_message_log(&self, event: &MeshcomMessageStatus) {
         if let Some(sink) = &self.telemetry_sink {
             sink.send(TelemetryEvent::MeshcomMessageLog {
@@ -286,6 +323,8 @@ impl MeshcomWorker {
         }
     }
 
+    // Was: Diese Funktion gibt Netzknoten update.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn emit_node_update(&self, node: &MeshcomNodeStatus) {
         if let Some(sink) = &self.telemetry_sink {
             sink.send(TelemetryEvent::MeshcomNodeUpdate {
@@ -306,6 +345,8 @@ impl MeshcomWorker {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `upsert_node` für upsert Netzknoten aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn upsert_node(&mut self, meshcom: &CfgMeshcom, update: MeshcomNodeStatus) {
         if let Some(node) = self.nodes.iter_mut().find(|node| node.src == update.src) {
             node.last_seen = update.last_seen;
@@ -341,11 +382,15 @@ impl MeshcomWorker {
             return;
         }
         self.nodes.push(update);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while self.nodes.len() > meshcom.max_nodes {
             self.nodes.remove(0);
         }
     }
 
+    // Was: Diese Funktion leitet Nachricht.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn forward_message(
         &self,
         meshcom: &CfgMeshcom,
@@ -365,18 +410,24 @@ impl MeshcomWorker {
         let src = src.map(str::trim).filter(|s| !s.is_empty()).unwrap_or("unknown");
 
         if meshcom.forward_sds && source_allowed(&meshcom.sds_allowed_sources, src) {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match self.forward_sds(meshcom, src, text) {
                 Ok(()) => paths.push("sds".to_string()),
                 Err(err) => tracing::warn!("MeshCom: SDS forwarding failed src={}: {}", src, err),
             }
         }
         if meshcom.forward_sip && source_allowed(&meshcom.sip_allowed_sources, src) {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match self.forward_sip(meshcom, src, dst, text, msg_id) {
                 Ok(()) => paths.push("sip".to_string()),
                 Err(err) => tracing::warn!("MeshCom: SIP notify forwarding failed src={}: {}", src, err),
             }
         }
         if meshcom.forward_telegram && source_allowed(&meshcom.telegram_allowed_sources, src) {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match self.forward_telegram(meshcom, src, text) {
                 Ok(()) => paths.push("telegram".to_string()),
                 Err(err) => tracing::warn!("MeshCom: Telegram forwarding failed src={}: {}", src, err),
@@ -400,6 +451,8 @@ impl MeshcomWorker {
         paths
     }
 
+    // Was: Diese Funktion leitet TETRA-Kurznachricht (SDS).
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn forward_sds(&self, meshcom: &CfgMeshcom, src: &str, text: &str) -> Result<(), String> {
         if meshcom.sds_dest_issi == 0 {
             return Err("sds_dest_issi is 0".to_string());
@@ -420,6 +473,8 @@ impl MeshcomWorker {
         .map_err(|e| format!("send to CMCE failed: {}", e))
     }
 
+    // Was: Diese Funktion leitet sip.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn forward_sip(&self, meshcom: &CfgMeshcom, src: &str, dst: Option<&str>, text: &str, msg_id: Option<&str>) -> Result<(), String> {
         let Some(sink) = &self.snom_sink else {
             return Err("Snom notify sink unavailable".to_string());
@@ -434,6 +489,8 @@ impl MeshcomWorker {
         Ok(())
     }
 
+    // Was: Diese Funktion leitet telegram.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn forward_telegram(&self, meshcom: &CfgMeshcom, src: &str, text: &str) -> Result<(), String> {
         let Some(sink) = &self.telegram_sink else {
             return Err("Telegram alert sink unavailable".to_string());
@@ -442,12 +499,16 @@ impl MeshcomWorker {
         Ok(())
     }
 
+    // Was: Diese Funktion veröffentlicht Status.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn publish_status(&self, meshcom: &CfgMeshcom, last_rx: Option<String>, last_error: Option<String>) {
         let mut state = self.cfg.state_write();
         let previous_tx_packets = state.meshcom_status.tx_packets;
         let previous_last_tx = state.meshcom_status.last_tx.clone();
         let previous_last_rx = state.meshcom_status.last_rx.clone();
         let mut messages: Vec<MeshcomMessageStatus> = self.messages.iter().cloned().collect();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for msg in state.meshcom_status.messages.iter().filter(|msg| msg.direction == "tx") {
             if messages.len() >= meshcom.max_messages {
                 break;
@@ -473,10 +534,14 @@ impl MeshcomWorker {
     }
 }
 
+// Was: Führt den Arbeitsschritt `now_stamp` für now stamp aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn now_stamp() -> String {
     chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string()
 }
 
+// Was: Führt den Arbeitsschritt `string_field` für string field aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn string_field(value: &Value, key: &str) -> Option<String> {
     value
         .get(key)
@@ -486,6 +551,8 @@ fn string_field(value: &Value, key: &str) -> Option<String> {
         .map(ToString::to_string)
 }
 
+// Was: Führt den Arbeitsschritt `split_meshcom_source` für split meshcom source aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn split_meshcom_source(src: Option<String>) -> (Option<String>, Vec<String>) {
     let Some(src) = src else {
         return (None, Vec::new());
@@ -497,12 +564,16 @@ fn split_meshcom_source(src: Option<String>) -> (Option<String>, Vec<String>) {
     (Some(origin.to_string()), parts.map(ToString::to_string).collect())
 }
 
+// Was: Führt den Arbeitsschritt `f64_field` für f64 field aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn f64_field(value: &Value, key: &str) -> Option<f64> {
     value
         .get(key)
         .and_then(|v| v.as_f64().or_else(|| v.as_str().and_then(|s| s.trim().parse::<f64>().ok())))
 }
 
+// Was: Führt den Arbeitsschritt `i64_field` für i64 field aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn i64_field(value: &Value, key: &str) -> Option<i64> {
     value.get(key).and_then(|v| {
         v.as_i64()
@@ -511,6 +582,8 @@ fn i64_field(value: &Value, key: &str) -> Option<i64> {
     })
 }
 
+// Was: Führt den Arbeitsschritt `signed_coord` für signed coord aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn signed_coord(value: Option<f64>, dir: Option<&str>) -> Option<f64> {
     let mut value = value?;
     if matches!(dir.map(|d| d.trim().to_ascii_uppercase()), Some(d) if d == "S" || d == "W") {
@@ -519,6 +592,8 @@ fn signed_coord(value: Option<f64>, dir: Option<&str>) -> Option<f64> {
     Some(value)
 }
 
+// Was: Führt den Arbeitsschritt `truncate_chars` für truncate chars aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn truncate_chars(text: &str, max_chars: usize) -> String {
     if text.chars().count() <= max_chars {
         return text.to_string();
@@ -526,6 +601,8 @@ fn truncate_chars(text: &str, max_chars: usize) -> String {
     text.chars().take(max_chars).collect()
 }
 
+// Was: Führt den Arbeitsschritt `source_allowed` für source allowed aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn source_allowed(allowed: &BTreeSet<String>, src: &str) -> bool {
     if allowed.is_empty() {
         return true;
@@ -534,6 +611,8 @@ fn source_allowed(allowed: &BTreeSet<String>, src: &str) -> bool {
     allowed.contains(&src)
 }
 
+// Was: Führt den Arbeitsschritt `format_plain_meshcom_message` für format plain meshcom Nachricht aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn format_plain_meshcom_message(src: &str, text: &str) -> String {
     format!("MeshCom: {} - {}", src.trim(), text.trim())
 }

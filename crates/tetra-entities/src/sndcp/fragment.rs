@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! Bounded IPv4 fragmentation/reassembly at the SNDCP edge.
 
 use std::collections::{BTreeMap, HashMap};
@@ -6,6 +9,8 @@ use std::time::{Duration, Instant};
 use super::ip::{internet_checksum, parse_ipv4_packet_any, IpError};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+// Was: Bündelt die zusammengehörigen Werte für fragment key in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct FragmentKey {
     source: [u8; 4],
     destination: [u8; 4],
@@ -14,6 +19,8 @@ struct FragmentKey {
 }
 
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für fragment set in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct FragmentSet {
     created_at: Instant,
     updated_at: Instant,
@@ -24,6 +31,8 @@ struct FragmentSet {
 }
 
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für ipv4 reassembler in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct Ipv4Reassembler {
     timeout: Duration,
     max_datagrams: usize,
@@ -32,7 +41,11 @@ pub struct Ipv4Reassembler {
     sets: HashMap<FragmentKey, FragmentSet>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Ipv4Reassembler`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Ipv4Reassembler {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(timeout: Duration, max_datagrams: usize, max_bytes: usize) -> Self {
         Self {
             timeout,
@@ -43,6 +56,8 @@ impl Ipv4Reassembler {
         }
     }
 
+    // Was: Diese Funktion legt den vorgesehenen Arbeitsschritt.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn push(&mut self, packet: &[u8], now: Instant) -> Result<Option<Vec<u8>>, IpError> {
         self.sweep(now);
         let parsed = parse_ipv4_packet_any(packet)?;
@@ -116,6 +131,8 @@ impl Ipv4Reassembler {
             set.stored_bytes = set.stored_bytes.saturating_add(payload.len());
         }
         self.stored_bytes = self.stored_bytes.saturating_add(payload.len());
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while self.stored_bytes > self.max_bytes {
             self.evict_oldest();
             if !self.sets.contains_key(&key) {
@@ -129,19 +146,27 @@ impl Ipv4Reassembler {
         Ok(complete)
     }
 
+    // Was: Führt den Arbeitsschritt `sweep` für sweep aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn sweep(&mut self, now: Instant) {
         let expired = self.sets.iter().filter_map(|(key, set)| {
             (now.duration_since(set.updated_at) >= self.timeout).then_some(*key)
         }).collect::<Vec<_>>();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for key in expired {
             self.remove(key);
         }
     }
 
+    // Was: Führt den Arbeitsschritt `try_complete` für try complete aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn try_complete(&self, key: FragmentKey) -> Result<Option<Vec<u8>>, IpError> {
         let Some(set) = self.sets.get(&key) else { return Ok(None); };
         let (Some(header), Some(final_len)) = (set.header.as_ref(), set.final_payload_len) else { return Ok(None); };
         let mut cursor = 0usize;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (offset, payload) in &set.fragments {
             if *offset > cursor {
                 return Ok(None);
@@ -157,6 +182,8 @@ impl Ipv4Reassembler {
         }
         let mut packet = vec![0u8; total_len];
         packet[..header.len()].copy_from_slice(header);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (offset, payload) in &set.fragments {
             let start = header.len() + *offset;
             let end = (start + payload.len()).min(packet.len());
@@ -172,12 +199,16 @@ impl Ipv4Reassembler {
         Ok(Some(packet))
     }
 
+    // Was: Diese Funktion entfernt den vorgesehenen Arbeitsschritt.
+    // Warum: Das Entfernen bleibt damit vollständig und hinterlässt keinen widersprüchlichen Zustand.
     fn remove(&mut self, key: FragmentKey) {
         if let Some(set) = self.sets.remove(&key) {
             self.stored_bytes = self.stored_bytes.saturating_sub(set.stored_bytes);
         }
     }
 
+    // Was: Führt den Arbeitsschritt `evict_oldest` für evict oldest aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn evict_oldest(&mut self) {
         let oldest = self.sets.iter().min_by_key(|(_, set)| set.created_at).map(|(key, _)| *key);
         if let Some(key) = oldest {
@@ -186,6 +217,8 @@ impl Ipv4Reassembler {
     }
 }
 
+// Was: Führt den Arbeitsschritt `fragment_ipv4_packet` für fragment ipv4 Datenpaket aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn fragment_ipv4_packet(packet: &[u8], mtu: usize) -> Result<Vec<Vec<u8>>, IpError> {
     let parsed = parse_ipv4_packet_any(packet)?;
     if parsed.total_len <= mtu {
@@ -206,6 +239,8 @@ pub fn fragment_ipv4_packet(packet: &[u8], mtu: usize) -> Result<Vec<Vec<u8>>, I
 
     let mut fragments = Vec::new();
     let mut offset = 0usize;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while offset < parsed.payload.len() {
         let header = if offset == 0 { &first_header } else { &later_header };
         if mtu <= header.len() {
@@ -243,11 +278,17 @@ pub fn fragment_ipv4_packet(packet: &[u8], mtu: usize) -> Result<Vec<Vec<u8>>, I
 
 /// Return only IPv4 options whose copied bit is set, padded to a 32-bit boundary.
 /// EOL and NOP are parsed defensively but are not copied to non-initial fragments.
+// Was: Führt den Arbeitsschritt `copied_ipv4_options` für copied ipv4 options aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn copied_ipv4_options(options: &[u8]) -> Result<Vec<u8>, IpError> {
     let mut copied = Vec::new();
     let mut cursor = 0usize;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while cursor < options.len() {
         let option_type = options[cursor];
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match option_type {
             0 => break,
             1 => cursor += 1,
@@ -265,6 +306,8 @@ fn copied_ipv4_options(options: &[u8]) -> Result<Vec<u8>, IpError> {
             }
         }
     }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while copied.len() % 4 != 0 {
         copied.push(0);
     }
@@ -275,11 +318,15 @@ fn copied_ipv4_options(options: &[u8]) -> Result<Vec<u8>, IpError> {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
     use crate::sndcp::ip::build_ipv4_packet;
 
     #[test]
+    // Was: Führt den Arbeitsschritt `fragments_and_reassembles_out_of_order` für fragments and reassembles out of order aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fragments_and_reassembles_out_of_order() {
         let payload = (0..1200).map(|value| (value & 0xff) as u8).collect::<Vec<_>>();
         let packet = build_ipv4_packet([10, 0, 0, 2], [198, 51, 100, 7], 17, 0x1234, 32, false, &payload).unwrap();
@@ -288,17 +335,23 @@ mod tests {
         let mut reassembler = Ipv4Reassembler::new(Duration::from_secs(30), 8, 65_535);
         let now = Instant::now();
         let mut result = None;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for fragment in fragments { result = reassembler.push(&fragment, now).unwrap().or(result); }
         assert_eq!(result.unwrap(), packet);
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `refuses_df_packet_that_needs_fragmentation` für refuses df Datenpaket that needs fragmentation aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn refuses_df_packet_that_needs_fragmentation() {
         let packet = build_ipv4_packet([10, 0, 0, 2], [198, 51, 100, 7], 17, 1, 32, true, &vec![0; 1000]).unwrap();
         assert_eq!(fragment_ipv4_packet(&packet, 300), Err(IpError::DontFragment));
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `duplicate_final_fragment_completes_once_and_releases_state` für duplicate final fragment completes once and releases und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn duplicate_final_fragment_completes_once_and_releases_state() {
         let payload = vec![0x5a; 900];
         let packet = build_ipv4_packet([10, 0, 0, 2], [198, 51, 100, 7], 17, 0x2222, 32, false, &payload).unwrap();
@@ -308,6 +361,8 @@ mod tests {
         assert!(reassembler.push(fragments.last().unwrap(), now).unwrap().is_none());
         assert!(reassembler.push(fragments.last().unwrap(), now).unwrap().is_none());
         let mut completed = None;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for fragment in &fragments[..fragments.len() - 1] {
             completed = reassembler.push(fragment, now).unwrap().or(completed);
         }
@@ -317,6 +372,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `only_copied_ipv4_options_are_present_after_first_fragment` für only copied ipv4 options are present after und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn only_copied_ipv4_options_are_present_after_first_fragment() {
         let payload = vec![0x44; 700];
         let mut packet = build_ipv4_packet([10, 0, 0, 2], [198, 51, 100, 7], 17, 0x3333, 32, false, &payload).unwrap();
@@ -337,6 +394,8 @@ mod tests {
         let mut reassembler = Ipv4Reassembler::new(Duration::from_secs(30), 8, 65_535);
         let now = Instant::now();
         let mut result = None;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for fragment in fragments {
             result = reassembler.push(&fragment, now).unwrap().or(result);
         }

@@ -1,3 +1,8 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+// Was: Bindet das Untermodul common in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod common;
 
 use common::{TestCell, TwoCellHarness};
@@ -6,6 +11,8 @@ use tetra_saps::common::LtpdLinkState;
 use tetra_saps::SapMsgInner;
 
 #[test]
+// Was: Führt den Arbeitsschritt `two_cells_keep_independent_identity_and_packet_contexts` für two cells keep independent identity and Datenpaket und weitere Angaben aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn two_cells_keep_independent_identity_and_packet_contexts() {
     let mut harness = TwoCellHarness::new();
     harness.start();
@@ -42,6 +49,8 @@ fn two_cells_keep_independent_identity_and_packet_contexts() {
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `packet_context_can_move_between_cells_without_cross_contamination` für Datenpaket Kontext can move between cells without und weitere Angaben aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn packet_context_can_move_between_cells_without_cross_contamination() {
     let mut harness = TwoCellHarness::new();
     let address = TetraAddress::new(2002, SsiType::Issi);
@@ -63,6 +72,8 @@ fn packet_context_can_move_between_cells_without_cross_contamination() {
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `lower_layer_failure_is_isolated_to_one_cell` für lower layer failure is isolated to one und weitere Angaben aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn lower_layer_failure_is_isolated_to_one_cell() {
     let mut harness = TwoCellHarness::new();
     let address_a = TetraAddress::new(2003, SsiType::Issi);

@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Nachrichten an den Schnittstellen zwischen TETRA-Protokollschichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt::Display;
 
 use tetra_core::Sap;
@@ -25,6 +28,8 @@ use super::tp::*;
 /// Exhaustive list of SapMsgType structs for use in the SapMsg struct
 /// See Clause 19.2.1 for an overview of all lower-layer SAPs
 #[derive(Debug, Clone)]
+// Was: Listet die möglichen Varianten für sap msg inner auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum SapMsgInner {
     // TODO FIXME and all that stuff
     // PhyControlUpdateNetinfo(PhyControlUpdateNetinfo),
@@ -164,8 +169,14 @@ pub enum SapMsgInner {
     TnmmTestResponse(TnmmTestResponse),
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Display for SapMsgInner`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Display for SapMsgInner {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self {
             // TP-SAP
             SapMsgInner::TpUnitdataInd(_) => write!(f, "TpUnitdataInd"),
@@ -205,6 +216,8 @@ impl Display for SapMsgInner {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für sap msg in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SapMsg {
     pub sap: Sap,
     pub src: TetraEntity,
@@ -212,17 +225,27 @@ pub struct SapMsg {
     pub msg: SapMsgInner,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SapMsg`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SapMsg {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(sap: Sap, src: TetraEntity, dest: TetraEntity, msg: SapMsgInner) -> Self {
         Self { sap, src, dest, msg }
     }
 
+    // Was: Diese Funktion liest source.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     pub fn get_source(&self) -> &TetraEntity {
         &self.src
     }
+    // Was: Diese Funktion liest dest.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     pub fn get_dest(&self) -> &TetraEntity {
         &self.dest
     }
+    // Was: Diese Funktion liest sap.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     pub fn get_sap(&self) -> &Sap {
         &self.sap
     }

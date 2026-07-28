@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use tetra_core::BitBuffer;
 use tetra_pdus::mle::pdus::d_channel_response::DChannelResponse;
 use tetra_pdus::mle::pdus::d_new_cell::DNewCell;
@@ -12,6 +15,8 @@ use tetra_saps::common::{
     MleChannelResponseType, MleFailCause,
 };
 
+// Was: Führt den Arbeitsschritt `nested_sdu` für nested sdu aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn nested_sdu() -> BitBuffer {
     BitBuffer::from_bitstr(
         "10100101101001011010010110100101101001011010010110100101101001011010010110100101",
@@ -19,6 +24,8 @@ fn nested_sdu() -> BitBuffer {
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `downlink_baseline_vectors_match_the_normative_field_order` für Downlink (Netz zum Funkgerät) baseline vectors match the normative field und weitere Angaben aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn downlink_baseline_vectors_match_the_normative_field_order() {
     let mut new_cell = BitBuffer::new_autoexpand(16);
     DNewCell {
@@ -66,6 +73,8 @@ fn downlink_baseline_vectors_match_the_normative_field_order() {
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `cell_change_pdus_roundtrip_and_preserve_long_embedded_sdus` für cell change pdus roundtrip and preserve long und weitere Angaben aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn cell_change_pdus_roundtrip_and_preserve_long_embedded_sdus() {
     let nested = nested_sdu();
 
@@ -154,6 +163,8 @@ fn cell_change_pdus_roundtrip_and_preserve_long_embedded_sdus() {
 }
 
 #[test]
+// Was: Führt den Arbeitsschritt `channel_request_and_response_roundtrip` für Kanal request and response roundtrip aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn channel_request_and_response_roundtrip() {
     let original = UChannelRequest {
         reason_for_the_channel_request: MleChannelRequestReason::HigherLevelOfServiceRequested,

@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 /// TETRA ACELP bit reordering: converts between codec order (STE format) and channel order (type-1 bits).
 ///
 /// TCH/S carries two 137-bit subframes (274 bits total), interleaved by sensitivity class (EN 300 395-2, Table 4):
@@ -5,21 +8,29 @@
 ///   - Class 1: 56 bits/subframe (medium)
 ///   - Class 2: 30 bits/subframe (most sensitive)
 
+// Was: Legt den festen Wert `NUM_ACELP_BITS` für num acelp bits fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const NUM_ACELP_BITS: usize = 137; // bits per subframe
 
 /// Class 0 positions (1-indexed within 137-bit subframe) from EN 300 395-2, Table 4.
+// Was: Legt den festen Wert `CLASS0_POS` für class0 pos fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const CLASS0_POS: [u8; 51] = [
     35, 36, 37, 38, 39, 40, 41, 42, 43, 47, 48, 56, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 74, 75, 83, 88, 89, 90, 91, 92, 93, 94, 95, 96,
     97, 101, 102, 110, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 128, 129, 137,
 ];
 
 /// EN 300 395-2, Table 4 — Class 1 positions (1-indexed)
+// Was: Legt den festen Wert `CLASS1_POS` für class1 pos fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const CLASS1_POS: [u8; 56] = [
     58, 85, 112, 54, 81, 108, 135, 50, 77, 104, 131, 45, 72, 99, 126, 55, 82, 109, 136, 5, 13, 34, 8, 16, 17, 22, 23, 24, 25, 26, 6, 14, 7,
     15, 60, 87, 114, 46, 73, 100, 127, 44, 71, 98, 125, 33, 49, 76, 103, 130, 59, 86, 113, 57, 84, 111,
 ];
 
 /// EN 300 395-2, Table 4 — Class 2 positions (1-indexed)
+// Was: Legt den festen Wert `CLASS2_POS` für class2 pos fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const CLASS2_POS: [u8; 30] = [
     18, 19, 20, 21, 31, 32, 53, 80, 107, 134, 1, 2, 3, 4, 9, 10, 11, 12, 27, 28, 29, 30, 52, 79, 106, 133, 51, 78, 105, 132,
 ];
@@ -28,11 +39,15 @@ const CLASS2_POS: [u8; 30] = [
 // `0 * NUM_ACELP_BITS` is written out deliberately to mirror the `1 * NUM_ACELP_BITS`
 // subframe-1 indexing on the next line, making the subframe-0/subframe-1 interleave obvious.
 #[allow(clippy::erasing_op, clippy::identity_op)]
+// Was: Führt den Arbeitsschritt `codec_to_channel` für codec to Kanal aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn codec_to_channel(codec_bits: &[u8; 274]) -> [u8; 274] {
     let mut channel = [0u8; 274];
     let mut out_idx = 0;
 
     // Class 0: 51 bits per subframe, interleaved between subframes
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for bit in 0..CLASS0_POS.len() {
         let pos = (CLASS0_POS[bit] - 1) as usize; // 0-indexed within subframe
         channel[out_idx] = codec_bits[0 * NUM_ACELP_BITS + pos]; // subframe 0
@@ -41,6 +56,8 @@ pub fn codec_to_channel(codec_bits: &[u8; 274]) -> [u8; 274] {
     }
 
     // Class 1: 56 bits per subframe
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for bit in 0..CLASS1_POS.len() {
         let pos = (CLASS1_POS[bit] - 1) as usize;
         channel[out_idx] = codec_bits[0 * NUM_ACELP_BITS + pos];
@@ -49,6 +66,8 @@ pub fn codec_to_channel(codec_bits: &[u8; 274]) -> [u8; 274] {
     }
 
     // Class 2: 30 bits per subframe
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for bit in 0..CLASS2_POS.len() {
         let pos = (CLASS2_POS[bit] - 1) as usize;
         channel[out_idx] = codec_bits[0 * NUM_ACELP_BITS + pos];
@@ -62,11 +81,15 @@ pub fn codec_to_channel(codec_bits: &[u8; 274]) -> [u8; 274] {
 
 /// Convert 274 ACELP bits from channel order (type-1/type-2 bits) to codec order (STE format). Reverse of `codec_to_channel`.
 #[allow(clippy::erasing_op, clippy::identity_op)]
+// Was: Führt den Arbeitsschritt `channel_to_codec` für Kanal to codec aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn channel_to_codec(channel_bits: &[u8; 274]) -> [u8; 274] {
     let mut codec = [0u8; 274];
     let mut in_idx = 0;
 
     // Class 0
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for bit in 0..CLASS0_POS.len() {
         let pos = (CLASS0_POS[bit] - 1) as usize;
         codec[0 * NUM_ACELP_BITS + pos] = channel_bits[in_idx]; // subframe 0
@@ -75,6 +98,8 @@ pub fn channel_to_codec(channel_bits: &[u8; 274]) -> [u8; 274] {
     }
 
     // Class 1
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for bit in 0..CLASS1_POS.len() {
         let pos = (CLASS1_POS[bit] - 1) as usize;
         codec[0 * NUM_ACELP_BITS + pos] = channel_bits[in_idx];
@@ -83,6 +108,8 @@ pub fn channel_to_codec(channel_bits: &[u8; 274]) -> [u8; 274] {
     }
 
     // Class 2
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for bit in 0..CLASS2_POS.len() {
         let pos = (CLASS2_POS[bit] - 1) as usize;
         codec[0 * NUM_ACELP_BITS + pos] = channel_bits[in_idx];
@@ -95,13 +122,19 @@ pub fn channel_to_codec(channel_bits: &[u8; 274]) -> [u8; 274] {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
     #[test]
+    // Was: Führt den Arbeitsschritt `roundtrip_codec_channel_codec` für roundtrip codec Kanal codec aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn roundtrip_codec_channel_codec() {
         // Create a test pattern where each bit position has a unique value
         let mut codec_bits = [0u8; 274];
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for i in 0..274 {
             codec_bits[i] = (i % 2) as u8;
         }
@@ -113,9 +146,13 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `reorder_changes_bits` für reorder changes bits aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn reorder_changes_bits() {
         // Verify that reordering actually changes the order (not identity)
         let mut codec_bits = [0u8; 274];
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for i in 0..274 {
             codec_bits[i] = ((i * 7 + 3) % 2) as u8; // pseudo-random pattern
         }
@@ -125,14 +162,20 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `position_tables_cover_all_bits` für position tables cover all bits aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn position_tables_cover_all_bits() {
         // Verify that every bit position 1-137 is covered exactly once
         let mut covered = [false; 137];
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for &p in CLASS0_POS.iter().chain(CLASS1_POS.iter()).chain(CLASS2_POS.iter()) {
             let idx = (p - 1) as usize;
             assert!(!covered[idx], "position {} is duplicated", p);
             covered[idx] = true;
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (i, &c) in covered.iter().enumerate() {
             assert!(c, "position {} is not covered", i + 1);
         }

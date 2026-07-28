@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::{HashMap, HashSet};
 
 use tetra_config::bluestation::SharedConfig;
@@ -49,15 +52,33 @@ use crate::{
 /// Short tolerance for Brew/MM affiliation resyncs that emit DEAFFILIATE immediately followed by
 /// AFFILIATE for the same ISSI/GSSI. Two seconds keeps active calls from being torn down by a
 /// transient empty listener set while still releasing genuinely unlistened calls promptly.
+// Was: Legt den festen Wert `BREW_AFFILIATION_GRACE_TS` für Brew-Verbindung affiliation grace ts fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const BREW_AFFILIATION_GRACE_TS: i32 = 144;
 
+// Was: Bindet das Untermodul Steuerung plane in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod control_plane;
+// Was: Bindet das Untermodul dtmf in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod dtmf;
+// Was: Bindet das Untermodul lifecycle in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod lifecycle;
+// Was: Bindet das Untermodul Protokollnachricht (PDU) in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod pdu;
+// Was: Bindet das Untermodul procedures in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod procedures;
+// Was: Bindet das Untermodul routes in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod routes;
+// Was: Bindet das Untermodul Zustand in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod state;
+// Was: Bindet das Untermodul timers in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod timers;
 
 use lifecycle::{BrewNotification, CallTimeslot, GroupFloorGrant};
@@ -70,6 +91,8 @@ use state::{
 };
 
 /// Clause 11 Call Control CMCE sub-entity
+// Was: Bündelt die zusammengehörigen Werte für cc Basisstation subentity in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CcBsSubentity {
     config: SharedConfig,
     dltime: TdmaTime,

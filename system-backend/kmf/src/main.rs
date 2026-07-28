@@ -1,7 +1,20 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Schlüsselverwaltung und Schlüsselverteilung.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+// Was: Bindet das Untermodul Konfiguration in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod config;
+// Was: Bindet das Untermodul crypto in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod crypto;
+// Was: Bindet das Untermodul HTTP in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod http;
+// Was: Bindet das Untermodul protocol in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod protocol;
+// Was: Bindet das Untermodul Zustand in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod state;
 
 use std::path::PathBuf;
@@ -13,6 +26,8 @@ use state::SharedKmf;
 #[derive(Debug, Parser)]
 #[command(name = "netcore-kmf")]
 #[command(about = "NetCore TETRA key lifecycle, crypto-period and OTAR orchestration service")]
+// Was: Bündelt die zusammengehörigen Werte für args in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct Args {
     #[arg(long, default_value = "/etc/netcore/kmf.toml")]
     config: PathBuf,
@@ -22,6 +37,8 @@ struct Args {
     bind: Option<std::net::SocketAddr>,
 }
 
+// Was: Startet das Programm, lädt die benötigten Einstellungen und übergibt an den eigentlichen Dienstablauf.
+// Warum: Ein klarer Einstiegspunkt hält Startreihenfolge, Fehlerausgabe und geordnetes Beenden zusammen.
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt()
         .with_env_filter(

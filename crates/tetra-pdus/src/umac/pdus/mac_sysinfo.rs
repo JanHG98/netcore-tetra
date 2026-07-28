@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 
 use tetra_core::pdu_parse_error::PduParseErr;
@@ -10,6 +13,8 @@ use crate::umac::fields::ts_common_frames::TsCommonFrames;
 
 /// Clause 21.4.4.1 SYSINFO
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für MAC-Funkzugriffssteuerung sysinfo in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MacSysinfo {
     // 12
     pub main_carrier: u16,
@@ -48,7 +53,11 @@ pub struct MacSysinfo {
 
 /// Parses SYSINFO pdu
 /// Updates pos to start of TM-SDU
+// Was: Implementiert das zugehörige Verhalten für `MacSysinfo`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl MacSysinfo {
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buf: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let mut s = MacSysinfo {
             main_carrier: 0,
@@ -99,6 +108,8 @@ impl MacSysinfo {
             value: bits,
         })?;
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match s.option_field {
             SysinfoOptFieldFlag::EvenMfDefForTsMode => {
                 tracing::trace!("Sysinfo: Even multiframe definition for TS mode");
@@ -124,6 +135,8 @@ impl MacSysinfo {
         Ok(s)
     }
 
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buf: &mut BitBuffer) {
         buf.write_bits(2, 2); // Broadcast
         buf.write_bits(0, 2); // SYSINFO PDU;
@@ -154,6 +167,8 @@ impl MacSysinfo {
 
         // Write option field
         buf.write_bits(self.option_field as u64, 2);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.option_field {
             SysinfoOptFieldFlag::EvenMfDefForTsMode => {
                 assert!(self.default_access_code.is_none());
@@ -179,7 +194,11 @@ impl MacSysinfo {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for MacSysinfo`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for MacSysinfo {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -205,6 +224,8 @@ impl fmt::Display for MacSysinfo {
 
         writeln!(f, "  option_field: {}", self.option_field)?;
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.option_field {
             SysinfoOptFieldFlag::EvenMfDefForTsMode => {
                 write!(f, "  Odd Multiframe: {}", self.ts_common_frames.as_ref().unwrap())?;

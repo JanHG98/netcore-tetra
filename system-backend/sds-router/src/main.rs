@@ -1,7 +1,20 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Weiterleitung von SDS- und Statusnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+// Was: Bindet das Untermodul Konfiguration in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod config;
+// Was: Bindet das Untermodul Gateway in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod gateway;
+// Was: Bindet das Untermodul HTTP in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod http;
+// Was: Bindet das Untermodul protocol in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod protocol;
+// Was: Bindet das Untermodul Zustand in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod state;
 
 use std::path::PathBuf;
@@ -14,6 +27,8 @@ use state::SharedSdsRouter;
 #[derive(Debug, Parser)]
 #[command(name = "netcore-sds-router")]
 #[command(about = "NetCore central SDS, status and application routing service")]
+// Was: Bündelt die zusammengehörigen Werte für args in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct Args {
     #[arg(long, default_value = "/etc/netcore/sds-router.toml")]
     config: PathBuf,
@@ -23,6 +38,8 @@ struct Args {
     bind: Option<std::net::SocketAddr>,
 }
 
+// Was: Startet das Programm, lädt die benötigten Einstellungen und übergibt an den eigentlichen Dienstablauf.
+// Warum: Ein klarer Einstiegspunkt hält Startreihenfolge, Fehlerausgabe und geordnetes Beenden zusammen.
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt()
         .with_env_filter(

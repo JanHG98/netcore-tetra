@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für Ereignis.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::BTreeMap;
 
 use chrono::{DateTime, Utc};
@@ -7,6 +10,8 @@ use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für severity auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum Severity {
     Debug,
     Info,
@@ -17,6 +22,8 @@ pub enum Severity {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Ereignis Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct EventRecord {
     pub event_id: Uuid,
     pub event_type: String,
@@ -30,6 +37,8 @@ pub struct EventRecord {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für audit Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct AuditRecord {
     pub audit_id: Uuid,
     pub service: String,

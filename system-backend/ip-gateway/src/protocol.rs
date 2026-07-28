@@ -1,6 +1,11 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für die Kopplung von TETRA-Paketdaten an IP-Netze.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Datenpaket core Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PacketCoreStatus {
     pub mode: String,
 }
@@ -8,6 +13,8 @@ pub struct PacketCoreStatus {
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Datenpaket core Kontext in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PacketCoreContext {
     pub id: String,
     pub issi: u32,
@@ -30,6 +37,8 @@ pub struct PacketCoreContext {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Datenpaket core npdu in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PacketCoreNpdu {
     pub id: String,
     pub issi: u32,
@@ -39,6 +48,8 @@ pub struct PacketCoreNpdu {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Downlink (Netz zum Funkgerät) npdu input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DownlinkNpduInput {
     pub issi: u32,
     pub nsapi: u8,
@@ -49,6 +60,8 @@ pub struct DownlinkNpduInput {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für Weiterleitung rule input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct RouteRuleInput {
     pub name: String,
     pub destination: String,
@@ -57,7 +70,11 @@ pub struct RouteRuleInput {
     pub metric: Option<u32>,
     pub enabled: bool,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for RouteRuleInput`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for RouteRuleInput {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             name: String::new(),
@@ -72,6 +89,8 @@ impl Default for RouteRuleInput {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für nat rule input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct NatRuleInput {
     pub name: String,
     pub kind: String,
@@ -84,7 +103,11 @@ pub struct NatRuleInput {
     pub to_port: Option<u16>,
     pub enabled: bool,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for NatRuleInput`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for NatRuleInput {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             name: String::new(),
@@ -103,6 +126,8 @@ impl Default for NatRuleInput {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für firewall rule input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct FirewallRuleInput {
     pub name: String,
     pub chain: String,
@@ -118,7 +143,11 @@ pub struct FirewallRuleInput {
     pub log: bool,
     pub enabled: bool,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for FirewallRuleInput`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for FirewallRuleInput {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             name: String::new(),
@@ -139,6 +168,8 @@ impl Default for FirewallRuleInput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für static dns input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct StaticDnsInput {
     pub name: String,
     pub address: String,
@@ -146,6 +177,8 @@ pub struct StaticDnsInput {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für capture start input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CaptureStartInput {
     pub name: String,
     pub direction: String,
@@ -153,7 +186,11 @@ pub struct CaptureStartInput {
     pub protocol: Option<String>,
     pub port: Option<u16>,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for CaptureStartInput`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for CaptureStartInput {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             name: String::new(),
@@ -166,6 +203,8 @@ impl Default for CaptureStartInput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für block address input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct BlockAddressInput {
     pub address: String,
     #[serde(default)]
@@ -173,14 +212,22 @@ pub struct BlockAddressInput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für reconcile input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ReconcileInput {
     #[serde(default)]
     pub force: bool,
 }
 
+// Was: Führt den Arbeitsschritt `bytes_to_hex` für bytes to hex aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn bytes_to_hex(bytes: &[u8]) -> String {
+    // Was: Legt den festen Wert `HEX` für hex fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const HEX: &[u8; 16] = b"0123456789abcdef";
     let mut output = String::with_capacity(bytes.len() * 2);
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for byte in bytes {
         output.push(HEX[(byte >> 4) as usize] as char);
         output.push(HEX[(byte & 0x0f) as usize] as char);

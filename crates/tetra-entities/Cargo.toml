@@ -1,11 +1,26 @@
+# NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+# Was: Öffnet den Konfigurationsabschnitt `package`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [package]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "tetra-entities"
+# Was: Setzt die Einstellung `version.workspace` für package.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 version.workspace = true
+# Was: Setzt die Einstellung `edition.workspace` für package.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 edition.workspace = true
 
+# Was: Öffnet den Konfigurationsabschnitt `features`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [features]
 # Full base-station/entity runtime. This remains the default for bluestation-bs
 # and all existing FlowStation builds.
+# Was: Legt die standardmäßig aktivierten Funktionen fest.
+# Warum: Ein normaler Build erhält dadurch eine bewusst gewählte und reproduzierbare Ausstattung.
 default = ["runtime"]
 
 # Protocol-only consumers (notably netcore-control-room) can depend on
@@ -13,6 +28,8 @@ default = ["runtime"]
 # JSON/serde protocol enums: net_control commands, net_telemetry events and the
 # net_control_room envelopes. No SDR, voice codec, QUIC/Brew or UI bridge code
 # is compiled in that mode.
+# Was: Setzt die Einstellung `runtime` für features.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 runtime = [
     "dep:tetra-saps",
     "dep:tetra-pdus",
@@ -36,50 +53,120 @@ runtime = [
 ]
 
 # Link the native TETRA speech codec for any media feature.
+# Was: Setzt die Einstellung `tetra-codec` für features.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 tetra-codec = ["runtime"]
 
 # Compile the Asterisk SIP/RTP bridge.
+# Was: Setzt die Einstellung `asterisk` für features.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 asterisk = ["tetra-codec"]
 
 # Compile the local WAV recorder and dashboard API.
+# Was: Setzt die Einstellung `recording` für features.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 recording = ["tetra-codec", "dep:libc"]
 
 # Compile the local WAV/MP3 TETRA audio player and dashboard API.
+# Was: Setzt die Einstellung `audio-player` für features.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 audio-player = ["tetra-codec", "recording"]
 
+# Was: Öffnet den Konfigurationsabschnitt `dependencies`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [dependencies]
+# Was: Bindet die Abhängigkeit `tetra-core` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 tetra-core = { workspace = true }
+# Was: Bindet die Abhängigkeit `tetra-config` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 tetra-config = { workspace = true }
+# Was: Bindet die Abhängigkeit `tetra-saps` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 tetra-saps = { workspace = true, optional = true }
+# Was: Bindet die Abhängigkeit `tetra-pdus` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 tetra-pdus = { workspace = true, optional = true }
+# Was: Bindet die Abhängigkeit `as-any` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 as-any = { workspace = true, optional = true }
+# Was: Bindet die Abhängigkeit `num` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 num = { workspace = true, optional = true }
+# Was: Bindet die Abhängigkeit `num-complex` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 num-complex = { workspace = true, optional = true }
+# Was: Bindet die Abhängigkeit `rustfft` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 rustfft = { workspace = true, optional = true }
+# Was: Bindet die Abhängigkeit `rand` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 rand = { workspace = true, optional = true }
+# Was: Bindet die Abhängigkeit `tracing` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 tracing = { workspace = true }
+# Was: Bindet die Abhängigkeit `crossbeam-channel` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 crossbeam-channel = { workspace = true, optional = true }
+# Was: Bindet die Abhängigkeit `soapysdr` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 soapysdr = { workspace = true, optional = true }
 
+# Was: Bindet die Abhängigkeit `serde` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 serde = { version = "1.0", features = ["derive"] }
+# Was: Bindet die Abhängigkeit `serde_json` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 serde_json = "1.0"
+# Was: Bindet die Abhängigkeit `toml` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 toml = { workspace = true }
+# Was: Bindet die Abhängigkeit `bitcode` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 bitcode = { workspace = true }
+# Was: Bindet die Abhängigkeit `quinn` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 quinn = { version = "0.11", optional = true }
+# Was: Bindet die Abhängigkeit `rustls` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 rustls = { version = "0.23", default-features = false, features = ["ring"], optional = true }
+# Was: Bindet die Abhängigkeit `rustls-native-certs` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 rustls-native-certs = { version = "0.7", optional = true }
+# Was: Bindet die Abhängigkeit `tokio` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "time"], optional = true }
+# Was: Bindet die Abhängigkeit `tungstenite` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 tungstenite = { workspace = true, optional = true }
+# Was: Bindet die Abhängigkeit `uuid` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 uuid = { workspace = true, optional = true }
+# Was: Bindet die Abhängigkeit `md5` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 md5 = { version = "0.7", optional = true }
+# Was: Bindet die Abhängigkeit `base64` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 base64 = { version = "0.22", optional = true }
+# Was: Bindet die Abhängigkeit `libc` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 libc = { version = "0.2", optional = true }
+# Was: Bindet die Abhängigkeit `chrono` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 chrono = { workspace = true }
+# Was: Bindet die Abhängigkeit `chrono-tz` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 chrono-tz = { workspace = true }
 # HTTP client for the dashboard's GitHub update-check and the built-in WX/METAR service.
 # rustls-tls (no OpenSSL) keeps cross-compilation to the Pi simple; blocking is fine since
 # both uses run on their own short-lived threads.
+# Was: Bindet die Abhängigkeit `reqwest` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls", "json"], optional = true }
 
+# Was: Öffnet den Konfigurationsabschnitt `lints`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [lints]
+# Was: Setzt die Einstellung `workspace` für lints.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 workspace = true

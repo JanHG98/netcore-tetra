@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! Local CMCE call-restoration transaction and context registry.
 //!
 //! The registry is deliberately local to the TBS. A future mobility/call core may
@@ -18,17 +21,25 @@ use crate::net_control::{
 };
 
 /// Bounded lifetime of an unanswered CMCE restore transaction (~6.1 seconds).
+// Was: Legt den festen Wert `CALL_RESTORE_TRANSACTION_TIMEOUT_SLOTS` für Ruf Wiederherstellung transaction timeout slots fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const CALL_RESTORE_TRANSACTION_TIMEOUT_SLOTS: i32 = 432;
 /// Keep terminal results briefly so retransmitted U-RESTORE requests are idempotent.
+// Was: Legt den festen Wert `CALL_RESTORE_REPLAY_WINDOW_SLOTS` für Ruf Wiederherstellung replay window slots fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const CALL_RESTORE_REPLAY_WINDOW_SLOTS: i32 = 18 * 4 * 4;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für Wiederherstellung Ruf kind auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum RestoreCallKind {
     Group,
     Individual,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für Wiederherstellung phase auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum RestorePhase {
     Requested,
     ContextMatched,
@@ -40,14 +51,20 @@ pub enum RestorePhase {
     Superseded,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `RestorePhase`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl RestorePhase {
     #[inline]
+    // Was: Prüft, ob terminal zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     pub fn is_terminal(self) -> bool {
         matches!(self, Self::Restored | Self::Rejected | Self::TimedOut | Self::Superseded)
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für Wiederherstellung reject reason auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum RestoreRejectReason {
     MalformedPdu,
     UnknownCall,
@@ -60,12 +77,16 @@ pub enum RestoreRejectReason {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für Gruppe Wiederherstellung origin auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum GroupRestoreOrigin {
     Local { caller: TetraAddress },
     Network { network_entity: TetraEntity, brew_uuid: uuid::Uuid },
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für Gruppe Ruf Wiederherstellung Kontext in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GroupCallRestoreContext {
     pub call_id: u16,
     pub dest_gssi: u32,
@@ -84,6 +105,8 @@ pub struct GroupCallRestoreContext {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für individual Ruf Wiederherstellung Kontext in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct IndividualCallRestoreContext {
     pub call_id: u16,
     pub calling_addr: TetraAddress,
@@ -106,14 +129,22 @@ pub struct IndividualCallRestoreContext {
 }
 
 #[derive(Debug, Clone)]
+// Was: Listet die möglichen Varianten für Ruf Wiederherstellung Kontext auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum CallRestoreContext {
     Group(GroupCallRestoreContext),
     Individual(IndividualCallRestoreContext),
 }
 
+// Was: Implementiert das zugehörige Verhalten für `CallRestoreContext`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl CallRestoreContext {
     #[inline]
+    // Was: Führt den Arbeitsschritt `call_id` für Ruf Kennung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn call_id(&self) -> u16 {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self {
             Self::Group(context) => context.call_id,
             Self::Individual(context) => context.call_id,
@@ -121,14 +152,22 @@ impl CallRestoreContext {
     }
 
     #[inline]
+    // Was: Führt den Arbeitsschritt `kind` für kind aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn kind(&self) -> RestoreCallKind {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self {
             Self::Group(_) => RestoreCallKind::Group,
             Self::Individual(_) => RestoreCallKind::Individual,
         }
     }
 
+    // Was: Führt den Arbeitsschritt `permits_subscriber` für permits Teilnehmer aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn permits_subscriber(&self, subscriber: TetraAddress, other_party_ssi: Option<u32>) -> bool {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self {
             Self::Group(context) => {
                 other_party_ssi.map_or(true, |ssi| ssi == context.dest_gssi)
@@ -148,9 +187,15 @@ impl CallRestoreContext {
 
     /// Convert the local runtime context into the protocol-only payload transported
     /// through Node Gateway and Call Control. No media frames or secrets are included.
+    // Was: Wandelt den vorhandenen Wert in managed payload um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_managed_payload(&self) -> ManagedCallRestoreContextPayload {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self {
             Self::Group(context) => {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 let (origin_local_caller, network_entity, network_uuid) = match &context.origin {
                     GroupRestoreOrigin::Local { caller } => (Some(caller.ssi), None, None),
                     GroupRestoreOrigin::Network { network_entity, brew_uuid } => {
@@ -199,7 +244,11 @@ impl CallRestoreContext {
 
     /// Rebuild a local restore context from the central protocol payload. Invalid
     /// enum values or UUIDs are rejected instead of silently selecting a service.
+    // Was: Wandelt Eingangsdaten in managed payload um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_managed_payload(payload: ManagedCallRestoreContextPayload) -> Result<Self, String> {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match payload {
             ManagedCallRestoreContextPayload::Group {
                 call_id, dest_gssi, source_issi, floor_holder, priority, call_timeout,
@@ -219,6 +268,8 @@ impl CallRestoreContext {
                     }
                 } else {
                     let network_entity = network_entity.unwrap_or(TetraEntity::AudioPlayer);
+                    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                     let brew_uuid = match network_uuid {
                         Some(value) => uuid::Uuid::parse_str(&value)
                             .map_err(|error| format!("invalid network UUID: {error}"))?,
@@ -244,6 +295,8 @@ impl CallRestoreContext {
                     .map_err(|_| format!("invalid communication type {communication_type}"))?;
                 let circuit_mode_type = CircuitModeType::try_from(circuit_mode_type as u64)
                     .map_err(|_| format!("invalid circuit mode {circuit_mode_type}"))?;
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 let brew_uuid = match network_uuid {
                     Some(value) => Some(uuid::Uuid::parse_str(&value)
                         .map_err(|error| format!("invalid network UUID: {error}"))?),
@@ -264,6 +317,8 @@ impl CallRestoreContext {
     }
 }
 
+// Was: Führt den Arbeitsschritt `network_call_to_payload` für network Ruf to payload aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn network_call_to_payload(call: &NetworkCircuitCall) -> ManagedNetworkCircuitCallPayload {
     ManagedNetworkCircuitCallPayload {
         source_issi: call.source_issi,
@@ -283,6 +338,8 @@ fn network_call_to_payload(call: &NetworkCircuitCall) -> ManagedNetworkCircuitCa
     }
 }
 
+// Was: Führt den Arbeitsschritt `network_call_from_payload` für network Ruf from payload aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn network_call_from_payload(call: ManagedNetworkCircuitCallPayload) -> NetworkCircuitCall {
     NetworkCircuitCall {
         source_issi: call.source_issi,
@@ -303,12 +360,16 @@ fn network_call_from_payload(call: ManagedNetworkCircuitCallPayload) -> NetworkC
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+// Was: Bündelt die zusammengehörigen Werte für Wiederherstellung transaction key in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct RestoreTransactionKey {
     pub subscriber: TetraAddress,
     pub old_call_id: u16,
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für Ruf Wiederherstellung request in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CallRestoreRequest {
     pub subscriber: TetraAddress,
     pub old_call_id: u16,
@@ -321,8 +382,12 @@ pub struct CallRestoreRequest {
     pub previous_location_area: Option<u16>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `CallRestoreRequest`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl CallRestoreRequest {
     #[inline]
+    // Was: Führt den Arbeitsschritt `key` für key aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn key(&self) -> RestoreTransactionKey {
         RestoreTransactionKey {
             subscriber: self.subscriber,
@@ -332,6 +397,8 @@ impl CallRestoreRequest {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für Ruf Wiederherstellung transaction in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CallRestoreTransaction {
     pub key: RestoreTransactionKey,
     pub endpoint_id: u32,
@@ -353,6 +420,8 @@ pub struct CallRestoreTransaction {
 }
 
 #[derive(Debug, Clone, Default)]
+// Was: Bündelt die zusammengehörigen Werte für Ruf Wiederherstellung counters in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CallRestoreCounters {
     pub requests: u64,
     pub duplicate_requests: u64,
@@ -375,6 +444,8 @@ pub struct CallRestoreCounters {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für Ruf Wiederherstellung transaction snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CallRestoreTransactionSnapshot {
     pub subscriber: TetraAddress,
     pub old_call_id: u16,
@@ -392,6 +463,8 @@ pub struct CallRestoreTransactionSnapshot {
 }
 
 #[derive(Debug, Clone, Default)]
+// Was: Bündelt die zusammengehörigen Werte für Ruf Wiederherstellung Laufzeit snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CallRestoreRuntimeSnapshot {
     pub contexts: usize,
     pub transactions: Vec<CallRestoreTransactionSnapshot>,
@@ -399,6 +472,8 @@ pub struct CallRestoreRuntimeSnapshot {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für Ruf Wiederherstellung Laufzeit error auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum CallRestoreRuntimeError {
     DuplicatePending(RestoreTransactionKey),
     DuplicateQueued(RestoreTransactionKey),
@@ -411,6 +486,8 @@ pub enum CallRestoreRuntimeError {
 }
 
 #[derive(Default)]
+// Was: Bündelt die zusammengehörigen Werte für Ruf Wiederherstellung Laufzeit in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CallRestoreRuntime {
     contexts: HashMap<u16, CallRestoreContext>,
     transactions: HashMap<RestoreTransactionKey, CallRestoreTransaction>,
@@ -419,16 +496,24 @@ pub struct CallRestoreRuntime {
     counters: CallRestoreCounters,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `CallRestoreRuntime`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl CallRestoreRuntime {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new() -> Self {
         Self::default()
     }
 
+    // Was: Führt den Arbeitsschritt `install_context` für install Kontext aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn install_context(&mut self, context: CallRestoreContext) {
         self.contexts.insert(context.call_id(), context);
         self.counters.contexts_installed = self.counters.contexts_installed.saturating_add(1);
     }
 
+    // Was: Diese Funktion entfernt Kontext.
+    // Warum: Das Entfernen bleibt damit vollständig und hinterlässt keinen widersprüchlichen Zustand.
     pub fn remove_context(&mut self, call_id: u16) -> Option<CallRestoreContext> {
         let aliases: Vec<u16> = self
             .call_id_aliases
@@ -436,6 +521,8 @@ impl CallRestoreRuntime {
             .filter_map(|(old, local)| ((*old == call_id) || (*local == call_id)).then_some(*old))
             .collect();
         let mut removed = self.contexts.remove(&call_id);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for old in aliases {
             self.call_id_aliases.remove(&old);
             if removed.is_none() {
@@ -447,15 +534,21 @@ impl CallRestoreRuntime {
         removed
     }
 
+    // Was: Führt den Arbeitsschritt `context` für Kontext aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn context(&self, call_id: u16) -> Option<&CallRestoreContext> {
         self.contexts.get(&call_id)
     }
 
     /// Resolve an old call identifier to the call identifier currently used on this cell.
+    // Was: Führt den Arbeitsschritt `resolved_call_id` für resolved Ruf Kennung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn resolved_call_id(&self, old_call_id: u16) -> Option<u16> {
         self.call_id_aliases.get(&old_call_id).copied()
     }
 
+    // Was: Führt den Arbeitsschritt `begin` für begin aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn begin(
         &mut self,
         request: CallRestoreRequest,
@@ -501,6 +594,8 @@ impl CallRestoreRuntime {
         Ok(key)
     }
 
+    // Was: Diese Funktion kennzeichnet Kontext matched.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn mark_context_matched(
         &mut self,
         key: RestoreTransactionKey,
@@ -517,10 +612,14 @@ impl CallRestoreRuntime {
         Ok(())
     }
 
+    // Was: Führt den Arbeitsschritt `reserve_call_id` für reserve Ruf Kennung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn reserve_call_id(&mut self, old_call_id: u16, local_call_id: u16) {
         self.call_id_aliases.insert(old_call_id, local_call_id);
     }
 
+    // Was: Diese Funktion kennzeichnet queued.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn mark_queued(
         &mut self,
         key: RestoreTransactionKey,
@@ -543,6 +642,8 @@ impl CallRestoreRuntime {
         Ok(())
     }
 
+    // Was: Führt den Arbeitsschritt `queued_transactions` für queued transactions aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn queued_transactions(&self) -> Vec<CallRestoreTransaction> {
         self.transactions
             .values()
@@ -552,6 +653,8 @@ impl CallRestoreRuntime {
     }
 
     /// Find a queued restore transaction by either its old or target-cell call identifier.
+    // Was: Führt den Arbeitsschritt `queued_key_for_call` für queued key for Ruf aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn queued_key_for_call(
         &self,
         subscriber: TetraAddress,
@@ -570,6 +673,8 @@ impl CallRestoreRuntime {
     ///
     /// ETSI permits a queued restoring MS to issue U-TX DEMAND or cancel the
     /// request with U-TX CEASED while it is still waiting for a traffic bearer.
+    // Was: Diese Funktion setzt queued transmission request.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_queued_transmission_request(
         &mut self,
         key: RestoreTransactionKey,
@@ -597,6 +702,8 @@ impl CallRestoreRuntime {
         Ok(grant)
     }
 
+    // Was: Diese Funktion kennzeichnet resource allocated.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn mark_resource_allocated(
         &mut self,
         key: RestoreTransactionKey,
@@ -642,6 +749,8 @@ impl CallRestoreRuntime {
         Ok(())
     }
 
+    // Was: Diese Funktion kennzeichnet restored.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn mark_restored(
         &mut self,
         key: RestoreTransactionKey,
@@ -669,6 +778,8 @@ impl CallRestoreRuntime {
             transaction.kind
         };
         self.call_id_aliases.insert(key.old_call_id, call_id);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match kind {
             Some(RestoreCallKind::Group) => self.counters.group_restores = self.counters.group_restores.saturating_add(1),
             Some(RestoreCallKind::Individual) => {
@@ -676,6 +787,8 @@ impl CallRestoreRuntime {
             }
             None => {}
         }
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match grant {
             TransmissionGrant::Granted => self.counters.floor_grants = self.counters.floor_grants.saturating_add(1),
             TransmissionGrant::GrantedToOtherUser => {
@@ -686,6 +799,8 @@ impl CallRestoreRuntime {
         Ok(())
     }
 
+    // Was: Führt den Arbeitsschritt `reject` für reject aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn reject(
         &mut self,
         key: RestoreTransactionKey,
@@ -711,8 +826,12 @@ impl CallRestoreRuntime {
         Ok(())
     }
 
+    // Was: Diese Funktion bearbeitet den vorgesehenen Arbeitsschritt.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn tick(&mut self, now: TdmaTime) -> Vec<RestoreTransactionKey> {
         let mut expired = Vec::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (key, transaction) in self.transactions.iter_mut() {
             if !transaction.phase.is_terminal()
                 && transaction.started_at.age(now) >= CALL_RESTORE_TRANSACTION_TIMEOUT_SLOTS
@@ -731,10 +850,14 @@ impl CallRestoreRuntime {
         expired
     }
 
+    // Was: Führt den Arbeitsschritt `transaction` für transaction aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn transaction(&self, key: RestoreTransactionKey) -> Option<&CallRestoreTransaction> {
         self.transactions.get(&key)
     }
 
+    // Was: Diese Funktion erzeugt den vorgesehenen Arbeitsschritt.
+    // Warum: Die Oberfläche und andere Dienste erhalten dadurch eine in sich stimmige Momentaufnahme.
     pub fn snapshot(&self, now: TdmaTime) -> CallRestoreRuntimeSnapshot {
         let mut transactions: Vec<_> = self
             .transactions
@@ -763,6 +886,8 @@ impl CallRestoreRuntime {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `transaction_in_phase_mut` für transaction in phase mut aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn transaction_in_phase_mut(
         &mut self,
         key: RestoreTransactionKey,

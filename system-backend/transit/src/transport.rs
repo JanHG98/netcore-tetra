@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Verbindungen zu anderen Netzen und Systemen.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpStream, ToSocketAddrs};
 use std::thread;
@@ -9,6 +12,8 @@ use crate::config::{TransitConfig, MODE_AUTHORITATIVE};
 use crate::protocol::MaintenanceInput;
 use crate::state::{PeerRecord, SharedTransit};
 
+// Was: Diese Funktion startet transport Hintergrundverarbeitung.
+// Warum: Länger laufende Arbeit blockiert dadurch nicht den aufrufenden Ablauf.
 pub fn spawn_transport_worker(
     config: TransitConfig,
     transit: SharedTransit,
@@ -17,6 +22,8 @@ pub fn spawn_transport_worker(
         let mut last_maintenance = Instant::now()
             .checked_sub(Duration::from_secs(60))
             .unwrap_or_else(Instant::now);
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             if last_maintenance.elapsed() >= Duration::from_secs(5) {
                 if let Err(error) = transit.maintenance_tick(MaintenanceInput {
@@ -36,7 +43,11 @@ pub fn spawn_transport_worker(
     })
 }
 
+// Was: Diese Funktion sendet heartbeats.
+// Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
 fn send_heartbeats(config: &TransitConfig, transit: &SharedTransit) {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for peer in transit.peers_due_for_heartbeat() {
         let payload = transit.heartbeat_payload();
         let started = Instant::now();
@@ -47,6 +58,8 @@ fn send_heartbeats(config: &TransitConfig, transit: &SharedTransit) {
             &payload,
         );
         let latency = started.elapsed().as_secs_f64() * 1_000.0;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match result {
             Ok(()) => {
                 if let Err(error) = transit.record_heartbeat_result(
@@ -73,8 +86,14 @@ fn send_heartbeats(config: &TransitConfig, transit: &SharedTransit) {
     }
 }
 
+// Was: Diese Funktion verteilt envelopes.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn dispatch_envelopes(config: &TransitConfig, transit: &SharedTransit) {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for due in transit.due_outbound(config.transport.max_batch) {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let peer_id = match due.selected_peer.clone() {
             Some(peer_id) => peer_id,
             None => continue,
@@ -89,6 +108,8 @@ fn dispatch_envelopes(config: &TransitConfig, transit: &SharedTransit) {
             );
             continue;
         };
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let envelope = match transit.mark_outbound_attempt(&due.envelope_id) {
             Ok(envelope) => envelope,
             Err(error) => {
@@ -100,6 +121,8 @@ fn dispatch_envelopes(config: &TransitConfig, transit: &SharedTransit) {
         let started = Instant::now();
         let result = post_json(config, &peer, "/api/v1/peer/envelopes", &wire);
         let latency = started.elapsed().as_secs_f64() * 1_000.0;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match result {
             Ok(()) => {
                 if let Err(error) = transit.complete_outbound(
@@ -131,6 +154,8 @@ fn dispatch_envelopes(config: &TransitConfig, transit: &SharedTransit) {
     }
 }
 
+// Was: Führt den Arbeitsschritt `post_json` für post JSON-Daten aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn post_json<T: Serialize>(
     config: &TransitConfig,
     peer: &PeerRecord,
@@ -201,12 +226,16 @@ fn post_json<T: Serialize>(
     }
 }
 
+// Was: Bündelt die zusammengehörigen Werte für HTTP endpoint in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct HttpEndpoint {
     host: String,
     port: u16,
     path: String,
 }
 
+// Was: Diese Funktion liest und prüft HTTP endpoint.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_http_endpoint(base: &str, suffix: &str) -> Result<HttpEndpoint, String> {
     let raw = base
         .strip_prefix("http://")
@@ -243,6 +272,8 @@ fn parse_http_endpoint(base: &str, suffix: &str) -> Result<HttpEndpoint, String>
     Ok(HttpEndpoint { host, port, path })
 }
 
+// Was: Diese Funktion ermittelt address.
+// Warum: Unklare oder indirekte Angaben werden so vor der weiteren Verarbeitung eindeutig gemacht.
 fn resolve_address(host: &str, port: u16) -> Result<SocketAddr, String> {
     (host, port)
         .to_socket_addrs()

@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für gespeicherte Aufzeichnungen, TTS- und Mediendateien.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Read, Write};
@@ -18,6 +21,8 @@ use crate::model::{
 use crate::state::SharedLibrary;
 use crate::worker;
 
+// Was: Diese Funktion startet HTTP server.
+// Warum: Länger laufende Arbeit blockiert dadurch nicht den aufrufenden Ablauf.
 pub fn spawn_http_server(
     config: MediaLibraryConfig,
     library: SharedLibrary,
@@ -25,7 +30,11 @@ pub fn spawn_http_server(
     let listener = TcpListener::bind(config.server.bind)?;
     tracing::info!("Media Library WebUI/API listening on http://{}", config.server.bind);
     Ok(thread::spawn(move || {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for stream in listener.incoming() {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match stream {
                 Ok(stream) => {
                     let config = config.clone();
@@ -42,6 +51,8 @@ pub fn spawn_http_server(
     }))
 }
 
+// Was: Bündelt die zusammengehörigen Werte für HTTP request in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct HttpRequest {
     method: String,
     path: String,
@@ -49,11 +60,15 @@ struct HttpRequest {
     body: Vec<u8>,
 }
 
+// Was: Listet die möglichen Varianten für response body auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 enum ResponseBody {
     Bytes(Vec<u8>),
     File(PathBuf),
 }
 
+// Was: Bündelt die zusammengehörigen Werte für HTTP response in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct HttpResponse {
     status: u16,
     content_type: &'static str,
@@ -61,6 +76,8 @@ struct HttpResponse {
     body: ResponseBody,
 }
 
+// Was: Diese Funktion verarbeitet connection.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 fn handle_connection(
     mut stream: TcpStream,
     config: MediaLibraryConfig,
@@ -71,6 +88,8 @@ fn handle_connection(
     write_response(&mut stream, response).map_err(|error| error.to_string())
 }
 
+// Was: Diese Funktion leitet den vorgesehenen Arbeitsschritt.
+// Warum: Nachrichten und Daten gelangen dadurch nachvollziehbar an das richtige Ziel.
 fn route(
     request: HttpRequest,
     config: MediaLibraryConfig,
@@ -79,6 +98,8 @@ fn route(
     if request.method == "OPTIONS" {
         return empty(204);
     }
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match (request.method.as_str(), request.path.as_str()) {
         ("GET", "/") => html(INDEX_HTML),
         ("GET", "/health/live") => json_response(200, &json!({"status":"live"})),
@@ -99,12 +120,16 @@ fn route(
             ),
         ),
         ("POST", "/api/v1/assets/upload-json") => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json::<UploadInput>(&request.body).and_then(|input| library.create_upload(input)) {
                 Ok(asset) => json_response(201, &asset),
                 Err(error) => conflict(error),
             }
         }
         ("POST", "/api/v1/assets/import-url") => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json::<ImportUrlInput>(&request.body)
                 .and_then(|input| library.create_import_url(input))
             {
@@ -113,6 +138,8 @@ fn route(
             }
         }
         ("POST", "/api/v1/recorder/import") => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json::<RecorderImportInput>(&request.body)
                 .and_then(|input| library.create_recorder_import(input))
             {
@@ -121,6 +148,8 @@ fn route(
             }
         }
         ("POST", "/api/v1/dispatch") => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json::<DispatchInput>(&request.body)
                 .and_then(|input| library.create_dispatch(input))
             {
@@ -143,12 +172,16 @@ fn route(
         }
         ("GET", "/api/v1/backups") => json_response(200, &library.backups()),
         ("POST", "/api/v1/backups") => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json_or_default::<ActionInput>(&request.body).and_then(|input| library.backup(input)) {
                 Ok(record) => json_response(201, &record),
                 Err(error) => json_response(500, &json!({"error":error})),
             }
         }
         ("POST", "/api/v1/maintenance/tick") => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json_or_default::<ActionInput>(&request.body)
                 .and_then(|input| library.maintenance(input.actor))
             {
@@ -185,13 +218,19 @@ fn route(
     }
 }
 
+// Was: Führt den Arbeitsschritt `dynamic_route` für dynamic Weiterleitung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn dynamic_route(request: HttpRequest, library: SharedLibrary) -> HttpResponse {
     let parts = request.path.trim_matches('/').split('/').collect::<Vec<_>>();
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match (request.method.as_str(), parts.as_slice()) {
         ("GET", ["api", "v1", "assets", asset_id]) => library
             .asset(asset_id)
             .map_or_else(|| not_found("asset not found"), |asset| json_response(200, &asset)),
         ("PUT", ["api", "v1", "assets", asset_id]) => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json::<AssetUpdateInput>(&request.body)
                 .and_then(|input| library.update_asset(asset_id, input))
             {
@@ -200,6 +239,8 @@ fn dynamic_route(request: HttpRequest, library: SharedLibrary) -> HttpResponse {
             }
         }
         ("DELETE", ["api", "v1", "assets", asset_id]) => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json_or_default::<ActionInput>(&request.body)
                 .and_then(|input| library.delete_asset(asset_id, input))
             {
@@ -208,6 +249,8 @@ fn dynamic_route(request: HttpRequest, library: SharedLibrary) -> HttpResponse {
             }
         }
         ("POST", ["api", "v1", "assets", asset_id, "approve"]) => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json_or_default::<ApprovalInput>(&request.body)
                 .and_then(|input| library.approve_asset(asset_id, input))
             {
@@ -216,6 +259,8 @@ fn dynamic_route(request: HttpRequest, library: SharedLibrary) -> HttpResponse {
             }
         }
         ("POST", ["api", "v1", "assets", asset_id, "reject"]) => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json_or_default::<ApprovalInput>(&request.body)
                 .and_then(|input| library.reject_asset(asset_id, input))
             {
@@ -224,6 +269,8 @@ fn dynamic_route(request: HttpRequest, library: SharedLibrary) -> HttpResponse {
             }
         }
         ("POST", ["api", "v1", "assets", asset_id, "process"]) => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json_or_default::<ActionInput>(&request.body)
                 .and_then(|input| library.reprocess_asset(asset_id, input))
             {
@@ -232,6 +279,8 @@ fn dynamic_route(request: HttpRequest, library: SharedLibrary) -> HttpResponse {
             }
         }
         ("POST", ["api", "v1", "assets", asset_id, "archive"]) => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json_or_default::<ActionInput>(&request.body)
                 .and_then(|input| library.archive_asset(asset_id, input))
             {
@@ -249,6 +298,8 @@ fn dynamic_route(request: HttpRequest, library: SharedLibrary) -> HttpResponse {
             asset_file_response(&library, asset_id, "tacelp", true)
         }
         ("GET", ["api", "v1", "assets", asset_id, "waveform"]) => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match library.waveform(asset_id, query_usize(&request, "points", 256, 2_048)) {
                 Ok(points) => json_response(200, &json!({"asset_id":asset_id,"points":points})),
                 Err(error) => not_found(error),
@@ -258,6 +309,8 @@ fn dynamic_route(request: HttpRequest, library: SharedLibrary) -> HttpResponse {
             .job(job_id)
             .map_or_else(|| not_found("job not found"), |job| json_response(200, &job)),
         ("POST", ["api", "v1", "jobs", job_id, "cancel"]) => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json_or_default::<ActionInput>(&request.body)
                 .and_then(|input| library.cancel_job(job_id, input))
             {
@@ -266,6 +319,8 @@ fn dynamic_route(request: HttpRequest, library: SharedLibrary) -> HttpResponse {
             }
         }
         ("POST", ["api", "v1", "jobs", job_id, "retry"]) => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json_or_default::<ActionInput>(&request.body)
                 .and_then(|input| library.retry_job(job_id, input))
             {
@@ -277,12 +332,16 @@ fn dynamic_route(request: HttpRequest, library: SharedLibrary) -> HttpResponse {
     }
 }
 
+// Was: Führt den Arbeitsschritt `asset_file_response` für asset file response aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn asset_file_response(
     library: &SharedLibrary,
     asset_id: &str,
     kind: &str,
     attachment: bool,
 ) -> HttpResponse {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match library.file_for(asset_id, kind) {
         Ok((path, content_type, filename)) => file_response(
             path,
@@ -300,6 +359,8 @@ fn asset_file_response(
     }
 }
 
+// Was: Führt den Arbeitsschritt `openapi` für openapi aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn openapi() -> Value {
     json!({
         "openapi":"3.0.3",
@@ -334,6 +395,8 @@ fn openapi() -> Value {
     })
 }
 
+// Was: Diese Funktion liest request.
+// Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
 fn read_request(stream: &mut TcpStream, max_body_bytes: usize) -> Result<HttpRequest, String> {
     stream
         .set_read_timeout(Some(std::time::Duration::from_secs(30)))
@@ -372,6 +435,8 @@ fn read_request(stream: &mut TcpStream, max_body_bytes: usize) -> Result<HttpReq
     if content_length > max_body_bytes {
         return Err(format!("request body exceeds {max_body_bytes} byte limit"));
     }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while bytes.len().saturating_sub(header_end) < content_length {
         let read = stream.read(&mut buffer).map_err(|error| error.to_string())?;
         if read == 0 {
@@ -384,7 +449,11 @@ fn read_request(stream: &mut TcpStream, max_body_bytes: usize) -> Result<HttpReq
     Ok(HttpRequest { method, path, query, body })
 }
 
+// Was: Diese Funktion schreibt response.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 fn write_response(stream: &mut TcpStream, response: HttpResponse) -> std::io::Result<()> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let reason = match response.status {
         200 => "OK",
         201 => "Created",
@@ -399,6 +468,8 @@ fn write_response(stream: &mut TcpStream, response: HttpResponse) -> std::io::Re
         503 => "Service Unavailable",
         _ => "OK",
     };
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let length = match &response.body {
         ResponseBody::Bytes(bytes) => bytes.len() as u64,
         ResponseBody::File(path) => std::fs::metadata(path)?.len(),
@@ -416,11 +487,15 @@ fn write_response(stream: &mut TcpStream, response: HttpResponse) -> std::io::Re
         ),
         response.status, reason, response.content_type, length
     );
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (name, value) in response.headers {
         headers.push_str(&format!("{name}: {value}\r\n"));
     }
     headers.push_str("Connection: close\r\n\r\n");
     stream.write_all(headers.as_bytes())?;
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match response.body {
         ResponseBody::Bytes(bytes) => stream.write_all(&bytes),
         ResponseBody::File(path) => {
@@ -431,10 +506,14 @@ fn write_response(stream: &mut TcpStream, response: HttpResponse) -> std::io::Re
     }
 }
 
+// Was: Diese Funktion liest und prüft JSON-Daten.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_json<T: DeserializeOwned>(body: &[u8]) -> Result<T, String> {
     serde_json::from_slice(body).map_err(|error| format!("invalid JSON: {error}"))
 }
 
+// Was: Diese Funktion liest und prüft JSON-Daten or default.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_json_or_default<T: DeserializeOwned + Default>(body: &[u8]) -> Result<T, String> {
     if body.is_empty() {
         Ok(T::default())
@@ -443,6 +522,8 @@ fn parse_json_or_default<T: DeserializeOwned + Default>(body: &[u8]) -> Result<T
     }
 }
 
+// Was: Führt den Arbeitsschritt `json_response` für JSON-Daten response aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn json_response<T: Serialize>(status: u16, value: &T) -> HttpResponse {
     HttpResponse {
         status,
@@ -452,6 +533,8 @@ fn json_response<T: Serialize>(status: u16, value: &T) -> HttpResponse {
     }
 }
 
+// Was: Führt den Arbeitsschritt `text` für text aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn text(content_type: &'static str, value: String) -> HttpResponse {
     HttpResponse {
         status: 200,
@@ -461,6 +544,8 @@ fn text(content_type: &'static str, value: String) -> HttpResponse {
     }
 }
 
+// Was: Führt den Arbeitsschritt `html` für html aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn html(value: &'static str) -> HttpResponse {
     HttpResponse {
         status: 200,
@@ -470,6 +555,8 @@ fn html(value: &'static str) -> HttpResponse {
     }
 }
 
+// Was: Führt den Arbeitsschritt `file_response` für file response aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn file_response(path: PathBuf, content_type: &'static str, headers: Vec<(String, String)>) -> HttpResponse {
     HttpResponse {
         status: 200,
@@ -479,6 +566,8 @@ fn file_response(path: PathBuf, content_type: &'static str, headers: Vec<(String
     }
 }
 
+// Was: Führt den Arbeitsschritt `download_bytes` für download bytes aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn download_bytes(name: &str, content_type: &'static str, bytes: Vec<u8>) -> HttpResponse {
     HttpResponse {
         status: 200,
@@ -491,6 +580,8 @@ fn download_bytes(name: &str, content_type: &'static str, bytes: Vec<u8>) -> Htt
     }
 }
 
+// Was: Führt den Arbeitsschritt `empty` für empty aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn empty(status: u16) -> HttpResponse {
     HttpResponse {
         status,
@@ -500,14 +591,20 @@ fn empty(status: u16) -> HttpResponse {
     }
 }
 
+// Was: Führt den Arbeitsschritt `conflict` für conflict aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn conflict(error: impl ToString) -> HttpResponse {
     json_response(409, &json!({"error":error.to_string()}))
 }
 
+// Was: Führt den Arbeitsschritt `not_found` für not found aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn not_found(error: impl ToString) -> HttpResponse {
     json_response(404, &json!({"error":error.to_string()}))
 }
 
+// Was: Führt den Arbeitsschritt `query_usize` für query usize aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn query_usize(request: &HttpRequest, key: &str, default: usize, maximum: usize) -> usize {
     request
         .query
@@ -517,10 +614,14 @@ fn query_usize(request: &HttpRequest, key: &str, default: usize, maximum: usize)
         .min(maximum)
 }
 
+// Was: Diese Funktion sucht subslice.
+// Warum: Die Suchlogik bleibt damit wiederverwendbar und muss nicht an mehreren Stellen kopiert werden.
 fn find_subslice(haystack: &[u8], needle: &[u8]) -> Option<usize> {
     haystack.windows(needle.len()).position(|window| window == needle)
 }
 
+// Was: Diese Funktion liest und prüft path and query.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_path_and_query(raw: &str) -> (String, HashMap<String, String>) {
     let (path, query) = raw.split_once('?').unwrap_or((raw, ""));
     let query = query
@@ -532,10 +633,14 @@ fn parse_path_and_query(raw: &str) -> (String, HashMap<String, String>) {
     (percent_decode(path), query)
 }
 
+// Was: Führt den Arbeitsschritt `percent_decode` für percent Dekodierung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn percent_decode(value: &str) -> String {
     let bytes = value.as_bytes();
     let mut output = Vec::with_capacity(bytes.len());
     let mut index = 0;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while index < bytes.len() {
         if bytes[index] == b'%'
             && index + 2 < bytes.len()
@@ -551,7 +656,11 @@ fn percent_decode(value: &str) -> String {
     String::from_utf8_lossy(&output).into_owned()
 }
 
+// Was: Führt den Arbeitsschritt `hex` für hex aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn hex(value: u8) -> Option<u8> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match value {
         b'0'..=b'9' => Some(value - b'0'),
         b'a'..=b'f' => Some(value - b'a' + 10),
@@ -560,6 +669,8 @@ fn hex(value: u8) -> Option<u8> {
     }
 }
 
+// Was: Legt den festen Wert `INDEX_HTML` für index html fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const INDEX_HTML: &str = r##"<!doctype html>
 <html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>NetCore Media Library</title>

@@ -1,67 +1,170 @@
+# NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Leitstellenfunktionen und Bedienoberflächen.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+# Was: Öffnet den Konfigurationsabschnitt `profiles.default`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [profiles.default]
+# Was: Setzt die Einstellung `api` für profiles default.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 api = "http://10.0.1.25:9010"
+# Was: Setzt die Einstellung `default_node` für profiles default.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 default_node = "SRV-M_TBS-01"
+# Was: Setzt die Einstellung `operator_id` für profiles default.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 operator_id = "jan"
+# Was: Setzt die Einstellung `username` für profiles default.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 username = "jan"
 
+# Was: Öffnet den Konfigurationsabschnitt `profiles.event`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [profiles.event]
+# Was: Setzt die Einstellung `api` für profiles Ereignis.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 api = "http://10.0.1.25:9010"
+# Was: Setzt die Einstellung `default_node` für profiles Ereignis.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 default_node = "SRV-M_TBS-01"
+# Was: Setzt die Einstellung `operator_id` für profiles Ereignis.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 operator_id = "event-lst"
+# Was: Setzt die Einstellung `username` für profiles Ereignis.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 username = "event"
 
+# Was: Öffnet den Konfigurationsabschnitt `ui.map`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [ui.map]
+# Was: Setzt die Einstellung `online_tiles` für ui map.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 online_tiles = true
+# Was: Setzt die Einstellung `tile_url` für ui map.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 tile_url = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+# Was: Setzt die Einstellung `tile_attribution` für ui map.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 tile_attribution = "© OpenStreetMap contributors"
+# Was: Setzt die Einstellung `default_lat` für ui map.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 default_lat = 52.3759
+# Was: Setzt die Einstellung `default_lon` für ui map.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 default_lon = 9.7320
+# Was: Setzt die Einstellung `default_zoom` für ui map.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 default_zoom = 13
+# Was: Setzt die Einstellung `min_zoom` für ui map.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 min_zoom = 3
+# Was: Setzt die Einstellung `max_zoom` für ui map.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_zoom = 18
 # Optional. Wenn leer, nutzt die UI den normalen Windows-Cacheordner.
 # cache_dir = "C:\\Users\\Jan\\AppData\\Local\\netcore\\control-room\\tiles"
 
 # Optionales lokales Directory für die UI.
 # Ab v5 zieht die UI zuerst das zentrale Directory vom LXC und nutzt lokale Einträge nur als Override.
+# Was: Öffnet den Konfigurationsabschnitt `directory`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [directory]
+# Was: Setzt die Einstellung `hide_infrastructure` für directory.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 hide_infrastructure = true
 
+# Was: Öffnet den Konfigurationsabschnitt `directory.subscribers."2010002"`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [directory.subscribers."2010002"]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "Jan HRT"
+# Was: Setzt die Einstellung `device_class` für directory subscribers 2010002.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 device_class = "HRT"
+# Was: Setzt die Einstellung `status` für directory subscribers 2010002.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 status = "Einsatzbereit"
+# Was: Setzt die Einstellung `status_group` für directory subscribers 2010002.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 status_group = "crew"
+# Was: Setzt die Einstellung `groups` für directory subscribers 2010002.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 groups = [15201, 15205]
 
+# Was: Öffnet den Konfigurationsabschnitt `directory.subscribers."2020004"`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [directory.subscribers."2020004"]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "Event Operator"
+# Was: Setzt die Einstellung `device_class` für directory subscribers 2020004.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 device_class = "HRT"
+# Was: Setzt die Einstellung `status_group` für directory subscribers 2020004.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 status_group = "crew"
+# Was: Setzt die Einstellung `groups` für directory subscribers 2020004.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 groups = [15201]
 
 # Infrastruktur bleibt normalerweise ausgeblendet.
 # Falls ein Infrastrukturgerät bewusst sichtbar bleiben soll:
+# Was: Öffnet den Konfigurationsabschnitt `directory.subscribers."4010001"`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [directory.subscribers."4010001"]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "SRV-M_TBS-01"
+# Was: Setzt die Einstellung `device_class` für directory subscribers 4010001.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 device_class = "Basisstation"
+# Was: Setzt die Einstellung `hide_in_subscribers` für directory subscribers 4010001.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 hide_in_subscribers = true
 
+# Was: Öffnet den Konfigurationsabschnitt `directory.groups."15201"`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [directory.groups."15201"]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "NetCore Crew"
+# Was: Setzt die Einstellung `kind` für directory groups 15201.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 kind = "Sprechgruppe"
 
+# Was: Öffnet den Konfigurationsabschnitt `directory.groups."15205"`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [directory.groups."15205"]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "Tactical"
+# Was: Setzt die Einstellung `kind` für directory groups 15205.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 kind = "Sprechgruppe"
 
+# Was: Öffnet den Konfigurationsabschnitt `directory.status_groups."crew"`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [directory.status_groups."crew"]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "Crew-Status"
 
+# Was: Öffnet den Konfigurationsabschnitt `directory.statuses."1"`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [directory.statuses."1"]
+# Was: Setzt die Einstellung `label` für directory statuses 1.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 label = "Frei / bereit"
+# Was: Setzt die Einstellung `group` für directory statuses 1.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 group = "crew"
 
+# Was: Öffnet den Konfigurationsabschnitt `directory.statuses."2"`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [directory.statuses."2"]
+# Was: Setzt die Einstellung `label` für directory statuses 2.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 label = "Beschäftigt"
+# Was: Setzt die Einstellung `group` für directory statuses 2.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 group = "crew"

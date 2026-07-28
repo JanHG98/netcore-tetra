@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Sicherheitsrichtlinien und Authentifizierungsabläufe.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fs;
 use std::io::Write;
@@ -20,12 +23,18 @@ use crate::protocol::{
     DisableInput, EdgeActionAckInput, EdgeClaimInput, PolicyInput, ProfileInput, RevokeInput,
 };
 
+// Was: Legt den festen Wert `DATABASE_SCHEMA_VERSION` für Datenbank schema version fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const DATABASE_SCHEMA_VERSION: u32 = 1;
+// Was: Legt den festen Wert `OPEN_LAB_WARNING` für open lab warning fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const OPEN_LAB_WARNING: &str =
     "OPEN LAB: management has no authentication, no tokens and no TLS; isolated test network only";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für authentication Zustand auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum AuthenticationState {
     ChallengePending,
     AwaitingResponse,
@@ -37,6 +46,8 @@ pub enum AuthenticationState {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für dck Zustand auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum DckState {
     PendingInstall,
     Active,
@@ -47,6 +58,8 @@ pub enum DckState {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für edge action Zustand auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum EdgeActionState {
     Pending,
     InFlight,
@@ -58,6 +71,8 @@ pub enum EdgeActionState {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für alarm Zustand auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum AlarmState {
     Open,
     Acknowledged,
@@ -65,6 +80,8 @@ pub enum AlarmState {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Sicherheit policy Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SecurityPolicyRecord {
     pub revision: u64,
     pub operating_mode: String,
@@ -78,6 +95,8 @@ pub struct SecurityPolicyRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Sicherheit profile Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SecurityProfileRecord {
     pub issi: u32,
     pub display_name: String,
@@ -97,6 +116,8 @@ pub struct SecurityProfileRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Teilnehmer Sicherheit Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SubscriberSecurityRecord {
     pub issi: u32,
     pub current_node_id: Option<String>,
@@ -115,6 +136,8 @@ pub struct SubscriberSecurityRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für authentication Kontext Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct AuthenticationContextRecord {
     pub id: String,
     pub issi: u32,
@@ -139,6 +162,8 @@ pub struct AuthenticationContextRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für dck Kontext Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DckContextRecord {
     pub id: String,
     pub key_reference: String,
@@ -158,6 +183,8 @@ pub struct DckContextRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für edge action Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct EdgeActionRecord {
     pub id: String,
     pub sequence: u64,
@@ -176,6 +203,8 @@ pub struct EdgeActionRecord {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für edge claimed action in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct EdgeClaimedAction {
     pub id: String,
     pub sequence: u64,
@@ -190,6 +219,8 @@ pub struct EdgeClaimedAction {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Sicherheit alarm Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SecurityAlarmRecord {
     pub id: String,
     pub severity: String,
@@ -207,6 +238,8 @@ pub struct SecurityAlarmRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Sicherheit audit Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SecurityAuditRecord {
     pub sequence: u64,
     pub timestamp: String,
@@ -218,6 +251,8 @@ pub struct SecurityAuditRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Sicherheit Netzknoten Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SecurityNodeRecord {
     pub node_id: String,
     pub station_name: String,
@@ -231,6 +266,8 @@ pub struct SecurityNodeRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Sicherheit Datenbank in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct SecurityDatabase {
     schema_version: u32,
     revision: u64,
@@ -247,7 +284,11 @@ struct SecurityDatabase {
     nodes: BTreeMap<String, SecurityNodeRecord>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SecurityDatabase`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SecurityDatabase {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     fn new(config: &SecurityCoreConfig) -> Self {
         let now = now_iso();
         Self {
@@ -278,6 +319,8 @@ impl SecurityDatabase {
     }
 }
 
+// Was: Bündelt die zusammengehörigen Werte für Laufzeit secrets in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct RuntimeSecrets {
     lab_seed: Vec<u8>,
     challenges: BTreeMap<String, Vec<u8>>,
@@ -286,6 +329,8 @@ struct RuntimeSecrets {
     action_payloads: BTreeMap<String, Value>,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für Sicherheit core Zustand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct SecurityCoreState {
     config: SecurityCoreConfig,
     database: SecurityDatabase,
@@ -297,11 +342,15 @@ struct SecurityCoreState {
 }
 
 #[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für shared Sicherheit core in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SharedSecurityCore {
     inner: Arc<Mutex<SecurityCoreState>>,
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Sicherheit core Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SecurityCoreStatus {
     pub service: &'static str,
     pub version: &'static str,
@@ -329,6 +378,8 @@ pub struct SecurityCoreStatus {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Sicherheit export in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SecurityExport {
     pub generated_at: String,
     pub status: SecurityCoreStatus,
@@ -343,7 +394,11 @@ pub struct SecurityExport {
     pub audit: Vec<SecurityAuditRecord>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SharedSecurityCore`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SharedSecurityCore {
+    // Was: Diese Funktion lädt den vorgesehenen Arbeitsschritt.
+    // Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
     pub fn load(config: SecurityCoreConfig) -> Result<Self, Box<dyn std::error::Error>> {
         let lab_seed = load_or_create_seed(&config.storage.lab_seed_path)
             .map_err(std::io::Error::other)?;
@@ -369,10 +424,14 @@ impl SharedSecurityCore {
         Ok(core)
     }
 
+    // Was: Diese Funktion stellt after restart.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn recover_after_restart(&self) -> Result<(), Box<dyn std::error::Error>> {
         let mut state = self.inner.lock().expect("security state poisoned");
         let now = now_iso();
         let mut changed = false;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for context in state.database.auth_contexts.values_mut() {
             if matches!(
                 context.state,
@@ -387,6 +446,8 @@ impl SharedSecurityCore {
                 changed = true;
             }
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for action in state.database.actions.values_mut() {
             if matches!(action.state, EdgeActionState::Pending | EdgeActionState::InFlight) {
                 action.state = EdgeActionState::Failed;
@@ -398,6 +459,8 @@ impl SharedSecurityCore {
                 changed = true;
             }
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for dck in state.database.dck_contexts.values_mut() {
             if matches!(dck.state, DckState::PendingInstall | DckState::Active) {
                 dck.state = DckState::Revoked;
@@ -409,6 +472,8 @@ impl SharedSecurityCore {
             }
         }
         if changed {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for subscriber in state.database.subscribers.values_mut() {
                 subscriber.authenticated = false;
                 subscriber.active_auth_context_id = None;
@@ -430,11 +495,15 @@ impl SharedSecurityCore {
         Ok(())
     }
 
+    // Was: Führt den Arbeitsschritt `status` für Status aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn status(&self) -> SecurityCoreStatus {
         let state = self.inner.lock().expect("security state poisoned");
         status_locked(&state)
     }
 
+    // Was: Führt den Arbeitsschritt `policy` für policy aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn policy(&self) -> SecurityPolicyRecord {
         self.inner
             .lock()
@@ -444,6 +513,8 @@ impl SharedSecurityCore {
             .clone()
     }
 
+    // Was: Führt den Arbeitsschritt `profiles` für profiles aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn profiles(&self) -> Vec<SecurityProfileRecord> {
         self.inner
             .lock()
@@ -455,6 +526,8 @@ impl SharedSecurityCore {
             .collect()
     }
 
+    // Was: Führt den Arbeitsschritt `profile` für profile aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn profile(&self, issi: u32) -> Option<SecurityProfileRecord> {
         self.inner
             .lock()
@@ -465,6 +538,8 @@ impl SharedSecurityCore {
             .cloned()
     }
 
+    // Was: Führt den Arbeitsschritt `subscribers` für subscribers aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn subscribers(&self) -> Vec<SubscriberSecurityRecord> {
         self.inner
             .lock()
@@ -476,6 +551,8 @@ impl SharedSecurityCore {
             .collect()
     }
 
+    // Was: Führt den Arbeitsschritt `auth_contexts` für Anmeldung und Berechtigung contexts aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn auth_contexts(&self) -> Vec<AuthenticationContextRecord> {
         self.inner
             .lock()
@@ -487,6 +564,8 @@ impl SharedSecurityCore {
             .collect()
     }
 
+    // Was: Führt den Arbeitsschritt `auth_context` für Anmeldung und Berechtigung Kontext aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn auth_context(&self, id: &str) -> Option<AuthenticationContextRecord> {
         self.inner
             .lock()
@@ -497,6 +576,8 @@ impl SharedSecurityCore {
             .cloned()
     }
 
+    // Was: Führt den Arbeitsschritt `dck_contexts` für dck contexts aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn dck_contexts(&self) -> Vec<DckContextRecord> {
         self.inner
             .lock()
@@ -508,6 +589,8 @@ impl SharedSecurityCore {
             .collect()
     }
 
+    // Was: Führt den Arbeitsschritt `actions` für actions aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn actions(&self) -> Vec<EdgeActionRecord> {
         self.inner
             .lock()
@@ -519,6 +602,8 @@ impl SharedSecurityCore {
             .collect()
     }
 
+    // Was: Führt den Arbeitsschritt `alarms` für alarms aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn alarms(&self) -> Vec<SecurityAlarmRecord> {
         self.inner
             .lock()
@@ -530,6 +615,8 @@ impl SharedSecurityCore {
             .collect()
     }
 
+    // Was: Führt den Arbeitsschritt `audit` für audit aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn audit(&self, limit: usize) -> Vec<SecurityAuditRecord> {
         let state = self.inner.lock().expect("security state poisoned");
         state
@@ -542,6 +629,8 @@ impl SharedSecurityCore {
             .collect()
     }
 
+    // Was: Führt den Arbeitsschritt `nodes` für nodes aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn nodes(&self) -> Vec<SecurityNodeRecord> {
         self.inner
             .lock()
@@ -553,6 +642,8 @@ impl SharedSecurityCore {
             .collect()
     }
 
+    // Was: Führt den Arbeitsschritt `export` für export aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn export(&self) -> SecurityExport {
         let state = self.inner.lock().expect("security state poisoned");
         SecurityExport {
@@ -570,6 +661,8 @@ impl SharedSecurityCore {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `redacted_config` für redacted Konfiguration aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn redacted_config(&self) -> Value {
         let state = self.inner.lock().expect("security state poisoned");
         json!({
@@ -590,6 +683,8 @@ impl SharedSecurityCore {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `upsert_profile` für upsert profile aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn upsert_profile(&self, input: ProfileInput, actor: &str) -> Result<SecurityProfileRecord, String> {
         validate_issi(input.issi)?;
         let mut state = self.inner.lock().expect("security state poisoned");
@@ -680,6 +775,8 @@ impl SharedSecurityCore {
         Ok(profile)
     }
 
+    // Was: Diese Funktion löscht profile.
+    // Warum: Das Entfernen wird dadurch kontrolliert durchgeführt und hinterlässt keine verwaisten Verweise.
     pub fn delete_profile(&self, issi: u32, actor: &str) -> Result<(), String> {
         let mut state = self.inner.lock().expect("security state poisoned");
         if state.database.profiles.remove(&issi).is_none() {
@@ -697,6 +794,8 @@ impl SharedSecurityCore {
         persist_locked(&state).map_err(|error| error.to_string())
     }
 
+    // Was: Diese Funktion aktualisiert policy.
+    // Warum: Bestehender Zustand wird dadurch kontrolliert und nach einheitlichen Regeln geändert.
     pub fn update_policy(&self, input: PolicyInput, actor: &str) -> Result<SecurityPolicyRecord, String> {
         let mut state = self.inner.lock().expect("security state poisoned");
         let mut policy = state.database.policy.clone();
@@ -754,6 +853,8 @@ impl SharedSecurityCore {
         Ok(policy)
     }
 
+    // Was: Diese Funktion startet authentication.
+    // Warum: Der Dienst oder Teilprozess wird so in einer festen und überprüfbaren Reihenfolge gestartet.
     pub fn start_authentication(
         &self,
         input: AuthenticationStartInput,
@@ -955,6 +1056,8 @@ impl SharedSecurityCore {
         Ok(context)
     }
 
+    // Was: Führt den Arbeitsschritt `submit_authentication_response` für submit authentication response aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn submit_authentication_response(
         &self,
         id: &str,
@@ -1112,6 +1215,8 @@ impl SharedSecurityCore {
         Ok(result)
     }
 
+    // Was: Führt den Arbeitsschritt `revoke_authentication` für revoke authentication aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn revoke_authentication(
         &self,
         id: &str,
@@ -1160,6 +1265,8 @@ impl SharedSecurityCore {
             .clone())
     }
 
+    // Was: Diese Funktion setzt disabled.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_disabled(
         &self,
         issi: u32,
@@ -1276,6 +1383,8 @@ impl SharedSecurityCore {
         Ok(profile_result)
     }
 
+    // Was: Führt den Arbeitsschritt `revoke_dck` für revoke dck aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn revoke_dck(&self, id: &str, input: RevokeInput) -> Result<DckContextRecord, String> {
         let mut state = self.inner.lock().expect("security state poisoned");
         let reason = input.reason.unwrap_or_else(|| "operator revoke".to_string());
@@ -1322,6 +1431,8 @@ impl SharedSecurityCore {
             .clone())
     }
 
+    // Was: Führt den Arbeitsschritt `claim_edge_actions` für claim edge actions aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn claim_edge_actions(&self, input: EdgeClaimInput) -> Result<Vec<EdgeClaimedAction>, String> {
         if input.node_id.trim().is_empty() {
             return Err("node_id may not be empty".to_string());
@@ -1347,7 +1458,11 @@ impl SharedSecurityCore {
             .map(|action| action.id.clone())
             .collect();
         let mut claimed = Vec::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for id in ids {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let payload = match state.secrets.action_payloads.get(&id).cloned() {
                 Some(payload) => payload,
                 None => {
@@ -1391,6 +1506,8 @@ impl SharedSecurityCore {
         Ok(claimed)
     }
 
+    // Was: Führt den Arbeitsschritt `acknowledge_edge_action` für acknowledge edge action aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn acknowledge_edge_action(
         &self,
         id: &str,
@@ -1543,6 +1660,8 @@ impl SharedSecurityCore {
         Ok(result)
     }
 
+    // Was: Führt den Arbeitsschritt `acknowledge_alarm` für acknowledge alarm aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn acknowledge_alarm(
         &self,
         id: &str,
@@ -1573,6 +1692,8 @@ impl SharedSecurityCore {
         Ok(result)
     }
 
+    // Was: Führt den Arbeitsschritt `backup` für backup aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn backup(&self) -> Result<String, String> {
         let state = self.inner.lock().expect("security state poisoned");
         let source = &state.config.storage.database_path;
@@ -1587,6 +1708,8 @@ impl SharedSecurityCore {
         Ok(target.display().to_string())
     }
 
+    // Was: Führt den Arbeitsschritt `maintenance_tick` für maintenance tick aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn maintenance_tick(&self) -> Result<SecurityCoreStatus, String> {
         let mut state = self.inner.lock().expect("security state poisoned");
         let changed = expire_locked(&mut state);
@@ -1597,6 +1720,8 @@ impl SharedSecurityCore {
         Ok(status_locked(&state))
     }
 
+    // Was: Führt den Arbeitsschritt `gateway_connected` für Gateway connected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn gateway_connected(&self) {
         let mut state = self.inner.lock().expect("security state poisoned");
         state.node_gateway_connected = true;
@@ -1604,6 +1729,8 @@ impl SharedSecurityCore {
         state.node_gateway_last_seen = Some(now_iso());
     }
 
+    // Was: Führt den Arbeitsschritt `gateway_disconnected` für Gateway disconnected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn gateway_disconnected(&self, error: String) {
         let mut state = self.inner.lock().expect("security state poisoned");
         state.node_gateway_connected = false;
@@ -1611,11 +1738,17 @@ impl SharedSecurityCore {
         state.node_gateway_last_seen = Some(now_iso());
     }
 
+    // Was: Diese Funktion verarbeitet Hintergrunddienst Ereignis.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     pub fn handle_backend_event(&self, event: BackendEvent) {
         let mut state = self.inner.lock().expect("security state poisoned");
         state.node_gateway_last_seen = Some(now_iso());
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match event {
             BackendEvent::Snapshot { snapshot } => {
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for node in snapshot.nodes {
                     state.database.nodes.insert(
                         node.node_id.clone(),
@@ -1688,6 +1821,8 @@ impl SharedSecurityCore {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `metrics` für Messwerte aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn metrics(&self) -> String {
         let status = self.status();
         format!(
@@ -1722,6 +1857,8 @@ impl SharedSecurityCore {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für effective profile in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct EffectiveProfile {
     authentication_required: bool,
     minimum_security_class: u8,
@@ -1733,11 +1870,15 @@ struct EffectiveProfile {
     equipment_disabled: bool,
 }
 
+// Was: Führt den Arbeitsschritt `effective_profile` für effective profile aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn effective_profile(
     state: &SecurityCoreState,
     _issi: u32,
     profile: Option<&SecurityProfileRecord>,
 ) -> EffectiveProfile {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match profile {
         Some(profile) => EffectiveProfile {
             authentication_required: profile.authentication_required,
@@ -1762,6 +1903,8 @@ fn effective_profile(
     }
 }
 
+// Was: Führt den Arbeitsschritt `status_locked` für Status locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn status_locked(state: &SecurityCoreState) -> SecurityCoreStatus {
     SecurityCoreStatus {
         service: "netcore-security-core",
@@ -1817,6 +1960,8 @@ fn status_locked(state: &SecurityCoreState) -> SecurityCoreStatus {
     }
 }
 
+// Was: Führt den Arbeitsschritt `fail_authentication_locked` für fail authentication locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn fail_authentication_locked(
     state: &mut SecurityCoreState,
     id: &str,
@@ -1947,6 +2092,8 @@ fn fail_authentication_locked(
     Ok(result)
 }
 
+// Was: Diese Funktion erstellt action locked.
+// Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
 fn create_action_locked(
     state: &mut SecurityCoreState,
     node_id: String,
@@ -1958,6 +2105,8 @@ fn create_action_locked(
     payload: Value,
     ttl_secs: u64,
 ) -> EdgeActionRecord {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while state.database.actions.len() >= state.config.limits.max_actions {
         let removable = state
             .database
@@ -1974,6 +2123,8 @@ fn create_action_locked(
             })
             .min_by_key(|action| action.sequence)
             .map(|action| action.id.clone());
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match removable {
             Some(id) => {
                 state.database.actions.remove(&id);
@@ -2006,6 +2157,8 @@ fn create_action_locked(
     action
 }
 
+// Was: Führt den Arbeitsschritt `revoke_auth_context_locked` für revoke Anmeldung und Berechtigung Kontext locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn revoke_auth_context_locked(
     state: &mut SecurityCoreState,
     id: &str,
@@ -2037,6 +2190,8 @@ fn revoke_auth_context_locked(
     Ok(())
 }
 
+// Was: Führt den Arbeitsschritt `revoke_dck_locked` für revoke dck locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn revoke_dck_locked(state: &mut SecurityCoreState, id: &str, reason: &str) {
     let issi = if let Some(dck) = state.database.dck_contexts.get_mut(id) {
         dck.state = DckState::Revoked;
@@ -2057,6 +2212,8 @@ fn revoke_dck_locked(state: &mut SecurityCoreState, id: &str, reason: &str) {
     state.secrets.dck_material.remove(id);
 }
 
+// Was: Führt den Arbeitsschritt `revoke_subscriber_contexts_locked` für revoke Teilnehmer contexts locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn revoke_subscriber_contexts_locked(state: &mut SecurityCoreState, issi: u32, reason: &str) {
     let auth_ids: Vec<String> = state
         .database
@@ -2065,6 +2222,8 @@ fn revoke_subscriber_contexts_locked(state: &mut SecurityCoreState, issi: u32, r
         .filter(|context| context.issi == issi)
         .map(|context| context.id.clone())
         .collect();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for id in auth_ids {
         let _ = revoke_auth_context_locked(state, &id, reason);
     }
@@ -2075,11 +2234,15 @@ fn revoke_subscriber_contexts_locked(state: &mut SecurityCoreState, issi: u32, r
         .filter(|context| context.issi == issi)
         .map(|context| context.id.clone())
         .collect();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for id in dck_ids {
         revoke_dck_locked(state, &id, reason);
     }
 }
 
+// Was: Führt den Arbeitsschritt `revoke_excess_dcks_locked` für revoke excess dcks locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn revoke_excess_dcks_locked(state: &mut SecurityCoreState, issi: u32) {
     let mut active: Vec<DckContextRecord> = state
         .database
@@ -2093,12 +2256,16 @@ fn revoke_excess_dcks_locked(state: &mut SecurityCoreState, issi: u32) {
         .collect();
     active.sort_by(|left, right| left.issued_at.cmp(&right.issued_at));
     let keep = state.config.dck.max_active_per_subscriber.saturating_sub(1);
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while active.len() > keep {
         let oldest = active.remove(0);
         revoke_dck_locked(state, &oldest.id, "superseded by a newer DCK");
     }
 }
 
+// Was: Führt den Arbeitsschritt `raise_alarm_locked` für raise alarm locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn raise_alarm_locked(
     state: &mut SecurityCoreState,
     severity: &str,
@@ -2108,6 +2275,8 @@ fn raise_alarm_locked(
     context_id: Option<String>,
     message: &str,
 ) {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while state.database.alarms.len() >= state.config.limits.max_alarms {
         let removable = state
             .database
@@ -2116,6 +2285,8 @@ fn raise_alarm_locked(
             .filter(|alarm| alarm.state != AlarmState::Open)
             .min_by_key(|alarm| alarm.created_at.clone())
             .map(|alarm| alarm.id.clone());
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match removable {
             Some(id) => {
                 state.database.alarms.remove(&id);
@@ -2144,6 +2315,8 @@ fn raise_alarm_locked(
     );
 }
 
+// Was: Diese Funktion fügt audit locked.
+// Warum: Das Einfügen wird so einheitlich geprüft und verwaltet.
 fn add_audit_locked(
     state: &mut SecurityCoreState,
     actor: &str,
@@ -2162,14 +2335,20 @@ fn add_audit_locked(
         detail,
     });
     state.database.next_audit_sequence = state.database.next_audit_sequence.saturating_add(1);
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while state.database.audit.len() > state.config.limits.max_audit {
         state.database.audit.pop_front();
     }
 }
 
+// Was: Führt den Arbeitsschritt `expire_locked` für expire locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn expire_locked(state: &mut SecurityCoreState) -> bool {
     let now = Utc::now();
     let mut changed = false;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for context in state.database.auth_contexts.values_mut() {
         if matches!(
             context.state,
@@ -2184,6 +2363,8 @@ fn expire_locked(state: &mut SecurityCoreState) -> bool {
             changed = true;
         }
     }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for dck in state.database.dck_contexts.values_mut() {
         if matches!(dck.state, DckState::PendingInstall | DckState::Active)
             && parse_time(&dck.expires_at).is_some_and(|expires| expires <= now)
@@ -2195,6 +2376,8 @@ fn expire_locked(state: &mut SecurityCoreState) -> bool {
             changed = true;
         }
     }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for action in state.database.actions.values_mut() {
         if matches!(action.state, EdgeActionState::Pending | EdgeActionState::InFlight)
             && parse_time(&action.expires_at).is_some_and(|expires| expires <= now)
@@ -2228,6 +2411,8 @@ fn expire_locked(state: &mut SecurityCoreState) -> bool {
         .map(|dck| dck.id.clone())
         .collect();
 
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for subscriber in state.database.subscribers.values_mut() {
         if subscriber
             .lockout_until
@@ -2259,6 +2444,8 @@ fn expire_locked(state: &mut SecurityCoreState) -> bool {
     changed
 }
 
+// Was: Führt den Arbeitsschritt `lockout_active` für lockout active aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn lockout_active(record: &SubscriberSecurityRecord) -> bool {
     record
         .lockout_until
@@ -2267,6 +2454,8 @@ fn lockout_active(record: &SubscriberSecurityRecord) -> bool {
         .is_some_and(|expires| expires > Utc::now())
 }
 
+// Was: Führt den Arbeitsschritt `negotiate_security_class` für negotiate Sicherheit class aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn negotiate_security_class(
     requested: u8,
     minimum: u8,
@@ -2276,6 +2465,8 @@ fn negotiate_security_class(
 ) -> Result<u8, String> {
     let mut candidates = vec![requested, preferred, 3, 2, 1];
     candidates.dedup();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for candidate in candidates {
         if candidate < minimum || !supported.contains(&candidate) {
             continue;
@@ -2290,6 +2481,8 @@ fn negotiate_security_class(
     ))
 }
 
+// Was: Führt den Arbeitsschritt `normalise_supported_classes` für normalise supported classes aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn normalise_supported_classes(values: &[u8], requested: u8) -> Result<Vec<u8>, String> {
     let source = if values.is_empty() {
         vec![requested]
@@ -2297,6 +2490,8 @@ fn normalise_supported_classes(values: &[u8], requested: u8) -> Result<Vec<u8>, 
         values.to_vec()
     };
     let mut result = Vec::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for value in source {
         validate_security_class(value)?;
         if !result.contains(&value) {
@@ -2307,6 +2502,8 @@ fn normalise_supported_classes(values: &[u8], requested: u8) -> Result<Vec<u8>, 
     Ok(result)
 }
 
+// Was: Diese Funktion prüft Sicherheit class.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_security_class(value: u8) -> Result<(), String> {
     if (1..=3).contains(&value) {
         Ok(())
@@ -2315,6 +2512,8 @@ fn validate_security_class(value: u8) -> Result<(), String> {
     }
 }
 
+// Was: Diese Funktion prüft Teilnehmerkennung (ISSI).
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_issi(issi: u32) -> Result<(), String> {
     if issi <= 0x00ff_ffff {
         Ok(())
@@ -2323,8 +2522,12 @@ fn validate_issi(issi: u32) -> Result<(), String> {
     }
 }
 
+// Was: Führt den Arbeitsschritt `unique_strings` für unique strings aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn unique_strings(values: Vec<String>) -> Vec<String> {
     let mut result = Vec::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for value in values {
         let trimmed = value.trim();
         if !trimmed.is_empty() && !result.iter().any(|entry| entry == trimmed) {
@@ -2334,6 +2537,8 @@ fn unique_strings(values: Vec<String>) -> Vec<String> {
     result
 }
 
+// Was: Diese Funktion lädt Datenbank.
+// Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
 fn load_database(config: &SecurityCoreConfig) -> Result<SecurityDatabase, Box<dyn std::error::Error>> {
     if !config.storage.database_path.exists() {
         return Ok(SecurityDatabase::new(config));
@@ -2350,6 +2555,8 @@ fn load_database(config: &SecurityCoreConfig) -> Result<SecurityDatabase, Box<dy
     Ok(database)
 }
 
+// Was: Diese Funktion speichert locked.
+// Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
 fn persist_locked(state: &SecurityCoreState) -> Result<(), Box<dyn std::error::Error>> {
     let path = &state.config.storage.database_path;
     if let Some(parent) = path.parent() {
@@ -2364,14 +2571,20 @@ fn persist_locked(state: &SecurityCoreState) -> Result<(), Box<dyn std::error::E
     Ok(())
 }
 
+// Was: Führt den Arbeitsschritt `now_iso` für now iso aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn now_iso() -> String {
     Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true)
 }
 
+// Was: Führt den Arbeitsschritt `format_time` für format time aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn format_time(value: DateTime<Utc>) -> String {
     value.to_rfc3339_opts(SecondsFormat::Millis, true)
 }
 
+// Was: Diese Funktion liest und prüft time.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_time(value: &str) -> Option<DateTime<Utc>> {
     DateTime::parse_from_rfc3339(value)
         .ok()
@@ -2379,20 +2592,28 @@ fn parse_time(value: &str) -> Option<DateTime<Utc>> {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
     #[test]
+    // Was: Führt den Arbeitsschritt `class_negotiation_prefers_requested` für class negotiation prefers requested aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn class_negotiation_prefers_requested() {
         assert_eq!(negotiate_security_class(3, 1, 1, true, &[1, 3]).unwrap(), 3);
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `class_negotiation_can_fall_back_to_class_one` für class negotiation can fall back to class und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn class_negotiation_can_fall_back_to_class_one() {
         assert_eq!(negotiate_security_class(3, 1, 3, true, &[1]).unwrap(), 1);
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `class_negotiation_rejects_forbidden_fallback` für class negotiation rejects forbidden fallback aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn class_negotiation_rejects_forbidden_fallback() {
         assert!(negotiate_security_class(3, 1, 3, false, &[1]).is_err());
     }

@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Nachrichten an den Schnittstellen zwischen TETRA-Protokollschichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use tetra_core::{BitBuffer, EndpointId, LinkId, TetraAddress, Todo, TxReporter};
 
 use crate::lcmc::fields::chan_alloc_req::CmceChanAllocReq;
@@ -6,15 +9,23 @@ use crate::lcmc::fields::chan_alloc_req::CmceChanAllocReq;
 /// primary carrier's usable frame-18 common-SCCH opportunity. The low 16 bits
 /// carry the CMCE call identifier so UMAC can deduplicate and retire stale pages.
 /// These values are never sent over the air.
+// Was: Legt den festen Wert `TMA_REQ_HANDLE_FRAME18_COMMON_SCCH_PREFIX` für tma req handle frame18 common scch prefix fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const TMA_REQ_HANDLE_FRAME18_COMMON_SCCH_PREFIX: Todo = 0x180000;
+// Was: Legt den festen Wert `TMA_REQ_HANDLE_FRAME18_COMMON_SCCH_MASK` für tma req handle frame18 common scch mask fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const TMA_REQ_HANDLE_FRAME18_COMMON_SCCH_MASK: Todo = 0xFF0000;
 
 #[inline]
+// Was: Führt den Arbeitsschritt `make_frame18_common_scch_handle` für make frame18 common scch handle aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn make_frame18_common_scch_handle(call_id: u16) -> Todo {
     TMA_REQ_HANDLE_FRAME18_COMMON_SCCH_PREFIX | Todo::from(call_id)
 }
 
 #[inline]
+// Was: Diese Funktion liest und prüft frame18 common scch handle.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 pub fn parse_frame18_common_scch_handle(handle: Todo) -> Option<u16> {
     ((handle & TMA_REQ_HANDLE_FRAME18_COMMON_SCCH_MASK)
         == TMA_REQ_HANDLE_FRAME18_COMMON_SCCH_PREFIX)
@@ -25,6 +36,8 @@ pub fn parse_frame18_common_scch_handle(handle: Todo) -> Option<u16> {
 /// TMA-CANCEL request: this primitive shall be used to cancel a TMA-UNITDATA
 /// request primitive that was submitted by the LLC.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tma cancel req in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TmaCancelReq {
     pub req_handle: Todo,
 }
@@ -34,12 +47,16 @@ pub struct TmaCancelReq {
 /// channel in order to indicate that the connection on that channel is lost
 /// (e.g. to indicate local disconnection of any advanced links on that channel).
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tma release ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TmaReleaseInd {
     pub endpoint_id: EndpointId,
 }
 
 /// Clause 22.3.3.1.1 gives some hints on reports in the MS context
 #[derive(Debug, Clone)]
+// Was: Listet die möglichen Varianten für tma report auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum TmaReport {
     /// Confirm handle to the request
     ConfirmHandle,
@@ -59,6 +76,8 @@ pub enum TmaReport {
 /// on the progress or failure of a request procedure. The result of the
 /// transfer shall be passed as a report parameter.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tma report ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TmaReportInd {
     pub req_handle: Todo,
     pub report: TmaReport,
@@ -68,6 +87,8 @@ pub struct TmaReportInd {
 /// TMA-UNITDATA request: this primitive shall be used to request the MAC to
 /// transmit a TM-SDU.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tma unitdata req in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TmaUnitdataReq {
     pub req_handle: Todo,
     pub pdu: BitBuffer,
@@ -94,6 +115,8 @@ pub struct TmaUnitdataReq {
 /// MAC needs to inform the higher layers of a channel allocation received
 /// without an associated TM-SDU.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tma unitdata ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TmaUnitdataInd {
     pub pdu: Option<BitBuffer>,
     pub main_address: TetraAddress,

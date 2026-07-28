@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Schlüsselverwaltung und Schlüsselverteilung.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 """Reference-only decoder for the KMF lab envelope.
 
 This helper is intentionally not a TETRA OTAR implementation. It verifies that a
@@ -13,9 +16,13 @@ import sys
 from pathlib import Path
 
 
+# Was: Führt den Arbeitsschritt `stream` für stream aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def stream(key: bytes, nonce: bytes, context: bytes, length: int) -> bytes:
     out = bytearray()
     counter = 0
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     while len(out) < length:
         out.extend(
             hashlib.sha256(
@@ -30,6 +37,8 @@ def stream(key: bytes, nonce: bytes, context: bytes, length: int) -> bytes:
     return bytes(out[:length])
 
 
+# Was: Führt den Arbeitsschritt `mac` für MAC-Funkzugriffssteuerung aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def mac(key: bytes, nonce: bytes, context: bytes, ciphertext: bytes) -> bytes:
     inner = hashlib.sha256(
         b"netcore-kmf-lab-mac-inner-v1" + key + nonce + context + ciphertext
@@ -37,12 +46,16 @@ def mac(key: bytes, nonce: bytes, context: bytes, ciphertext: bytes) -> bytes:
     return hashlib.sha256(b"netcore-kmf-lab-mac-outer-v1" + key + inner).digest()
 
 
+# Was: Führt den Arbeitsschritt `derive` für derive aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def derive(node_secret: bytes, node_id: str) -> bytes:
     return hashlib.sha256(
         b"netcore-kmf-node-transport-v1" + node_secret + node_id.encode()
     ).digest()
 
 
+# Was: Startet das Programm, lädt die benötigten Einstellungen und übergibt an den eigentlichen Dienstablauf.
+# Warum: Ein klarer Einstiegspunkt hält Startreihenfolge, Fehlerausgabe und geordnetes Beenden zusammen.
 def main() -> int:
     if len(sys.argv) != 3:
         print("usage: lab_edge_unwrap.py BOOTSTRAP_JSON CLAIMED_ACTION_JSON", file=sys.stderr)
@@ -64,5 +77,7 @@ def main() -> int:
     return 0
 
 
+# Was: Startet den Programmablauf nur dann, wenn diese Datei direkt ausgeführt wird.
+# Warum: Beim Import als Modul sollen nur Funktionen bereitstehen und keine Nebenwirkungen automatisch starten.
 if __name__ == "__main__":
     raise SystemExit(main())

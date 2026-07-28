@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 
 use tetra_core::expect_pdu_type;
@@ -15,6 +18,8 @@ use crate::mm::fields::group_identity_downlink::GroupIdentityDownlink;
 
 // Note: The MS shall accept the type 3/4 information elements both in the numerical order as described in annex E and in the order shown in this table.
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für dattach detach Gruppe identity acknowledgement in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DAttachDetachGroupIdentityAcknowledgement {
     /// Type1, 1 bits, Group identity accept/reject
     pub group_identity_accept_reject: u8,
@@ -29,8 +34,12 @@ pub struct DAttachDetachGroupIdentityAcknowledgement {
 }
 
 #[allow(unreachable_code)] // TODO FIXME review, finalize and remove this
+// Was: Implementiert das zugehörige Verhalten für `DAttachDetachGroupIdentityAcknowledgement`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl DAttachDetachGroupIdentityAcknowledgement {
     /// Parse from BitBuffer
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buffer: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let pdu_type = buffer.read_field(4, "pdu_type")?;
         expect_pdu_type!(pdu_type, MmPduTypeDl::DAttachDetachGroupIdentityAcknowledgement)?;
@@ -74,6 +83,8 @@ impl DAttachDetachGroupIdentityAcknowledgement {
     }
 
     /// Serialize this PDU into the given BitBuffer.
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buffer: &mut BitBuffer) -> Result<(), PduParseErr> {
         // PDU Type
         buffer.write_bits(MmPduTypeDl::DAttachDetachGroupIdentityAcknowledgement.into_raw(), 4);
@@ -117,7 +128,11 @@ impl DAttachDetachGroupIdentityAcknowledgement {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for DAttachDetachGroupIdentityAcknowledgement`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for DAttachDetachGroupIdentityAcknowledgement {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -132,12 +147,16 @@ impl fmt::Display for DAttachDetachGroupIdentityAcknowledgement {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use tetra_core::debug;
 
     use super::*;
 
     #[test]
+    // Was: Prüft automatisch den Fall d attach detach Gruppe identity ack.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_d_attach_detach_group_identity_ack() {
         // 10110011011100000100110000001011100000000110101000110011100000
         // |--|         identifier

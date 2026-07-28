@@ -1,13 +1,20 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Metriken, Protokolle und Betriebsüberwachung.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::fs;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
+// Was: Legt den festen Wert `OPEN_LAB_MODE` für open lab mode fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const OPEN_LAB_MODE: &str = "open_lab";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für observability Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ObservabilityConfig {
     pub server: ServerConfig,
     pub storage: StorageConfig,
@@ -19,7 +26,11 @@ pub struct ObservabilityConfig {
     pub alert_rules: Vec<AlertRuleConfig>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for ObservabilityConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for ObservabilityConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             server: ServerConfig::default(),
@@ -34,8 +45,14 @@ impl Default for ObservabilityConfig {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `ObservabilityConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl ObservabilityConfig {
+    // Was: Diese Funktion lädt den vorgesehenen Arbeitsschritt.
+    // Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
     pub fn load(path: Option<&Path>) -> Result<Self, Box<dyn std::error::Error>> {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let mut config = match path {
             Some(path) => toml::from_str::<Self>(&fs::read_to_string(path)?)?,
             None => Self::default(),
@@ -46,6 +63,8 @@ impl ObservabilityConfig {
         Ok(config)
     }
 
+    // Was: Diese Funktion wendet bind override.
+    // Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
     pub fn apply_bind_override(&mut self, bind: Option<SocketAddr>) -> Result<(), String> {
         if let Some(bind) = bind {
             self.server.bind = bind;
@@ -53,6 +72,8 @@ impl ObservabilityConfig {
         self.normalise()
     }
 
+    // Was: Führt den Arbeitsschritt `normalise` für normalise aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn normalise(&mut self) -> Result<(), String> {
         if self.security.mode != OPEN_LAB_MODE {
             return Err(format!(
@@ -89,6 +110,8 @@ impl ObservabilityConfig {
         self.retention.max_audit_records = self.retention.max_audit_records.max(100);
 
         let mut ids = std::collections::HashSet::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for target in &mut self.targets {
             target.target_id = target.target_id.trim().to_ascii_lowercase();
             if target.target_id.is_empty() || !ids.insert(target.target_id.clone()) {
@@ -102,6 +125,8 @@ impl ObservabilityConfig {
             }
         }
         let mut rule_ids = std::collections::HashSet::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for rule in &mut self.alert_rules {
             rule.rule_id = rule.rule_id.trim().to_ascii_lowercase();
             if rule.rule_id.is_empty() || !rule_ids.insert(rule.rule_id.clone()) {
@@ -117,12 +142,18 @@ impl ObservabilityConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für server Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ServerConfig {
     pub bind: SocketAddr,
     pub history_limit: usize,
     pub max_body_bytes: usize,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for ServerConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for ServerConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             bind: "0.0.0.0:8210".parse().expect("valid default bind"),
@@ -134,12 +165,18 @@ impl Default for ServerConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für storage Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct StorageConfig {
     pub state_path: PathBuf,
     pub backup_path: PathBuf,
     pub diagnostic_dir: PathBuf,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for StorageConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for StorageConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             state_path: "/var/lib/netcore-observability/state.json".into(),
@@ -151,6 +188,8 @@ impl Default for StorageConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für Sicherheit Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SecurityConfig {
     pub mode: String,
     pub token_auth: bool,
@@ -158,7 +197,11 @@ pub struct SecurityConfig {
     pub allow_remote_management: bool,
     pub warning_banner: String,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for SecurityConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for SecurityConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             mode: OPEN_LAB_MODE.to_string(),
@@ -172,6 +215,8 @@ impl Default for SecurityConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für collection Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CollectionConfig {
     pub scrape_interval_secs: u64,
     pub request_timeout_ms: u64,
@@ -180,7 +225,11 @@ pub struct CollectionConfig {
     pub ingest_logs: bool,
     pub ingest_traces: bool,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for CollectionConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for CollectionConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             scrape_interval_secs: 15,
@@ -195,6 +244,8 @@ impl Default for CollectionConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für retention Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct RetentionConfig {
     pub metric_retention_secs: u64,
     pub log_retention_secs: u64,
@@ -207,7 +258,11 @@ pub struct RetentionConfig {
     pub max_alerts: usize,
     pub max_audit_records: usize,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for RetentionConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for RetentionConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             metric_retention_secs: 24 * 3600,
@@ -226,6 +281,8 @@ impl Default for RetentionConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für stack Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct StackConfig {
     pub prometheus_url: String,
     pub grafana_url: String,
@@ -236,7 +293,11 @@ pub struct StackConfig {
     pub loki_ready_path: String,
     pub alertmanager_ready_path: String,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for StackConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for StackConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             prometheus_url: "http://127.0.0.1:9090".to_string(),
@@ -253,6 +314,8 @@ impl Default for StackConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für target Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TargetConfig {
     pub target_id: String,
     pub display_name: String,
@@ -265,7 +328,11 @@ pub struct TargetConfig {
     pub enabled: bool,
     pub labels: std::collections::BTreeMap<String, String>,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for TargetConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for TargetConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             target_id: "service".to_string(),
@@ -284,6 +351,8 @@ impl Default for TargetConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+// Was: Bündelt die zusammengehörigen Werte für alert rule Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct AlertRuleConfig {
     pub rule_id: String,
     pub name: String,
@@ -299,7 +368,11 @@ pub struct AlertRuleConfig {
     pub labels: std::collections::BTreeMap<String, String>,
     pub annotations: std::collections::BTreeMap<String, String>,
 }
+// Was: Implementiert das zugehörige Verhalten für `Default for AlertRuleConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for AlertRuleConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             rule_id: "target-down".to_string(),
@@ -319,6 +392,8 @@ impl Default for AlertRuleConfig {
     }
 }
 
+// Was: Führt den Arbeitsschritt `target` für target aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn target(id: &str, name: &str, service: &str, port: u16) -> TargetConfig {
     TargetConfig {
         target_id: id.to_string(),
@@ -333,6 +408,8 @@ fn target(id: &str, name: &str, service: &str, port: u16) -> TargetConfig {
     }
 }
 
+// Was: Führt den Arbeitsschritt `default_targets` für default targets aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_targets() -> Vec<TargetConfig> {
     vec![
         target("node-gateway", "Node Gateway", "node-gateway", 8080),
@@ -354,6 +431,8 @@ fn default_targets() -> Vec<TargetConfig> {
     ]
 }
 
+// Was: Führt den Arbeitsschritt `default_rules` für default rules aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_rules() -> Vec<AlertRuleConfig> {
     vec![
         AlertRuleConfig::default(),

@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für grundlegende TETRA-Datentypen und Hilfsfunktionen.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! PHY-layer types that are used across multiple layers
 //!
 //! These types originate from the PHY layer but are referenced by LMAC, UMAC,
@@ -5,6 +8,8 @@
 
 /// Identifies which block(s) within a timeslot
 #[derive(Debug, PartialEq, Clone, Copy)]
+// Was: Listet die möglichen Varianten für phy block num auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum PhyBlockNum {
     /// Both half-slots combined (full slot)
     Both,
@@ -18,6 +23,8 @@ pub enum PhyBlockNum {
 
 /// Physical block types
 #[derive(Debug, PartialEq, Clone, Copy)]
+// Was: Listet die möglichen Varianten für phy block type auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum PhyBlockType {
     BBK,
     /// TODO FIXME Merge SB1 and SB2 into SDB
@@ -31,6 +38,8 @@ pub enum PhyBlockType {
 
 /// Burst types (Clause 9.4.4.1)
 #[derive(Debug, PartialEq, Clone, Copy)]
+// Was: Listet die möglichen Varianten für burst type auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum BurstType {
     /// Control Uplink Burst
     CUB,
@@ -44,6 +53,8 @@ pub enum BurstType {
 
 /// Training sequences
 #[derive(Debug, Copy, Clone, PartialEq, Default)]
+// Was: Listet die möglichen Varianten für training sequence auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum TrainingSequence {
     /// 22 n bits
     NormalTrainSeq1 = 1,

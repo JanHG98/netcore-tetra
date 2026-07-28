@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Einlesen und Prüfen der TETRA-Konfiguration.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::HashMap;
 
 use serde::Deserialize;
@@ -10,6 +13,8 @@ use toml::Value;
 /// health matrix used by edge fallback. A direct legacy Control-Room endpoint
 /// may still be configured explicitly.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für cfg Steuerung room in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgControlRoom {
     /// Master switch.  A present section defaults to enabled=true.
     pub enabled: bool,
@@ -39,6 +44,8 @@ pub struct CfgControlRoom {
 }
 
 #[derive(Default, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für cfg Steuerung room dto in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgControlRoomDto {
     #[serde(default)]
     pub enabled: Option<bool>,
@@ -64,6 +71,8 @@ pub struct CfgControlRoomDto {
     pub extra: HashMap<String, Value>,
 }
 
+// Was: Diese Funktion wendet Steuerung room patch.
+// Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
 pub fn apply_control_room_patch(src: CfgControlRoomDto) -> Result<CfgControlRoom, String> {
     let enabled = src.enabled.unwrap_or(true);
 
@@ -80,6 +89,8 @@ pub fn apply_control_room_patch(src: CfgControlRoomDto) -> Result<CfgControlRoom
         }
     });
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let credentials = match (src.username, src.password, token) {
         (Some(u), Some(p), None) => Some((u, p)),
         (None, None, Some(token)) => Some(("node".to_string(), token)),
@@ -90,6 +101,8 @@ pub fn apply_control_room_patch(src: CfgControlRoomDto) -> Result<CfgControlRoom
         _ => return Err("control_room: username and password must be set together, or use token/auth_token".to_string()),
     };
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let host = match (enabled, src.host) {
         (true, Some(host)) if !host.trim().is_empty() => host,
         (true, _) => return Err("control_room: host is required when enabled".to_string()),
@@ -97,6 +110,8 @@ pub fn apply_control_room_patch(src: CfgControlRoomDto) -> Result<CfgControlRoom
         (false, None) => String::new(),
     };
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let port = match (enabled, src.port) {
         (true, Some(port)) if port > 0 => port,
         (true, _) => return Err("control_room: port is required and must be > 0 when enabled".to_string()),
@@ -126,10 +141,14 @@ pub fn apply_control_room_patch(src: CfgControlRoomDto) -> Result<CfgControlRoom
 
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
     #[test]
+    // Was: Führt den Arbeitsschritt `central_sds_routing_defaults_to_disabled` für central TETRA-Kurznachricht (SDS) routing defaults to disabled aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn central_sds_routing_defaults_to_disabled() {
         let dto: CfgControlRoomDto = toml::from_str(
             r#"
@@ -142,6 +161,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `central_sds_routing_can_be_enabled` für central TETRA-Kurznachricht (SDS) routing can be enabled aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn central_sds_routing_can_be_enabled() {
         let dto: CfgControlRoomDto = toml::from_str(
             r#"

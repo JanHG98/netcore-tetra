@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für gespeicherte Aufzeichnungen, TTS- und Mediendateien.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 
@@ -6,6 +9,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+// Was: Bündelt die zusammengehörigen Werte für broadcast hint in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct BroadcastHint {
     pub destination_kind: Option<String>,
     pub destination_id: Option<u32>,
@@ -14,6 +19,8 @@ pub struct BroadcastHint {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+// Was: Bündelt die zusammengehörigen Werte für audio metadata in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct AudioMetadata {
     pub format: String,
     pub codec: Option<String>,
@@ -26,6 +33,8 @@ pub struct AudioMetadata {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für asset Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct AssetRecord {
     pub asset_id: String,
     pub title: String,
@@ -66,6 +75,8 @@ pub struct AssetRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für dispatch job in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DispatchJob {
     pub job_id: String,
     pub asset_id: String,
@@ -90,6 +101,8 @@ pub struct DispatchJob {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Ereignis Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct EventRecord {
     pub seq: u64,
     pub timestamp: DateTime<Utc>,
@@ -100,6 +113,8 @@ pub struct EventRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für audit Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct AuditRecord {
     pub seq: u64,
     pub timestamp: DateTime<Utc>,
@@ -112,6 +127,8 @@ pub struct AuditRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für backup Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct BackupRecord {
     pub backup_id: String,
     pub path: PathBuf,
@@ -121,6 +138,8 @@ pub struct BackupRecord {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Status view in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct StatusView {
     pub service: String,
     pub security_mode: String,
@@ -150,6 +169,8 @@ pub struct StatusView {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für upload input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct UploadInput {
     pub name: String,
     pub filename: String,
@@ -165,6 +186,8 @@ pub struct UploadInput {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für import url input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ImportUrlInput {
     pub schema: Option<String>,
     pub source: Option<String>,
@@ -185,6 +208,8 @@ pub struct ImportUrlInput {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Aufzeichnung import input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct RecorderImportInput {
     pub recording_id: String,
     pub name: Option<String>,
@@ -193,6 +218,8 @@ pub struct RecorderImportInput {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für asset update input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct AssetUpdateInput {
     pub title: Option<String>,
     pub description: Option<String>,
@@ -203,17 +230,23 @@ pub struct AssetUpdateInput {
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]
+// Was: Bündelt die zusammengehörigen Werte für action input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ActionInput {
     pub actor: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]
+// Was: Bündelt die zusammengehörigen Werte für approval input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ApprovalInput {
     pub actor: Option<String>,
     pub note: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für dispatch input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DispatchInput {
     pub asset_id: String,
     pub session_id: Option<String>,
@@ -226,6 +259,8 @@ pub struct DispatchInput {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Konfiguration view in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ConfigView {
     pub server_bind: String,
     pub public_base_url: String,
@@ -245,6 +280,8 @@ pub struct ConfigView {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für import claim in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ImportClaim {
     pub asset_id: String,
     pub source_url: String,
@@ -255,11 +292,15 @@ pub struct ImportClaim {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für processing claim in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ProcessingClaim {
     pub asset: AssetRecord,
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für dispatch claim in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DispatchClaim {
     pub job: DispatchJob,
     pub tetra_path: PathBuf,
@@ -267,6 +308,8 @@ pub struct DispatchClaim {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für process result in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ProcessResult {
     pub metadata: AudioMetadata,
     pub preview_path: Option<PathBuf>,

@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Schlüsselverwaltung und Schlüsselverteilung.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::{BTreeMap, VecDeque};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -21,13 +24,21 @@ use crate::protocol::{
     OtarQueueInput, PolicyInput, OTAR_EDGE_PROTOCOL_VERSION,
 };
 
+// Was: Legt den festen Wert `DATABASE_SCHEMA_VERSION` für Datenbank schema version fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const DATABASE_SCHEMA_VERSION: u32 = 1;
+// Was: Legt den festen Wert `VAULT_SCHEMA_VERSION` für vault schema version fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const VAULT_SCHEMA_VERSION: u32 = 1;
+// Was: Legt den festen Wert `SERVICE_WARNING` für Dienst warning fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const SERVICE_WARNING: &str =
     "OPEN LAB: no authentication, no tokens and no TLS. Restrict this service to an isolated management network.";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für key Zustand auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum KeyState {
     Draft,
     Staged,
@@ -40,6 +51,8 @@ pub enum KeyState {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für otar job Zustand auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum OtarJobState {
     AwaitingApproval,
     Approved,
@@ -55,6 +68,8 @@ pub enum OtarJobState {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für delivery Zustand auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum DeliveryState {
     Staged,
     Pending,
@@ -67,6 +82,8 @@ pub enum DeliveryState {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für action Zustand auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum ActionState {
     Staged,
     Pending,
@@ -78,6 +95,8 @@ pub enum ActionState {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für policy Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PolicyRecord {
     pub revision: u64,
     pub operating_mode: String,
@@ -91,6 +110,8 @@ pub struct PolicyRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für key Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct KeyRecord {
     pub id: String,
     pub kind: String,
@@ -119,6 +140,8 @@ pub struct KeyRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Netzknoten transport Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct NodeTransportRecord {
     pub node_id: String,
     pub display_name: String,
@@ -137,6 +160,8 @@ pub struct NodeTransportRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für otar approval Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct OtarApprovalRecord {
     pub actor: String,
     pub timestamp: String,
@@ -144,6 +169,8 @@ pub struct OtarApprovalRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für otar delivery Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct OtarDeliveryRecord {
     pub id: String,
     pub node_id: String,
@@ -157,6 +184,8 @@ pub struct OtarDeliveryRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für otar job Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct OtarJobRecord {
     pub id: String,
     pub key_id: String,
@@ -181,6 +210,8 @@ pub struct OtarJobRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für otar action Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct OtarActionRecord {
     pub id: String,
     pub sequence: u64,
@@ -198,6 +229,8 @@ pub struct OtarActionRecord {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für claimed otar action in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ClaimedOtarAction {
     pub protocol_version: &'static str,
     pub id: String,
@@ -220,6 +253,8 @@ pub struct ClaimedOtarAction {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für audit Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct AuditRecord {
     pub sequence: u64,
     pub timestamp: String,
@@ -233,6 +268,8 @@ pub struct AuditRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für backup Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct BackupRecord {
     pub id: String,
     pub created_at: String,
@@ -246,6 +283,8 @@ pub struct BackupRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Schlüsselverwaltung Datenbank in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct KmfDatabase {
     schema_version: u32,
     revision: u64,
@@ -261,12 +300,16 @@ struct KmfDatabase {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für vault Datenbank in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct VaultDatabase {
     schema_version: u32,
     revision: u64,
     entries: BTreeMap<String, SealedBlob>,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für Schlüsselverwaltung Zustand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct KmfState {
     config: KmfConfig,
     database: KmfDatabase,
@@ -277,11 +320,15 @@ struct KmfState {
 }
 
 #[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für shared Schlüsselverwaltung in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SharedKmf {
     inner: Arc<Mutex<KmfState>>,
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Schlüsselverwaltung Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct KmfStatus {
     pub service: &'static str,
     pub version: &'static str,
@@ -313,6 +360,8 @@ pub struct KmfStatus {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für redacted export in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct RedactedExport {
     pub generated_at: String,
     pub status: KmfStatus,
@@ -326,7 +375,11 @@ pub struct RedactedExport {
     pub note: &'static str,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `KmfDatabase`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl KmfDatabase {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     fn new(config: &KmfConfig) -> Self {
         let now = now_iso();
         Self {
@@ -355,7 +408,11 @@ impl KmfDatabase {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `VaultDatabase`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl VaultDatabase {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     fn new() -> Self {
         Self {
             schema_version: VAULT_SCHEMA_VERSION,
@@ -365,7 +422,11 @@ impl VaultDatabase {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SharedKmf`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SharedKmf {
+    // Was: Diese Funktion lädt den vorgesehenen Arbeitsschritt.
+    // Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
     pub fn load(config: KmfConfig) -> Result<Self, Box<dyn std::error::Error>> {
         let master_key = load_or_create_secret(
             &config.storage.master_key_path,
@@ -388,11 +449,15 @@ impl SharedKmf {
         Ok(kmf)
     }
 
+    // Was: Führt den Arbeitsschritt `status` für Status aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn status(&self) -> KmfStatus {
         let state = self.inner.lock().expect("KMF state mutex poisoned");
         status_locked(&state)
     }
 
+    // Was: Führt den Arbeitsschritt `redacted_config` für redacted Konfiguration aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn redacted_config(&self) -> Value {
         let state = self.inner.lock().expect("KMF state mutex poisoned");
         json!({
@@ -426,6 +491,8 @@ impl SharedKmf {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `policy` für policy aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn policy(&self) -> PolicyRecord {
         self.inner
             .lock()
@@ -435,6 +502,8 @@ impl SharedKmf {
             .clone()
     }
 
+    // Was: Diese Funktion aktualisiert policy.
+    // Warum: Bestehender Zustand wird dadurch kontrolliert und nach einheitlichen Regeln geändert.
     pub fn update_policy(&self, input: PolicyInput, actor: &str) -> Result<PolicyRecord, String> {
         if !matches!(
             input.operating_mode.as_str(),
@@ -463,15 +532,21 @@ impl SharedKmf {
         if old_mode != OPERATING_MODE_AUTHORITATIVE
             && state.database.policy.operating_mode == OPERATING_MODE_AUTHORITATIVE
         {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for action in state.database.actions.values_mut() {
                 if action.state == ActionState::Staged {
                     action.state = ActionState::Pending;
                     action.updated_at = now_iso();
                 }
             }
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for job in state.database.jobs.values_mut() {
                 if job.state == OtarJobState::Staged {
                     job.state = OtarJobState::Queued;
+                    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                     for delivery in &mut job.deliveries {
                         if delivery.state == DeliveryState::Staged {
                             delivery.state = DeliveryState::Pending;
@@ -494,6 +569,8 @@ impl SharedKmf {
         Ok(policy)
     }
 
+    // Was: Führt den Arbeitsschritt `keys` für keys aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn keys(&self) -> Vec<KeyRecord> {
         let state = self.inner.lock().expect("KMF state mutex poisoned");
         let mut values = state.database.keys.values().cloned().collect::<Vec<_>>();
@@ -506,6 +583,8 @@ impl SharedKmf {
         values
     }
 
+    // Was: Führt den Arbeitsschritt `key` für key aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn key(&self, id: &str) -> Option<KeyRecord> {
         self.inner
             .lock()
@@ -516,6 +595,8 @@ impl SharedKmf {
             .cloned()
     }
 
+    // Was: Diese Funktion erstellt key.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     pub fn create_key(&self, input: KeyCreateInput, actor: &str) -> Result<KeyRecord, String> {
         let kind = input.kind.trim().to_ascii_uppercase();
         let scope = input.scope.trim().to_ascii_lowercase();
@@ -612,6 +693,8 @@ impl SharedKmf {
         Ok(record)
     }
 
+    // Was: Führt den Arbeitsschritt `rotate_key` für rotate key aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn rotate_key(&self, id: &str, input: KeyRotateInput) -> Result<KeyRecord, String> {
         let actor = input.actor.unwrap_or_else(|| "open-lab-api".to_string());
         let mut state = self.inner.lock().map_err(|error| error.to_string())?;
@@ -698,10 +781,14 @@ impl SharedKmf {
         Ok(successor)
     }
 
+    // Was: Führt den Arbeitsschritt `stage_key` für stage key aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn stage_key(&self, id: &str, input: LifecycleInput) -> Result<KeyRecord, String> {
         self.change_key_state(id, KeyState::Staged, input, "key.stage")
     }
 
+    // Was: Diese Funktion aktiviert key.
+    // Warum: Die Zustandsänderung bleibt damit kontrolliert und für alle Aufrufer gleich.
     pub fn activate_key(&self, id: &str, input: LifecycleInput) -> Result<KeyRecord, String> {
         let actor = input.actor.unwrap_or_else(|| "open-lab-api".to_string());
         let reason = clean_text(input.reason.unwrap_or_default(), 500);
@@ -719,6 +806,8 @@ impl SharedKmf {
             return Err("key material is unavailable".to_string());
         }
         if !state.database.policy.allow_overlapping_crypto_periods {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for other in state.database.keys.values() {
                 if other.id != candidate.id
                     && other.state == KeyState::Active
@@ -734,6 +823,8 @@ impl SharedKmf {
         }
         let now = now_iso();
         if state.database.policy.auto_retire_predecessor {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for other in state.database.keys.values_mut() {
                 if other.id != candidate.id
                     && other.state == KeyState::Active
@@ -768,14 +859,20 @@ impl SharedKmf {
         Ok(out)
     }
 
+    // Was: Führt den Arbeitsschritt `retire_key` für retire key aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn retire_key(&self, id: &str, input: LifecycleInput) -> Result<KeyRecord, String> {
         self.change_key_state(id, KeyState::Retired, input, "key.retire")
     }
 
+    // Was: Führt den Arbeitsschritt `revoke_key` für revoke key aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn revoke_key(&self, id: &str, input: LifecycleInput) -> Result<KeyRecord, String> {
         self.change_key_state(id, KeyState::Revoked, input, "key.revoke")
     }
 
+    // Was: Führt den Arbeitsschritt `destroy_key` für destroy key aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn destroy_key(&self, id: &str, input: LifecycleInput) -> Result<KeyRecord, String> {
         let actor = input.actor.unwrap_or_else(|| "open-lab-api".to_string());
         let reason = clean_text(input.reason.unwrap_or_default(), 500);
@@ -823,6 +920,8 @@ impl SharedKmf {
         Ok(out)
     }
 
+    // Was: Führt den Arbeitsschritt `change_key_state` für change key Zustand aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn change_key_state(
         &self,
         id: &str,
@@ -846,6 +945,8 @@ impl SharedKmf {
             record.state = target;
             record.lifecycle_reason = non_empty(reason.clone());
             record.revision = record.revision.saturating_add(1);
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match target {
                 KeyState::Retired => record.retired_at = Some(now.clone()),
                 KeyState::Revoked => record.revoked_at = Some(now.clone()),
@@ -876,11 +977,15 @@ impl SharedKmf {
         Ok(out)
     }
 
+    // Was: Führt den Arbeitsschritt `nodes` für nodes aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn nodes(&self) -> Vec<NodeTransportRecord> {
         let state = self.inner.lock().expect("KMF state mutex poisoned");
         state.database.nodes.values().cloned().collect()
     }
 
+    // Was: Diese Funktion erstellt Netzknoten.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     pub fn create_node(
         &self,
         input: NodeCreateInput,
@@ -959,6 +1064,8 @@ impl SharedKmf {
         Ok(record)
     }
 
+    // Was: Diese Funktion setzt Netzknoten enabled.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_node_enabled(
         &self,
         node_id: &str,
@@ -1011,6 +1118,8 @@ impl SharedKmf {
         Ok(out)
     }
 
+    // Was: Führt den Arbeitsschritt `jobs` für jobs aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn jobs(&self) -> Vec<OtarJobRecord> {
         let state = self.inner.lock().expect("KMF state mutex poisoned");
         let mut jobs = state.database.jobs.values().cloned().collect::<Vec<_>>();
@@ -1018,10 +1127,14 @@ impl SharedKmf {
         jobs
     }
 
+    // Was: Führt den Arbeitsschritt `job` für job aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn job(&self, id: &str) -> Option<OtarJobRecord> {
         self.inner.lock().ok()?.database.jobs.get(id).cloned()
     }
 
+    // Was: Diese Funktion erstellt job.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     pub fn create_job(&self, input: OtarJobCreateInput) -> Result<OtarJobRecord, String> {
         let actor = input.actor.unwrap_or_else(|| "open-lab-api".to_string());
         let mut state = self.inner.lock().map_err(|error| error.to_string())?;
@@ -1046,6 +1159,8 @@ impl SharedKmf {
         let mut target_nodes = input.target_nodes;
         target_nodes.sort();
         target_nodes.dedup();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for node_id in &target_nodes {
             let node = state
                 .database
@@ -1113,6 +1228,8 @@ impl SharedKmf {
         Ok(record)
     }
 
+    // Was: Führt den Arbeitsschritt `approve_job` für approve job aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn approve_job(
         &self,
         id: &str,
@@ -1163,6 +1280,8 @@ impl SharedKmf {
         Ok(out)
     }
 
+    // Was: Führt den Arbeitsschritt `queue_job` für Warteschlange job aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn queue_job(&self, id: &str, input: OtarQueueInput) -> Result<OtarJobRecord, String> {
         let actor = input.actor.unwrap_or_else(|| "open-lab-api".to_string());
         let mut state = self.inner.lock().map_err(|error| error.to_string())?;
@@ -1188,6 +1307,8 @@ impl SharedKmf {
         if parse_time(&job_snapshot.expires_at)? <= now_dt {
             return Err("OTAR job has already expired".to_string());
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for node_id in &job_snapshot.target_nodes {
             let node = state
                 .database
@@ -1202,6 +1323,8 @@ impl SharedKmf {
             state.database.policy.operating_mode == OPERATING_MODE_AUTHORITATIVE;
         let now = now_iso();
         let mut deliveries = Vec::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for node_id in &job_snapshot.target_nodes {
             let delivery_id = Uuid::new_v4().to_string();
             let action_id = Uuid::new_v4().to_string();
@@ -1277,6 +1400,8 @@ impl SharedKmf {
         Ok(out)
     }
 
+    // Was: Diese Funktion bricht job.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn cancel_job(&self, id: &str, input: LifecycleInput) -> Result<OtarJobRecord, String> {
         let actor = input.actor.unwrap_or_else(|| "open-lab-api".to_string());
         let reason = clean_text(input.reason.unwrap_or_default(), 500);
@@ -1288,6 +1413,8 @@ impl SharedKmf {
             .filter(|action| action.job_id == id)
             .map(|action| action.id.clone())
             .collect::<Vec<_>>();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for action_id in action_ids {
             if let Some(action) = state.database.actions.get_mut(&action_id) {
                 if !matches!(action.state, ActionState::Applied | ActionState::Expired) {
@@ -1303,6 +1430,8 @@ impl SharedKmf {
             .get_mut(id)
             .ok_or_else(|| "OTAR job not found".to_string())?;
         job.state = OtarJobState::Cancelled;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for delivery in &mut job.deliveries {
             if delivery.state != DeliveryState::Applied {
                 delivery.state = DeliveryState::Cancelled;
@@ -1324,6 +1453,8 @@ impl SharedKmf {
         Ok(out)
     }
 
+    // Was: Führt den Arbeitsschritt `actions` für actions aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn actions(&self) -> Vec<OtarActionRecord> {
         let state = self.inner.lock().expect("KMF state mutex poisoned");
         let mut actions = state
@@ -1336,6 +1467,8 @@ impl SharedKmf {
         actions
     }
 
+    // Was: Führt den Arbeitsschritt `claim_actions` für claim actions aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn claim_actions(&self, input: EdgeClaimInput) -> Result<Vec<ClaimedOtarAction>, String> {
         validate_node_id(&input.node_id)?;
         let mut state = self.inner.lock().map_err(|error| error.to_string())?;
@@ -1381,6 +1514,8 @@ impl SharedKmf {
             .map(|action| action.id.clone())
             .collect::<Vec<_>>();
         let mut claimed = Vec::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for action_id in candidate_ids {
             let action = state
                 .database
@@ -1472,6 +1607,8 @@ impl SharedKmf {
         Ok(claimed)
     }
 
+    // Was: Führt den Arbeitsschritt `acknowledge_action` für acknowledge action aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn acknowledge_action(
         &self,
         id: &str,
@@ -1511,6 +1648,8 @@ impl SharedKmf {
         }
         action.updated_at = now_iso();
         let out = action.clone();
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let delivery_state = match out.state {
             ActionState::Applied => DeliveryState::Applied,
             ActionState::Failed => DeliveryState::Failed,
@@ -1543,6 +1682,8 @@ impl SharedKmf {
         Ok(out)
     }
 
+    // Was: Führt den Arbeitsschritt `audit` für audit aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn audit(&self, limit: usize) -> Vec<AuditRecord> {
         let state = self.inner.lock().expect("KMF state mutex poisoned");
         state
@@ -1555,6 +1696,8 @@ impl SharedKmf {
             .collect()
     }
 
+    // Was: Führt den Arbeitsschritt `backups` für backups aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn backups(&self) -> Vec<BackupRecord> {
         self.inner
             .lock()
@@ -1567,6 +1710,8 @@ impl SharedKmf {
             .collect()
     }
 
+    // Was: Diese Funktion erstellt backup.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     pub fn create_backup(&self, input: BackupInput) -> Result<BackupRecord, String> {
         let actor = input.actor.unwrap_or_else(|| "open-lab-api".to_string());
         let note = clean_text(input.note.unwrap_or_default(), 1_000);
@@ -1608,6 +1753,8 @@ impl SharedKmf {
         let manifest = serde_json::to_vec_pretty(&record).map_err(|error| error.to_string())?;
         write_private_file(&directory.join("manifest.json"), &manifest)?;
         state.database.backups.push_back(record.clone());
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while state.database.backups.len() > state.config.server.history_limit {
             state.database.backups.pop_front();
         }
@@ -1628,12 +1775,18 @@ impl SharedKmf {
         Ok(record)
     }
 
+    // Was: Führt den Arbeitsschritt `maintenance_tick` für maintenance tick aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn maintenance_tick(&self) -> Result<KmfStatus, String> {
         let mut state = self.inner.lock().map_err(|error| error.to_string())?;
         let now = Utc::now();
         let mut changed = false;
         let action_ids = state.database.actions.keys().cloned().collect::<Vec<_>>();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for action_id in action_ids {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let snapshot = match state.database.actions.get(&action_id).cloned() {
                 Some(action) => action,
                 None => continue,
@@ -1706,12 +1859,18 @@ impl SharedKmf {
             }
         }
         let job_ids = state.database.jobs.keys().cloned().collect::<Vec<_>>();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for job_id in job_ids {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let snapshot = match state.database.jobs.get(&job_id).cloned() {
                 Some(job) => job,
                 None => continue,
             };
             if !is_terminal_job(snapshot.state) && parse_time(&snapshot.expires_at)? <= now {
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for action in state.database.actions.values_mut() {
                     if action.job_id == job_id
                         && matches!(
@@ -1728,6 +1887,8 @@ impl SharedKmf {
                     job.state = OtarJobState::Expired;
                     job.completed_at = Some(now_iso());
                     job.revision = job.revision.saturating_add(1);
+                    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                     for delivery in &mut job.deliveries {
                         if !matches!(delivery.state, DeliveryState::Applied) {
                             delivery.state = DeliveryState::Expired;
@@ -1740,6 +1901,8 @@ impl SharedKmf {
             }
         }
         let key_ids = state.database.keys.keys().cloned().collect::<Vec<_>>();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for key_id in key_ids {
             let end = state
                 .database
@@ -1774,6 +1937,8 @@ impl SharedKmf {
         Ok(status_locked(&state))
     }
 
+    // Was: Führt den Arbeitsschritt `export` für export aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn export(&self) -> RedactedExport {
         let state = self.inner.lock().expect("KMF state mutex poisoned");
         RedactedExport {
@@ -1790,6 +1955,8 @@ impl SharedKmf {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `metrics` für Messwerte aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn metrics(&self) -> String {
         let status = self.status();
         format!(
@@ -1822,11 +1989,15 @@ impl SharedKmf {
         )
     }
 
+    // Was: Diese Funktion stellt Laufzeit Zustand.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn recover_runtime_state(&self) -> Result<(), String> {
         let mut state = self.inner.lock().map_err(|error| error.to_string())?;
         let mut changed = false;
         let authoritative =
             state.database.policy.operating_mode == OPERATING_MODE_AUTHORITATIVE;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for action in state.database.actions.values_mut() {
             if action.state == ActionState::InFlight {
                 action.state = if authoritative {
@@ -1854,6 +2025,8 @@ impl SharedKmf {
     }
 }
 
+// Was: Führt den Arbeitsschritt `status_locked` für Status locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn status_locked(state: &KmfState) -> KmfStatus {
     let total_keys = state.database.keys.len();
     let active_keys = state
@@ -1916,12 +2089,16 @@ fn status_locked(state: &KmfState) -> KmfStatus {
     }
 }
 
+// Was: Diese Funktion prüft key kind scope.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_key_kind_scope(kind: &str, scope: &str, value: Option<&str>) -> Result<(), String> {
     let kind = kind.to_ascii_uppercase();
     let scope = scope.to_ascii_lowercase();
     if !matches!(kind.as_str(), "CCK" | "GCK" | "SCK") {
         return Err("kind must be CCK, GCK or SCK".to_string());
     }
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match kind.as_str() {
         "CCK" if !matches!(scope.as_str(), "network" | "location_area") => {
             return Err("CCK scope must be network or location_area".to_string());
@@ -1953,6 +2130,8 @@ fn validate_key_kind_scope(kind: &str, scope: &str, value: Option<&str>) -> Resu
     Ok(())
 }
 
+// Was: Diese Funktion prüft Netzknoten Kennung.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_node_id(node_id: &str) -> Result<(), String> {
     if node_id.is_empty() || node_id.len() > 96 {
         return Err("node_id must contain between 1 and 96 characters".to_string());
@@ -1966,6 +2145,8 @@ fn validate_node_id(node_id: &str) -> Result<(), String> {
     Ok(())
 }
 
+// Was: Diese Funktion prüft 24bit values.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_24bit_values(values: &[u32], label: &str) -> Result<(), String> {
     if values.iter().any(|value| *value > 0x00ff_ffff) {
         return Err(format!("{label} values must fit into 24 bits"));
@@ -1973,6 +2154,8 @@ fn validate_24bit_values(values: &[u32], label: &str) -> Result<(), String> {
     Ok(())
 }
 
+// Was: Führt den Arbeitsschritt `next_key_version` für next key version aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn next_key_version(
     database: &KmfDatabase,
     kind: &str,
@@ -1993,12 +2176,16 @@ fn next_key_version(
         .saturating_add(1)
 }
 
+// Was: Führt den Arbeitsschritt `same_scope` für same scope aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn same_scope(left: &KeyRecord, right: &KeyRecord) -> bool {
     left.kind == right.kind
         && left.scope == right.scope
         && left.scope_value == right.scope_value
 }
 
+// Was: Führt den Arbeitsschritt `periods_overlap` für periods overlap aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn periods_overlap(left: &KeyRecord, right: &KeyRecord) -> Result<bool, String> {
     let left_start = parse_time(&left.crypto_period_start)?;
     let left_end = parse_time(&left.crypto_period_end)?;
@@ -2007,6 +2194,8 @@ fn periods_overlap(left: &KeyRecord, right: &KeyRecord) -> Result<bool, String> 
     Ok(left_start < right_end && right_start < left_end)
 }
 
+// Was: Diese Funktion öffnet vault entry.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn open_vault_entry(state: &KmfState, reference: &str) -> Result<Vec<u8>, String> {
     let blob = state
         .vault
@@ -2016,6 +2205,8 @@ fn open_vault_entry(state: &KmfState, reference: &str) -> Result<Vec<u8>, String
     open(&state.master_key, blob, reference.as_bytes())
 }
 
+// Was: Diese Funktion bricht actions for Netzknoten locked.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn cancel_actions_for_node_locked(state: &mut KmfState, node_id: &str, reason: &str) {
     let snapshots = state
         .database
@@ -2037,6 +2228,8 @@ fn cancel_actions_for_node_locked(state: &mut KmfState, node_id: &str, reason: &
         })
         .collect::<Vec<_>>();
     let mut affected_jobs = Vec::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (action_id, job_id, delivery_id) in snapshots {
         if let Some(action) = state.database.actions.get_mut(&action_id) {
             action.state = ActionState::Cancelled;
@@ -2055,11 +2248,15 @@ fn cancel_actions_for_node_locked(state: &mut KmfState, node_id: &str, reason: &
     }
     affected_jobs.sort();
     affected_jobs.dedup();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for job_id in affected_jobs {
         recompute_job_state_locked(state, &job_id);
     }
 }
 
+// Was: Diese Funktion bricht actions for key locked.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn cancel_actions_for_key_locked(state: &mut KmfState, key_id: &str, reason: &str) {
     let snapshots = state
         .database
@@ -2080,6 +2277,8 @@ fn cancel_actions_for_key_locked(state: &mut KmfState, key_id: &str, reason: &st
             )
         })
         .collect::<Vec<_>>();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (action_id, job_id, delivery_id) in snapshots {
         if let Some(action) = state.database.actions.get_mut(&action_id) {
             action.state = ActionState::Cancelled;
@@ -2095,6 +2294,8 @@ fn cancel_actions_for_key_locked(state: &mut KmfState, key_id: &str, reason: &st
             Some(reason.to_string()),
         );
     }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for job in state.database.jobs.values_mut() {
         if job.key_id == key_id && !is_terminal_job(job.state) {
             job.state = OtarJobState::Cancelled;
@@ -2104,6 +2305,8 @@ fn cancel_actions_for_key_locked(state: &mut KmfState, key_id: &str, reason: &st
     }
 }
 
+// Was: Diese Funktion aktualisiert delivery locked.
+// Warum: Bestehender Zustand wird dadurch kontrolliert und nach einheitlichen Regeln geändert.
 fn update_delivery_locked(
     state: &mut KmfState,
     job_id: &str,
@@ -2130,6 +2333,8 @@ fn update_delivery_locked(
     }
 }
 
+// Was: Führt den Arbeitsschritt `recompute_job_state_locked` für recompute job Zustand locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn recompute_job_state_locked(state: &mut KmfState, job_id: &str) {
     if let Some(job) = state.database.jobs.get_mut(job_id) {
         let applied = job
@@ -2166,6 +2371,8 @@ fn recompute_job_state_locked(state: &mut KmfState, job_id: &str) {
     }
 }
 
+// Was: Prüft, ob terminal job zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
 fn is_terminal_job(state: OtarJobState) -> bool {
     matches!(
         state,
@@ -2177,6 +2384,8 @@ fn is_terminal_job(state: OtarJobState) -> bool {
     )
 }
 
+// Was: Führt den Arbeitsschritt `append_audit_locked` für append audit locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn append_audit_locked(
     state: &mut KmfState,
     actor: &str,
@@ -2211,11 +2420,15 @@ fn append_audit_locked(
         previous_hash,
         record_hash,
     });
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while state.database.audit.len() > state.config.limits.max_audit {
         state.database.audit.pop_front();
     }
 }
 
+// Was: Führt den Arbeitsschritt `audit_head_hash` für audit head hash aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn audit_head_hash(database: &KmfDatabase) -> String {
     database
         .audit
@@ -2224,6 +2437,8 @@ fn audit_head_hash(database: &KmfDatabase) -> String {
         .unwrap_or_else(|| "0".repeat(64))
 }
 
+// Was: Diese Funktion lädt Datenbank.
+// Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
 fn load_database(config: &KmfConfig) -> Result<KmfDatabase, Box<dyn std::error::Error>> {
     if !config.storage.database_path.exists() {
         return Ok(KmfDatabase::new(config));
@@ -2240,6 +2455,8 @@ fn load_database(config: &KmfConfig) -> Result<KmfDatabase, Box<dyn std::error::
     Ok(database)
 }
 
+// Was: Diese Funktion lädt vault.
+// Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
 fn load_vault(config: &KmfConfig) -> Result<VaultDatabase, Box<dyn std::error::Error>> {
     if !config.storage.vault_path.exists() {
         return Ok(VaultDatabase::new());
@@ -2252,6 +2469,8 @@ fn load_vault(config: &KmfConfig) -> Result<VaultDatabase, Box<dyn std::error::E
     Ok(vault)
 }
 
+// Was: Diese Funktion speichert locked.
+// Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
 fn persist_locked(state: &mut KmfState) -> Result<(), String> {
     state.database.revision = state.database.revision.saturating_add(1);
     let database_bytes =
@@ -2263,6 +2482,8 @@ fn persist_locked(state: &mut KmfState) -> Result<(), String> {
     Ok(())
 }
 
+// Was: Führt den Arbeitsschritt `atomic_write_private` für atomic write private aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn atomic_write_private(path: &Path, bytes: &[u8]) -> Result<(), String> {
     let temporary = temporary_path(path);
     write_private_file(&temporary, bytes)?;
@@ -2270,29 +2491,41 @@ fn atomic_write_private(path: &Path, bytes: &[u8]) -> Result<(), String> {
     Ok(())
 }
 
+// Was: Führt den Arbeitsschritt `temporary_path` für temporary path aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn temporary_path(path: &Path) -> PathBuf {
     let mut temporary = path.as_os_str().to_os_string();
     temporary.push(format!(".{}.tmp", Uuid::new_v4()));
     PathBuf::from(temporary)
 }
 
+// Was: Führt den Arbeitsschritt `now_iso` für now iso aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn now_iso() -> String {
     Utc::now().to_rfc3339()
 }
 
+// Was: Diese Funktion liest und prüft time.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_time(value: &str) -> Result<DateTime<Utc>, String> {
     DateTime::parse_from_rfc3339(value)
         .map(|time| time.with_timezone(&Utc))
         .map_err(|error| format!("invalid RFC3339 timestamp {value}: {error}"))
 }
 
+// Was: Diese Funktion liest und prüft time or.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_time_or(value: Option<&str>, fallback: DateTime<Utc>) -> Result<DateTime<Utc>, String> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match value {
         Some(value) if !value.trim().is_empty() => parse_time(value),
         _ => Ok(fallback),
     }
 }
 
+// Was: Führt den Arbeitsschritt `clean_text` für clean text aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn clean_text(value: String, max: usize) -> String {
     value
         .chars()
@@ -2301,6 +2534,8 @@ fn clean_text(value: String, max: usize) -> String {
         .collect()
 }
 
+// Was: Führt den Arbeitsschritt `non_empty` für non empty aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn non_empty(value: String) -> Option<String> {
     if value.trim().is_empty() {
         None
@@ -2310,10 +2545,14 @@ fn non_empty(value: String) -> Option<String> {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
     #[test]
+    // Was: Führt den Arbeitsschritt `validates_key_scopes` für validates key scopes aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn validates_key_scopes() {
         assert!(validate_key_kind_scope("CCK", "network", None).is_ok());
         assert!(validate_key_kind_scope("GCK", "group", Some("15501")).is_ok());
@@ -2323,6 +2562,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `audit_hash_chain_has_head` für audit hash chain has head aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn audit_hash_chain_has_head() {
         let config = KmfConfig::default();
         let mut state = KmfState {
@@ -2345,6 +2586,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `lab_envelope_algorithm_is_explicit` für lab envelope algorithm is explicit aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn lab_envelope_algorithm_is_explicit() {
         assert_eq!(crate::crypto::LAB_ENVELOPE_ALGORITHM, "lab_sha256_stream_mac_v1");
     }

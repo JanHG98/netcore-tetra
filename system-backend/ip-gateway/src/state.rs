@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für die Kopplung von TETRA-Paketdaten an IP-Netze.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::{BTreeMap, VecDeque};
 use std::fs::{self, OpenOptions};
 use std::io::Write;
@@ -17,11 +20,17 @@ use crate::protocol::{
     RouteRuleInput, StaticDnsInput,
 };
 
+// Was: Legt den festen Wert `DATABASE_SCHEMA_VERSION` für Datenbank schema version fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const DATABASE_SCHEMA_VERSION: u32 = 1;
+// Was: Legt den festen Wert `OPEN_LAB_WARNING` für open lab warning fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const OPEN_LAB_WARNING: &str =
     "OPEN LAB: no authentication, no tokens and no TLS; isolated test network only";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Weiterleitung rule in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct RouteRule {
     pub id: String,
     pub name: String,
@@ -35,6 +44,8 @@ pub struct RouteRule {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für nat rule in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct NatRule {
     pub id: String,
     pub name: String,
@@ -52,6 +63,8 @@ pub struct NatRule {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für firewall rule in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct FirewallRule {
     pub id: String,
     pub name: String,
@@ -72,6 +85,8 @@ pub struct FirewallRule {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für static dns Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct StaticDnsRecord {
     pub id: String,
     pub name: String,
@@ -82,6 +97,8 @@ pub struct StaticDnsRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für blocked address in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct BlockedAddress {
     pub address: String,
     pub reason: String,
@@ -90,6 +107,8 @@ pub struct BlockedAddress {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für capture Zustand auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum CaptureState {
     Active,
     Stopped,
@@ -98,6 +117,8 @@ pub enum CaptureState {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für capture Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CaptureRecord {
     pub id: String,
     pub name: String,
@@ -116,6 +137,8 @@ pub struct CaptureRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für flow Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct FlowRecord {
     pub id: String,
     pub key: String,
@@ -136,6 +159,8 @@ pub struct FlowRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Gateway Ereignis Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GatewayEventRecord {
     pub sequence: u64,
     pub timestamp: String,
@@ -144,6 +169,8 @@ pub struct GatewayEventRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Gateway Datenbank in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct GatewayDatabase {
     schema_version: u32,
     revision: u64,
@@ -158,8 +185,12 @@ struct GatewayDatabase {
     events: VecDeque<GatewayEventRecord>,
 }
 
+// Was: Führt den Arbeitsschritt `compact_reconcile_events` für compact reconcile events aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn compact_reconcile_events(events: &mut VecDeque<GatewayEventRecord>) {
     let mut compacted = VecDeque::with_capacity(events.len());
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for event in events.drain(..) {
         let is_reconcile = matches!(
             event.kind.as_str(),
@@ -178,7 +209,11 @@ fn compact_reconcile_events(events: &mut VecDeque<GatewayEventRecord>) {
     *events = compacted;
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for GatewayDatabase`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for GatewayDatabase {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             schema_version: DATABASE_SCHEMA_VERSION,
@@ -196,6 +231,8 @@ impl Default for GatewayDatabase {
     }
 }
 
+// Was: Bündelt die zusammengehörigen Werte für Gateway Zustand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct GatewayState {
     config: IpGatewayConfig,
     database: GatewayDatabase,
@@ -223,11 +260,15 @@ struct GatewayState {
 }
 
 #[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für shared Gateway in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SharedGateway {
     inner: Arc<Mutex<GatewayState>>,
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Gateway Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GatewayStatus {
     pub service: &'static str,
     pub version: &'static str,
@@ -266,6 +307,8 @@ pub struct GatewayStatus {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für kernel Zustand snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct KernelStateSnapshot {
     pub revision: u64,
     pub routes: Vec<RouteRule>,
@@ -275,6 +318,8 @@ pub struct KernelStateSnapshot {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für Datenpaket observation in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PacketObservation {
     pub source: Ipv4Addr,
     pub destination: Ipv4Addr,
@@ -283,9 +328,15 @@ pub struct PacketObservation {
     pub destination_port: Option<u16>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SharedGateway`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SharedGateway {
+    // Was: Diese Funktion lädt den vorgesehenen Arbeitsschritt.
+    // Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
     pub fn load(config: IpGatewayConfig) -> Result<Self, Box<dyn std::error::Error>> {
         fs::create_dir_all(&config.capture.directory)?;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let mut database = match fs::read(&config.storage.database_path) {
             Ok(bytes) => match serde_json::from_slice::<GatewayDatabase>(&bytes) {
                 Ok(database) if database.schema_version == DATABASE_SCHEMA_VERSION => database,
@@ -299,6 +350,8 @@ impl SharedGateway {
             Err(error) => return Err(error.into()),
         };
         compact_reconcile_events(&mut database.events);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for capture in database.captures.values_mut() {
             if capture.state == CaptureState::Active {
                 capture.state = CaptureState::Stopped;
@@ -340,6 +393,8 @@ impl SharedGateway {
         Ok(gateway)
     }
 
+    // Was: Führt den Arbeitsschritt `status` für Status aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn status(&self) -> GatewayStatus {
         let state = self.lock();
         GatewayStatus {
@@ -385,6 +440,8 @@ impl SharedGateway {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `packet_core_connected` für Datenpaket core connected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn packet_core_connected(&self, mode: String) {
         let mut state = self.lock();
         let changed = !state.packet_core_connected || state.packet_core_mode.as_deref() != Some(&mode);
@@ -398,6 +455,8 @@ impl SharedGateway {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `packet_core_disconnected` für Datenpaket core disconnected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn packet_core_disconnected(&self, error: String) {
         let mut state = self.lock();
         let changed = state.packet_core_connected || state.packet_core_last_error.as_deref() != Some(&error);
@@ -409,6 +468,8 @@ impl SharedGateway {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `replace_contexts` für replace contexts aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn replace_contexts(&self, contexts: Vec<PacketCoreContext>) {
         let mut state = self.lock();
         state.contexts = contexts
@@ -418,14 +479,20 @@ impl SharedGateway {
         state.packet_core_last_seen = Some(now_iso());
     }
 
+    // Was: Führt den Arbeitsschritt `contexts` für contexts aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn contexts(&self) -> Vec<PacketCoreContext> {
         self.lock().contexts.values().cloned().collect()
     }
 
+    // Was: Führt den Arbeitsschritt `context_by_ipv4` für Kontext by ipv4 aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn context_by_ipv4(&self, address: Ipv4Addr) -> Option<PacketCoreContext> {
         self.lock().contexts.get(&address.to_string()).cloned()
     }
 
+    // Was: Führt den Arbeitsschritt `tun_opened` für virtuelle TUN-Netzwerkschnittstelle opened aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn tun_opened(&self, name: String) {
         let mut state = self.lock();
         state.tun_open = true;
@@ -434,6 +501,8 @@ impl SharedGateway {
         state.event("tun_opened", json!({"interface":name}));
     }
 
+    // Was: Führt den Arbeitsschritt `tun_closed` für virtuelle TUN-Netzwerkschnittstelle closed aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn tun_closed(&self, error: Option<String>) {
         let mut state = self.lock();
         let changed = state.tun_open || state.tun_last_error != error;
@@ -447,6 +516,8 @@ impl SharedGateway {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `kernel_reconciled` für kernel reconciled aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn kernel_reconciled(&self, revision: u64, error: Option<String>, applied: bool) {
         let mut state = self.lock();
         let first = state.kernel_last_reconcile.is_none();
@@ -473,22 +544,30 @@ impl SharedGateway {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `record_packet_core_delete` für Datensatz Datenpaket core delete aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn record_packet_core_delete(&self) {
         let mut state = self.lock();
         state.packet_core_deletes = state.packet_core_deletes.saturating_add(1);
     }
 
+    // Was: Führt den Arbeitsschritt `record_packet_core_downlink` für Datensatz Datenpaket core Downlink (Netz zum Funkgerät) aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn record_packet_core_downlink(&self) {
         let mut state = self.lock();
         state.packet_core_downlinks = state.packet_core_downlinks.saturating_add(1);
     }
 
+    // Was: Führt den Arbeitsschritt `record_drop` für Datensatz drop aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn record_drop(&self, reason: &str, detail: Value) {
         let mut state = self.lock();
         state.packets_dropped = state.packets_dropped.saturating_add(1);
         state.event("packet_dropped", json!({"reason":reason,"detail":detail}));
     }
 
+    // Was: Führt den Arbeitsschritt `record_packet` für Datensatz Datenpaket aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn record_packet(
         &self,
         direction: &str,
@@ -497,6 +576,8 @@ impl SharedGateway {
     ) -> Result<PacketObservation, String> {
         let observation = parse_ipv4(packet)?;
         let mut state = self.lock();
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match direction {
             "uplink" => {
                 state.packets_uplink = state.packets_uplink.saturating_add(1);
@@ -570,22 +651,32 @@ impl SharedGateway {
         Ok(observation)
     }
 
+    // Was: Führt den Arbeitsschritt `routes` für routes aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn routes(&self) -> Vec<RouteRule> {
         self.lock().database.routes.values().cloned().collect()
     }
 
+    // Was: Führt den Arbeitsschritt `nat_rules` für nat rules aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn nat_rules(&self) -> Vec<NatRule> {
         self.lock().database.nat_rules.values().cloned().collect()
     }
 
+    // Was: Führt den Arbeitsschritt `firewall_rules` für firewall rules aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn firewall_rules(&self) -> Vec<FirewallRule> {
         self.lock().database.firewall_rules.values().cloned().collect()
     }
 
+    // Was: Führt den Arbeitsschritt `dns_records` für dns records aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn dns_records(&self) -> Vec<StaticDnsRecord> {
         self.lock().database.dns_records.values().cloned().collect()
     }
 
+    // Was: Führt den Arbeitsschritt `dns_lookup` für dns lookup aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn dns_lookup(&self, name: &str) -> Option<Ipv4Addr> {
         let name = name.trim_end_matches('.').to_ascii_lowercase();
         self.lock()
@@ -596,6 +687,8 @@ impl SharedGateway {
             .and_then(|record| record.address.parse().ok())
     }
 
+    // Was: Führt den Arbeitsschritt `blocked_addresses` für blocked addresses aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn blocked_addresses(&self) -> Vec<BlockedAddress> {
         self.lock()
             .database
@@ -605,6 +698,8 @@ impl SharedGateway {
             .collect()
     }
 
+    // Was: Führt den Arbeitsschritt `flows` für flows aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn flows(&self, limit: usize) -> Vec<FlowRecord> {
         let mut flows: Vec<_> = self.lock().database.flows.values().cloned().collect();
         flows.sort_by(|left, right| right.last_seen.cmp(&left.last_seen));
@@ -612,16 +707,22 @@ impl SharedGateway {
         flows
     }
 
+    // Was: Führt den Arbeitsschritt `captures` für captures aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn captures(&self) -> Vec<CaptureRecord> {
         let mut captures: Vec<_> = self.lock().database.captures.values().cloned().collect();
         captures.sort_by(|left, right| right.created_at.cmp(&left.created_at));
         captures
     }
 
+    // Was: Führt den Arbeitsschritt `capture` für capture aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn capture(&self, id: &str) -> Option<CaptureRecord> {
         self.lock().database.captures.get(id).cloned()
     }
 
+    // Was: Führt den Arbeitsschritt `kernel_snapshot` für kernel snapshot aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn kernel_snapshot(&self) -> KernelStateSnapshot {
         let state = self.lock();
         KernelStateSnapshot {
@@ -638,6 +739,8 @@ impl SharedGateway {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `upsert_route` für upsert Weiterleitung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn upsert_route(&self, id: Option<&str>, input: RouteRuleInput) -> Result<RouteRule, String> {
         validate_route(&input)?;
         let mut state = self.lock();
@@ -667,10 +770,14 @@ impl SharedGateway {
         Ok(record)
     }
 
+    // Was: Diese Funktion löscht Weiterleitung.
+    // Warum: Das Entfernen wird dadurch kontrolliert durchgeführt und hinterlässt keine verwaisten Verweise.
     pub fn delete_route(&self, id: &str) -> Result<(), String> {
         self.delete_record(id, "route")
     }
 
+    // Was: Führt den Arbeitsschritt `upsert_nat` für upsert nat aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn upsert_nat(&self, id: Option<&str>, input: NatRuleInput) -> Result<NatRule, String> {
         validate_nat(&input)?;
         let mut state = self.lock();
@@ -704,10 +811,14 @@ impl SharedGateway {
         Ok(record)
     }
 
+    // Was: Diese Funktion löscht nat.
+    // Warum: Das Entfernen wird dadurch kontrolliert durchgeführt und hinterlässt keine verwaisten Verweise.
     pub fn delete_nat(&self, id: &str) -> Result<(), String> {
         self.delete_record(id, "nat")
     }
 
+    // Was: Führt den Arbeitsschritt `upsert_firewall` für upsert firewall aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn upsert_firewall(
         &self,
         id: Option<&str>,
@@ -754,10 +865,14 @@ impl SharedGateway {
         Ok(record)
     }
 
+    // Was: Diese Funktion löscht firewall.
+    // Warum: Das Entfernen wird dadurch kontrolliert durchgeführt und hinterlässt keine verwaisten Verweise.
     pub fn delete_firewall(&self, id: &str) -> Result<(), String> {
         self.delete_record(id, "firewall")
     }
 
+    // Was: Führt den Arbeitsschritt `upsert_dns` für upsert dns aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn upsert_dns(&self, id: Option<&str>, input: StaticDnsInput) -> Result<StaticDnsRecord, String> {
         let name = normalise_dns_name(&input.name)?;
         let address = input
@@ -789,6 +904,8 @@ impl SharedGateway {
         Ok(record)
     }
 
+    // Was: Diese Funktion löscht dns.
+    // Warum: Das Entfernen wird dadurch kontrolliert durchgeführt und hinterlässt keine verwaisten Verweise.
     pub fn delete_dns(&self, id: &str) -> Result<(), String> {
         let mut state = self.lock();
         let Some(record) = state.database.dns_records.get(id) else {
@@ -803,6 +920,8 @@ impl SharedGateway {
         state.persist().map_err(|error| error.to_string())
     }
 
+    // Was: Führt den Arbeitsschritt `block_address` für block address aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn block_address(&self, input: BlockAddressInput) -> Result<BlockedAddress, String> {
         let address = input
             .address
@@ -819,6 +938,8 @@ impl SharedGateway {
             .database
             .blocked_addresses
             .insert(address.clone(), record.clone());
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for flow in state.database.flows.values_mut() {
             if flow.source == address || flow.destination == address {
                 flow.blocked = true;
@@ -830,6 +951,8 @@ impl SharedGateway {
         Ok(record)
     }
 
+    // Was: Führt den Arbeitsschritt `unblock_address` für unblock address aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn unblock_address(&self, address: &str) -> Result<(), String> {
         let address = address
             .parse::<Ipv4Addr>()
@@ -841,6 +964,8 @@ impl SharedGateway {
         }
         let blocked: std::collections::BTreeSet<String> =
             state.database.blocked_addresses.keys().cloned().collect();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for flow in state.database.flows.values_mut() {
             flow.blocked = blocked.contains(&flow.source) || blocked.contains(&flow.destination);
         }
@@ -849,6 +974,8 @@ impl SharedGateway {
         state.persist().map_err(|error| error.to_string())
     }
 
+    // Was: Diese Funktion startet capture.
+    // Warum: Der Dienst oder Teilprozess wird so in einer festen und überprüfbaren Reihenfolge gestartet.
     pub fn start_capture(&self, input: CaptureStartInput) -> Result<CaptureRecord, String> {
         validate_capture(&input)?;
         let mut state = self.lock();
@@ -892,6 +1019,8 @@ impl SharedGateway {
         Ok(record)
     }
 
+    // Was: Diese Funktion stoppt capture.
+    // Warum: Der Betrieb wird dadurch geordnet beendet und Ressourcen werden freigegeben.
     pub fn stop_capture(&self, id: &str) -> Result<CaptureRecord, String> {
         let mut state = self.lock();
         let record = state
@@ -910,6 +1039,8 @@ impl SharedGateway {
         Ok(result)
     }
 
+    // Was: Diese Funktion löscht capture.
+    // Warum: Das Entfernen wird dadurch kontrolliert durchgeführt und hinterlässt keine verwaisten Verweise.
     pub fn delete_capture(&self, id: &str) -> Result<(), String> {
         let mut state = self.lock();
         let record = state
@@ -923,6 +1054,8 @@ impl SharedGateway {
         state.persist().map_err(|error| error.to_string())
     }
 
+    // Was: Führt den Arbeitsschritt `record_dns_query` für Datensatz dns query aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn record_dns_query(&self, name: &str, source: &str, result: &str) {
         let mut state = self.lock();
         state.dns_queries = state.dns_queries.saturating_add(1);
@@ -932,12 +1065,16 @@ impl SharedGateway {
         );
     }
 
+    // Was: Führt den Arbeitsschritt `record_test_request` für Datensatz test request aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn record_test_request(&self, kind: &str, source: &str) {
         let mut state = self.lock();
         state.test_requests = state.test_requests.saturating_add(1);
         state.event("test_request", json!({"kind":kind,"source":source}));
     }
 
+    // Was: Führt den Arbeitsschritt `recent_events` für recent events aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn recent_events(&self, limit: usize) -> Vec<GatewayEventRecord> {
         self.lock()
             .database
@@ -949,6 +1086,8 @@ impl SharedGateway {
             .collect()
     }
 
+    // Was: Führt den Arbeitsschritt `export` für export aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn export(&self) -> Value {
         let state = self.lock();
         json!({
@@ -966,6 +1105,8 @@ impl SharedGateway {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `metrics` für Messwerte aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn metrics(&self) -> String {
         let status = self.status();
         format!(
@@ -1006,12 +1147,18 @@ impl SharedGateway {
         )
     }
 
+    // Was: Diese Funktion speichert den vorgesehenen Arbeitsschritt.
+    // Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
     pub fn persist(&self) -> Result<(), Box<dyn std::error::Error>> {
         self.lock().persist()
     }
 
+    // Was: Diese Funktion löscht Datensatz.
+    // Warum: Das Entfernen wird dadurch kontrolliert durchgeführt und hinterlässt keine verwaisten Verweise.
     fn delete_record(&self, id: &str, kind: &str) -> Result<(), String> {
         let mut state = self.lock();
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let removed = match kind {
             "route" => state.database.routes.remove(id).is_some(),
             "nat" => state.database.nat_rules.remove(id).is_some(),
@@ -1026,16 +1173,24 @@ impl SharedGateway {
         state.persist().map_err(|error| error.to_string())
     }
 
+    // Was: Führt den Arbeitsschritt `lock` für lock aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn lock(&self) -> MutexGuard<'_, GatewayState> {
         self.inner.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `GatewayState`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl GatewayState {
+    // Was: Führt den Arbeitsschritt `touch` für touch aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn touch(&mut self) {
         self.database.revision = self.database.revision.saturating_add(1);
     }
 
+    // Was: Führt den Arbeitsschritt `event` für Ereignis aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn event(&mut self, kind: &str, detail: Value) {
         let event = GatewayEventRecord {
             sequence: self.database.next_event_sequence,
@@ -1045,11 +1200,15 @@ impl GatewayState {
         };
         self.database.next_event_sequence = self.database.next_event_sequence.saturating_add(1);
         self.database.events.push_back(event);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while self.database.events.len() > self.config.limits.max_events {
             self.database.events.pop_front();
         }
     }
 
+    // Was: Diese Funktion speichert den vorgesehenen Arbeitsschritt.
+    // Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
     fn persist(&self) -> Result<(), Box<dyn std::error::Error>> {
         if let Some(parent) = self.config.storage.database_path.parent() {
             fs::create_dir_all(parent)?;
@@ -1068,6 +1227,8 @@ impl GatewayState {
     }
 }
 
+// Was: Diese Funktion liest backup.
+// Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
 fn read_backup(config: &IpGatewayConfig) -> Result<GatewayDatabase, Box<dyn std::error::Error>> {
     let bytes = fs::read(&config.storage.backup_path)?;
     let database = serde_json::from_slice::<GatewayDatabase>(&bytes)?;
@@ -1077,9 +1238,13 @@ fn read_backup(config: &IpGatewayConfig) -> Result<GatewayDatabase, Box<dyn std:
     Ok(database)
 }
 
+// Was: Diese Funktion stellt builtin dns records.
+// Warum: So wird die notwendige Voraussetzung hergestellt, bevor abhängiger Code weiterläuft.
 fn ensure_builtin_dns_records(config: &IpGatewayConfig, database: &mut GatewayDatabase) {
     let domain = config.dns.local_domain.trim_end_matches('.').to_ascii_lowercase();
     let address = config.gateway_ipv4().to_string();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (id, name) in [
         ("builtin-gateway", domain.clone()),
         ("builtin-wap", format!("wap.{domain}")),
@@ -1100,6 +1265,8 @@ fn ensure_builtin_dns_records(config: &IpGatewayConfig, database: &mut GatewayDa
     }
 }
 
+// Was: Diese Funktion prüft Weiterleitung.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_route(input: &RouteRuleInput) -> Result<(), String> {
     parse_cidr(&input.destination)?;
     if let Some(gateway) = &input.gateway {
@@ -1114,6 +1281,8 @@ fn validate_route(input: &RouteRuleInput) -> Result<(), String> {
     Ok(())
 }
 
+// Was: Diese Funktion prüft nat.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_nat(input: &NatRuleInput) -> Result<(), String> {
     if !matches!(input.kind.as_str(), "masquerade" | "snat" | "dnat") {
         return Err("NAT kind must be masquerade, snat or dnat".to_string());
@@ -1147,6 +1316,8 @@ fn validate_nat(input: &NatRuleInput) -> Result<(), String> {
     Ok(())
 }
 
+// Was: Diese Funktion prüft firewall.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_firewall(input: &FirewallRuleInput) -> Result<(), String> {
     if !matches!(input.chain.as_str(), "input" | "forward" | "output") {
         return Err("firewall.chain must be input, forward or output".to_string());
@@ -1171,6 +1342,8 @@ fn validate_firewall(input: &FirewallRuleInput) -> Result<(), String> {
     Ok(())
 }
 
+// Was: Diese Funktion prüft optional interface.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_optional_interface(value: Option<&str>) -> Result<(), String> {
     if let Some(value) = value {
         if value.is_empty()
@@ -1185,6 +1358,8 @@ fn validate_optional_interface(value: Option<&str>) -> Result<(), String> {
     Ok(())
 }
 
+// Was: Diese Funktion prüft capture.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_capture(input: &CaptureStartInput) -> Result<(), String> {
     if !matches!(input.direction.as_str(), "uplink" | "downlink" | "both") {
         return Err("capture.direction must be uplink, downlink or both".to_string());
@@ -1201,6 +1376,8 @@ fn validate_capture(input: &CaptureStartInput) -> Result<(), String> {
     Ok(())
 }
 
+// Was: Führt den Arbeitsschritt `normalise_dns_name` für normalise dns name aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn normalise_dns_name(value: &str) -> Result<String, String> {
     let value = value.trim().trim_end_matches('.').to_ascii_lowercase();
     if value.is_empty() || value.len() > 253 {
@@ -1215,7 +1392,11 @@ fn normalise_dns_name(value: &str) -> Result<String, String> {
     Ok(value)
 }
 
+// Was: Führt den Arbeitsschritt `enforce_flow_limit` für enforce flow limit aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn enforce_flow_limit(state: &mut GatewayState) {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while state.database.flows.len() > state.config.limits.max_flows {
         let oldest = state
             .database
@@ -1231,6 +1412,8 @@ fn enforce_flow_limit(state: &mut GatewayState) {
     }
 }
 
+// Was: Diese Funktion liest und prüft ipv4.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_ipv4(packet: &[u8]) -> Result<PacketObservation, String> {
     if packet.len() < 20 || packet[0] >> 4 != 4 {
         return Err("packet is not a complete IPv4 datagram".to_string());
@@ -1246,6 +1429,8 @@ fn parse_ipv4(packet: &[u8]) -> Result<PacketObservation, String> {
     let source = Ipv4Addr::new(packet[12], packet[13], packet[14], packet[15]);
     let destination = Ipv4Addr::new(packet[16], packet[17], packet[18], packet[19]);
     let protocol_number = packet[9];
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let protocol = match protocol_number {
         1 => "icmp",
         6 => "tcp",
@@ -1275,6 +1460,8 @@ fn parse_ipv4(packet: &[u8]) -> Result<PacketObservation, String> {
     })
 }
 
+// Was: Führt den Arbeitsschritt `capture_packet` für capture Datenpaket aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn capture_packet(
     state: &mut GatewayState,
     direction: &str,
@@ -1284,6 +1471,8 @@ fn capture_packet(
     let snaplen = state.config.capture.snaplen;
     let max_file_bytes = state.config.capture.max_file_bytes;
     let mut events = Vec::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for capture in state.database.captures.values_mut() {
         if capture.state != CaptureState::Active
             || !capture_matches(capture, direction, observation)
@@ -1298,6 +1487,8 @@ fn capture_packet(
             events.push(("capture_full", capture.id.clone(), None));
             continue;
         }
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match append_pcap(Path::new(&capture.path), packet, snaplen) {
             Ok(captured) => {
                 capture.packet_count = capture.packet_count.saturating_add(1);
@@ -1312,11 +1503,15 @@ fn capture_packet(
             }
         }
     }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (kind, id, error) in events {
         state.event(kind, json!({"id":id,"error":error}));
     }
 }
 
+// Was: Führt den Arbeitsschritt `capture_matches` für capture matches aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn capture_matches(
     capture: &CaptureRecord,
     direction: &str,
@@ -1345,6 +1540,8 @@ fn capture_matches(
     true
 }
 
+// Was: Diese Funktion erstellt pcap.
+// Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
 fn create_pcap(path: &Path, snaplen: usize) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|error| error.to_string())?;
@@ -1360,6 +1557,8 @@ fn create_pcap(path: &Path, snaplen: usize) -> Result<(), String> {
         .map_err(|error| error.to_string())
 }
 
+// Was: Führt den Arbeitsschritt `append_pcap` für append pcap aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn append_pcap(path: &Path, packet: &[u8], snaplen: usize) -> Result<usize, String> {
     let captured = packet.len().min(snaplen);
     let duration = SystemTime::now()
@@ -1378,6 +1577,8 @@ fn append_pcap(path: &Path, packet: &[u8], snaplen: usize) -> Result<usize, Stri
     Ok(captured)
 }
 
+// Was: Führt den Arbeitsschritt `self_status` für self Status aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn self_status(state: &GatewayState) -> Value {
     json!({
         "service":"netcore-ip-gateway",
@@ -1390,6 +1591,8 @@ fn self_status(state: &GatewayState) -> Value {
     })
 }
 
+// Was: Führt den Arbeitsschritt `now_iso` für now iso aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn now_iso() -> String {
     Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true)
 }

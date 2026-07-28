@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Anwendungsdienste wie TTS und externe Integrationen.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
@@ -15,6 +18,8 @@ use crate::model::{
 use crate::state::SharedGateway;
 use crate::worker;
 
+// Was: Diese Funktion startet HTTP server.
+// Warum: Länger laufende Arbeit blockiert dadurch nicht den aufrufenden Ablauf.
 pub fn spawn_http_server(
     config: ApplicationGatewayConfig,
     gateway: SharedGateway,
@@ -25,7 +30,11 @@ pub fn spawn_http_server(
         config.server.bind
     );
     Ok(thread::spawn(move || {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for stream in listener.incoming() {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match stream {
                 Ok(stream) => {
                     let config = config.clone();
@@ -42,6 +51,8 @@ pub fn spawn_http_server(
     }))
 }
 
+// Was: Bündelt die zusammengehörigen Werte für HTTP request in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct HttpRequest {
     method: String,
     path: String,
@@ -49,6 +60,8 @@ struct HttpRequest {
     body: Vec<u8>,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für HTTP response in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct HttpResponse {
     status: u16,
     content_type: &'static str,
@@ -57,6 +70,8 @@ struct HttpResponse {
     extra_headers: Vec<(String, String)>,
 }
 
+// Was: Diese Funktion verarbeitet connection.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 fn handle_connection(
     mut stream: TcpStream,
     config: ApplicationGatewayConfig,
@@ -67,6 +82,8 @@ fn handle_connection(
     write_response(&mut stream, response).map_err(|error| error.to_string())
 }
 
+// Was: Diese Funktion leitet den vorgesehenen Arbeitsschritt.
+// Warum: Nachrichten und Daten gelangen dadurch nachvollziehbar an das richtige Ziel.
 fn route(
     request: HttpRequest,
     config: ApplicationGatewayConfig,
@@ -75,6 +92,8 @@ fn route(
     if request.method == "OPTIONS" {
         return empty(204);
     }
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match (request.method.as_str(), request.path.as_str()) {
         ("GET", "/") => html(INDEX_HTML),
         ("GET", "/health/live") => json_response(200, &json!({"status":"live"})),
@@ -86,6 +105,8 @@ fn route(
         ("GET", "/api/v1/config") => json_response(200, &gateway.redacted_config()),
         ("GET", "/api/v1/connectors") => json_response(200, &gateway.connectors()),
         ("POST", "/api/v1/connectors") => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json::<ConnectorInput>(&request.body)
                 .and_then(|input| gateway.create_connector(input))
             {
@@ -99,6 +120,8 @@ fn route(
         ),
         ("GET", "/api/v1/rules") => json_response(200, &gateway.rules()),
         ("POST", "/api/v1/rules") => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json::<RouteRuleInput>(&request.body)
                 .and_then(|input| gateway.create_rule(input))
             {
@@ -108,6 +131,8 @@ fn route(
         }
         ("GET", "/api/v1/templates") => json_response(200, &gateway.templates()),
         ("POST", "/api/v1/templates") => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json::<TemplateInput>(&request.body)
                 .and_then(|input| gateway.create_template(input))
             {
@@ -124,6 +149,8 @@ fn route(
             ),
         ),
         ("POST", "/api/v1/events") | ("POST", "/api/v1/dispatch") => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json::<DispatchInput>(&request.body).and_then(|input| gateway.dispatch(input))
             {
                 Ok(value) => json_response(202, &value),
@@ -146,6 +173,8 @@ fn route(
             ),
         ),
         ("POST", "/api/v1/tts/jobs") => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json::<TtsJobInput>(&request.body)
                 .and_then(|input| gateway.create_tts_job(input))
             {
@@ -158,6 +187,8 @@ fn route(
         }
         ("GET", "/api/v1/backups") => json_response(200, &gateway.backups()),
         ("POST", "/api/v1/backups") => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json_or_default::<BackupInput>(&request.body)
                 .and_then(|input| gateway.backup(input))
             {
@@ -166,6 +197,8 @@ fn route(
             }
         }
         ("POST", "/api/v1/maintenance/tick") => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json_or_default::<ActionInput>(&request.body)
                 .and_then(|input| gateway.maintenance(input.actor))
             {
@@ -174,6 +207,8 @@ fn route(
             }
         }
         ("POST", "/api/v1/maintenance/process-now") => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match worker::build_client() {
                 Ok(client) => {
                     worker::run_cycle(&config, &gateway, &client, 100);
@@ -196,17 +231,23 @@ fn route(
     }
 }
 
+// Was: Führt den Arbeitsschritt `dynamic_route` für dynamic Weiterleitung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn dynamic_route(
     request: HttpRequest,
     _config: ApplicationGatewayConfig,
     gateway: SharedGateway,
 ) -> HttpResponse {
     let parts: Vec<&str> = request.path.trim_matches('/').split('/').collect();
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match (request.method.as_str(), parts.as_slice()) {
         ("GET", ["api", "v1", "connectors", connector_id]) => gateway
             .connector(connector_id)
             .map_or_else(|| not_found(format!("connector {connector_id} not found")), |value| json_response(200, &value)),
         ("PUT", ["api", "v1", "connectors", connector_id]) => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json::<ConnectorInput>(&request.body)
                 .and_then(|input| gateway.update_connector(connector_id, input))
             {
@@ -215,6 +256,8 @@ fn dynamic_route(
             }
         }
         ("DELETE", ["api", "v1", "connectors", connector_id]) => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json_or_default::<ActionInput>(&request.body)
                 .and_then(|input| gateway.delete_connector(connector_id, input))
             {
@@ -226,9 +269,13 @@ fn dynamic_route(
             let Some(connector) = gateway.connector_for_probe(connector_id) else {
                 return not_found(format!("connector {connector_id} not found"));
             };
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match worker::build_client() {
                 Ok(client) => {
                     let outcome = worker::test_connector(&client, &connector);
+                    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                     match gateway.record_probe(outcome) {
                         Ok(value) => json_response(200, &value),
                         Err(error) => conflict(error),
@@ -241,6 +288,8 @@ fn dynamic_route(
             json_response(200, &gateway.secret_statuses(Some(connector_id)))
         }
         ("POST", ["api", "v1", "connectors", connector_id, "secrets"]) => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json::<SecretSetInput>(&request.body)
                 .and_then(|input| gateway.set_secret(connector_id, input))
             {
@@ -249,6 +298,8 @@ fn dynamic_route(
             }
         }
         ("POST", ["api", "v1", "connectors", connector_id, action]) => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json_or_default::<ActionInput>(&request.body)
                 .and_then(|input| gateway.connector_action(connector_id, action, input))
             {
@@ -257,6 +308,8 @@ fn dynamic_route(
             }
         }
         ("DELETE", ["api", "v1", "connectors", connector_id, "secrets", name]) => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json_or_default::<ActionInput>(&request.body)
                 .and_then(|input| gateway.delete_secret(connector_id, name, input))
             {
@@ -265,6 +318,8 @@ fn dynamic_route(
             }
         }
         ("POST", ["api", "v1", "webhooks", connector_id]) => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json::<DispatchInput>(&request.body)
                 .and_then(|input| gateway.ingest_webhook(connector_id, input))
             {
@@ -273,6 +328,8 @@ fn dynamic_route(
             }
         }
         ("PUT", ["api", "v1", "rules", rule_id]) => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json::<RouteRuleInput>(&request.body)
                 .and_then(|input| gateway.update_rule(rule_id, input))
             {
@@ -281,6 +338,8 @@ fn dynamic_route(
             }
         }
         ("POST", ["api", "v1", "rules", rule_id, action]) => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json_or_default::<ActionInput>(&request.body)
                 .and_then(|input| gateway.rule_action(rule_id, action, input))
             {
@@ -289,6 +348,8 @@ fn dynamic_route(
             }
         }
         ("DELETE", ["api", "v1", "rules", rule_id]) => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json_or_default::<ActionInput>(&request.body)
                 .and_then(|input| gateway.delete_rule(rule_id, input))
             {
@@ -297,6 +358,8 @@ fn dynamic_route(
             }
         }
         ("PUT", ["api", "v1", "templates", template_id]) => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json::<TemplateInput>(&request.body)
                 .and_then(|input| gateway.update_template(template_id, input))
             {
@@ -305,6 +368,8 @@ fn dynamic_route(
             }
         }
         ("POST", ["api", "v1", "templates", template_id, "render"]) => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json::<TemplateRenderInput>(&request.body)
                 .and_then(|input| gateway.render_template(template_id, input))
             {
@@ -313,6 +378,8 @@ fn dynamic_route(
             }
         }
         ("DELETE", ["api", "v1", "templates", template_id]) => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json_or_default::<ActionInput>(&request.body)
                 .and_then(|input| gateway.delete_template(template_id, input))
             {
@@ -324,6 +391,8 @@ fn dynamic_route(
             .delivery(delivery_id)
             .map_or_else(|| not_found(format!("delivery {delivery_id} not found")), |value| json_response(200, &value)),
         ("POST", ["api", "v1", "deliveries", delivery_id, action]) => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json_or_default::<ActionInput>(&request.body)
                 .and_then(|input| gateway.delivery_action(delivery_id, action, input))
             {
@@ -332,6 +401,8 @@ fn dynamic_route(
             }
         }
         ("POST", ["api", "v1", "tts", "jobs", job_id, "publish"]) => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match parse_json_or_default::<TtsPublishInput>(&request.body)
                 .and_then(|input| gateway.publish_tts_job(job_id, input))
             {
@@ -340,6 +411,8 @@ fn dynamic_route(
             }
         }
         ("GET", ["api", "v1", "tts", "jobs", job_id, "artifact"]) => {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match gateway.tts_artifact(job_id) {
                 Ok((name, bytes)) => download(&name, "audio/wav", bytes),
                 Err(error) => not_found(error),
@@ -349,6 +422,8 @@ fn dynamic_route(
     }
 }
 
+// Was: Führt den Arbeitsschritt `openapi` für openapi aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn openapi() -> Value {
     json!({
         "openapi":"3.1.0",
@@ -390,6 +465,8 @@ fn openapi() -> Value {
     })
 }
 
+// Was: Diese Funktion liest request.
+// Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
 fn read_request(stream: &mut TcpStream, max_body_bytes: usize) -> Result<HttpRequest, String> {
     stream
         .set_read_timeout(Some(std::time::Duration::from_secs(10)))
@@ -426,6 +503,8 @@ fn read_request(stream: &mut TcpStream, max_body_bytes: usize) -> Result<HttpReq
     if content_length > max_body_bytes {
         return Err(format!("request body exceeds {max_body_bytes} bytes"));
     }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while bytes.len() < header_end + content_length {
         let count = stream.read(&mut buffer).map_err(|error| error.to_string())?;
         if count == 0 {
@@ -443,7 +522,11 @@ fn read_request(stream: &mut TcpStream, max_body_bytes: usize) -> Result<HttpReq
     })
 }
 
+// Was: Diese Funktion schreibt response.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 fn write_response(stream: &mut TcpStream, response: HttpResponse) -> std::io::Result<()> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let reason = match response.status {
         200 => "OK",
         201 => "Created",
@@ -468,6 +551,8 @@ fn write_response(stream: &mut TcpStream, response: HttpResponse) -> std::io::Re
     if let Some(disposition) = response.disposition {
         write!(stream, "Content-Disposition: {disposition}\r\n")?;
     }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (name, value) in response.extra_headers {
         write!(stream, "{name}: {value}\r\n")?;
     }
@@ -476,10 +561,14 @@ fn write_response(stream: &mut TcpStream, response: HttpResponse) -> std::io::Re
     stream.flush()
 }
 
+// Was: Diese Funktion liest und prüft JSON-Daten.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_json<T: DeserializeOwned>(body: &[u8]) -> Result<T, String> {
     serde_json::from_slice(body).map_err(|error| format!("invalid JSON: {error}"))
 }
 
+// Was: Diese Funktion liest und prüft JSON-Daten or default.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_json_or_default<T: DeserializeOwned + Default>(body: &[u8]) -> Result<T, String> {
     if body.is_empty() {
         Ok(T::default())
@@ -488,6 +577,8 @@ fn parse_json_or_default<T: DeserializeOwned + Default>(body: &[u8]) -> Result<T
     }
 }
 
+// Was: Führt den Arbeitsschritt `query_usize` für query usize aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn query_usize(request: &HttpRequest, name: &str, default: usize, max: usize) -> usize {
     request
         .query
@@ -497,6 +588,8 @@ fn query_usize(request: &HttpRequest, name: &str, default: usize, max: usize) ->
         .min(max)
 }
 
+// Was: Diese Funktion liest und prüft query.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_query(raw: &str) -> HashMap<String, String> {
     raw.split('&')
         .filter(|item| !item.is_empty())
@@ -507,11 +600,17 @@ fn parse_query(raw: &str) -> HashMap<String, String> {
         .collect()
 }
 
+// Was: Führt den Arbeitsschritt `percent_decode` für percent Dekodierung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn percent_decode(value: &str) -> String {
     let bytes = value.as_bytes();
     let mut output = Vec::with_capacity(bytes.len());
     let mut index = 0;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while index < bytes.len() {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match bytes[index] {
             b'%' if index + 2 < bytes.len() => {
                 let high = hex(bytes[index + 1]);
@@ -531,7 +630,11 @@ fn percent_decode(value: &str) -> String {
     String::from_utf8_lossy(&output).into_owned()
 }
 
+// Was: Führt den Arbeitsschritt `hex` für hex aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn hex(value: u8) -> Option<u8> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match value {
         b'0'..=b'9' => Some(value - b'0'),
         b'a'..=b'f' => Some(value - b'a' + 10),
@@ -540,10 +643,14 @@ fn hex(value: u8) -> Option<u8> {
     }
 }
 
+// Was: Diese Funktion sucht bytes.
+// Warum: Die Suchlogik bleibt damit wiederverwendbar und muss nicht an mehreren Stellen kopiert werden.
 fn find_bytes(haystack: &[u8], needle: &[u8]) -> Option<usize> {
     haystack.windows(needle.len()).position(|window| window == needle)
 }
 
+// Was: Führt den Arbeitsschritt `json_response` für JSON-Daten response aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn json_response<T: Serialize>(status: u16, value: &T) -> HttpResponse {
     HttpResponse {
         status,
@@ -554,6 +661,8 @@ fn json_response<T: Serialize>(status: u16, value: &T) -> HttpResponse {
     }
 }
 
+// Was: Führt den Arbeitsschritt `html` für html aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn html(value: &'static str) -> HttpResponse {
     HttpResponse {
         status: 200,
@@ -564,6 +673,8 @@ fn html(value: &'static str) -> HttpResponse {
     }
 }
 
+// Was: Führt den Arbeitsschritt `text` für text aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn text(content_type: &'static str, value: String) -> HttpResponse {
     HttpResponse {
         status: 200,
@@ -574,6 +685,8 @@ fn text(content_type: &'static str, value: String) -> HttpResponse {
     }
 }
 
+// Was: Führt den Arbeitsschritt `download` für download aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn download(name: &str, content_type: &'static str, bytes: Vec<u8>) -> HttpResponse {
     HttpResponse {
         status: 200,
@@ -584,6 +697,8 @@ fn download(name: &str, content_type: &'static str, bytes: Vec<u8>) -> HttpRespo
     }
 }
 
+// Was: Führt den Arbeitsschritt `empty` für empty aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn empty(status: u16) -> HttpResponse {
     HttpResponse {
         status,
@@ -594,14 +709,20 @@ fn empty(status: u16) -> HttpResponse {
     }
 }
 
+// Was: Führt den Arbeitsschritt `conflict` für conflict aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn conflict(error: impl ToString) -> HttpResponse {
     json_response(409, &json!({"error":error.to_string()}))
 }
 
+// Was: Führt den Arbeitsschritt `not_found` für not found aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn not_found(error: impl ToString) -> HttpResponse {
     json_response(404, &json!({"error":error.to_string()}))
 }
 
+// Was: Legt den festen Wert `INDEX_HTML` für index html fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const INDEX_HTML: &str = r##"<!doctype html>
 <html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>NetCore Application Gateway</title>
