@@ -15,6 +15,10 @@ Standardport: `8125/tcp`
 
 Der Dienst ist für die aktuelle Testphase bewusst **OPEN LAB**: kein Token, keine Anmeldung und kein TLS. Nur im isolierten Verwaltungsnetz betreiben.
 
+## WebUI-Layout
+
+Die Verwaltungsoberfläche verwendet getrennte, intern scrollende Tabellenbereiche mit feststehenden Kopfzeilen. Die Mitgliedschaftsmatrix besitzt feste, kompakte Gruppenspalten, eine beim horizontalen Scrollen sichtbare Gerätespalte sowie getrennte Filter für Geräte und Gruppen. Dadurch bleiben große Bestände auf Desktop, Tablet und kleineren Displays bedienbar, ohne dass Tabellenköpfe Datenzeilen überdecken.
+
 ## Dokumentation
 
 - vollständige Installation: `Docs/PROVISIONING_CORE_COMPLETE_INSTALL.md`
