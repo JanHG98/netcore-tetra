@@ -26,6 +26,7 @@ members = [
     "system-backend/mobility-core",
     "system-backend/subscriber-core",
     "system-backend/group-core",
+    "system-backend/provisioning-core",
     "system-backend/call-control",
     "system-backend/media-switch",
     "system-backend/recorder",

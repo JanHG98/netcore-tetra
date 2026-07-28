@@ -56,6 +56,7 @@ Bereits deploybar sind:
 - `mobility-core/` – Teilnehmerlage und MM-Context-Transfer, Port 8090
 - `subscriber-core/` – Teilnehmerprofile und Admission, Port 8100
 - `group-core/` – Gruppen, Mitgliedschaften und DGNA, Port 8110
+- `provisioning-core/` – zentrale Geräte-, Gruppen- und Mitgliedschaftsmatrix, Port 8125
 - `call-control/` – logische Calls, Floor Control und Restore, Port 8120
 - `media-switch/` – Routing gepackter TETRA-Sprachframes, Port 8130
 - `recorder/` – passive Aufnahme, Integrität, Retention und Export, Port 8140
@@ -79,4 +80,4 @@ Die gemeinsame Vertragsversion ist `netcore.v1`. Die inventory-gesteuerte Open-L
 
 ## Cross-LXC-Systemtest
 
-Die 17 Dienste werden über `tests/e2e/` als Gesamtsystem geprüft. Der inventory-gesteuerte Runner enthält einen Mock TBS für die Node-Gateway-Schnittstelle, fachliche Call-/Media-/Recorder-, SDS- und Packet-Data-Szenarien, Control-Room-Federation, redaktierte Plattform-Managementansichten, Persistenztests sowie eine absichtliche Dependency-Ausfallmatrix. Aufruf und Sicherheitsgrenzen stehen in `Docs/OPEN_LAB_E2E_RUNBOOK.md`.
+Die Backend-Dienste werden über `tests/e2e/` als Gesamtsystem geprüft. Der inventory-gesteuerte Runner enthält einen Mock TBS für die Node-Gateway-Schnittstelle, fachliche Call-/Media-/Recorder-, SDS- und Packet-Data-Szenarien, Control-Room-Federation, redaktierte Plattform-Managementansichten, Persistenztests sowie eine absichtliche Dependency-Ausfallmatrix. Aufruf und Sicherheitsgrenzen stehen in `Docs/OPEN_LAB_E2E_RUNBOOK.md`.

@@ -315,18 +315,22 @@ impl CcBsSubentity {
 
         let group_policy_decision = {
             let state = self.config.state_read();
-            state.group_policy_override.as_ref().map(|policy| {
-                let caller_affiliated = state
-                    .subscribers
-                    .attached_groups_of(calling_party.ssi)
-                    .contains(&dest_gssi);
-                (
-                    policy.allows_group_call(dest_gssi),
-                    policy.call_priority(dest_gssi, pdu.call_priority),
-                    policy.allows_emergency_call(dest_gssi),
-                    !policy.enforce_memberships || caller_affiliated,
-                )
-            })
+            if !state.edge_fallback_mode.enforces_central_restrictions() {
+                None
+            } else {
+                state.group_policy_override.as_ref().map(|policy| {
+                    let caller_affiliated = state
+                        .subscribers
+                        .attached_groups_of(calling_party.ssi)
+                        .contains(&dest_gssi);
+                    (
+                        policy.allows_group_call(dest_gssi),
+                        policy.call_priority(dest_gssi, pdu.call_priority),
+                        policy.allows_emergency_call(dest_gssi),
+                        !policy.enforce_memberships || caller_affiliated,
+                    )
+                })
+            }
         };
         if group_policy_decision.is_some_and(|(allowed, _, _, _)| !allowed) {
             tracing::warn!(
@@ -381,12 +385,24 @@ impl CcBsSubentity {
         }
 
         if !self.has_listener(dest_gssi) {
-            tracing::info!(
-                "CMCE: rejecting U-SETUP from issi={} to gssi={} (no listeners)",
+            let restrictions_active = self
+                .config
+                .state_read()
+                .edge_fallback_mode
+                .enforces_central_restrictions();
+            if restrictions_active {
+                tracing::info!(
+                    "CMCE: rejecting U-SETUP from issi={} to gssi={} (no listeners)",
+                    calling_party.ssi,
+                    dest_gssi
+                );
+                return;
+            }
+            tracing::warn!(
+                "CMCE: fallback broadcasting group call from ISSI {} to GSSI {} without a cached listener",
                 calling_party.ssi,
                 dest_gssi
             );
-            return;
         }
 
         if is_emergency_priority(effective_priority) {
@@ -683,13 +699,30 @@ impl CcBsSubentity {
         }
 
         if !self.is_locally_registered_issi(called_addr.ssi) {
-            tracing::info!(
-                "CMCE: called ISSI {} not registered locally (known registry ISSIs={:?}), routing U-SETUP over Brew",
-                called_addr.ssi,
-                self.known_local_issis()
-            );
-            self.fsm_on_u_setup_p2p_over_brew(queue, message, pdu, calling_party, called_addr);
-            return;
+            let unrestricted_local_fallback = !self
+                .config
+                .state_read()
+                .edge_fallback_mode
+                .enforces_central_restrictions();
+            if unrestricted_local_fallback {
+                // During local fallback the central registry may be unavailable or stale. Page
+                // the called ISSI locally anyway; a camped terminal can answer D-SETUP and bind
+                // its live LLC context through U-ALERT/U-CONNECT. This deliberately removes
+                // central individual-call restrictions while the site is isolated.
+                tracing::warn!(
+                    "CMCE: fallback local P2P paging for unregistered ISSI {} (known registry ISSIs={:?})",
+                    called_addr.ssi,
+                    self.known_local_issis()
+                );
+            } else {
+                tracing::info!(
+                    "CMCE: called ISSI {} not registered locally (known registry ISSIs={:?}), routing U-SETUP over Brew",
+                    called_addr.ssi,
+                    self.known_local_issis()
+                );
+                self.fsm_on_u_setup_p2p_over_brew(queue, message, pdu, calling_party, called_addr);
+                return;
+            }
         }
 
         if let Some((active_call_id, state, cause)) = self.setup_collision_cause(calling_party.ssi, Some(called_addr.ssi)) {

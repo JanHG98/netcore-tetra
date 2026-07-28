@@ -119,9 +119,11 @@ log_drops = false
 # Was: Setzt die Einstellung `enabled` für dns.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enabled = true
+# Nur am Packet-Data-Gateway binden; 0.0.0.0 wird zur Laufzeit ebenfalls
+# automatisch auf diese TUN-Adresse eingegrenzt.
 # Was: Setzt die Einstellung `bind` für dns.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-bind = "0.0.0.0:53"
+bind = "10.0.0.1:53"
 # Was: Setzt die Einstellung `upstream` für dns.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 upstream = "1.1.1.1:53"

@@ -740,6 +740,15 @@ impl Default for EdgeFallbackMode {
     }
 }
 
+impl EdgeFallbackMode {
+    /// Central provisioning and call restrictions are authoritative only while the
+    /// complete service plane is online. In degraded, isolated and recovering
+    /// operation the TBS deliberately becomes an unrestricted local radio island.
+    pub fn enforces_central_restrictions(self) -> bool {
+        matches!(self, Self::Online)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 // Was: Listet die möglichen Varianten für edge Dienst level auf.
@@ -1185,6 +1194,14 @@ mod tests {
         assert_eq!(reg.duplex_capable(1001), Some(false));
         assert_eq!(reg.duplex_capable(1002), Some(true));
         assert_eq!(reg.duplex_capable(1003), None);
+    }
+
+    #[test]
+    fn edge_fallback_only_enforces_central_restrictions_online() {
+        assert!(EdgeFallbackMode::Online.enforces_central_restrictions());
+        assert!(!EdgeFallbackMode::Degraded.enforces_central_restrictions());
+        assert!(!EdgeFallbackMode::Isolated.enforces_central_restrictions());
+        assert!(!EdgeFallbackMode::Recovering.enforces_central_restrictions());
     }
 
     #[test]

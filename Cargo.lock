@@ -1287,6 +1287,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "netcore-provisioning-core"
+version = "1.3.0"
+dependencies = [
+ "clap",
+ "serde",
+ "serde_json",
+ "toml",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "netcore-recorder"
 version = "1.3.0"
 dependencies = [

@@ -853,16 +853,22 @@ impl MmBs {
             let state = self.config.state_read();
             // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
             // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
-            match &state.issi_whitelist_override {
-                Some(list) => {
-                    !state.issi_whitelist_deny_all
-                        && (list.is_empty() || list.contains(&authorization_issi))
+            if !state.edge_fallback_mode.enforces_central_restrictions() {
+                // Local fallback ignores centrally supplied admission policy. A deliberately
+                // configured local static whitelist remains authoritative.
+                self.config.config().security.is_issi_allowed(authorization_issi)
+            } else {
+                match &state.issi_whitelist_override {
+                    Some(list) => {
+                        !state.issi_whitelist_deny_all
+                            && (list.is_empty() || list.contains(&authorization_issi))
+                    }
+                    None => self
+                        .config
+                        .config()
+                        .security
+                        .is_issi_allowed(authorization_issi),
                 }
-                None => self
-                    .config
-                    .config()
-                    .security
-                    .is_issi_allowed(authorization_issi),
             }
         };
         if !issi_allowed {
@@ -1699,16 +1705,22 @@ impl MmBs {
             let state = self.config.state_read();
             // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
             // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
-            match &state.issi_whitelist_override {
-                Some(list) => {
-                    !state.issi_whitelist_deny_all
-                        && (list.is_empty() || list.contains(&authorization_issi))
+            if !state.edge_fallback_mode.enforces_central_restrictions() {
+                // Local fallback ignores centrally supplied admission policy. A deliberately
+                // configured local static whitelist remains authoritative.
+                self.config.config().security.is_issi_allowed(authorization_issi)
+            } else {
+                match &state.issi_whitelist_override {
+                    Some(list) => {
+                        !state.issi_whitelist_deny_all
+                            && (list.is_empty() || list.contains(&authorization_issi))
+                    }
+                    None => self
+                        .config
+                        .config()
+                        .security
+                        .is_issi_allowed(authorization_issi),
                 }
-                None => self
-                    .config
-                    .config()
-                    .security
-                    .is_issi_allowed(authorization_issi),
             }
         };
         if !issi_allowed {
@@ -1907,6 +1919,9 @@ impl MmBs {
     fn group_policy_allows_attach(&self, local_issi: u32, gssi: u32) -> bool {
         let policy_issi = self.mobility.home_issi_for_local(local_issi).unwrap_or(local_issi);
         let state = self.config.state_read();
+        if !state.edge_fallback_mode.enforces_central_restrictions() {
+            return true;
+        }
         state
             .group_policy_override
             .as_ref()
@@ -1919,6 +1934,9 @@ impl MmBs {
     fn group_policy_allows_dgna(&self, local_issi: u32, gssi: u32) -> bool {
         let policy_issi = self.mobility.home_issi_for_local(local_issi).unwrap_or(local_issi);
         let state = self.config.state_read();
+        if !state.edge_fallback_mode.enforces_central_restrictions() {
+            return true;
+        }
         state
             .group_policy_override
             .as_ref()
@@ -1930,6 +1948,9 @@ impl MmBs {
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn group_policy_class_of_usage(&self, gssi: u32) -> u8 {
         let state = self.config.state_read();
+        if !state.edge_fallback_mode.enforces_central_restrictions() {
+            return Self::DGNA_CLASS_OF_USAGE;
+        }
         state
             .group_policy_override
             .as_ref()
@@ -2021,7 +2042,12 @@ impl MmBs {
 
         let mut attached_count = 0u32;
         let mut detached_count = 0u32;
-        if reconcile_registered {
+        let central_restrictions_active = self
+            .config
+            .state_read()
+            .edge_fallback_mode
+            .enforces_central_restrictions();
+        if reconcile_registered && central_restrictions_active {
             let local_issis = self.client_mgr.all_known_issis();
             // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
             // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
@@ -2941,7 +2967,15 @@ impl TetraEntityTrait for MmBs {
                             allowed_issis.clear();
                         }
 
-                        let to_disconnect: Vec<u32> = if disconnect_unauthorized && !allow_all {
+                        let central_restrictions_active = self
+                            .config
+                            .state_read()
+                            .edge_fallback_mode
+                            .enforces_central_restrictions();
+                        let to_disconnect: Vec<u32> = if central_restrictions_active
+                            && disconnect_unauthorized
+                            && !allow_all
+                        {
                             let registered_local_issis: Vec<u32> = {
                                 let state = self.config.state_read();
                                 state.subscribers.all_registered_issis().collect()
