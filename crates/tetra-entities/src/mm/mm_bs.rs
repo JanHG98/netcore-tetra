@@ -109,6 +109,30 @@ impl MmBs {
         }
     }
 
+    fn select_location_update_accept_type(
+        requested: LocationUpdateType,
+        periodic_secs: u32,
+        initial_attach_accept_compat: bool,
+        is_new: bool,
+        migration_complete: bool,
+    ) -> LocationUpdateType {
+        if migration_complete {
+            return LocationUpdateType::DemandLocationUpdating;
+        }
+
+        if periodic_secs == 0 {
+            return requested;
+        }
+
+        // Preserve the initial attach semantic for terminals known to reject a periodic accept
+        // during their first registration. The exception ends as soon as the terminal is known.
+        if initial_attach_accept_compat && is_new && requested == LocationUpdateType::ItsiAttach {
+            return LocationUpdateType::ItsiAttach;
+        }
+
+        LocationUpdateType::PeriodicLocationUpdating
+    }
+
     // Was: Führt den Arbeitsschritt `mobility_snapshot` für Mobilität snapshot aus.
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn mobility_snapshot(&self) -> MmMobilityRuntimeSnapshot {
@@ -1196,9 +1220,14 @@ impl MmBs {
             None
         };
 
-        // Hytera compatibility needs to inspect class_of_ms before we move it into client_mgr.
-        // ClassOfMs is not Copy, so doing this later would borrow a moved value.
-        let hytera_periodic_accept_compat = pdu
+        // Some AIv2/common-SCCH terminals need the initial ITSI attach to be acknowledged
+        // as ITSI attach instead of being converted into a periodic registration. Keep this
+        // compatibility narrow: applying it to every later RoamingLocationUpdating refresh
+        // leaves affected terminals in a re-registration loop and they never progress to the
+        // CMCE U-SETUP sent by the PTT action.
+        //
+        // ClassOfMs is not Copy, so inspect it before moving it into client_mgr.
+        let initial_attach_accept_compat = pdu
             .class_of_ms
             .as_ref()
             .map(|class| class.common_scch && class.air_interface_version >= 2)
@@ -1213,37 +1242,48 @@ impl MmBs {
         // Registration / affiliation / EE state changed — persist for restart recovery (debounced).
         self.recovery_mark_dirty();
 
-        // Periodic registration compatibility:
+        // Select the registration type returned in D-LOCATION-UPDATE-ACCEPT.
         //
-        // Historically we forced the D-LOCATION-UPDATE-ACCEPT type to
-        // PeriodicLocationUpdating whenever `[cell] periodic_registration_secs > 0`, even for an
-        // initial ITSI attach. Motorola/Sepura tolerate this, but Hytera terminals that advertise
-        // AI v2 + common SCCH have been observed to accept the registration and affiliation, but
-        // then refuse/abort the first PTT ("please wait" -> "PTT rejected" -> re-attach).
+        // The compatibility exception is intentionally limited to an initial ITSI attach. A
+        // previous implementation mirrored every RoamingLocationUpdating from AIv2/common-SCCH
+        // terminals. On affected radios that produced:
         //
-        // Keep the periodic registration timer internally (`reset_registration_timer` above still
-        // runs), but do not force the *accept PDU type* to PeriodicLocationUpdating for this
-        // Hytera-like capability set. Mirroring the MS request type is also the least surprising
-        // response for an initial ITSI attach: attach in, attach accepted.
+        //     roaming update -> roaming accept -> roaming update -> ...
+        //
+        // The radio stayed in MM registration handling and never emitted CMCE U-SETUP on PTT.
+        // Once the subscriber is already known, a roaming refresh is therefore settled as
+        // PeriodicLocationUpdating when periodic registration is enabled.
         let periodic_secs = self.config.config().cell.periodic_registration_secs;
-
-        let accept_type = if migration_completion.is_some() {
-            // The second migration demand is explicitly acknowledged as DemandLocationUpdating;
-            // do not let the periodic-registration compatibility override hide the completed
-            // two-stage migration procedure.
-            LocationUpdateType::DemandLocationUpdating
-        } else if periodic_secs > 0 && !hytera_periodic_accept_compat {
-            LocationUpdateType::PeriodicLocationUpdating
-        } else {
-            if periodic_secs > 0 && hytera_periodic_accept_compat {
-                tracing::debug!(
-                    "MM: ISSI {} uses AIv2/common-SCCH; mirroring {:?} in D-LOCATION-UPDATE-ACCEPT instead of forcing PeriodicLocationUpdating (Hytera periodic-registration compatibility)",
-                    issi,
-                    pdu.location_update_type
-                );
-            }
-            pdu.location_update_type
-        };
+        let accept_type = Self::select_location_update_accept_type(
+            pdu.location_update_type,
+            periodic_secs,
+            initial_attach_accept_compat,
+            is_new,
+            migration_completion.is_some(),
+        );
+        if periodic_secs > 0
+            && initial_attach_accept_compat
+            && is_new
+            && pdu.location_update_type == LocationUpdateType::ItsiAttach
+        {
+            tracing::debug!(
+                "MM: ISSI {} initial AIv2/common-SCCH ITSI attach acknowledged as ITSI attach",
+                issi
+            );
+        } else if periodic_secs > 0
+            && !is_new
+            && matches!(
+                pdu.location_update_type,
+                LocationUpdateType::RoamingLocationUpdating
+                    | LocationUpdateType::ServiceRestorationRoamingLocationUpdating
+            )
+            && accept_type == LocationUpdateType::PeriodicLocationUpdating
+        {
+            tracing::info!(
+                "MM: ISSI {} known roaming refresh settled as PeriodicLocationUpdating to prevent re-registration loop",
+                issi
+            );
+        }
 
         // Build D-LOCATION UPDATE ACCEPT pdu
         let pdu_response = DLocationUpdateAccept {
@@ -3439,6 +3479,72 @@ mod ee_tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn initial_ai_v2_attach_keeps_itsi_attach_accept_type() {
+        assert_eq!(
+            MmBs::select_location_update_accept_type(
+                LocationUpdateType::ItsiAttach,
+                3600,
+                true,
+                true,
+                false,
+            ),
+            LocationUpdateType::ItsiAttach
+        );
+    }
+
+    #[test]
+    fn known_ai_v2_roaming_refresh_is_settled_as_periodic() {
+        assert_eq!(
+            MmBs::select_location_update_accept_type(
+                LocationUpdateType::RoamingLocationUpdating,
+                3600,
+                true,
+                false,
+                false,
+            ),
+            LocationUpdateType::PeriodicLocationUpdating
+        );
+        assert_eq!(
+            MmBs::select_location_update_accept_type(
+                LocationUpdateType::ServiceRestorationRoamingLocationUpdating,
+                3600,
+                true,
+                false,
+                false,
+            ),
+            LocationUpdateType::PeriodicLocationUpdating
+        );
+    }
+
+    #[test]
+    fn disabled_periodic_registration_preserves_requested_type() {
+        assert_eq!(
+            MmBs::select_location_update_accept_type(
+                LocationUpdateType::RoamingLocationUpdating,
+                0,
+                true,
+                false,
+                false,
+            ),
+            LocationUpdateType::RoamingLocationUpdating
+        );
+    }
+
+    #[test]
+    fn migration_completion_remains_demand_location_update() {
+        assert_eq!(
+            MmBs::select_location_update_accept_type(
+                LocationUpdateType::MigratingLocationUpdating,
+                3600,
+                true,
+                true,
+                true,
+            ),
+            LocationUpdateType::DemandLocationUpdating
+        );
     }
 
     #[test]
