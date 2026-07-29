@@ -8,7 +8,7 @@ Relevante Parameter:
 
 ```toml
 [cell_info]
-hangtime_secs = 5
+hangtime_secs = 0
 call_timeout_secs = 120
 ul_inactivity_secs = 3
 ```

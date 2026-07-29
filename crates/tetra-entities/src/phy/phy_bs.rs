@@ -473,7 +473,7 @@ impl<D: RxTxDev> PhyBs<D> {
                 3 => "fullslot",
                 _ => "slot",
             };
-            tracing::info!(
+            tracing::trace!(
                 ts=%self.dltime,
                 carrier=candidate.carrier_num,
                 rssi_dbfs=candidate.rssi_dbfs,

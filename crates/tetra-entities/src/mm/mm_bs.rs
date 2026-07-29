@@ -1132,8 +1132,11 @@ impl MmBs {
             None
         };
 
-        // Coverage-return re-affiliation (fixes "PTT no longer works after leaving and
-        // returning to coverage", workaround = DMO→TMO).
+        // Coverage-return re-affiliation after a confirmed registry drop (fixes
+        // "PTT no longer works after leaving and returning to coverage", workaround = DMO→TMO).
+        // A normal roaming/service-restoration refresh while the subscriber is still registered
+        // must not emit another Affiliate: the listener state is already present and central
+        // churn here can race CMCE call teardown.
         //
         // Sequence that breaks PTT:
         //   1. MS affiliates to a GSSI → CMCE group_listeners[gssi] += 1. PTT works.
@@ -1147,10 +1150,9 @@ impl MmBs {
         //      ("please wait" on the radio). DMO→TMO forces an ItsiAttach with a full group
         //      report, which is why that clears it.
         //
-        // Fix: when a *known* MS re-registers without supplying a group report, but we
-        // still hold groups for it in client_mgr, re-emit Affiliate for those groups so
-        // CMCE's group_listeners (and Brew) are resynced with what the MS believes.
-        if !is_new && !_has_groups {
+        // Fix only after an actual registry drop: client_mgr still retains the groups, while
+        // CMCE and the subscriber registry have intentionally removed the live affiliation.
+        if was_dropped && !_has_groups {
             let stored_groups: Vec<u32> = self
                 .client_mgr
                 .get_client_by_issi(issi)
@@ -1158,7 +1160,7 @@ impl MmBs {
                 .unwrap_or_default();
             if !stored_groups.is_empty() {
                 tracing::info!(
-                    "MM: ISSI {} re-registered without group report but has {} stored group(s) {:?} — re-affiliating to resync CMCE/Brew (coverage-return fix)",
+                    "MM: ISSI {} returned after a confirmed registry drop without group report; restoring {} stored group(s) {:?}",
                     issi,
                     stored_groups.len(),
                     stored_groups

@@ -169,9 +169,10 @@ fn run_archive_cycle(inner: &RecorderShared) {
         if let Err(error) = availability {
             all_roots_available = false;
             pending += 1;
-            let detail = format!("{} {}: {error}", target.kind.label(), metadata.id);
-            last_error = Some(detail.clone());
-            tracing::warn!("Recorder archive: {detail}");
+            // The root-level warning above is sufficient. Logging one warning for every pending
+            // recording can monopolise the tracing writer exactly while CMCE is sending
+            // D-RELEASE and make the real-time PHY miss TX blocks.
+            last_error = Some(format!("{} archive unavailable: {error}", target.kind.label()));
             continue;
         }
 

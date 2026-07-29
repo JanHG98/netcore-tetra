@@ -1,0 +1,64 @@
+# NETCORE-KOMMENTAR – Was: Beschreibt einen automatischen GitHub-Arbeitsablauf für Prüfung oder Veröffentlichung.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+# Was: Vergibt einen verständlichen Namen für diesen Workflow oder Arbeitsschritt.
+# Warum: Der Ablauf ist dadurch in GitHub und in Protokollen schnell wiederzuerkennen.
+name: Protocol inventory
+
+# Was: Legt fest, bei welchen Ereignissen der Workflow startet.
+# Warum: Automatische Prüfungen sollen nur zu den vorgesehenen Zeitpunkten Ressourcen verbrauchen.
+on:
+  # Was: Legt den YAML-Bereich oder Wert `push` fest.
+  # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+  push:
+    # Was: Legt den YAML-Bereich oder Wert `paths` fest.
+    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+    paths:
+      - "crates/**"
+      - "bins/**"
+      - "system-backend/**"
+      - "tools/protocol_inventory.py"
+      - "Docs/*INVENTORY*.md"
+      - "Docs/ETSI_CONFORMANCE_MATRIX.md"
+      - "Docs/SAP_PRIMITIVE_MATRIX.md"
+      - "Docs/IMPLEMENTATION_GAPS.md"
+      - "Docs/generated/**"
+      - ".github/workflows/protocol-inventory.yml"
+  # Was: Legt den YAML-Bereich oder Wert `pull_request` fest.
+  # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+  pull_request:
+    # Was: Legt den YAML-Bereich oder Wert `paths` fest.
+    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+    paths:
+      - "crates/**"
+      - "bins/**"
+      - "system-backend/**"
+      - "tools/protocol_inventory.py"
+      - "Docs/*INVENTORY*.md"
+      - "Docs/ETSI_CONFORMANCE_MATRIX.md"
+      - "Docs/SAP_PRIMITIVE_MATRIX.md"
+      - "Docs/IMPLEMENTATION_GAPS.md"
+      - "Docs/generated/**"
+      - ".github/workflows/protocol-inventory.yml"
+
+# Was: Beginnt die Liste der auszuführenden Aufgaben.
+# Warum: Unabhängige Prüf- und Build-Schritte bleiben dadurch klar voneinander getrennt.
+jobs:
+  # Was: Legt den YAML-Bereich oder Wert `inventory` fest.
+  # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+  inventory:
+    # Was: Legt den YAML-Bereich oder Wert `runs-on` fest.
+    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+    runs-on: ubuntu-latest
+    # Was: Listet die einzelnen Schritte einer Aufgabe auf.
+    # Warum: Die Reihenfolge von Vorbereitung, Build und Prüfung wird dadurch eindeutig festgelegt.
+    steps:
+      # Was: Verwendet eine fertige GitHub-Action.
+      # Warum: Bewährte Standardaufgaben müssen dadurch nicht als fehleranfälliges eigenes Skript nachgebaut werden.
+      - uses: actions/checkout@v4
+      # Was: Vergibt einen verständlichen Namen für diesen Workflow oder Arbeitsschritt.
+      # Warum: Der Ablauf ist dadurch in GitHub und in Protokollen schnell wiederzuerkennen.
+      - name: Verify generated protocol inventory
+        # Was: Führt den angegebenen Shell-Befehl aus.
+        # Warum: Der konkrete Build- oder Prüfschritt wird dadurch reproduzierbar automatisiert.
+        run: python3 tools/protocol_inventory.py --check

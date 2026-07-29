@@ -1,0 +1,43 @@
+name: SWMI Core Provisioning and local fallback
+
+on:
+  push:
+    paths:
+      - "system-backend/provisioning-core/**"
+      - "crates/tetra-config/**"
+      - "crates/tetra-entities/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/swmi-core-provisioning.yml"
+  pull_request:
+    paths:
+      - "system-backend/provisioning-core/**"
+      - "crates/tetra-config/**"
+      - "crates/tetra-entities/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/swmi-core-provisioning.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Build Provisioning Core
+        run: cargo build --locked --package netcore-provisioning-core
+      - name: Test Provisioning Core
+        run: cargo test --locked --package netcore-provisioning-core
+      - name: Test fallback and CMCE libraries
+        run: cargo test --locked --package tetra-config --package tetra-entities
+      - name: Clippy
+        run: cargo clippy --locked --package netcore-provisioning-core --package tetra-config --package tetra-entities --all-targets -- -D warnings
