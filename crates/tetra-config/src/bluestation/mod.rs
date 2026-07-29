@@ -81,6 +81,10 @@ pub use sec_dashboard::*;
 pub mod sec_recording;
 pub use sec_recording::*;
 
+// Bidirectional Base Station ↔ Media Library integration.
+pub mod sec_media_library;
+pub use sec_media_library::*;
+
 // Was: Bindet das Untermodul sec audio player in diesen Bereich ein.
 // Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 pub mod sec_audio_player;

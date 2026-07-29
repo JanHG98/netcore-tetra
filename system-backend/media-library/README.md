@@ -120,3 +120,9 @@ Noch nicht enthalten sind:
 - framegenaue verteilte Playout-Synchronisierung über mehrere Regionen,
 - S3-/Object-Storage oder Medien-CDN,
 - rechtssichere WORM-Archivierung.
+
+## Basisstation integration
+
+The base station can register completed WAV recordings by URL. The Media Library pulls the file, processes it, and automatically archives recordings to `storage.recording_archive_root`. Ready and approved assets are exposed to the base station Audio Centre, which downloads the preview into its local cache before starting radio playout.
+
+See `Docs/MEDIA_LIBRARY_BASISSTATION_INTEGRATION.md` for configuration and rollout steps.

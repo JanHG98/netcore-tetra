@@ -2,11 +2,16 @@
 // NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
 
 use std::fs;
+use std::io::{self, Read};
 use std::path::{Component, Path, PathBuf};
 use std::process::Command;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
-use tetra_config::bluestation::CfgAudioPlayer;
+use reqwest::blocking::Client;
+use serde::Deserialize;
+
+use tetra_config::bluestation::{CfgAudioPlayer, CfgMediaLibrary};
 use uuid::Uuid;
 
 use super::types::{
@@ -72,10 +77,26 @@ struct MediaRoot {
     cache_before_decode: bool,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+struct RemoteMediaAsset {
+    asset_id: String,
+    title: String,
+    original_filename: String,
+    kind: String,
+    state: String,
+    approval: String,
+    size_bytes: Option<u64>,
+    preview_ready: bool,
+    #[serde(default)]
+    last_error: Option<String>,
+}
+
 // Was: Bündelt die zusammengehörigen Werte für audio player shared in einem Datentyp.
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct AudioPlayerShared {
     config: CfgAudioPlayer,
+    media_library: CfgMediaLibrary,
+    media_library_client: Client,
     local_root: PathBuf,
     cache_root: PathBuf,
     startup_warning: Option<String>,
@@ -99,6 +120,7 @@ impl AudioPlayerHandle {
     // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub(crate) fn new(
         mut config: CfgAudioPlayer,
+        media_library: CfgMediaLibrary,
         command_tx: crossbeam_channel::Sender<AudioPlayerCommand>,
         ffmpeg_available: bool,
     ) -> Result<Self, String> {
@@ -172,9 +194,25 @@ impl AudioPlayerHandle {
             });
         }
 
+        let media_library_client = Client::builder()
+            .connect_timeout(Duration::from_secs(
+                media_library.request_timeout_seconds.max(1),
+            ))
+            .timeout(Duration::from_secs(
+                media_library.request_timeout_seconds.max(1),
+            ))
+            .user_agent(concat!(
+                "NetCore-TETRA-AudioCentre/",
+                env!("CARGO_PKG_VERSION")
+            ))
+            .build()
+            .map_err(|error| format!("cannot build Media Library HTTP client: {error}"))?;
+
         Ok(Self {
             inner: Arc::new(AudioPlayerShared {
                 config,
+                media_library,
+                media_library_client,
                 local_root,
                 cache_root,
                 startup_warning,
@@ -241,7 +279,8 @@ impl AudioPlayerHandle {
     // Was: Führt den Arbeitsschritt `media_sources` für Audio- und Mediendaten sources aus.
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn media_sources(&self) -> Vec<MediaSourceInfo> {
-        self.inner
+        let mut sources = self
+            .inner
             .media_roots
             .iter()
             .map(|root| match canonical_media_root(root) {
@@ -262,12 +301,44 @@ impl AudioPlayerHandle {
                     error: Some(error),
                 },
             })
-            .collect()
+            .collect::<Vec<_>>();
+
+        if self.media_library_source_enabled() {
+            let health_url = format!("{}/health/live", self.inner.media_library.base_url);
+            let health = self
+                .inner
+                .media_library_client
+                .get(&health_url)
+                .send()
+                .map_err(|error| error.to_string())
+                .and_then(|response| {
+                    if response.status().is_success() {
+                        Ok(())
+                    } else {
+                        Err(format!("HTTP {}", response.status()))
+                    }
+                });
+            sources.push(MediaSourceInfo {
+                id: "media-library".to_string(),
+                name: "Media Library".to_string(),
+                path: self.inner.media_library.base_url.clone(),
+                source_type: "media_library".to_string(),
+                available: health.is_ok(),
+                error: health.err(),
+            });
+        }
+        sources
     }
 
     // Was: Diese Funktion liefert Audio- und Mediendaten.
     // Warum: Die Zusammenstellung der Einträge bleibt damit konsistent und wiederverwendbar.
     pub fn list_media(&self, source_id: &str, relative: &str) -> Result<Vec<MediaEntry>, String> {
+        if source_id.trim() == "media-library" {
+            if !relative.trim().trim_matches('/').is_empty() {
+                return Err("Media Library is presented as a flat asset catalogue".to_string());
+            }
+            return self.list_media_library();
+        }
         let root = self.find_media_root(source_id)?;
         let canonical_root = canonical_media_root(root)?;
         let directory = resolve_directory(&canonical_root, relative)?;
@@ -328,6 +399,9 @@ impl AudioPlayerHandle {
     // Was: Führt den Arbeitsschritt `preview_media_path` für preview Audio- und Mediendaten path aus.
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn preview_media_path(&self, source_id: &str, relative_path: &str) -> Result<PathBuf, String> {
+        if source_id.trim() == "media-library" {
+            return self.download_media_library_preview(relative_path).map(|value| value.0);
+        }
         let root = self.find_media_root(source_id)?;
         let canonical_root = canonical_media_root(root)?;
         let path = resolve_media_file(&canonical_root, relative_path)?;
@@ -356,6 +430,21 @@ impl AudioPlayerHandle {
         target_id: u32,
         priority: Option<u8>,
     ) -> Result<String, String> {
+        if source_id.trim() == "media-library" {
+            let (path, display_name) = self.download_media_library_preview(relative_path)?;
+            return self.play_resolved(
+                ResolvedAudioSource {
+                    path,
+                    display_name,
+                    source_type: AudioSourceType::Media,
+                    source_id: Some("media-library".to_string()),
+                    cache_before_decode: false,
+                },
+                target_type,
+                target_id,
+                priority,
+            );
+        }
         let root = self.find_media_root(source_id)?;
         let canonical_root = canonical_media_root(root)?;
         let path = resolve_media_file(&canonical_root, relative_path)?;
@@ -543,6 +632,199 @@ impl AudioPlayerHandle {
         live.last_error = Some(error);
         live.call_id = None;
         live.timeslot = None;
+    }
+
+    fn media_library_source_enabled(&self) -> bool {
+        self.inner.media_library.enabled && self.inner.media_library.audio_source_enabled
+    }
+
+    fn media_library_asset(&self, asset_id: &str) -> Result<RemoteMediaAsset, String> {
+        if !self.media_library_source_enabled() {
+            return Err("Media Library audio source is disabled".to_string());
+        }
+        let asset_id = Uuid::parse_str(asset_id.trim())
+            .map_err(|_| "invalid Media Library asset id".to_string())?
+            .to_string();
+        let endpoint = format!(
+            "{}/api/v1/assets/{asset_id}",
+            self.inner.media_library.base_url
+        );
+        let response = self
+            .inner
+            .media_library_client
+            .get(endpoint)
+            .send()
+            .map_err(|error| format!("Media Library request failed: {error}"))?;
+        if !response.status().is_success() {
+            return Err(format!(
+                "Media Library asset request returned HTTP {}",
+                response.status()
+            ));
+        }
+        let asset = response
+            .json::<RemoteMediaAsset>()
+            .map_err(|error| format!("invalid Media Library asset response: {error}"))?;
+        self.validate_remote_asset(&asset)?;
+        Ok(asset)
+    }
+
+    fn validate_remote_asset(&self, asset: &RemoteMediaAsset) -> Result<(), String> {
+        if self.inner.media_library.only_ready && asset.state != "ready" {
+            return Err(format!("asset is not ready (state={})", asset.state));
+        }
+        if self.inner.media_library.only_approved && asset.approval != "approved" {
+            return Err(format!(
+                "asset is not approved (approval={})",
+                asset.approval
+            ));
+        }
+        if !asset.preview_ready {
+            return Err(asset
+                .last_error
+                .clone()
+                .unwrap_or_else(|| "asset has no playable preview".to_string()));
+        }
+        Ok(())
+    }
+
+    fn list_media_library(&self) -> Result<Vec<MediaEntry>, String> {
+        if !self.media_library_source_enabled() {
+            return Err("Media Library audio source is disabled".to_string());
+        }
+        let mut url = reqwest::Url::parse(&format!(
+            "{}/api/v1/assets",
+            self.inner.media_library.base_url
+        ))
+        .map_err(|error| format!("invalid Media Library URL: {error}"))?;
+        {
+            let mut query = url.query_pairs_mut();
+            query.append_pair(
+                "limit",
+                &self.inner.media_library.max_list_entries.to_string(),
+            );
+            if self.inner.media_library.only_ready {
+                query.append_pair("state", "ready");
+            }
+            if self.inner.media_library.only_approved {
+                query.append_pair("approval", "approved");
+            }
+        }
+        let response = self
+            .inner
+            .media_library_client
+            .get(url)
+            .send()
+            .map_err(|error| format!("Media Library request failed: {error}"))?;
+        if !response.status().is_success() {
+            return Err(format!(
+                "Media Library catalogue returned HTTP {}",
+                response.status()
+            ));
+        }
+        let assets = response
+            .json::<Vec<RemoteMediaAsset>>()
+            .map_err(|error| format!("invalid Media Library catalogue: {error}"))?;
+        let mut entries = assets
+            .into_iter()
+            .filter(|asset| self.validate_remote_asset(asset).is_ok())
+            .map(|asset| {
+                let title = asset.title.trim();
+                let name = if title.is_empty() {
+                    asset.original_filename.clone()
+                } else {
+                    format!("{} · {}", title, asset.kind)
+                };
+                MediaEntry {
+                    name,
+                    path: asset.asset_id,
+                    entry_type: "file".to_string(),
+                    size_bytes: asset.size_bytes,
+                    extension: Some("wav".to_string()),
+                }
+            })
+            .collect::<Vec<_>>();
+        entries.sort_by(|left, right| {
+            left.name
+                .to_ascii_lowercase()
+                .cmp(&right.name.to_ascii_lowercase())
+        });
+        Ok(entries)
+    }
+
+    fn download_media_library_preview(
+        &self,
+        asset_id: &str,
+    ) -> Result<(PathBuf, String), String> {
+        let asset = self.media_library_asset(asset_id)?;
+        let cached = self
+            .inner
+            .cache_root
+            .join(format!("{}.wav", asset.asset_id));
+        if cached
+            .metadata()
+            .ok()
+            .is_some_and(|metadata| metadata.is_file() && metadata.len() > 0)
+        {
+            return Ok((cached, asset.title));
+        }
+
+        let endpoint = format!(
+            "{}/api/v1/assets/{}/preview",
+            self.inner.media_library.base_url, asset.asset_id
+        );
+        let response = self
+            .inner
+            .media_library_client
+            .get(endpoint)
+            .timeout(Duration::from_secs(
+                self.inner.media_library.download_timeout_seconds.max(1),
+            ))
+            .send()
+            .map_err(|error| format!("Media Library download failed: {error}"))?;
+        if !response.status().is_success() {
+            return Err(format!(
+                "Media Library preview returned HTTP {}",
+                response.status()
+            ));
+        }
+        let max_bytes = self
+            .inner
+            .config
+            .max_file_size_mb
+            .saturating_mul(1024 * 1024);
+        if response
+            .content_length()
+            .is_some_and(|length| length > max_bytes)
+        {
+            return Err(format!(
+                "Media Library preview exceeds {} MiB limit",
+                self.inner.config.max_file_size_mb
+            ));
+        }
+
+        let part = self
+            .inner
+            .cache_root
+            .join(format!("{}.wav.part", asset.asset_id));
+        let mut reader = response.take(max_bytes.saturating_add(1));
+        let mut file = fs::File::create(&part)
+            .map_err(|error| format!("cannot create {}: {error}", part.display()))?;
+        let copied = io::copy(&mut reader, &mut file)
+            .map_err(|error| format!("cannot write {}: {error}", part.display()))?;
+        if copied == 0 || copied > max_bytes {
+            let _ = fs::remove_file(&part);
+            return Err("Media Library preview is empty or too large".to_string());
+        }
+        file.sync_all()
+            .map_err(|error| format!("cannot sync {}: {error}", part.display()))?;
+        fs::rename(&part, &cached).map_err(|error| {
+            format!(
+                "cannot publish cached preview {} -> {}: {error}",
+                part.display(),
+                cached.display()
+            )
+        })?;
+        Ok((cached, asset.title))
     }
 
     // Was: Diese Funktion sucht Audio- und Mediendaten root.

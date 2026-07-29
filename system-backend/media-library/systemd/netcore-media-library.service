@@ -100,7 +100,7 @@ MemoryDenyWriteExecute=true
 SystemCallArchitectures=native
 # Was: Setzt `ReadWritePaths` im Abschnitt `Service`.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit der Dienst auf jedem System gleich und nachvollziehbar arbeitet.
-ReadWritePaths=/var/lib/netcore-media-library -/mnt/nfs-share/Media-Library
+ReadWritePaths=/var/lib/netcore-media-library -/mnt/nfs-share/Media-Library -/mnt/nfs-share/Recordings -/mnt/nfs-share/TTS-Dateien
 # Was: Setzt `RestrictAddressFamilies` im Abschnitt `Service`.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit der Dienst auf jedem System gleich und nachvollziehbar arbeitet.
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6

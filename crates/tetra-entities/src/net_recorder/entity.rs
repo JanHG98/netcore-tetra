@@ -134,7 +134,11 @@ impl RecorderEntity {
     // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
     // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(config: SharedConfig) -> Result<(Self, RecorderHandle), String> {
-        let handle = RecorderHandle::new(config.config().recording.clone()).map_err(|e| format!("cannot initialize recording directory: {e}"))?;
+        let handle = RecorderHandle::new(
+            config.config().recording.clone(),
+            config.config().media_library.clone(),
+        )
+        .map_err(|e| format!("cannot initialize recording directory: {e}"))?;
         let entity = Self {
             runtime_was_active: handle.is_active(),
             config,

@@ -871,6 +871,28 @@ password = "CHANGE-ME-NOW"            # ANPASSEN
 
 ###############################################################################
 
+# BIDIRECTIONAL MEDIA LIBRARY INTEGRATION
+# Recordings are kept locally first, then registered by URL. The Media Library
+# pulls the finished WAV, processes it and archives it to its own NFS mount.
+# Approved/ready Media Library assets appear as a source in the Audio Centre and
+# are downloaded into the local playout cache before radio transmission starts.
+[media_library]
+enabled = false
+base_url = "http://10.0.1.154:8230"
+station_id = "SRV-M-TBS-01"
+publish_recordings = true
+recording_source_base_url = "http://10.0.1.163:8080"
+auto_approve_recordings = false
+audio_source_enabled = true
+only_ready = true
+only_approved = true
+retry_seconds = 60
+request_timeout_seconds = 15
+download_timeout_seconds = 120
+max_list_entries = 1000
+
+###############################################################################
+
 # LOCAL TETRA SPEECH RECORDING (NetCore Phase 1)
 # Records locally received TETRA speech as 8-kHz mono PCM WAV plus a JSON sidecar.
 # Runtime recording can be paused/resumed from INTEGRATIONEN -> AUDIO-ZENTRALE.
@@ -912,7 +934,7 @@ max_list_entries = 2000
 # The destination root must already exist and be writable by the service user.
 # Was: Setzt die Einstellung `archive_enabled` für recording.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-archive_enabled = true
+archive_enabled = false
 # Was: Setzt die Einstellung `archive_directory` für recording.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 archive_directory = "/mnt/nfs-share/Recordings"
@@ -921,7 +943,7 @@ archive_directory = "/mnt/nfs-share/Recordings"
 # server copy is routed separately and never placed in the Recordings archive.
 # Was: Setzt die Einstellung `tts_archive_enabled` für recording.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-tts_archive_enabled = true
+tts_archive_enabled = false
 # Was: Setzt die Einstellung `tts_archive_directory` für recording.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 tts_archive_directory = "/mnt/nfs-share/TTS-Dateien"

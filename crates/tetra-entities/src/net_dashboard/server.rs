@@ -2253,6 +2253,91 @@ fn serve_tpg2200_action_url(
 
 
 #[cfg(feature = "recording")]
+fn serve_media_library_recording_export(
+    mut stream: TcpStream,
+    req_line: &str,
+    recorder: &DashboardRecorderHandle,
+) {
+    let route = request_route(req_line).trim_end_matches('/');
+    let method = req_line.split_whitespace().next().unwrap_or("");
+    drain_http_headers(&mut stream);
+
+    if method != "GET" {
+        http_json_response(
+            stream,
+            405,
+            &serde_json::json!({"error":"only GET is allowed"}).to_string(),
+        );
+        return;
+    }
+    let Some(handle) = recorder.as_ref() else {
+        http_json_response(
+            stream,
+            503,
+            &serde_json::json!({"error":"recording service unavailable"}).to_string(),
+        );
+        return;
+    };
+    if !handle.media_library_export_enabled() {
+        http_json_response(
+            stream,
+            404,
+            &serde_json::json!({"error":"Media Library recording export is disabled"}).to_string(),
+        );
+        return;
+    }
+
+    let Some(rest) = route.strip_prefix("/api/media-library/recordings/") else {
+        http_response(stream, 404, "not found");
+        return;
+    };
+    let mut parts = rest.split('/');
+    let id = parts.next().unwrap_or("");
+    let action = parts.next().unwrap_or("");
+    if id.is_empty() || parts.next().is_some() {
+        http_response(stream, 404, "not found");
+        return;
+    }
+
+    match action {
+        "audio" => match handle.audio_path(id) {
+            Ok(path) => serve_recording_audio(stream, &path, id),
+            Err(error) => http_json_response(
+                stream,
+                404,
+                &serde_json::json!({"error":error}).to_string(),
+            ),
+        },
+        "metadata" => match handle.find_recording(id) {
+            Some(item) => {
+                let body = serde_json::to_string(&item).unwrap_or_else(|_| "{}".to_string());
+                http_json_response(stream, 200, &body);
+            }
+            None => http_json_response(
+                stream,
+                404,
+                &serde_json::json!({"error":"recording not found"}).to_string(),
+            ),
+        },
+        _ => http_response(stream, 404, "not found"),
+    }
+}
+
+#[cfg(not(feature = "recording"))]
+fn serve_media_library_recording_export(
+    mut stream: TcpStream,
+    _req_line: &str,
+    _recorder: &DashboardRecorderHandle,
+) {
+    drain_http_headers(&mut stream);
+    http_json_response(
+        stream,
+        503,
+        &serde_json::json!({"error":"recording support not compiled in"}).to_string(),
+    );
+}
+
+#[cfg(feature = "recording")]
 // Was: Diese Funktion stellt recording request.
 // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_recording_request(mut stream: TcpStream, req_line: &str, recorder: &DashboardRecorderHandle) {
@@ -3023,6 +3108,16 @@ fn handle_connection(
     if is_tpg2200_action_request(&req_line) {
         drain_http_headers(&mut stream);
         serve_tpg2200_action_url(stream, &req_line, &shared_config, &cmd_tx, &state);
+        return;
+    }
+
+    // Deliberately narrow machine-to-machine export used by the Media Library.
+    // It is handled before the dashboard session gate because the open-lab Media
+    // Library pulls a completed WAV itself. No listing, deletion or control route
+    // is exposed here, and the endpoint remains disabled unless [media_library]
+    // publishing is explicitly enabled.
+    if request_route(&req_line).starts_with("/api/media-library/recordings/") {
+        serve_media_library_recording_export(stream, &req_line, &recorder);
         return;
     }
 

@@ -60,6 +60,9 @@ backup_root = "/var/lib/netcore-media-library/backups"
 # Was: Setzt die Einstellung `archive_root` für storage.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 archive_root = "/mnt/nfs-share/Media-Library"
+# Kind-specific archive locations. These fall back to archive_root when omitted.
+recording_archive_root = "/mnt/nfs-share/Recordings"
+tts_archive_root = "/mnt/nfs-share/TTS-Dateien"
 # Was: Setzt die Einstellung `max_asset_bytes` für storage.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_asset_bytes = 67108864
@@ -86,7 +89,7 @@ worker_interval_ms = 500
 probe_interval_secs = 15
 # Was: Setzt die Einstellung `import_timeout_secs` für Laufzeit.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-import_timeout_secs = 20
+import_timeout_secs = 120
 # Was: Setzt die Einstellung `max_assets` für Laufzeit.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_assets = 10000
@@ -108,6 +111,9 @@ frame_interval_ms = 60
 # Was: Setzt die Einstellung `auto_approve_tts` für Laufzeit.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 auto_approve_tts = false
+# Automatically copy completed basis-station recordings and TTS media to archive_root.
+auto_archive_recordings = true
+auto_archive_tts = true
 
 # Was: Öffnet den Konfigurationsabschnitt `codec`.
 # Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.

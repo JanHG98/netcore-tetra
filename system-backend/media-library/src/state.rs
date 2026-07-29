@@ -111,11 +111,7 @@ impl SharedLibrary {
                 job.completed_at = Some(now);
             }
         }
-        let archive_available = config
-            .storage
-            .archive_root
-            .as_ref()
-            .is_some_and(|path| path.is_dir());
+        let archive_available = archive_roots_available(&config);
         let library = Self {
             inner: Arc::new(Mutex::new(LibraryInner {
                 config,
@@ -355,10 +351,82 @@ impl SharedLibrary {
             return Err("URL import is disabled by configuration".to_string());
         }
         validate_import_url(&inner.config, &input.source_url)?;
-        validate_new_asset_locked(&inner, input.size_bytes.unwrap_or(0))?;
         if input.schema.as_deref().is_some_and(|schema| schema != "netcore-media-import-v1") {
             return Err("unsupported import schema".to_string());
         }
+
+        let source = input
+            .source
+            .clone()
+            .unwrap_or_else(|| "url_import".to_string());
+        let source_reference = clean_optional(input.source_reference.clone());
+
+        // An upstream system may retry the same completed recording until the
+        // Media Library reports it ready. Treat source + source_reference as an
+        // idempotency key so restarts and network timeouts never create duplicates.
+        if let Some(reference) = source_reference.as_deref() {
+            let existing_id = inner
+                .state
+                .assets
+                .values()
+                .find(|asset| {
+                    asset.source == source
+                        && asset.source_reference.as_deref() == Some(reference)
+                })
+                .map(|asset| asset.asset_id.clone());
+            if let Some(asset_id) = existing_id {
+                let now = Utc::now();
+                let mut requeued = false;
+                let result = {
+                    let asset = inner
+                        .state
+                        .assets
+                        .get_mut(&asset_id)
+                        .expect("idempotent asset still exists");
+                    asset.source_url = Some(input.source_url.clone());
+                    if let Some(size_bytes) = input.size_bytes {
+                        asset.size_bytes = Some(size_bytes);
+                    }
+                    if let Some(sha256) = input.sha256.as_ref() {
+                        asset.sha256 = Some(sha256.to_ascii_lowercase());
+                    }
+                    if asset.state == "failed" {
+                        asset.state = if asset.original_path.is_some() {
+                            "processing".to_string()
+                        } else {
+                            "importing".to_string()
+                        };
+                        asset.processing_attempts = 0;
+                        asset.last_error = None;
+                        requeued = true;
+                    }
+                    asset.updated_at = now;
+                    asset.clone()
+                };
+                if requeued {
+                    push_event_locked(
+                        &mut inner,
+                        "url_import_requeued",
+                        Some(&asset_id),
+                        None,
+                        json!({"source": &source, "source_reference": reference}),
+                    );
+                    audit_locked(
+                        &mut inner,
+                        actor(input.actor.as_deref()),
+                        "import-url-retry",
+                        "asset",
+                        &asset_id,
+                        "requeued",
+                        json!({"source_reference": reference}),
+                    );
+                }
+                persist_locked(&mut inner)?;
+                return Ok(result);
+            }
+        }
+
+        validate_new_asset_locked(&inner, input.size_bytes.unwrap_or(0))?;
         let now = Utc::now();
         let asset_id = Uuid::new_v4().to_string();
         let kind = normalize_kind(input.kind.as_deref().unwrap_or("other"));
@@ -384,9 +452,9 @@ impl SharedLibrary {
             state: "importing".to_string(),
             approval: if approve { "approved" } else { "draft" }.to_string(),
             tags: normalize_tags(input.tags),
-            source: input.source.unwrap_or_else(|| "url_import".to_string()),
+            source,
             source_url: Some(input.source_url),
-            source_reference: None,
+            source_reference,
             original_filename: media::safe_filename(&filename, "import.bin"),
             media_type: input.media_type.unwrap_or_else(|| media_type_from_filename(&filename)),
             original_path: None,
@@ -413,7 +481,13 @@ impl SharedLibrary {
             approved_by: approve.then(|| actor(input.actor.as_deref())),
         };
         inner.state.assets.insert(asset_id.clone(), asset.clone());
-        push_event_locked(&mut inner, "url_import_queued", Some(&asset_id), None, json!({"source": asset.source}));
+        push_event_locked(
+            &mut inner,
+            "url_import_queued",
+            Some(&asset_id),
+            None,
+            json!({"source": &asset.source, "source_reference": &asset.source_reference}),
+        );
         audit_locked(
             &mut inner,
             actor(input.actor.as_deref()),
@@ -438,9 +512,10 @@ impl SharedLibrary {
             let inner = lock(&self.inner);
             inner.config.dependencies.recorder_base_url.clone()
         };
-        let mut asset = self.create_import_url(ImportUrlInput {
+        let asset = self.create_import_url(ImportUrlInput {
             schema: Some("netcore-media-import-v1".to_string()),
             source: Some("recorder".to_string()),
+            source_reference: Some(recording_id.to_string()),
             source_url: format!("{recorder_url}/api/v1/recordings/{recording_id}/audio.tacelp"),
             name: input.name.unwrap_or_else(|| format!("Recording {recording_id}")),
             filename: Some(format!("{recording_id}.tacelp")),
@@ -455,12 +530,6 @@ impl SharedLibrary {
             actor: input.actor,
             broadcast: None,
         })?;
-        let mut inner = lock(&self.inner);
-        if let Some(stored) = inner.state.assets.get_mut(&asset.asset_id) {
-            stored.source_reference = Some(recording_id.to_string());
-            asset = stored.clone();
-            persist_locked(&mut inner)?;
-        }
         Ok(asset)
     }
 
@@ -612,22 +681,32 @@ impl SharedLibrary {
     pub fn archive_asset(&self, asset_id: &str, input: ActionInput) -> Result<AssetRecord, String> {
         let mut inner = lock(&self.inner);
         require_management(&inner)?;
-        let archive_root = inner
-            .config
-            .storage
-            .archive_root
-            .clone()
-            .ok_or_else(|| "archive_root is not configured".to_string())?;
-        if !archive_root.is_dir() {
-            inner.archive_available = false;
-            return Err(format!("archive root {} is not mounted", archive_root.display()));
-        }
         let asset = inner
             .state
             .assets
             .get(asset_id)
             .cloned()
             .ok_or_else(|| "asset not found".to_string())?;
+        let archive_root = match asset.kind.as_str() {
+            "recording" => inner
+                .config
+                .storage
+                .recording_archive_root
+                .clone()
+                .or_else(|| inner.config.storage.archive_root.clone()),
+            "tts" => inner
+                .config
+                .storage
+                .tts_archive_root
+                .clone()
+                .or_else(|| inner.config.storage.archive_root.clone()),
+            _ => inner.config.storage.archive_root.clone(),
+        }
+        .ok_or_else(|| format!("archive root is not configured for kind {}", asset.kind))?;
+        if !archive_root.is_dir() {
+            inner.archive_available = false;
+            return Err(format!("archive root {} is not mounted", archive_root.display()));
+        }
         if asset.state != "ready" {
             return Err("only ready assets can be archived".to_string());
         }
@@ -1354,12 +1433,7 @@ impl SharedLibrary {
     pub fn maintenance(&self, actor_name: Option<String>) -> Result<Value, String> {
         let mut inner = lock(&self.inner);
         require_management(&inner)?;
-        let archive_available = inner
-            .config
-            .storage
-            .archive_root
-            .as_ref()
-            .is_some_and(|path| path.is_dir());
+        let archive_available = archive_roots_available(&inner.config);
         inner.archive_available = archive_available;
         trim_locked(&mut inner);
         audit_locked(
@@ -1374,6 +1448,16 @@ impl SharedLibrary {
         persist_locked(&mut inner)?;
         Ok(json!({"archive_available":archive_available,"assets":inner.state.assets.len(),"jobs":inner.state.jobs.len()}))
     }
+}
+
+fn archive_roots_available(config: &MediaLibraryConfig) -> bool {
+    let roots = [
+        config.storage.archive_root.as_ref(),
+        config.storage.recording_archive_root.as_ref(),
+        config.storage.tts_archive_root.as_ref(),
+    ];
+    let configured = roots.iter().flatten().count();
+    configured > 0 && roots.into_iter().flatten().all(|path| path.is_dir())
 }
 
 // Was: Diese Funktion prüft new asset locked.

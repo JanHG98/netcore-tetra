@@ -207,7 +207,12 @@ pub struct StorageConfig {
     pub state_file: PathBuf,
     pub temp_root: PathBuf,
     pub backup_root: PathBuf,
+    /// Archive root for ordinary library assets.
     pub archive_root: Option<PathBuf>,
+    /// Optional dedicated archive root for imported radio recordings.
+    pub recording_archive_root: Option<PathBuf>,
+    /// Optional dedicated archive root for generated/imported TTS media.
+    pub tts_archive_root: Option<PathBuf>,
     pub max_asset_bytes: u64,
     pub max_total_bytes: u64,
     pub fsync_imports: bool,
@@ -225,6 +230,8 @@ impl Default for StorageConfig {
             temp_root: PathBuf::from("/var/lib/netcore-media-library/tmp"),
             backup_root: PathBuf::from("/var/lib/netcore-media-library/backups"),
             archive_root: Some(PathBuf::from("/mnt/nfs-share/Media-Library")),
+            recording_archive_root: Some(PathBuf::from("/mnt/nfs-share/Recordings")),
+            tts_archive_root: Some(PathBuf::from("/mnt/nfs-share/TTS-Dateien")),
             max_asset_bytes: 64 * 1024 * 1024,
             max_total_bytes: 20 * 1024 * 1024 * 1024,
             fsync_imports: true,
@@ -248,6 +255,10 @@ pub struct RuntimeConfig {
     pub max_attempts: u32,
     pub frame_interval_ms: u64,
     pub auto_approve_tts: bool,
+    /// Automatically copy ready basis-station recordings into archive_root.
+    pub auto_archive_recordings: bool,
+    /// Automatically copy ready TTS assets into archive_root.
+    pub auto_archive_tts: bool,
 }
 
 // Was: Implementiert das zugehörige Verhalten für `Default for RuntimeConfig`.
@@ -260,7 +271,7 @@ impl Default for RuntimeConfig {
             operating_mode: SHADOW_MODE.to_string(),
             worker_interval_ms: 500,
             probe_interval_secs: 15,
-            import_timeout_secs: 20,
+            import_timeout_secs: 120,
             max_assets: 10_000,
             max_jobs: 2_000,
             max_events: 5_000,
@@ -268,6 +279,8 @@ impl Default for RuntimeConfig {
             max_attempts: 3,
             frame_interval_ms: 60,
             auto_approve_tts: false,
+            auto_archive_recordings: true,
+            auto_archive_tts: true,
         }
     }
 }

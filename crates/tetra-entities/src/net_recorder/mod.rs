@@ -10,6 +10,7 @@
 // Was: Bindet das Untermodul archive in diesen Bereich ein.
 // Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod archive;
+mod media_library;
 // Was: Bindet das Untermodul entity in diesen Bereich ein.
 // Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 pub mod entity;

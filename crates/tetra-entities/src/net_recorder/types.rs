@@ -64,4 +64,12 @@ pub struct RecorderStatus {
     pub archive_completed: usize,
     pub archive_last_success_at: Option<String>,
     pub archive_last_error: Option<String>,
+    pub media_library_enabled: bool,
+    pub media_library_url: String,
+    pub media_library_available: bool,
+    pub media_library_active: bool,
+    pub media_library_pending: usize,
+    pub media_library_completed: usize,
+    pub media_library_last_success_at: Option<String>,
+    pub media_library_last_error: Option<String>,
 }

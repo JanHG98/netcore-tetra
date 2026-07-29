@@ -10,10 +10,11 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{SyncSender, sync_channel};
 use std::sync::{Arc, Mutex};
 
-use tetra_config::bluestation::{CfgRecording, RecordingMode};
+use tetra_config::bluestation::{CfgMediaLibrary, CfgRecording, RecordingMode};
 use uuid::Uuid;
 
 use super::archive::{recording_is_archived, spawn_archive_worker};
+use super::media_library::{marker_path as media_library_marker_path, recording_is_published, recording_requires_publish, spawn_media_library_worker};
 use super::types::{RecorderStatus, RecordingMetadata};
 use super::wav::recover_part;
 
@@ -31,16 +32,24 @@ pub(super) struct LiveStatus {
     pub(super) archive_completed: usize,
     pub(super) archive_last_success_at: Option<String>,
     pub(super) archive_last_error: Option<String>,
+    pub(super) media_library_available: bool,
+    pub(super) media_library_active: bool,
+    pub(super) media_library_pending: usize,
+    pub(super) media_library_completed: usize,
+    pub(super) media_library_last_success_at: Option<String>,
+    pub(super) media_library_last_error: Option<String>,
 }
 
 // Was: Bündelt die zusammengehörigen Werte für Aufzeichnung shared in einem Datentyp.
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub(super) struct RecorderShared {
     pub(super) config: CfgRecording,
+    pub(super) media_library: CfgMediaLibrary,
     pub(super) root: PathBuf,
     active: AtomicBool,
     live: Mutex<LiveStatus>,
     archive_tx: Option<SyncSender<()>>,
+    media_library_tx: Option<SyncSender<()>>,
 }
 
 #[derive(Clone)]
@@ -55,10 +64,16 @@ pub struct RecorderHandle {
 impl RecorderHandle {
     // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
     // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
-    pub(crate) fn new(config: CfgRecording) -> io::Result<Self> {
+    pub(crate) fn new(config: CfgRecording, media_library: CfgMediaLibrary) -> io::Result<Self> {
         let root = PathBuf::from(&config.directory);
         fs::create_dir_all(&root)?;
         let (archive_tx, archive_rx) = if config.archive_enabled || config.tts_archive_enabled {
+            let (tx, rx) = sync_channel(1);
+            (Some(tx), Some(rx))
+        } else {
+            (None, None)
+        };
+        let (media_library_tx, media_library_rx) = if media_library.enabled && media_library.publish_recordings {
             let (tx, rx) = sync_channel(1);
             (Some(tx), Some(rx))
         } else {
@@ -68,9 +83,11 @@ impl RecorderHandle {
             inner: Arc::new(RecorderShared {
                 active: AtomicBool::new(config.active),
                 config,
+                media_library,
                 root,
                 live: Mutex::new(LiveStatus::default()),
                 archive_tx,
+                media_library_tx,
             }),
         };
         handle.recover_partials();
@@ -78,6 +95,9 @@ impl RecorderHandle {
         handle.cleanup_retention();
         if let Some(rx) = archive_rx {
             spawn_archive_worker(&handle.inner, rx);
+        }
+        if let Some(rx) = media_library_rx {
+            spawn_media_library_worker(&handle.inner, rx);
         }
         Ok(handle)
     }
@@ -106,6 +126,12 @@ impl RecorderHandle {
         &self.inner.root
     }
 
+    /// Whether the deliberately narrow public recording-export route may serve
+    /// completed WAV files to the configured Media Library.
+    pub fn media_library_export_enabled(&self) -> bool {
+        self.inner.media_library.enabled && self.inner.media_library.publish_recordings
+    }
+
     // Was: Diese Funktion setzt active calls.
     // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub(crate) fn set_active_calls(&self, mut ids: Vec<u16>) {
@@ -126,6 +152,9 @@ impl RecorderHandle {
             live.last_error = None;
         }
         if let Some(tx) = &self.inner.archive_tx {
+            let _ = tx.try_send(());
+        }
+        if let Some(tx) = &self.inner.media_library_tx {
             let _ = tx.try_send(());
         }
     }
@@ -176,25 +205,50 @@ impl RecorderHandle {
             archive_completed,
             archive_last_success_at,
             archive_last_error,
-        ) = self
-            .inner
-            .live
-            .lock()
-            .map(|live| {
-                (
-                    live.active_sessions,
-                    live.active_call_ids.clone(),
-                    live.last_recording_id.clone(),
-                    live.last_error.clone(),
-                    live.archive_available,
-                    live.archive_active,
-                    live.archive_pending,
-                    live.archive_completed,
-                    live.archive_last_success_at.clone(),
-                    live.archive_last_error.clone(),
-                )
-            })
-            .unwrap_or_default();
+            media_library_available,
+            media_library_active,
+            media_library_pending,
+            media_library_completed,
+            media_library_last_success_at,
+            media_library_last_error,
+        ) = match self.inner.live.lock() {
+            Ok(live) => (
+                live.active_sessions,
+                live.active_call_ids.clone(),
+                live.last_recording_id.clone(),
+                live.last_error.clone(),
+                live.archive_available,
+                live.archive_active,
+                live.archive_pending,
+                live.archive_completed,
+                live.archive_last_success_at.clone(),
+                live.archive_last_error.clone(),
+                live.media_library_available,
+                live.media_library_active,
+                live.media_library_pending,
+                live.media_library_completed,
+                live.media_library_last_success_at.clone(),
+                live.media_library_last_error.clone(),
+            ),
+            Err(_) => (
+                0,
+                Vec::new(),
+                None,
+                Some("recorder status lock poisoned".to_string()),
+                false,
+                false,
+                0,
+                0,
+                None,
+                None,
+                false,
+                false,
+                0,
+                0,
+                None,
+                None,
+            ),
+        };
         RecorderStatus {
             available: true,
             active: self.is_active(),
@@ -223,6 +277,14 @@ impl RecorderHandle {
             archive_completed,
             archive_last_success_at,
             archive_last_error,
+            media_library_enabled: self.inner.media_library.enabled && self.inner.media_library.publish_recordings,
+            media_library_url: self.inner.media_library.base_url.clone(),
+            media_library_available,
+            media_library_active,
+            media_library_pending,
+            media_library_completed,
+            media_library_last_success_at,
+            media_library_last_error,
         }
     }
 
@@ -398,6 +460,7 @@ impl RecorderHandle {
         let audio = self.audio_path(id)?;
         let json = audio.with_extension("json");
         let archived = audio.with_extension("archived");
+        let media_library_marker = media_library_marker_path(&audio);
         if audio.exists() {
             fs::remove_file(&audio).map_err(|e| format!("failed to delete {}: {e}", audio.display()))?;
         }
@@ -422,6 +485,10 @@ impl RecorderHandle {
         }
         if archived.exists() {
             fs::remove_file(&archived).map_err(|e| format!("failed to delete {}: {e}", archived.display()))?;
+        }
+        if media_library_marker.exists() {
+            fs::remove_file(&media_library_marker)
+                .map_err(|e| format!("failed to delete {}: {e}", media_library_marker.display()))?;
         }
         Ok(())
     }
@@ -523,11 +590,13 @@ impl RecorderHandle {
             let Ok(audio) = self.audio_path(&item.id) else { continue };
             let modified = audio.metadata().and_then(|m| m.modified()).unwrap_or(std::time::SystemTime::now());
             if modified < cutoff {
-                if super::archive::recording_requires_archive(&self.inner, &item)
-                    && !recording_is_archived(&self.inner, &item)
-                {
+                let archive_pending = super::archive::recording_requires_archive(&self.inner, &item)
+                    && !recording_is_archived(&self.inner, &item);
+                let media_library_pending = recording_requires_publish(&self.inner, &item)
+                    && !recording_is_published(&self.inner, &item);
+                if archive_pending || media_library_pending {
                     tracing::warn!(
-                        "Recorder: retention kept unarchived recording id={} because archive copy is not confirmed",
+                        "Recorder: retention kept recording id={} because archive/media-library transfer is not confirmed",
                         item.id
                     );
                     continue;
@@ -547,6 +616,12 @@ impl RecorderShared {
     // Was: Diese Funktion aktualisiert archive Status.
     // Warum: Bestehender Zustand wird dadurch kontrolliert und nach einheitlichen Regeln geändert.
     pub(super) fn update_archive_status(&self, update: impl FnOnce(&mut LiveStatus)) {
+        if let Ok(mut live) = self.live.lock() {
+            update(&mut live);
+        }
+    }
+
+    pub(super) fn update_media_library_status(&self, update: impl FnOnce(&mut LiveStatus)) {
         if let Ok(mut live) = self.live.lock() {
             update(&mut live);
         }

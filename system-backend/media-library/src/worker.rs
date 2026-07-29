@@ -11,7 +11,7 @@ use serde_json::{json, Value};
 
 use crate::config::MediaLibraryConfig;
 use crate::media;
-use crate::model::{DispatchClaim, ImportClaim};
+use crate::model::{ActionInput, DispatchClaim, ImportClaim};
 use crate::state::SharedLibrary;
 
 // Was: Diese Funktion startet Hintergrundverarbeitung.
@@ -96,11 +96,65 @@ pub fn run_cycle(
             });
         // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
         // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
-        match result.and_then(|result| library.complete_processing(&asset_id, result).map(|_| ())) {
-            Ok(()) => tracing::info!(asset_id = %asset_id, "Media processing completed"),
+        match result.and_then(|result| library.complete_processing(&asset_id, result)) {
+            Ok(asset) => {
+                tracing::info!(asset_id = %asset_id, "Media processing completed");
+                let auto_archive = (asset.kind == "recording"
+                    && config.runtime.auto_archive_recordings
+                    && (config.storage.recording_archive_root.is_some()
+                        || config.storage.archive_root.is_some()))
+                    || (asset.kind == "tts"
+                        && config.runtime.auto_archive_tts
+                        && (config.storage.tts_archive_root.is_some()
+                            || config.storage.archive_root.is_some()));
+                if auto_archive && !asset.archived {
+                    if let Err(error) = library.archive_asset(
+                        &asset_id,
+                        ActionInput {
+                            actor: Some("worker:auto-archive".to_string()),
+                        },
+                    ) {
+                        // The live asset is already ready. A missing NAS therefore
+                        // never breaks playout; maintenance or a later manual action
+                        // can archive it after storage returns.
+                        tracing::warn!(asset_id = %asset_id, "Automatic Media Library archive failed: {error}");
+                    }
+                }
+            }
             Err(error) => {
                 tracing::warn!(asset_id = %asset_id, "Media processing failed: {error}");
                 library.fail_processing(&asset_id, error);
+            }
+        }
+    }
+
+    // Retry automatic archiving independently from import/processing. A temporary
+    // NFS outage therefore leaves the live asset ready and is healed once the
+    // archive mount returns. Limit this to one asset per worker cycle.
+    if config.storage.archive_root.is_some()
+        || config.storage.recording_archive_root.is_some()
+        || config.storage.tts_archive_root.is_some()
+    {
+        let pending_archive = library
+            .assets(None, None, Some("ready"), None, config.runtime.max_assets)
+            .into_iter()
+            .find(|asset| {
+                !asset.archived
+                    && ((asset.kind == "recording"
+                        && config.runtime.auto_archive_recordings)
+                        || (asset.kind == "tts" && config.runtime.auto_archive_tts))
+            });
+        if let Some(asset) = pending_archive {
+            if let Err(error) = library.archive_asset(
+                &asset.asset_id,
+                ActionInput {
+                    actor: Some("worker:auto-archive-retry".to_string()),
+                },
+            ) {
+                tracing::debug!(
+                    asset_id = %asset.asset_id,
+                    "Automatic Media Library archive still pending: {error}"
+                );
             }
         }
     }

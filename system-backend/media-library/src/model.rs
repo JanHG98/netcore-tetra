@@ -191,6 +191,8 @@ pub struct UploadInput {
 pub struct ImportUrlInput {
     pub schema: Option<String>,
     pub source: Option<String>,
+    /// Stable idempotency key supplied by the source system.
+    pub source_reference: Option<String>,
     pub source_url: String,
     pub name: String,
     pub filename: Option<String>,

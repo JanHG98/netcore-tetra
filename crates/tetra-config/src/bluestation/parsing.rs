@@ -26,6 +26,7 @@ use super::sec_recovery::{CfgRecoveryDto, apply_recovery_patch};
 use super::sec_audio_player::{CfgAudioPlayerDto, apply_audio_player_patch};
 use super::sec_tts::{CfgTtsDto, apply_tts_patch};
 use super::sec_recording::{CfgRecordingDto, apply_recording_patch};
+use super::sec_media_library::{CfgMediaLibraryDto, apply_media_library_patch};
 use super::sec_security::{CfgSecurityDto, apply_security_patch};
 use super::sec_snom_notify::{CfgSnomNotifyDto, apply_snom_notify_patch};
 use super::sec_telegram::{CfgTelegramDto, apply_telegram_patch};
@@ -192,6 +193,13 @@ pub fn from_toml_str(toml_str: &str) -> Result<StackConfig, Box<dyn std::error::
         return Err(format!("Unrecognized fields in snom_notify config: {:?}", sorted_keys(&snom.extra)).into());
     }
 
+    // Optional media_library section
+    if let Some(ref media_library) = root.media_library
+        && !media_library.extra.is_empty()
+    {
+        return Err(format!("Unrecognized fields in media_library config: {:?}", sorted_keys(&media_library.extra)).into());
+    }
+
     // Optional recording section
     if let Some(ref recording) = root.recording
         && !recording.extra.is_empty()
@@ -308,6 +316,7 @@ pub fn from_toml_str(toml_str: &str) -> Result<StackConfig, Box<dyn std::error::
         tpg2200_action: apply_tpg2200_action_patch(root.tpg2200_action.unwrap_or_default())?,
         snom_notify: apply_snom_notify_patch(root.snom_notify.unwrap_or_default())?,
         dashboard: None,
+        media_library: apply_media_library_patch(root.media_library.unwrap_or_default())?,
         recording: apply_recording_patch(root.recording.unwrap_or_default())?,
         audio_player: apply_audio_player_patch(root.audio_player.unwrap_or_default())?,
         tts: apply_tts_patch(root.tts.unwrap_or_default())?,
@@ -407,6 +416,7 @@ struct TomlConfigRoot {
     tpg2200_action: Option<CfgTpg2200ActionDto>,
     snom_notify: Option<CfgSnomNotifyDto>,
     dashboard: Option<CfgDashboardDto>,
+    media_library: Option<CfgMediaLibraryDto>,
     recording: Option<CfgRecordingDto>,
     audio_player: Option<CfgAudioPlayerDto>,
     tts: Option<CfgTtsDto>,

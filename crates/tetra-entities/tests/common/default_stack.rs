@@ -2,7 +2,7 @@
 // NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
 
 use tetra_config::bluestation::{
-    CfgAsterisk, CfgAudioPlayer, CfgCellInfo, CfgDapnet, CfgEcholink, CfgEmergency, CfgGeoalarm, CfgHealth, CfgMeshcom, CfgNetInfo, CfgPhyIo, CfgRecording, CfgRecovery,
+    CfgAsterisk, CfgAudioPlayer, CfgCellInfo, CfgDapnet, CfgEcholink, CfgEmergency, CfgGeoalarm, CfgHealth, CfgMeshcom, CfgMediaLibrary, CfgNetInfo, CfgPhyIo, CfgRecording, CfgRecovery,
     CfgSecurity, CfgSnomNotify, CfgEdgeFallback, CfgWapIp, CfgPacketDataGateway, CfgTpg2200Action, CfgTts, CfgWxService, PhyBackend, StackConfig, StackMode,
 };
 use tetra_core::{freqs::FreqInfo, ranges::SortedDisjointSsiRanges};
@@ -35,6 +35,7 @@ pub fn default_test_config_bs() -> StackConfig {
         tpg2200_action: CfgTpg2200Action::default(),
         snom_notify: CfgSnomNotify::default(),
         dashboard: None,
+        media_library: CfgMediaLibrary::default(),
         recording: CfgRecording::default(),
         audio_player: CfgAudioPlayer::default(),
         tts: CfgTts::default(),

@@ -4,27 +4,27 @@
 
 # This file is sourced by install.sh and update.sh.
 
-netcore_media_set_archive_root() {
+netcore_media_set_storage_path() {
   local config_path="$1"
-  local archive_root="$2"
+  local key="$2"
+  local value="$3"
 
-  if grep -Eq '^[[:space:]]*archive_root[[:space:]]*=' "${config_path}"; then
+  if grep -Eq "^[[:space:]]*${key}[[:space:]]*=" "${config_path}"; then
     sed -i -E \
-      's|^[[:space:]]*archive_root[[:space:]]*=.*$|archive_root = "'"${archive_root}"'"|' \
+      "s|^[[:space:]]*${key}[[:space:]]*=.*$|${key} = \"${value}\"|" \
       "${config_path}"
   elif grep -Eq '^\[storage\][[:space:]]*$' "${config_path}"; then
     sed -i \
-      '/^\[storage\][[:space:]]*$/a archive_root = "'"${archive_root}"'"' \
+      "/^\[storage\][[:space:]]*$/a ${key} = \"${value}\"" \
       "${config_path}"
   else
-    printf '\n[storage]\narchive_root = "%s"\n' "${archive_root}" >> "${config_path}"
+    printf '\n[storage]\n%s = "%s"\n' "${key}" "${value}" >> "${config_path}"
   fi
 }
 
 netcore_prepare_media_shared_storage() {
   local config_path="$1"
   local share_root="${NETCORE_MEDIA_SHARE_ROOT:-/mnt/nfs-share}"
-  local archive_root="${share_root%/}/Media-Library"
   local shared_directory
   local -a shared_directories=(
     "Media-Library"
@@ -39,7 +39,12 @@ netcore_prepare_media_shared_storage() {
     install -d -o root -g root -m 0755 "${share_root}"
   fi
 
-  netcore_media_set_archive_root "${config_path}" "${archive_root}"
+  netcore_media_set_storage_path \
+    "${config_path}" "archive_root" "${share_root%/}/Media-Library"
+  netcore_media_set_storage_path \
+    "${config_path}" "recording_archive_root" "${share_root%/}/Recordings"
+  netcore_media_set_storage_path \
+    "${config_path}" "tts_archive_root" "${share_root%/}/TTS-Dateien"
 
   if ! mountpoint -q "${share_root}"; then
     echo "WARNING: ${share_root} is not a mount point; shared media directories were not created." >&2

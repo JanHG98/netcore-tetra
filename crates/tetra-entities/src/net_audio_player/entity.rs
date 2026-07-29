@@ -70,10 +70,16 @@ impl AudioPlayerEntity {
     // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(config: SharedConfig) -> Result<(Self, AudioPlayerHandle), String> {
         let player_config = config.config().audio_player.clone();
+        let media_library = config.config().media_library.clone();
         let (command_tx, command_rx) = crossbeam_channel::unbounded();
         let (prepare_tx, prepare_rx) = crossbeam_channel::unbounded();
         let ffmpeg_available = detect_ffmpeg(&player_config.ffmpeg_path);
-        let handle = AudioPlayerHandle::new(player_config, command_tx, ffmpeg_available)?;
+        let handle = AudioPlayerHandle::new(
+            player_config,
+            media_library,
+            command_tx,
+            ffmpeg_available,
+        )?;
         Ok((
             Self {
                 config,
