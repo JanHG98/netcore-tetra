@@ -5,6 +5,10 @@ set -Eeuo pipefail
 # Builds the Basisstation from THIS extracted source tree and replaces the
 # executable that systemd is actually running. This avoids updating a harmless
 # copy in /usr/local/bin while the unit still starts an older binary elsewhere.
+#
+# The script itself needs root for systemd and binary installation, but Cargo is
+# deliberately run as the user who invoked sudo. Rustup installations normally
+# live in ~/.cargo and ~/.rustup and are hidden by sudo's secure_path.
 
 if [[ ${EUID} -ne 0 ]]; then
     echo "FEHLER: Bitte als root ausführen (sudo $0)." >&2
@@ -17,12 +21,14 @@ CONFIG_PATH="${CONFIG_PATH:-/etc/netcore/config.toml}"
 UNIT="${UNIT:-}"
 BINARY_PATH="${BINARY_PATH:-}"
 CARGO_FEATURES="${CARGO_FEATURES:-}"
+BUILD_USER="${BUILD_USER:-${SUDO_USER:-root}}"
 
 log() { printf '[NetCore Basisstation Update] %s\n' "$*"; }
 die() { printf '[NetCore Basisstation Update] FEHLER: %s\n' "$*" >&2; exit 1; }
 
-command -v cargo >/dev/null 2>&1 || die "cargo wurde nicht gefunden. Rust/Cargo muss installiert sein."
 command -v systemctl >/dev/null 2>&1 || die "systemctl wurde nicht gefunden."
+command -v getent >/dev/null 2>&1 || die "getent wurde nicht gefunden."
+command -v runuser >/dev/null 2>&1 || die "runuser wurde nicht gefunden (Paket util-linux)."
 [[ -f "$REPO_ROOT/Cargo.toml" ]] || die "Cargo.toml fehlt unter $REPO_ROOT."
 [[ -f "$REPO_ROOT/crates/tetra-config/src/bluestation/sec_media_library.rs" ]] \
     || die "Diese Quelle enthält die Media-Library-Konfiguration nicht. Falsches/älteres Paket?"
@@ -30,6 +36,69 @@ command -v systemctl >/dev/null 2>&1 || die "systemctl wurde nicht gefunden."
 grep -q 'media_library: Option<CfgMediaLibraryDto>' \
     "$REPO_ROOT/crates/tetra-config/src/bluestation/parsing.rs" \
     || die "Der Root-Konfigurationsparser kennt [media_library] in dieser Quelle nicht."
+
+id "$BUILD_USER" >/dev/null 2>&1 \
+    || die "Build-Benutzer '$BUILD_USER' existiert nicht. Optional explizit setzen: BUILD_USER=jan sudo -E $0"
+
+BUILD_HOME="$(getent passwd "$BUILD_USER" | awk -F: '{print $6}')"
+[[ -n "$BUILD_HOME" && -d "$BUILD_HOME" ]] \
+    || die "Home-Verzeichnis für Build-Benutzer '$BUILD_USER' konnte nicht ermittelt werden."
+BUILD_GROUP="$(id -gn "$BUILD_USER")"
+
+# Locate Cargo in the invoking user's environment first. A rustup installation
+# normally lives at /home/<user>/.cargo/bin/cargo and is not in sudo secure_path.
+CARGO_BIN="${CARGO_BIN:-}"
+if [[ -z "$CARGO_BIN" && -x "$BUILD_HOME/.cargo/bin/cargo" ]]; then
+    CARGO_BIN="$BUILD_HOME/.cargo/bin/cargo"
+fi
+if [[ -z "$CARGO_BIN" ]]; then
+    CARGO_BIN="$(
+        runuser -u "$BUILD_USER" -- env HOME="$BUILD_HOME" \
+            sh -lc 'command -v cargo 2>/dev/null || true'
+    )"
+fi
+if [[ -z "$CARGO_BIN" ]] && command -v cargo >/dev/null 2>&1; then
+    CARGO_BIN="$(command -v cargo)"
+fi
+[[ -n "$CARGO_BIN" && -x "$CARGO_BIN" ]] || die \
+    "cargo wurde weder systemweit noch für '$BUILD_USER' gefunden. Prüfen: sudo -u $BUILD_USER -H bash -lc 'cargo --version'"
+
+CARGO_DIR="$(dirname -- "$CARGO_BIN")"
+BUILD_PATH="$CARGO_DIR:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+BUILD_CARGO_HOME="${BUILD_CARGO_HOME:-$BUILD_HOME/.cargo}"
+BUILD_RUSTUP_HOME="${BUILD_RUSTUP_HOME:-$BUILD_HOME/.rustup}"
+
+run_as_builder() {
+    if [[ "$BUILD_USER" == "root" ]]; then
+        env \
+            HOME="$BUILD_HOME" \
+            USER="$BUILD_USER" \
+            LOGNAME="$BUILD_USER" \
+            PATH="$BUILD_PATH" \
+            CARGO_HOME="$BUILD_CARGO_HOME" \
+            RUSTUP_HOME="$BUILD_RUSTUP_HOME" \
+            "$@"
+    else
+        runuser -u "$BUILD_USER" -- env \
+            HOME="$BUILD_HOME" \
+            USER="$BUILD_USER" \
+            LOGNAME="$BUILD_USER" \
+            PATH="$BUILD_PATH" \
+            CARGO_HOME="$BUILD_CARGO_HOME" \
+            RUSTUP_HOME="$BUILD_RUSTUP_HOME" \
+            "$@"
+    fi
+}
+
+log "Build-Benutzer: $BUILD_USER"
+log "Cargo: $CARGO_BIN"
+run_as_builder "$CARGO_BIN" --version \
+    || die "Cargo ist vorhanden, kann für '$BUILD_USER' aber nicht ausgeführt werden."
+
+# Cargo only needs a writable target directory. Repair leftovers from an older
+# root build without changing ownership of the whole source tree.
+mkdir -p "$REPO_ROOT/target"
+chown -R "$BUILD_USER:$BUILD_GROUP" "$REPO_ROOT/target"
 
 # Prefer the service_name configured by the user, then common historical names.
 if [[ -z "$UNIT" && -r "$CONFIG_PATH" ]]; then
@@ -100,15 +169,15 @@ log "Aktive Binary: $BINARY_PATH"
 cd "$REPO_ROOT"
 
 log "Prüfe den Parser-Regressionstest für [media_library] ..."
-cargo test -p tetra-config --lib media_library_top_level_section_parses
-cargo test -p tetra-config --lib media_library_unknown_field_is_rejected
+run_as_builder "$CARGO_BIN" test -p tetra-config --lib media_library_top_level_section_parses
+run_as_builder "$CARGO_BIN" test -p tetra-config --lib media_library_unknown_field_is_rejected
 
 log "Baue bluestation-bs aus dem entpackten Paket ..."
-build_cmd=(cargo build --release -p bluestation-bs)
+build_cmd=("$CARGO_BIN" build --release -p bluestation-bs)
 if [[ -n "$CARGO_FEATURES" ]]; then
     build_cmd+=(--features "$CARGO_FEATURES")
 fi
-"${build_cmd[@]}"
+run_as_builder "${build_cmd[@]}"
 
 NEW_BINARY="$REPO_ROOT/target/release/bluestation-bs"
 [[ -x "$NEW_BINARY" ]] || die "Build erfolgreich gemeldet, aber $NEW_BINARY fehlt."
