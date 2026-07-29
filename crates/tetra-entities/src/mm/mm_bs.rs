@@ -853,9 +853,19 @@ impl MmBs {
             .client_mgr
             .get_client_by_issi(prim.received_address.ssi)
             .map(|c| c.energy_saving_mode);
-        let effective_esm_request = pdu.energy_saving_mode.or(prior_esm);
-
-        let esi = effective_esm_request.map(|esm| Self::grant_energy_saving(prim.received_address.ssi, esm));
+        // A freshly attaching terminal may omit the optional energy-saving request.
+        // The BS nevertheless operates it as StayAlive. Send that decision explicitly in the
+        // very first D-LOCATION-UPDATE-ACCEPT instead of keeping it only as internal state.
+        //
+        // Sepura terminals otherwise perform a second RoamingLocationUpdating a few seconds
+        // after a successful ITSI attach: the first ACCEPT contains no energy-saving result,
+        // while the second one suddenly contains StayAlive. Keeping both ACCEPTs consistent
+        // avoids that immediate post-attach registration cycle.
+        let esi = Some(Self::registration_energy_saving_information(
+            prim.received_address.ssi,
+            pdu.energy_saving_mode,
+            prior_esm,
+        ));
 
         // Try to register the client
         let issi = prim.received_address.ssi;
@@ -1493,6 +1503,15 @@ impl MmBs {
     /// behave identically.
     // Was: Führt den Arbeitsschritt `grant_energy_saving` für grant energy saving aus.
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn registration_energy_saving_information(
+        issi: u32,
+        requested: Option<EnergySavingMode>,
+        prior: Option<EnergySavingMode>,
+    ) -> EnergySavingInformation {
+        let effective = requested.or(prior).unwrap_or(EnergySavingMode::StayAlive);
+        Self::grant_energy_saving(issi, effective)
+    }
+
     fn grant_energy_saving(issi: u32, requested: EnergySavingMode) -> EnergySavingInformation {
         // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
         // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
@@ -3531,6 +3550,15 @@ mod ee_tests {
             ),
             LocationUpdateType::DemandLocationUpdating
         );
+    }
+
+    #[test]
+    fn registration_without_energy_saving_request_explicitly_grants_stay_alive() {
+        // Mirrors a fresh ITSI attach: neither the PDU nor an existing client state supplies ESM.
+        let esi = MmBs::registration_energy_saving_information(5102, None, None);
+        assert_eq!(esi.energy_saving_mode, EnergySavingMode::StayAlive);
+        assert!(esi.frame_number.is_none());
+        assert!(esi.multiframe_number.is_none());
     }
 
     #[test]
