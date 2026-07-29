@@ -591,7 +591,6 @@ fn main() {
     eprintln!("  https://github.com/razvanzeces/flowstation");
     eprintln!("  Version: {}", tetra_core::STACK_VERSION);
     eprintln!("  Radio runtime: MAIN-COMPAT (local MM/MLE/CMCE state machines)");
-    eprintln!("  Radio profile: v1.3.0 stable common-SCCH contract (commit 7834f467)");
 
     // Parse command-line arguments
     let args = Args::parse();
