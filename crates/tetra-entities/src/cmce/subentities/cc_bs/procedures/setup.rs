@@ -294,116 +294,31 @@ impl CcBsSubentity {
         let dest_gssi = dest_gssi as u32;
         let dest_addr = TetraAddress::new(dest_gssi, SsiType::Gssi);
 
-        let group_policy_decision = {
-            let state = self.config.state_read();
-            if !state.edge_fallback_mode.enforces_central_restrictions() {
-                None
-            } else {
-                state.group_policy_override.as_ref().map(|policy| {
-                    let caller_affiliated = state
-                        .subscribers
-                        .attached_groups_of(calling_party.ssi)
-                        .contains(&dest_gssi);
-                    (
-                        policy.allows_group_call(dest_gssi),
-                        policy.call_priority(dest_gssi, pdu.call_priority),
-                        policy.allows_emergency_call(dest_gssi),
-                        !policy.enforce_memberships || caller_affiliated,
-                    )
-                })
-            }
-        };
-        if group_policy_decision.is_some_and(|(allowed, _, _, _)| !allowed) {
-            tracing::warn!(
-                "CMCE: central group policy rejected call from ISSI {} to GSSI {}",
-                calling_party.ssi,
-                dest_gssi
-            );
-            self.reject_setup_request(
-                queue,
-                message,
-                calling_party,
-                DisconnectCause::RequestedServiceNotAvailable,
-                "group call disabled by central policy",
-            );
-            return;
-        }
-        if group_policy_decision.is_some_and(|(_, _, _, caller_authorized)| !caller_authorized) {
-            tracing::warn!(
-                "CMCE: central group policy rejected non-member ISSI {} for GSSI {}",
-                calling_party.ssi,
-                dest_gssi
-            );
-            self.reject_setup_request(
-                queue,
-                message,
-                calling_party,
-                DisconnectCause::RequestedServiceNotAvailable,
-                "calling subscriber is not affiliated to the centrally managed group",
-            );
-            return;
-        }
-        let effective_priority = group_policy_decision
-            .map(|(_, priority, _, _)| priority)
-            .unwrap_or_else(|| pdu.call_priority.min(15));
-        if is_emergency_priority(effective_priority)
-            && group_policy_decision
-                .is_some_and(|(_, _, emergency_allowed, _)| !emergency_allowed)
-        {
-            tracing::warn!(
-                "CMCE: central group policy rejected emergency call from ISSI {} to GSSI {}",
-                calling_party.ssi,
-                dest_gssi
-            );
-            self.reject_setup_request(
-                queue,
-                message,
-                calling_party,
-                DisconnectCause::RequestedServiceNotAvailable,
-                "emergency group call disabled by central policy",
-            );
-            return;
-        }
-
         if !self.has_listener(dest_gssi) {
-            let restrictions_active = self
-                .config
-                .state_read()
-                .edge_fallback_mode
-                .enforces_central_restrictions();
-            if restrictions_active {
-                tracing::info!(
-                    "CMCE: rejecting U-SETUP from issi={} to gssi={} (no listeners)",
-                    calling_party.ssi,
-                    dest_gssi
-                );
-                return;
-            }
-            tracing::warn!(
-                "CMCE: fallback broadcasting group call from ISSI {} to GSSI {} without a cached listener",
+            tracing::info!(
+                "CMCE: rejecting U-SETUP from issi={} to gssi={} (no listeners)",
                 calling_party.ssi,
                 dest_gssi
             );
+            return;
         }
 
-        if is_emergency_priority(effective_priority) {
+        if is_emergency_priority(pdu.call_priority) {
             tracing::info!(
                 "CMCE: EMERGENCY group call set-up from ISSI {} to GSSI {} (priority {})",
                 calling_party.ssi,
                 dest_gssi,
-                effective_priority
+                pdu.call_priority
             );
         }
 
         // Emergency / pre-emptive priority: if the cell is full, free one traffic channel by
         // releasing a lower-priority call before allocating (ETSI EN 300 392-2 clause 14.8).
         // No-op for ordinary priority.
-        self.preempt_for_priority(queue, 1, effective_priority);
+        self.preempt_for_priority(queue, 1, pdu.call_priority);
 
         // Allocate circuit (DL+UL for group call)
         let traffic_slot_capacity = self.traffic_slot_capacity();
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let circuit = match {
             let mut state = self.config.state_write();
             self.circuits.allocate_circuit_with_capacity(
@@ -532,7 +447,7 @@ impl CcBsSubentity {
             basic_service_information: pdu.basic_service_information.clone(),
             transmission_grant: TransmissionGrant::GrantedToOtherUser,
             transmission_request_permission: false,
-            call_priority: effective_priority,
+            call_priority: pdu.call_priority,
             notification_indicator: None,
             temporary_address: None,
             calling_party_address_ssi: Some(calling_party.ssi),
@@ -569,7 +484,7 @@ impl CcBsSubentity {
                 circuit.usage,
                 self.dltime,
                 group_call_timeout,
-                effective_priority,
+                pdu.call_priority,
             ),
         );
 
@@ -580,7 +495,7 @@ impl CcBsSubentity {
             caller_issi: calling_party.ssi,
             ts: circuit.ts,
             carrier_num: self.carrier_num_for_logical_ts(circuit.ts),
-            priority: effective_priority,
+            priority: pdu.call_priority,
             source: "local".to_string(),
         });
 
@@ -666,43 +581,25 @@ impl CcBsSubentity {
 
         let called_addr = TetraAddress::new(called_ssi, SsiType::Issi);
 
+        // PBX/phone calls (no concrete local ISSI) always go through Brew.
+        if called_ssi == 0 {
+            self.fsm_on_u_setup_p2p_over_brew(queue, message, pdu, calling_party, called_addr);
+            return;
+        }
+
         if called_addr.ssi == LOCAL_ECHO_ISSI {
             self.fsm_on_u_setup_p2p_local_echo(queue, message, pdu, calling_party, called_addr);
             return;
         }
 
-        // SIP/EchoLink dial plans are not TETRA subscribers. Explicit bridge routes therefore
-        // take precedence over the local ISSI registry and never require a Provisioning-Core
-        // entry, even when the dialled digits also fit into the 24-bit SSI range.
-        let network_dial = Self::build_network_circuit_call_from_u_setup(pdu, calling_party.ssi);
-        let has_explicit_network_route = self.asterisk_route_number(&network_dial).is_some()
-            || self.echolink_route_target(&network_dial).is_some();
-        if called_ssi == 0 || has_explicit_network_route {
+        if !self.is_locally_registered_issi(called_addr.ssi) {
+            tracing::info!(
+                "CMCE: called ISSI {} not registered locally (known registry ISSIs={:?}), routing U-SETUP over Brew",
+                called_addr.ssi,
+                self.known_local_issis()
+            );
             self.fsm_on_u_setup_p2p_over_brew(queue, message, pdu, calling_party, called_addr);
             return;
-        }
-
-        if !self.is_locally_registered_issi(called_addr.ssi) {
-            let unrestricted_local_fallback = !self
-                .config
-                .state_read()
-                .edge_fallback_mode
-                .enforces_central_restrictions();
-            if unrestricted_local_fallback {
-                tracing::warn!(
-                    "CMCE: fallback local P2P paging for unregistered ISSI {} (known registry ISSIs={:?})",
-                    called_addr.ssi,
-                    self.known_local_issis()
-                );
-            } else {
-                tracing::info!(
-                    "CMCE: called ISSI {} not registered locally (known registry ISSIs={:?}), routing U-SETUP over Brew",
-                    called_addr.ssi,
-                    self.known_local_issis()
-                );
-                self.fsm_on_u_setup_p2p_over_brew(queue, message, pdu, calling_party, called_addr);
-                return;
-            }
         }
 
         if let Some((active_call_id, state, cause)) = self.setup_collision_cause(calling_party.ssi, Some(called_addr.ssi)) {

@@ -2,12 +2,10 @@ use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
 
 use crate::mm::components::recovery_cache::{RecoveryCache, TerminalRecord};
-use crate::net_control::{
-    ControlCommand, ControlEndpoint, ControlResponse, GroupMembershipPolicy, GroupPolicyDefinition,
-};
+use crate::net_control::{ControlCommand, ControlEndpoint};
 use crate::net_telemetry::channel::TelemetrySink;
 use crate::{MessageQueue, TetraEntityTrait, net_brew};
-use tetra_config::bluestation::{CentralGroupDefinition, CentralGroupPolicy, SharedConfig};
+use tetra_config::bluestation::SharedConfig;
 use tetra_core::tetra_entities::TetraEntity;
 use tetra_core::{BitBuffer, Layer2Service, Sap, TdmaTime, TetraAddress, unimplemented_log};
 use tetra_saps::control::brew::{BrewSubscriberAction, MmSubscriberUpdate};
@@ -522,17 +520,9 @@ impl MmBs {
         // no override is set. An empty list (in either place) means "open network".
         let issi_allowed = {
             let state = self.config.state_read();
-            if !state.edge_fallback_mode.enforces_central_restrictions() {
-                // In local fallback the static site whitelist remains authoritative; centrally
-                // supplied policy never forces a radio re-registration or disconnect.
-                self.config.config().security.is_issi_allowed(issi)
-            } else {
-                match &state.issi_whitelist_override {
-                    Some(list) => {
-                        !state.issi_whitelist_deny_all && (list.is_empty() || list.contains(&issi))
-                    }
-                    None => self.config.config().security.is_issi_allowed(issi),
-                }
+            match &state.issi_whitelist_override {
+                Some(list) => list.is_empty() || list.contains(&issi),
+                None => self.config.config().security.is_issi_allowed(issi),
             }
         };
         if !issi_allowed {
@@ -816,31 +806,37 @@ impl MmBs {
         if let Some(ref class) = pdu.class_of_ms {
             tracing::info!("MS {} class_of_ms: {}", issi, class);
         }
-        // Stable v1.3.0 radio behaviour (commit 7834f467): when the MS reports
-        // clch_needed or common_scch, advertise one common SCCH on frame 18 / TS1.
+        // Frame-18 common-SCCH assignment is only useful for a terminal that is
+        // actually operating in Energy Economy. A StayAlive terminal is expected to
+        // monitor the ordinary MCCH continuously. Advertising frame-18 SCCH to a
+        // StayAlive AIv2 terminal made some Hytera/Sepura devices leave the ordinary
+        // MCCH after registration and only notice a network-originated D-SETUP during
+        // the next location update. That produced the characteristic pattern:
+        // recording/TTS starts, nothing is heard, the MS re-registers, then the already
+        // running group call is acquired.
         //
-        // This must not be suppressed for StayAlive terminals. The Sepura in the field
-        // acknowledges an initial attach without this element, but then starts repeated
-        // RoamingLocationUpdating procedures because its common-SCCH registration state
-        // never settles. The last known-good no-Core release always sent 0x01 for this
-        // capability set, so keep that exact air-interface contract here while the SWMI
-        // services remain outside the local MM/MLE/CMCE state machines.
-        let scch_info = pdu
+        // Keep the SCCH distribution for real Eg1..Eg3 grants, but omit it for
+        // StayAlive. Value 0x01 means one SCCH on frame 18, assigned to TS1.
+        let granted_esm = esi
+            .as_ref()
+            .map(|info| info.energy_saving_mode)
+            .unwrap_or(EnergySavingMode::StayAlive);
+        let scch_capable = pdu
             .class_of_ms
             .as_ref()
-            .and_then(|class| {
-                if class.clch_needed || class.common_scch {
-                    Some(0x01u64)
-                } else {
-                    None
-                }
-            });
-        if scch_info.is_some() {
-            tracing::debug!(
-                "MM: ISSI {} v1.3.0 radio compatibility assigns frame-18 common-SCCH on TS1",
-                issi
-            );
-        }
+            .map(|class| class.clch_needed || class.common_scch)
+            .unwrap_or(false);
+        let scch_info = if scch_capable && granted_esm != EnergySavingMode::StayAlive {
+            Some(0x01u64)
+        } else {
+            if scch_capable && granted_esm == EnergySavingMode::StayAlive {
+                tracing::debug!(
+                    "MM: ISSI {} is StayAlive; keeping it on the ordinary MCCH instead of assigning frame-18 common-SCCH",
+                    issi
+                );
+            }
+            None
+        };
 
         // Hytera compatibility needs to inspect class_of_ms before we move it into client_mgr.
         // ClassOfMs is not Copy, so doing this later would borrow a moved value.
@@ -1362,110 +1358,6 @@ impl MmBs {
         };
     }
 
-    /// Read-only central group policy gate. This deliberately does not rewrite MM state,
-    /// trigger re-affiliation or send unsolicited location-update commands. The local air
-    /// procedure remains identical to `main`; the Core only decides whether a requested
-    /// affiliation may be accepted.
-    fn group_policy_allows_attach(&self, issi: u32, gssi: u32) -> bool {
-        let state = self.config.state_read();
-        if !state.edge_fallback_mode.enforces_central_restrictions() {
-            return true;
-        }
-        state
-            .group_policy_override
-            .as_ref()
-            .map(|policy| policy.allows_affiliation(issi, gssi))
-            .unwrap_or(true)
-    }
-
-    /// Store a centrally supplied group policy without reconciling live radios. Automatic
-    /// detach/attach and re-registration were the source of the SWMI regression. Existing
-    /// affiliations stay untouched; the policy is enforced on the next explicit attach request.
-    fn install_group_policy_main_compat(
-        &mut self,
-        revision: u64,
-        allow_unlisted_groups: bool,
-        enforce_memberships: bool,
-        groups: Vec<GroupPolicyDefinition>,
-        memberships: Vec<GroupMembershipPolicy>,
-    ) -> Result<(u32, u32), String> {
-        if self
-            .config
-            .state_read()
-            .group_policy_override
-            .as_ref()
-            .is_some_and(|current| revision < current.revision)
-        {
-            return Err(format!(
-                "stale group policy revision {revision}; a newer revision is already active"
-            ));
-        }
-
-        let mut definitions = HashMap::new();
-        for group in groups {
-            if group.gssi == 0 || group.gssi > 0xFF_FFFF {
-                return Err(format!("invalid GSSI {}", group.gssi));
-            }
-            definitions.insert(
-                group.gssi,
-                CentralGroupDefinition {
-                    gssi: group.gssi,
-                    enabled: group.enabled,
-                    attach_allowed: group.attach_allowed,
-                    dgna_allowed: group.dgna_allowed,
-                    call_allowed: group.call_allowed,
-                    sds_allowed: group.sds_allowed,
-                    emergency_allowed: group.emergency_allowed,
-                    call_priority: group.call_priority.min(15),
-                    class_of_usage: group.class_of_usage.min(15),
-                },
-            );
-        }
-
-        let mut allowed = HashMap::<u32, std::collections::HashSet<u32>>::new();
-        let mut automatic = HashMap::<u32, std::collections::HashSet<u32>>::new();
-        let mut membership_count = 0u32;
-        for membership in memberships {
-            if membership.issi == 0 || membership.issi > 0xFF_FFFF {
-                return Err(format!("invalid membership ISSI {}", membership.issi));
-            }
-            if membership.gssi == 0 || membership.gssi > 0xFF_FFFF {
-                return Err(format!("invalid membership GSSI {}", membership.gssi));
-            }
-            if membership.allowed {
-                allowed
-                    .entry(membership.issi)
-                    .or_default()
-                    .insert(membership.gssi);
-                if membership.auto_attach {
-                    automatic
-                        .entry(membership.issi)
-                        .or_default()
-                        .insert(membership.gssi);
-                }
-                membership_count += 1;
-            }
-        }
-
-        let policy = CentralGroupPolicy {
-            revision,
-            allow_unlisted_groups,
-            enforce_memberships,
-            groups: definitions,
-            memberships: allowed,
-            automatic_memberships: automatic,
-        };
-        let group_count = policy.groups.len() as u32;
-        self.config.state_write().group_policy_override = Some(policy);
-        if let Err(error) = crate::net_control_room::edge_store::persist_edge_policy_cache(&self.config) {
-            tracing::warn!(
-                "MM: failed to persist central group policy for edge fallback: {}",
-                error
-            );
-        }
-        Ok((group_count, membership_count))
-    }
-
     fn try_attach_detach_groups(
         &mut self,
         queue: &mut MessageQueue,
@@ -1514,14 +1406,6 @@ impl MmBs {
                     }
                 }
             } else {
-                if !self.group_policy_allows_attach(issi, gssi) {
-                    tracing::warn!(
-                        "MM: central group policy rejected affiliation ISSI {} -> GSSI {}",
-                        issi,
-                        gssi
-                    );
-                    continue;
-                }
                 match self.client_mgr.client_group_attach(issi, gssi, true) {
                     Ok(changed) => {
                         if changed {
@@ -2074,11 +1958,10 @@ impl TetraEntityTrait for MmBs {
     }
 
     fn tick_start(&mut self, queue: &mut MessageQueue, ts: TdmaTime) {
-        // Main-compatible policy bridge: Core commands update admission state only. They never
-        // issue D-LOCATION-UPDATE-COMMAND, detach live subscribers, rebuild CMCE state or alter
-        // the air-interface registration procedure.
+        // Drain control commands addressed to the MM entity. We collect into a Vec first so the
+        // immutable borrow on `self.control` is released before the handlers run — DGNA needs
+        // `&mut self` (client registry, subscriber state, telemetry).
         if self.control.is_some() {
-            let responder = self.control.clone();
             let mut cmds = Vec::new();
             if let Some(cep) = &self.control {
                 while let Some(cmd) = cep.try_recv() {
@@ -2090,126 +1973,8 @@ impl TetraEntityTrait for MmBs {
                     ControlCommand::Dgna { issi, gssi, attach } => {
                         self.do_dgna(queue, issi, gssi, attach);
                     }
-                    ControlCommand::GroupDgnaApply {
-                        handle,
-                        issi,
-                        gssi,
-                        attach,
-                        force: _,
-                    } => {
-                        let success = self.do_dgna(queue, issi, gssi, attach);
-                        if let Some(cep) = responder.as_ref() {
-                            cep.respond(ControlResponse::GroupDgnaApplied {
-                                handle,
-                                issi,
-                                gssi,
-                                attach,
-                                success,
-                                message: if success {
-                                    "DGNA command applied".to_string()
-                                } else {
-                                    "DGNA command rejected or subscriber unavailable".to_string()
-                                },
-                            });
-                        }
-                    }
-                    ControlCommand::GroupAccessPolicyApply {
-                        handle,
-                        revision,
-                        allow_unlisted_groups,
-                        enforce_memberships,
-                        reconcile_registered: _,
-                        groups,
-                        memberships,
-                    } => {
-                        let result = self.install_group_policy_main_compat(
-                            revision,
-                            allow_unlisted_groups,
-                            enforce_memberships,
-                            groups,
-                            memberships,
-                        );
-                        if let Some(cep) = responder.as_ref() {
-                            match result {
-                                Ok((group_count, membership_count)) => {
-                                    cep.respond(ControlResponse::GroupAccessPolicyApplied {
-                                        handle,
-                                        revision,
-                                        success: true,
-                                        group_count,
-                                        membership_count,
-                                        attached_count: 0,
-                                        detached_count: 0,
-                                        message: "group policy stored; live main-compatible RF state left untouched"
-                                            .to_string(),
-                                    });
-                                }
-                                Err(message) => {
-                                    cep.respond(ControlResponse::GroupAccessPolicyApplied {
-                                        handle,
-                                        revision,
-                                        success: false,
-                                        group_count: 0,
-                                        membership_count: 0,
-                                        attached_count: 0,
-                                        detached_count: 0,
-                                        message,
-                                    });
-                                }
-                            }
-                        }
-                    }
-                    ControlCommand::SubscriberAccessPolicyApply {
-                        handle,
-                        revision,
-                        allow_all,
-                        mut allowed_issis,
-                        disconnect_unauthorized: _,
-                    } => {
-                        allowed_issis.retain(|issi| *issi > 0 && *issi <= 0xFF_FFFF);
-                        allowed_issis.sort_unstable();
-                        allowed_issis.dedup();
-                        if allow_all {
-                            allowed_issis.clear();
-                        }
-                        {
-                            let mut state = self.config.state_write();
-                            state.issi_whitelist_deny_all = !allow_all && allowed_issis.is_empty();
-                            state.issi_whitelist_override = Some(allowed_issis.clone());
-                            state.subscriber_policy_revision = revision;
-                        }
-                        if let Err(error) =
-                            crate::net_control_room::edge_store::persist_edge_policy_cache(&self.config)
-                        {
-                            tracing::warn!(
-                                "MM: failed to persist central subscriber policy for edge fallback: {}",
-                                error
-                            );
-                        }
-                        tracing::info!(
-                            revision,
-                            allow_all,
-                            allowed_count = allowed_issis.len(),
-                            "MM: central subscriber policy stored in main-compatible mode (no live disconnect)"
-                        );
-                        if let Some(cep) = responder.as_ref() {
-                            cep.respond(ControlResponse::SubscriberAccessPolicyApplied {
-                                handle,
-                                revision,
-                                success: true,
-                                allow_all,
-                                allowed_count: allowed_issis.len() as u32,
-                                disconnected_count: 0,
-                                message: "subscriber policy stored; live radios were not re-registered"
-                                    .to_string(),
-                            });
-                        }
-                    }
                     _ => {
-                        tracing::debug!(
-                            "MM: control command ignored by main-compatible local air interface: {:?}",
-                            cmd
-                        );
+                        tracing::warn!("MM: ignoring unsupported control command {:?}", cmd);
                     }
                 }
             }
