@@ -91,3 +91,17 @@ Diese Route wird nur aktiv, wenn `[media_library].enabled = true` und `publish_r
 - `GET /api/v1/assets/<asset-id>/preview`
 
 `source + source_reference` bilden einen Idempotenzschlüssel. Wiederholte Meldungen derselben Basisstationsaufnahme erzeugen keinen zweiten Asset-Datensatz. Fehlgeschlagene Imports werden über denselben Datensatz erneut eingereiht.
+
+## Basisstations-Binary sicher aktualisieren
+
+Nach dem Entpacken nicht nur eine beliebige Kopie der Binary ersetzen, sondern das mitgelieferte
+Update-Skript verwenden:
+
+```bash
+sudo ./install/update-basisstation.sh
+```
+
+Es ermittelt die von systemd tatsächlich ausgeführte `bluestation-bs`-Binary. Das ist wichtig,
+weil eine Unit andernfalls unbemerkt eine ältere Kopie weiterstarten kann; diese ältere Version
+weist `[media_library]` mit `Unrecognized top-level fields` ab und fällt auf
+`config.toml.fallback` zurück.

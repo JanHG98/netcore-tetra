@@ -25,3 +25,13 @@ Siehe `Docs/MEDIA_LIBRARY_BASISSTATION_INTEGRATION.md`.
 
 - Authentifizierung oder TLS für die M2M-Routen; der aktuelle Stand bleibt OPEN LAB.
 - PDFs und GitHub-Workflow-Dateien im ausgelieferten ZIP.
+
+## Parser-/Deployment-Fix
+
+- `[media_library]` ist als regulärer Top-Level-Abschnitt im strikten TOML-Parser registriert.
+- Zwei Regressionstests verhindern, dass der Abschnitt künftig wieder als unbekannt abgewiesen wird.
+- `install/update-basisstation.sh` baut aus genau diesem entpackten Paket und ersetzt die Binary,
+  die von systemd tatsächlich ausgeführt wird. Damit wird nicht versehentlich nur
+  `/usr/local/bin/bluestation-bs` aktualisiert, während die Unit eine ältere Kopie an einem
+  anderen Pfad startet.
+- Das Update-Skript sichert die alte Binary und rollt bei einem fehlgeschlagenen Dienststart zurück.

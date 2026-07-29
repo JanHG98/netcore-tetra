@@ -1,0 +1,159 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+# NetCore-TETRA Basisstation updater
+# Builds the Basisstation from THIS extracted source tree and replaces the
+# executable that systemd is actually running. This avoids updating a harmless
+# copy in /usr/local/bin while the unit still starts an older binary elsewhere.
+
+if [[ ${EUID} -ne 0 ]]; then
+    echo "FEHLER: Bitte als root ausführen (sudo $0)." >&2
+    exit 1
+fi
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+CONFIG_PATH="${CONFIG_PATH:-/etc/netcore/config.toml}"
+UNIT="${UNIT:-}"
+BINARY_PATH="${BINARY_PATH:-}"
+CARGO_FEATURES="${CARGO_FEATURES:-}"
+
+log() { printf '[NetCore Basisstation Update] %s\n' "$*"; }
+die() { printf '[NetCore Basisstation Update] FEHLER: %s\n' "$*" >&2; exit 1; }
+
+command -v cargo >/dev/null 2>&1 || die "cargo wurde nicht gefunden. Rust/Cargo muss installiert sein."
+command -v systemctl >/dev/null 2>&1 || die "systemctl wurde nicht gefunden."
+[[ -f "$REPO_ROOT/Cargo.toml" ]] || die "Cargo.toml fehlt unter $REPO_ROOT."
+[[ -f "$REPO_ROOT/crates/tetra-config/src/bluestation/sec_media_library.rs" ]] \
+    || die "Diese Quelle enthält die Media-Library-Konfiguration nicht. Falsches/älteres Paket?"
+
+grep -q 'media_library: Option<CfgMediaLibraryDto>' \
+    "$REPO_ROOT/crates/tetra-config/src/bluestation/parsing.rs" \
+    || die "Der Root-Konfigurationsparser kennt [media_library] in dieser Quelle nicht."
+
+# Prefer the service_name configured by the user, then common historical names.
+if [[ -z "$UNIT" && -r "$CONFIG_PATH" ]]; then
+    configured_name="$({
+        sed -nE 's/^[[:space:]]*service_name[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' "$CONFIG_PATH" || true
+    } | head -n1)"
+    if [[ -n "$configured_name" ]]; then
+        [[ "$configured_name" == *.service ]] || configured_name="${configured_name}.service"
+        if systemctl cat "$configured_name" >/dev/null 2>&1; then
+            UNIT="$configured_name"
+        fi
+    fi
+fi
+
+if [[ -z "$UNIT" ]]; then
+    for candidate in \
+        tetra.service \
+        bluestation.service \
+        tetra-bluestation.service \
+        bluestation-bs.service
+    do
+        if systemctl cat "$candidate" >/dev/null 2>&1; then
+            UNIT="$candidate"
+            break
+        fi
+    done
+fi
+
+[[ -n "$UNIT" ]] || die "Keine Basisstations-Unit gefunden. Beispiel: UNIT=tetra.service sudo -E $0"
+log "Systemd-Unit: $UNIT"
+
+# Determine the executable that is REALLY running. This is the core of this fix.
+if [[ -z "$BINARY_PATH" ]]; then
+    main_pid="$(systemctl show "$UNIT" -p MainPID --value 2>/dev/null || true)"
+    if [[ "$main_pid" =~ ^[1-9][0-9]*$ && -e "/proc/$main_pid/exe" ]]; then
+        running_exe="$(readlink -f "/proc/$main_pid/exe" 2>/dev/null || true)"
+        running_exe="${running_exe% (deleted)}"
+        if [[ "$(basename -- "$running_exe")" == "bluestation-bs" ]]; then
+            BINARY_PATH="$running_exe"
+        fi
+    fi
+fi
+
+if [[ -z "$BINARY_PATH" ]]; then
+    exec_show="$(systemctl show "$UNIT" -p ExecStart --value 2>/dev/null || true)"
+    BINARY_PATH="$(sed -nE 's/.*path=([^ ;}]\/bluestation-bs|[^ ;}]*bluestation-bs).*/\1/p' <<<"$exec_show" | head -n1)"
+fi
+
+if [[ -z "$BINARY_PATH" ]]; then
+    exec_line="$(systemctl cat "$UNIT" 2>/dev/null | sed -nE 's/^[[:space:]]*ExecStart=[-@:+!]*([^[:space:]]*bluestation-bs).*/\1/p' | tail -n1)"
+    [[ -n "$exec_line" ]] && BINARY_PATH="$exec_line"
+fi
+
+if [[ -z "$BINARY_PATH" ]]; then
+    if command -v bluestation-bs >/dev/null 2>&1; then
+        BINARY_PATH="$(readlink -f "$(command -v bluestation-bs)")"
+    elif [[ -e /usr/local/bin/bluestation-bs ]]; then
+        BINARY_PATH=/usr/local/bin/bluestation-bs
+    fi
+fi
+
+[[ -n "$BINARY_PATH" ]] \
+    || die "Aktive Binary nicht eindeutig gefunden. Beispiel: BINARY_PATH=/usr/local/bin/bluestation-bs UNIT=$UNIT sudo -E $0"
+
+BINARY_PATH="$(readlink -m "$BINARY_PATH")"
+log "Aktive Binary: $BINARY_PATH"
+
+cd "$REPO_ROOT"
+
+log "Prüfe den Parser-Regressionstest für [media_library] ..."
+cargo test -p tetra-config --lib media_library_top_level_section_parses
+cargo test -p tetra-config --lib media_library_unknown_field_is_rejected
+
+log "Baue bluestation-bs aus dem entpackten Paket ..."
+build_cmd=(cargo build --release -p bluestation-bs)
+if [[ -n "$CARGO_FEATURES" ]]; then
+    build_cmd+=(--features "$CARGO_FEATURES")
+fi
+"${build_cmd[@]}"
+
+NEW_BINARY="$REPO_ROOT/target/release/bluestation-bs"
+[[ -x "$NEW_BINARY" ]] || die "Build erfolgreich gemeldet, aber $NEW_BINARY fehlt."
+
+backup_dir="/var/backups/netcore-tetra"
+mkdir -p "$backup_dir"
+stamp="$(date +%Y%m%d-%H%M%S)"
+backup_path="$backup_dir/bluestation-bs.${stamp}.bak"
+
+if [[ -e "$BINARY_PATH" ]]; then
+    cp -a -- "$BINARY_PATH" "$backup_path"
+    log "Alte Binary gesichert: $backup_path"
+fi
+
+rollback() {
+    local reason="$1"
+    printf '[NetCore Basisstation Update] FEHLER: %s\n' "$reason" >&2
+    if [[ -f "$backup_path" ]]; then
+        log "Spiele die vorherige Binary zurück ..."
+        systemctl stop "$UNIT" || true
+        install -m 0755 -- "$backup_path" "$BINARY_PATH"
+        systemctl start "$UNIT" || true
+    fi
+    exit 1
+}
+
+log "Stoppe $UNIT und ersetze genau die aktive Binary ..."
+systemctl stop "$UNIT"
+install -D -m 0755 -- "$NEW_BINARY" "$BINARY_PATH"
+
+start_epoch="$(date +%s)"
+systemctl start "$UNIT" || rollback "$UNIT ließ sich mit der neuen Binary nicht starten."
+sleep 6
+
+if ! systemctl is-active --quiet "$UNIT"; then
+    journalctl -u "$UNIT" --since "@$start_epoch" --no-pager -n 120 || true
+    rollback "$UNIT ist nach dem Update nicht aktiv."
+fi
+
+recent_log="$(journalctl -u "$UNIT" --since "@$start_epoch" --no-pager 2>/dev/null || true)"
+if grep -Eq 'Unrecognized top-level fields: \["media_library"\]|Primary config .*media_library.*Running on fallback' <<<"$recent_log"; then
+    printf '%s\n' "$recent_log" >&2
+    rollback "Die neue Instanz meldet [media_library] weiterhin als unbekannt."
+fi
+
+log "Update erfolgreich. Die laufende Binary akzeptiert [media_library]."
+log "Status: $(systemctl is-active "$UNIT")"
+log "Kontrolle: journalctl -u $UNIT -n 100 --no-pager"

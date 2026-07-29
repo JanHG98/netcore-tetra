@@ -875,4 +875,50 @@ bogus = 1
 "#;
         assert!(from_toml_str(&toml).is_err(), "should reject unknown telegram_alerts field");
     }
+    #[test]
+    fn media_library_top_level_section_parses() {
+        let toml = minimal_toml("")
+            + r#"
+[media_library]
+enabled = true
+base_url = "http://10.0.1.154:8230"
+station_id = "SRV-M-TBS-01"
+publish_recordings = true
+recording_source_base_url = "http://10.0.1.20:8080"
+auto_approve_recordings = false
+audio_source_enabled = true
+only_ready = true
+only_approved = true
+retry_seconds = 60
+request_timeout_seconds = 15
+download_timeout_seconds = 120
+max_list_entries = 1000
+"#;
+
+        let cfg = from_toml_str(&toml).expect("[media_library] must be a recognized top-level section");
+        assert!(cfg.media_library.enabled);
+        assert!(cfg.media_library.publish_recordings);
+        assert!(cfg.media_library.audio_source_enabled);
+        assert_eq!(cfg.media_library.base_url, "http://10.0.1.154:8230");
+        assert_eq!(
+            cfg.media_library.recording_source_base_url,
+            "http://10.0.1.20:8080"
+        );
+    }
+
+    #[test]
+    fn media_library_unknown_field_is_rejected() {
+        let toml = minimal_toml("")
+            + r#"
+[media_library]
+enabled = false
+bogus = true
+"#;
+        let error = from_toml_str(&toml).expect_err("unknown media_library fields must remain rejected");
+        assert!(
+            error.to_string().contains("Unrecognized fields in media_library config"),
+            "unexpected error: {error}"
+        );
+    }
+
 }
