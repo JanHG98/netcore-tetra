@@ -816,37 +816,31 @@ impl MmBs {
         if let Some(ref class) = pdu.class_of_ms {
             tracing::info!("MS {} class_of_ms: {}", issi, class);
         }
-        // Frame-18 common-SCCH assignment is only useful for a terminal that is
-        // actually operating in Energy Economy. A StayAlive terminal is expected to
-        // monitor the ordinary MCCH continuously. Advertising frame-18 SCCH to a
-        // StayAlive AIv2 terminal made some Hytera/Sepura devices leave the ordinary
-        // MCCH after registration and only notice a network-originated D-SETUP during
-        // the next location update. That produced the characteristic pattern:
-        // recording/TTS starts, nothing is heard, the MS re-registers, then the already
-        // running group call is acquired.
+        // Stable v1.3.0 radio behaviour (commit 7834f467): when the MS reports
+        // clch_needed or common_scch, advertise one common SCCH on frame 18 / TS1.
         //
-        // Keep the SCCH distribution for real Eg1..Eg3 grants, but omit it for
-        // StayAlive. Value 0x01 means one SCCH on frame 18, assigned to TS1.
-        let granted_esm = esi
-            .as_ref()
-            .map(|info| info.energy_saving_mode)
-            .unwrap_or(EnergySavingMode::StayAlive);
-        let scch_capable = pdu
+        // This must not be suppressed for StayAlive terminals. The Sepura in the field
+        // acknowledges an initial attach without this element, but then starts repeated
+        // RoamingLocationUpdating procedures because its common-SCCH registration state
+        // never settles. The last known-good no-Core release always sent 0x01 for this
+        // capability set, so keep that exact air-interface contract here while the SWMI
+        // services remain outside the local MM/MLE/CMCE state machines.
+        let scch_info = pdu
             .class_of_ms
             .as_ref()
-            .map(|class| class.clch_needed || class.common_scch)
-            .unwrap_or(false);
-        let scch_info = if scch_capable && granted_esm != EnergySavingMode::StayAlive {
-            Some(0x01u64)
-        } else {
-            if scch_capable && granted_esm == EnergySavingMode::StayAlive {
-                tracing::debug!(
-                    "MM: ISSI {} is StayAlive; keeping it on the ordinary MCCH instead of assigning frame-18 common-SCCH",
-                    issi
-                );
-            }
-            None
-        };
+            .and_then(|class| {
+                if class.clch_needed || class.common_scch {
+                    Some(0x01u64)
+                } else {
+                    None
+                }
+            });
+        if scch_info.is_some() {
+            tracing::debug!(
+                "MM: ISSI {} v1.3.0 radio compatibility assigns frame-18 common-SCCH on TS1",
+                issi
+            );
+        }
 
         // Hytera compatibility needs to inspect class_of_ms before we move it into client_mgr.
         // ClassOfMs is not Copy, so doing this later would borrow a moved value.
