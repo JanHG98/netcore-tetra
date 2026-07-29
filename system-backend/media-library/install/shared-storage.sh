@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# NETCORE-KOMMENTAR – Was: Bereitet das gemeinsam per NFS und SMB verwendete Medien-Share vor.
+# NETCORE-KOMMENTAR – Warum: Media Library, Recorder, TTS und Windows-Clients sollen dieselben Ordner ohne 0700-Rechtefalle verwenden können.
+
+# This file is sourced by install.sh and update.sh.
+
+netcore_media_set_archive_root() {
+  local config_path="$1"
+  local archive_root="$2"
+
+  if grep -Eq '^[[:space:]]*archive_root[[:space:]]*=' "${config_path}"; then
+    sed -i -E \
+      's|^[[:space:]]*archive_root[[:space:]]*=.*$|archive_root = "'"${archive_root}"'"|' \
+      "${config_path}"
+  elif grep -Eq '^\[storage\][[:space:]]*$' "${config_path}"; then
+    sed -i \
+      '/^\[storage\][[:space:]]*$/a archive_root = "'"${archive_root}"'"' \
+      "${config_path}"
+  else
+    printf '\n[storage]\narchive_root = "%s"\n' "${archive_root}" >> "${config_path}"
+  fi
+}
+
+netcore_prepare_media_shared_storage() {
+  local config_path="$1"
+  local share_root="${NETCORE_MEDIA_SHARE_ROOT:-/mnt/nfs-share}"
+  local archive_root="${share_root%/}/Media-Library"
+  local shared_directory
+  local -a shared_directories=(
+    "Media-Library"
+    "Recordings"
+    "TTS-Dateien"
+  )
+
+  # Always make the standard mount point available. Subdirectories are created
+  # only when the external share is actually mounted, so local files cannot be
+  # written accidentally underneath a missing NFS mount.
+  if [[ ! -d "${share_root}" ]]; then
+    install -d -o root -g root -m 0755 "${share_root}"
+  fi
+
+  netcore_media_set_archive_root "${config_path}" "${archive_root}"
+
+  if ! mountpoint -q "${share_root}"; then
+    echo "WARNING: ${share_root} is not a mount point; shared media directories were not created." >&2
+    echo "WARNING: Mount the NFS share there and rerun this installer or update script." >&2
+    return 0
+  fi
+
+  for shared_directory in "${shared_directories[@]}"; do
+    mkdir -p "${share_root%/}/${shared_directory}"
+
+    # OPEN LAB / SMB interoperability: NFS-created directories must remain
+    # traversable and writable by Windows clients using the parallel SMB share.
+    # Existing directories are repaired as well; contents are not modified.
+    chmod 0777 "${share_root%/}/${shared_directory}"
+  done
+
+  echo "Shared media storage prepared at ${share_root}:"
+  printf '  - %s\n' "${shared_directories[@]}"
+}

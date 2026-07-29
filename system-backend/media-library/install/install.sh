@@ -22,6 +22,8 @@ if [[ ! -e "${CONFIG}" ]]; then
   # Warum: Korrekte Dateirechte sind für einen sicheren und reproduzierbaren Dienststart notwendig.
   install -o root -g netcore-media-library -m 0640 "${ROOT}/system-backend/media-library/config/media-library.example.toml" "${CONFIG}"
 fi
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/shared-storage.sh"
+netcore_prepare_media_shared_storage "${CONFIG}"
 # Was: Baut oder prüft die Rust-Komponenten.
 # Warum: So wird vor Installation oder Start sichergestellt, dass der Quellcode technisch verwendbar ist.
 cargo build --release --package netcore-media-library --manifest-path "${ROOT}/Cargo.toml"
