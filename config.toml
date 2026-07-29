@@ -160,8 +160,8 @@ voice_service = true
 # How long the circuit of an inactive group call stays open after the last speaker
 # releases the floor, before the call is disconnected.
 # During hangtime, any MS can resume the floor without a new D-SETUP/D-CONNECT cycle.
-# Default: 0 seconds. Valid range: 0–300.
-# hangtime_secs = 0
+# Default: 5 seconds. Valid range: 0–300.
+# hangtime_secs = 5
 
 # Legacy-radio workaround: tear a group call down on a SAME-SPEAKER floor retake during hangtime
 # instead of reusing the open circuit, so the next PTT runs a full U-SETUP/D-CONNECT/D-SETUP

@@ -1466,38 +1466,13 @@ impl CcBsSubentity {
                 );
                 queue.push_back(prim);
             }
-
-            // The group originator may already have switched its address filter away from the
-            // GSSI after U-TX-CEASED. Add an ISSI-addressed FACCH release so the source terminal
-            // cannot remain in a stale call state when one of the group releases is lost.
-            if matches!(&call.origin, CallOrigin::Local { .. }) {
-                let source_addr = TetraAddress::issi(call.source_issi);
-                let sdu = Self::build_d_release_from_d_setup(&cached.pdu, disconnect_cause);
-                queue.push_back(Self::build_sapmsg_stealing(
-                    sdu,
-                    self.dltime,
-                    source_addr,
-                    call.ts,
-                    Some(call.usage),
-                ));
-            }
         }
 
-        // MCCH fallbacks. These remain useful for late monitors or terminals that already
-        // dropped back to the main-carrier control channel before the FACCH/STCH release arrived.
+        // MCCH fallback. This is still useful for late monitors or terminals that already
+        // dropped back to the main carrier control channel before the FACCH/STCH release arrived.
         let sdu = Self::build_d_release_from_d_setup(&cached.pdu, disconnect_cause);
         let prim = Self::build_sapmsg(sdu, None, self.dltime, dest_addr, None);
         queue.push_back(prim);
-
-        if let Some(call) = self.active_calls.get(&call_id)
-            && matches!(&call.origin, CallOrigin::Local { .. })
-        {
-            let source_addr = TetraAddress::issi(call.source_issi);
-            for _ in 0..2 {
-                let sdu = Self::build_d_release_from_d_setup(&cached.pdu, disconnect_cause);
-                queue.push_back(Self::build_sapmsg(sdu, None, self.dltime, source_addr, None));
-            }
-        }
 
         // Close the circuit in CircuitMgr and notify Brew
         if let Some(call) = self.active_calls.get(&call_id) {

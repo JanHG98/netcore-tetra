@@ -447,7 +447,7 @@ pub struct CfgCellInfo {
     /// Group call hangtime in seconds: how long an idle group call circuit stays open
     /// after the last speaker releases the floor, before the call is torn down.
     /// During hangtime, any MS can retake the floor without a new D-SETUP/D-CONNECT cycle.
-    /// Default: 0 seconds. Range: 0–300.
+    /// Default: 5 seconds. Range: 0–300.
     pub hangtime_secs: u32,
 
     /// Maximum active call duration in seconds (ETSI T310 equivalent, EN 300 392-2 §14.9.1).
@@ -712,7 +712,7 @@ pub fn cell_dto_to_cfg(ci: CellInfoDto) -> CfgCellInfo {
             text: h.text.unwrap_or_default(),
         }),
         neighbor_cells_ca: ci.neighbor_cells_ca,
-        hangtime_secs: ci.hangtime_secs.unwrap_or(0).clamp(0, 300),
+        hangtime_secs: ci.hangtime_secs.unwrap_or(5).clamp(0, 300),
         call_timeout_secs: {
             let v = ci.call_timeout_secs.unwrap_or(120);
             if v == 0 { 0 } else { v.clamp(30, 86400) }

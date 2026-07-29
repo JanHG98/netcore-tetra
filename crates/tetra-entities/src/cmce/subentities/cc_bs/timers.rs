@@ -760,7 +760,7 @@ impl CcBsSubentity {
     // Was: Diese Funktion prüft hangtime expiry.
     // Warum: Fehler oder unzulässige Zustände werden dadurch früh erkannt.
     pub(super) fn check_hangtime_expiry(&mut self, queue: &mut MessageQueue) {
-        // Hangtime in TDMA timeslots, from config (cell.hangtime_secs, default 0s).
+        // Hangtime in TDMA timeslots, from config (cell.hangtime_secs, default 5s).
         // TETRA: 18 frames/multiframe, 4 timeslots/frame → 72 timeslots/second.
         let hangtime_secs = self.config.config().cell.hangtime_secs as i32;
         let hangtime_frames: i32 = hangtime_secs * 18 * 4;

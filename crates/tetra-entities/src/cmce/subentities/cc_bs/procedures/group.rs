@@ -295,27 +295,10 @@ impl CcBsSubentity {
         d_tx_ceased.to_bitbuf(&mut sdu).expect("Failed to serialize DTxCeased");
         sdu.seek(0);
 
-        let msg = Self::build_sapmsg_stealing(sdu.clone(), self.dltime, dest_addr, ts, None);
+        let msg = Self::build_sapmsg_stealing(sdu, self.dltime, dest_addr, ts, None);
         queue.push_back(msg);
 
-        // Sepura terminals repeat U-TX-CEASED when the group-addressed FACCH confirmation is
-        // lost or when they have already switched their receive filter back to the individual
-        // identity. Send the same confirmation directly to the current speaker as well. The
-        // duplicate is harmless for other terminals and makes floor release deterministic even
-        // when the PHY has to skip a late TX block.
-        let direct_msg = Self::build_sapmsg_stealing(sdu, self.dltime, sender, ts, None);
-        queue.push_back(direct_msg);
-
         self.notify_floor_released(queue, CallTimeslot { call_id, ts }, true, brew_notification);
-
-        // A configured zero hangtime means a classic one-PTT group call: release the complete
-        // call immediately after the floor is returned instead of leaving the radio in
-        // NoActiveSpeaker for another scheduler cycle. This is also the default because several
-        // Sepura generations otherwise request service restoration after the delayed release.
-        if self.config.config().cell.hangtime_secs == 0 {
-            tracing::info!("CMCE: zero group hangtime, releasing call_id={} immediately after U-TX-CEASED", call_id);
-            self.release_group_call(queue, call_id, DisconnectCause::SwmiRequestedDisconnection);
-        }
 
         Ok(())
     }
