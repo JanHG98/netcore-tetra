@@ -687,14 +687,21 @@ impl CcBsSubentity {
 
         let called_addr = TetraAddress::new(called_ssi, SsiType::Issi);
 
-        // PBX/phone calls (no concrete local ISSI) always go through Brew.
-        if called_ssi == 0 {
-            self.fsm_on_u_setup_p2p_over_brew(queue, message, pdu, calling_party, called_addr);
+        if called_addr.ssi == LOCAL_ECHO_ISSI {
+            self.fsm_on_u_setup_p2p_local_echo(queue, message, pdu, calling_party, called_addr);
             return;
         }
 
-        if called_addr.ssi == LOCAL_ECHO_ISSI {
-            self.fsm_on_u_setup_p2p_local_echo(queue, message, pdu, calling_party, called_addr);
+        // Explicit network-bridge dial plans take precedence over the local subscriber
+        // registry. This is important for SIP: extensions are not TETRA subscribers and
+        // must never be provisioned in Subscriber/Provisioning Core. A wildcard/prefix
+        // route may therefore cover an arbitrary number of Asterisk destinations, even
+        // when the dialled digits also form a syntactically valid 24-bit SSI.
+        let network_dial = Self::build_network_circuit_call_from_u_setup(pdu, calling_party.ssi);
+        let has_explicit_network_route = self.asterisk_route_number(&network_dial).is_some()
+            || self.echolink_route_target(&network_dial).is_some();
+        if called_ssi == 0 || has_explicit_network_route {
+            self.fsm_on_u_setup_p2p_over_brew(queue, message, pdu, calling_party, called_addr);
             return;
         }
 

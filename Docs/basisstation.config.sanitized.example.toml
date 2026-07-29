@@ -1023,11 +1023,14 @@ feature_rssi_export = true
 ###############################################################################
 
 # OPTIONAL: Asterisk SIP/RTP bridge — parallel to Brew, not a replacement.
-# Only destinations listed in service_numbers are routed to Asterisk; everything else
-# stays on the normal local/Brew path.
+# SIP destinations are dial-plan targets, not TETRA subscribers, and therefore do NOT
+# need to exist in Subscriber Core or Provisioning Core. An explicit Asterisk prefix
+# takes precedence over a coincidentally identical local ISSI.
 #
-# Example: a TETRA dial string 91600 with outbound_prefix="91" and strip=true becomes
-# SIP user 600, but only because "600" is listed below.
+# Example: 91600 with outbound_prefix="91" and strip=true becomes SIP user 600.
+# service_numbers = ["*"] allows every destination behind the prefix. An empty
+# service_numbers list has the same unrestricted-prefix behaviour. Exact values or
+# prefix wildcards such as "38*" may still be used when an allowlist is desired.
 #
 # NOTE: Asterisk support is FEATURE-GATED on FlowStation. The default build does NOT
 # include it. To use this section the device binary must be built with

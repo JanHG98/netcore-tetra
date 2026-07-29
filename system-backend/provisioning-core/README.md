@@ -29,3 +29,15 @@ Die Verwaltungsoberfläche verwendet getrennte, intern scrollende Tabellenbereic
 - schreibt Teilnehmerprofile über Subscriber Core (`8100`)
 - schreibt Gruppen und Mitgliedschaften über Group Core (`8110`)
 - hat keine direkte TBS-Verbindung und gehört nicht zu den kritischen Fallback-Diensten
+
+## Einzelrufe und SIP-Ziele
+
+Der Provisioning Core verwaltet keine Freigabelisten für Simplex oder Duplex. Jedes
+registrierte Funkgerät darf beide Einzelrufarten anfordern; die gemeldete
+`ClassOfMs`-Duplexfähigkeit dient nur der Anzeige/Telemetrie und ist keine
+Berechtigung.
+
+SIP-/Asterisk-Nummern werden ebenfalls nicht als Geräte angelegt. Sie werden über
+den Wählplan der Basisstation (`[asterisk]`, Präfix und `service_numbers`) geroutet.
+Mit `service_numbers = ["*"]` oder einer leeren Liste sind beliebig viele Ziele
+hinter dem konfigurierten Präfix möglich.

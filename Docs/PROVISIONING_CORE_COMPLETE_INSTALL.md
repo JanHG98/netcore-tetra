@@ -559,7 +559,21 @@ ts(call)=...
 ts(called)=...
 ```
 
-Meldet ein Funkgerät in `ClassOfMs` ausdrücklich `duplex:false`, ist das zunächst eine Geräte-/Codeplug-Eigenschaft. Dann muss der individuelle Duplexdienst im Funkgerät beziehungsweise Codeplug aktiviert werden; die TBS kann fehlende Endgerätefähigkeit nicht durch eine zentrale Freigabe ersetzen.
+Ein gemeldetes `ClassOfMs duplex:false` wird von NetCore nur als Telemetrie gespeichert und blockiert weder Simplex noch Duplex. Der Provisioning Core enthält deshalb bewusst keine Rufarten-Freigabe. Entscheidend ist die tatsächlich vom Funkgerät gesendete `U-SETUP`-Rufart; lehnt das Endgerät den Ruf bereits lokal ab und sendet keine passende `U-SETUP`, liegt die Einschränkung im Gerät beziehungsweise Codeplug, nicht in der zentralen Provisionierung.
+
+### SIP-/Asterisk-Ziele ohne Provisioning
+
+SIP-Nummern werden nicht als Geräte im Provisioning Core angelegt. Eine explizite Asterisk-Wählregel wird vor der lokalen ISSI-Routingentscheidung ausgewertet. Für beliebig viele Ziele hinter dem Präfix:
+
+```toml
+[asterisk]
+enabled = true
+outbound_prefix = "91"
+strip_outbound_prefix = true
+service_numbers = ["*"]
+```
+
+Auch `service_numbers = []` erlaubt jedes Ziel hinter dem Präfix. Ein Wählstring wie `91385` wird damit als SIP-Benutzer `385` geroutet, selbst wenn `91385` zufällig als numerische ISSI interpretierbar wäre.
 
 ## 16. Lokalen Fallback testen
 

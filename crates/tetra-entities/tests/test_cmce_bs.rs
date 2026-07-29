@@ -576,6 +576,52 @@ fn test_individual_setup_uses_central_subscriber_registry_for_local_destination(
 }
 
 #[test]
+fn test_asterisk_dial_plan_precedes_local_registry_and_needs_no_provisioned_destination() {
+    debug::setup_logging_verbose();
+
+    let dltime = TdmaTime { h: 0, m: 1, f: 1, t: 1 };
+    let mut config = ComponentTest::get_default_test_config(StackMode::Bs);
+    config.asterisk.enabled = true;
+    config.asterisk.outbound_prefix = "91".to_string();
+    config.asterisk.strip_outbound_prefix = true;
+    config.asterisk.service_numbers.clear(); // unrestricted SIP destinations behind prefix
+
+    let mut test = ComponentTest::from_config(config, Some(dltime));
+    test.populate_entities(
+        vec![TetraEntity::Cmce],
+        vec![TetraEntity::Mle, TetraEntity::Umac, TetraEntity::Brew, TetraEntity::Asterisk],
+    );
+
+    let calling_issi = 1_000_001;
+    let dialled_digits = 91_385;
+    // Even a numeric collision with a registered ISSI must follow the explicit
+    // Asterisk prefix. SIP destinations are not Subscriber-Core records.
+    test.config.state_write().subscribers.register(dialled_digits);
+
+    test.submit_message(build_individual_u_setup_msg_with_mode(
+        calling_issi,
+        dialled_digits,
+        true,
+    ));
+    test.run_stack(Some(1));
+    let messages = test.dump_sinks();
+
+    assert!(messages.iter().any(|message| {
+        message.dest == TetraEntity::Asterisk
+            && matches!(
+                &message.msg,
+                SapMsgInner::CmceCallControl(CallControl::NetworkCircuitSetupRequest { call, .. })
+                    if call.number == "385" && call.duplex == 1
+            )
+    }), "explicit Asterisk prefix must route arbitrary SIP destination without provisioning");
+
+    assert!(
+        find_lcmc_req(&messages, dialled_digits, CmcePduTypeDl::DSetup).is_none(),
+        "SIP dial string must not be paged as a local TETRA ISSI"
+    );
+}
+
+#[test]
 // Was: Prüft automatisch den Fall duplex individual uses infinite timeout.
 // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
 fn test_duplex_individual_uses_infinite_timeout() {
@@ -590,7 +636,17 @@ fn test_duplex_individual_uses_infinite_timeout() {
 
     let calling_issi = 1000001;
     let called_issi = 1000002;
-    test.config.state_write().subscribers.register(called_issi);
+    {
+        let mut state = test.config.state_write();
+        state.subscribers.register(calling_issi);
+        state.subscribers.register(called_issi);
+        // ClassOfMs capability reporting is telemetry, not an admission policy.
+        // Every registered radio may request either simplex or duplex; the actual
+        // U-SETUP/U-CONNECT negotiation remains authoritative. Even an earlier
+        // `freq_simplex_duplex=false` report from either party must not block it.
+        state.subscribers.set_duplex_capable(calling_issi, Some(false));
+        state.subscribers.set_duplex_capable(called_issi, Some(false));
+    }
 
     test.submit_message(build_individual_u_setup_msg(calling_issi, called_issi));
     test.run_stack(Some(1));

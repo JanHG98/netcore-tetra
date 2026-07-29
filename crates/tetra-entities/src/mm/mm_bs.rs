@@ -112,22 +112,23 @@ impl MmBs {
     fn select_location_update_accept_type(
         requested: LocationUpdateType,
         periodic_secs: u32,
-        initial_attach_accept_compat: bool,
-        is_new: bool,
+        ai_v2_common_scch_compat: bool,
         migration_complete: bool,
     ) -> LocationUpdateType {
         if migration_complete {
             return LocationUpdateType::DemandLocationUpdating;
         }
 
-        if periodic_secs == 0 {
+        // Keep the working `main` air-interface behaviour for AIv2/common-SCCH
+        // terminals (including Sepura): mirror the MS request type on every
+        // successful location update. Converting later roaming refreshes to
+        // PeriodicLocationUpdating caused the terminal to remain in MM handling,
+        // delay group selection/PTT until another refresh and repeatedly re-attach.
+        //
+        // The local T351 timer is still refreshed independently below, so mirroring
+        // the requested PDU type does not disable registration supervision.
+        if periodic_secs == 0 || ai_v2_common_scch_compat {
             return requested;
-        }
-
-        // Preserve the initial attach semantic for terminals known to reject a periodic accept
-        // during their first registration. The exception ends as soon as the terminal is known.
-        if initial_attach_accept_compat && is_new && requested == LocationUpdateType::ItsiAttach {
-            return LocationUpdateType::ItsiAttach;
         }
 
         LocationUpdateType::PeriodicLocationUpdating
@@ -1220,14 +1221,14 @@ impl MmBs {
             None
         };
 
-        // Some AIv2/common-SCCH terminals need the initial ITSI attach to be acknowledged
-        // as ITSI attach instead of being converted into a periodic registration. Keep this
-        // compatibility narrow: applying it to every later RoamingLocationUpdating refresh
-        // leaves affected terminals in a re-registration loop and they never progress to the
-        // CMCE U-SETUP sent by the PTT action.
+        // Preserve the proven `main` compatibility for AIv2/common-SCCH radios.
+        // Sepura terminals in this capability class expect the Location Update Accept
+        // to mirror the request type not only on the first ITSI attach, but also on
+        // later roaming refreshes. The SWMI-only conversion to periodic registration
+        // delayed group selection and normal PTT until a further refresh arrived.
         //
         // ClassOfMs is not Copy, so inspect it before moving it into client_mgr.
-        let initial_attach_accept_compat = pdu
+        let ai_v2_common_scch_compat = pdu
             .class_of_ms
             .as_ref()
             .map(|class| class.common_scch && class.air_interface_version >= 2)
@@ -1243,45 +1244,20 @@ impl MmBs {
         self.recovery_mark_dirty();
 
         // Select the registration type returned in D-LOCATION-UPDATE-ACCEPT.
-        //
-        // The compatibility exception is intentionally limited to an initial ITSI attach. A
-        // previous implementation mirrored every RoamingLocationUpdating from AIv2/common-SCCH
-        // terminals. On affected radios that produced:
-        //
-        //     roaming update -> roaming accept -> roaming update -> ...
-        //
-        // The radio stayed in MM registration handling and never emitted CMCE U-SETUP on PTT.
-        // Once the subscriber is already known, a roaming refresh is therefore settled as
-        // PeriodicLocationUpdating when periodic registration is enabled.
+        // Mobility completion still uses DemandLocationUpdating, while ordinary
+        // AIv2/common-SCCH traffic follows the known-good `main` behaviour.
         let periodic_secs = self.config.config().cell.periodic_registration_secs;
         let accept_type = Self::select_location_update_accept_type(
             pdu.location_update_type,
             periodic_secs,
-            initial_attach_accept_compat,
-            is_new,
+            ai_v2_common_scch_compat,
             migration_completion.is_some(),
         );
-        if periodic_secs > 0
-            && initial_attach_accept_compat
-            && is_new
-            && pdu.location_update_type == LocationUpdateType::ItsiAttach
-        {
+        if periodic_secs > 0 && ai_v2_common_scch_compat {
             tracing::debug!(
-                "MM: ISSI {} initial AIv2/common-SCCH ITSI attach acknowledged as ITSI attach",
-                issi
-            );
-        } else if periodic_secs > 0
-            && !is_new
-            && matches!(
-                pdu.location_update_type,
-                LocationUpdateType::RoamingLocationUpdating
-                    | LocationUpdateType::ServiceRestorationRoamingLocationUpdating
-            )
-            && accept_type == LocationUpdateType::PeriodicLocationUpdating
-        {
-            tracing::info!(
-                "MM: ISSI {} known roaming refresh settled as PeriodicLocationUpdating to prevent re-registration loop",
-                issi
+                "MM: ISSI {} AIv2/common-SCCH compatibility mirrors {:?} in D-LOCATION-UPDATE-ACCEPT",
+                issi,
+                pdu.location_update_type
             );
         }
 
@@ -3482,12 +3458,11 @@ mod ee_tests {
     }
 
     #[test]
-    fn initial_ai_v2_attach_keeps_itsi_attach_accept_type() {
+    fn ai_v2_common_scch_mirrors_initial_attach_type() {
         assert_eq!(
             MmBs::select_location_update_accept_type(
                 LocationUpdateType::ItsiAttach,
                 3600,
-                true,
                 true,
                 false,
             ),
@@ -3496,22 +3471,33 @@ mod ee_tests {
     }
 
     #[test]
-    fn known_ai_v2_roaming_refresh_is_settled_as_periodic() {
+    fn ai_v2_common_scch_mirrors_roaming_refresh_type() {
         assert_eq!(
             MmBs::select_location_update_accept_type(
                 LocationUpdateType::RoamingLocationUpdating,
                 3600,
                 true,
                 false,
-                false,
             ),
-            LocationUpdateType::PeriodicLocationUpdating
+            LocationUpdateType::RoamingLocationUpdating
         );
         assert_eq!(
             MmBs::select_location_update_accept_type(
                 LocationUpdateType::ServiceRestorationRoamingLocationUpdating,
                 3600,
                 true,
+                false,
+            ),
+            LocationUpdateType::ServiceRestorationRoamingLocationUpdating
+        );
+    }
+
+    #[test]
+    fn non_compat_terminal_still_receives_periodic_accept() {
+        assert_eq!(
+            MmBs::select_location_update_accept_type(
+                LocationUpdateType::RoamingLocationUpdating,
+                3600,
                 false,
                 false,
             ),
@@ -3525,7 +3511,6 @@ mod ee_tests {
             MmBs::select_location_update_accept_type(
                 LocationUpdateType::RoamingLocationUpdating,
                 0,
-                true,
                 false,
                 false,
             ),
@@ -3539,7 +3524,6 @@ mod ee_tests {
             MmBs::select_location_update_accept_type(
                 LocationUpdateType::MigratingLocationUpdating,
                 3600,
-                true,
                 true,
                 true,
             ),
