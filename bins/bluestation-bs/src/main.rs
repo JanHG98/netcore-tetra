@@ -497,11 +497,11 @@ struct Args {
 }
 
 fn main() {
-    eprintln!("░▀█▀░█▀▀░▀█▀░█▀▄░█▀█░░░░░░░░░█▀▀░█░░░█▀█░█░█░█▀▀░▀█▀░█▀█░▀█▀░▀█▀░█▀█░█▀█");
-    eprintln!("░░█░░█▀▀░░█░░█▀▄░█▀█░░░▄▄▄░░░█▀▀░█░░░█░█░█▄█░▀▀█░░█░░█▀█░░█░░░█░░█░█░█░█");
-    eprintln!("░░▀░░▀▀▀░░▀░░▀░▀░▀░▀░░░░░░░░░▀░░░▀▀▀░▀▀▀░▀░▀░▀▀▀░░▀░░▀░▀░░▀░░▀▀▀░▀▀▀░▀░▀\n");
-    eprintln!("  Razvan Zeces / FlowStation.network");
-    eprintln!("  https://github.com/razvanzeces/flowstation");
+eprintln!("░█▄░█░█▀▀░▀█▀░█▀▀░█▀█░█▀▄░█▀▀░░░░░░░░░▀█▀░█▀▀░▀█▀░█▀▄░█▀█");
+eprintln!("░█░▀█░█▀▀░░█░░█░░░█░█░█▀▄░█▀▀░░░▄▄▄░░░░█░░█▀▀░░█░░█▀▄░█▀█");
+eprintln!("░▀░░▀░▀▀▀░░▀░░▀▀▀░▀▀▀░▀░▀░▀▀▀░░░░░░░░░░▀░░▀▀▀░░▀░░▀░▀░▀░▀\n");
+    eprintln!("  NetCore-Tetra Systems");
+    eprintln!("  https://github.com/JanHG98/netcore-tetra");
     eprintln!("  Version: {}", tetra_core::STACK_VERSION);
 
     // Parse command-line arguments
