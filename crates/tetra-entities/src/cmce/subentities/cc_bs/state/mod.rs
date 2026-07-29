@@ -1,16 +1,9 @@
-// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
-// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
-
 use super::*;
 
 // TETRA TDMA timing: one slot is 170/12 milliseconds.
-// Was: Legt den festen Wert `TIMESLOT_DURATION_MS` für timeslot duration ms fest.
-// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const TIMESLOT_DURATION_MS: f64 = 170.0 / 12.0;
 
 #[inline]
-// Was: Führt den Arbeitsschritt `seconds_to_timeslots` für seconds to timeslots aus.
-// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn seconds_to_timeslots(seconds: i32) -> i32 {
     debug_assert!(seconds >= 0);
     // slots = total_ms / slot_duration_ms
@@ -18,11 +11,7 @@ fn seconds_to_timeslots(seconds: i32) -> i32 {
 }
 
 #[inline]
-// Was: Führt den Arbeitsschritt `setup_timeout_to_timeslots` für setup timeout to timeslots aus.
-// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn setup_timeout_to_timeslots(timeout: CallTimeoutSetupPhase) -> Option<i32> {
-    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match timeout {
         CallTimeoutSetupPhase::Predefined => Some(seconds_to_timeslots(10)),
         CallTimeoutSetupPhase::T1s => Some(seconds_to_timeslots(1)),
@@ -36,11 +25,7 @@ fn setup_timeout_to_timeslots(timeout: CallTimeoutSetupPhase) -> Option<i32> {
 }
 
 #[inline]
-// Was: Führt den Arbeitsschritt `call_timeout_to_timeslots` für Ruf timeout to timeslots aus.
-// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn call_timeout_to_timeslots(timeout: CallTimeout) -> Option<i32> {
-    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match timeout {
         CallTimeout::Infinite | CallTimeout::Reserved => None,
         CallTimeout::T30s => Some(seconds_to_timeslots(30)),
@@ -60,12 +45,8 @@ fn call_timeout_to_timeslots(timeout: CallTimeout) -> Option<i32> {
     }
 }
 
-// Was: Legt den festen Wert `LOCAL_ECHO_ISSI` für local echo Teilnehmerkennung (ISSI) fest.
-// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub(super) const LOCAL_ECHO_ISSI: u32 = 999;
 
-// Was: Bündelt die zusammengehörigen Werte für cached setup in einem Datentyp.
-// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub(super) struct CachedSetup {
     pub(super) pdu: DSetup,
     pub(super) dest_addr: TetraAddress,
@@ -75,8 +56,6 @@ pub(super) struct CachedSetup {
 
 /// Origin of a group call
 #[derive(Clone)]
-// Was: Listet die möglichen Varianten für Ruf origin auf.
-// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub(super) enum CallOrigin {
     /// Local MS-initiated call, needs MLE routing for individual addressing
     Local {
@@ -90,8 +69,6 @@ pub(super) enum CallOrigin {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-// Was: Listet die möglichen Varianten für Gruppe Ruf Zustand auf.
-// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub(super) enum GroupCallState {
     /// An active speaker is currently transmitting.
     Transmitting,
@@ -100,8 +77,6 @@ pub(super) enum GroupCallState {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-// Was: Listet die möglichen Varianten für cc formal Zustand auf.
-// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub(super) enum CcFormalState {
     Idle,
     Setup,
@@ -112,8 +87,6 @@ pub(super) enum CcFormalState {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-// Was: Listet die möglichen Varianten für cc formal Ereignis auf.
-// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub(super) enum CcFormalEvent {
     SetupRequest,
     SetupComplete,
@@ -128,21 +101,13 @@ pub(super) enum CcFormalEvent {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-// Was: Bündelt die zusammengehörigen Werte für cc formal transition error in einem Datentyp.
-// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub(super) struct CcFormalTransitionError {
     pub(super) state: CcFormalState,
     pub(super) event: CcFormalEvent,
 }
 
-// Was: Implementiert das zugehörige Verhalten für `CcFormalState`.
-// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl CcFormalState {
-    // Was: Führt den Arbeitsschritt `transition` für transition aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn transition(self, event: CcFormalEvent) -> Result<CcFormalState, CcFormalTransitionError> {
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let next = match (self, event) {
             (CcFormalState::Idle, CcFormalEvent::SetupRequest) => CcFormalState::Setup,
             (CcFormalState::Setup, CcFormalEvent::SetupComplete) => CcFormalState::Active,
@@ -164,21 +129,15 @@ impl CcFormalState {
     }
 
     #[inline]
-    // Was: Führt den Arbeitsschritt `after` für after aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn after(self, event: CcFormalEvent) -> CcFormalState {
         self.transition(event)
             .unwrap_or_else(|err| panic!("invalid CMCE CC formal transition: {:?} + {:?}", err.state, err.event))
     }
 }
 
-// Was: Implementiert das zugehörige Verhalten für `GroupCallState`.
-// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl GroupCallState {
     #[allow(dead_code)]
     #[inline]
-    // Was: Führt den Arbeitsschritt `formal_state` für formal Zustand aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn formal_state(self) -> CcFormalState {
         CcFormalState::Active
     }
@@ -186,8 +145,6 @@ impl GroupCallState {
 
 /// Tracks an active group call (local or network-initiated)
 #[derive(Clone)]
-// Was: Bündelt die zusammengehörigen Werte für active Ruf in einem Datentyp.
-// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub(super) struct ActiveCall {
     pub(super) origin: CallOrigin,
     pub(super) dest_gssi: u32,   // Destination group
@@ -225,12 +182,8 @@ pub(super) struct ActiveCall {
     pub(super) brew_uuid: Option<uuid::Uuid>,
 }
 
-// Was: Implementiert das zugehörige Verhalten für `ActiveCall`.
-// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl ActiveCall {
     #[allow(clippy::too_many_arguments)]
-    // Was: Diese Funktion erstellt local.
-    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub(super) fn new_local(
         caller_addr: TetraAddress,
         dest_gssi: u32,
@@ -265,8 +218,6 @@ impl ActiveCall {
     }
 
     #[allow(clippy::too_many_arguments)]
-    // Was: Diese Funktion erstellt network.
-    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub(super) fn new_network(
         network_entity: TetraEntity,
         brew_uuid: uuid::Uuid,
@@ -302,8 +253,6 @@ impl ActiveCall {
     }
 
     #[inline]
-    // Was: Führt den Arbeitsschritt `state` für Zustand aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn state(&self) -> GroupCallState {
         if self.tx_active {
             GroupCallState::Transmitting
@@ -315,40 +264,28 @@ impl ActiveCall {
     }
 
     #[inline]
-    // Was: Prüft, ob tx active zutrifft.
-    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     pub(super) fn is_tx_active(&self) -> bool {
         matches!(self.state(), GroupCallState::Transmitting)
     }
 
     #[inline]
-    // Was: Prüft, ob current speaker zutrifft.
-    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     pub(super) fn is_current_speaker(&self, issi: u32) -> bool {
         self.tx_active && self.source_issi == issi
     }
 
     #[inline]
-    // Was: Führt den Arbeitsschritt `call_timeout_expired` für Ruf timeout expired aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn call_timeout_expired(&self, now: TdmaTime) -> bool {
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match call_timeout_to_timeslots(self.call_timeout) {
             Some(timeout) => self.created_at.age(now) > timeout,
             None => false,
         }
     }
 
-    // Was: Führt den Arbeitsschritt `enter_hangtime` für enter hangtime aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn enter_hangtime(&mut self, now: TdmaTime) {
         self.tx_active = false;
         self.hangtime_start = Some(now);
     }
 
-    // Was: Führt den Arbeitsschritt `grant_floor` für grant floor aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn grant_floor(&mut self, source_issi: u32, speaker_addr: Option<TetraAddress>) {
         self.source_issi = source_issi;
         self.tx_active = true;
@@ -360,15 +297,11 @@ impl ActiveCall {
         }
     }
 
-    // Was: Führt den Arbeitsschritt `queue_tx_demand` für Warteschlange tx demand aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn queue_tx_demand(&mut self, requester: TetraAddress) -> TxDemandQueueResult {
         if self.is_current_speaker(requester.ssi) {
             return TxDemandQueueResult::FromCurrentSpeaker;
         }
 
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.queued_tx_demand {
             Some(existing) if existing.ssi == requester.ssi => TxDemandQueueResult::AlreadyQueuedBySameUser,
             Some(_) => TxDemandQueueResult::QueueBusy,
@@ -379,17 +312,11 @@ impl ActiveCall {
         }
     }
 
-    // Was: Führt den Arbeitsschritt `take_queued_tx_demand` für take queued tx demand aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn take_queued_tx_demand(&mut self) -> Option<TetraAddress> {
         self.queued_tx_demand.take()
     }
 
-    // Was: Führt den Arbeitsschritt `begin_release` für begin release aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn begin_release(&mut self, cause: DisconnectCause) {
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let event = match cause {
             DisconnectCause::ExpiryOfTimer => CcFormalEvent::TimerExpired,
             _ => CcFormalEvent::ReleaseRequest,
@@ -401,29 +328,21 @@ impl ActiveCall {
         };
     }
 
-    // Was: Führt den Arbeitsschritt `begin_disconnect` für begin disconnect aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn begin_disconnect(&mut self) {
         if self.formal_state == CcFormalState::Active {
             self.formal_state = self.formal_state.after(CcFormalEvent::DisconnectRequest);
         }
     }
 
-    // Was: Führt den Arbeitsschritt `begin_restore` für begin Wiederherstellung aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn begin_restore(&mut self) -> Result<(), CcFormalTransitionError> {
         self.formal_state = self.formal_state.transition(CcFormalEvent::RestoreRequest)?;
         Ok(())
     }
 
-    // Was: Führt den Arbeitsschritt `complete_restore` für complete Wiederherstellung aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn complete_restore(&mut self) {
         self.formal_state = self.formal_state.after(CcFormalEvent::RestoreComplete);
     }
 
-    // Was: Diese Funktion wendet modify.
-    // Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
     pub(super) fn apply_modify(&mut self) -> Result<(), CcFormalTransitionError> {
         self.formal_state = self.formal_state.transition(CcFormalEvent::ModifyRequest)?;
         Ok(())
@@ -431,8 +350,6 @@ impl ActiveCall {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-// Was: Listet die möglichen Varianten für tx demand Warteschlange result auf.
-// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub(super) enum TxDemandQueueResult {
     Queued,
     AlreadyQueuedBySameUser,
@@ -441,8 +358,6 @@ pub(super) enum TxDemandQueueResult {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-// Was: Listet die möglichen Varianten für individual Ruf Zustand auf.
-// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub(super) enum IndividualCallState {
     /// Generic setup state for locally initiated individual calls.
     CallSetupPending,
@@ -456,15 +371,9 @@ pub(super) enum IndividualCallState {
     Active,
 }
 
-// Was: Implementiert das zugehörige Verhalten für `IndividualCallState`.
-// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl IndividualCallState {
     #[inline]
-    // Was: Führt den Arbeitsschritt `formal_state` für formal Zustand aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn formal_state(self) -> CcFormalState {
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self {
             IndividualCallState::CallSetupPending
             | IndividualCallState::IncomingSetupPending
@@ -476,8 +385,6 @@ impl IndividualCallState {
 }
 
 #[derive(Clone)]
-// Was: Bündelt die zusammengehörigen Werte für individual Ruf in einem Datentyp.
-// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub(super) struct IndividualCall {
     pub(super) calling_addr: TetraAddress,
     pub(super) called_addr: TetraAddress,
@@ -524,12 +431,8 @@ pub(super) struct IndividualCall {
     pub(super) queued_tx_demand: Option<TetraAddress>,
 }
 
-// Was: Implementiert das zugehörige Verhalten für `IndividualCall`.
-// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl IndividualCall {
     #[inline]
-    // Was: Prüft, ob local echo Ruf zutrifft.
-    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     pub(super) fn is_local_echo_call(&self) -> bool {
         self.called_addr.ssi == LOCAL_ECHO_ISSI
             && self.called_handle.is_none()
@@ -539,22 +442,16 @@ impl IndividualCall {
     }
 
     #[inline]
-    // Was: Prüft, ob network party zutrifft.
-    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     pub(super) fn is_network_party(&self, addr: TetraAddress) -> bool {
         (self.calling_over_brew && addr.ssi == self.calling_addr.ssi) || (self.called_over_brew && addr.ssi == self.called_addr.ssi)
     }
 
     #[inline]
-    // Was: Führt den Arbeitsschritt `network_entity` für network entity aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn network_entity(&self) -> TetraEntity {
         self.network_entity.unwrap_or(TetraEntity::Brew)
     }
 
     #[inline]
-    // Was: Prüft, ob alerted zutrifft.
-    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     pub(super) fn is_alerted(&self) -> bool {
         matches!(
             self.state,
@@ -562,8 +459,6 @@ impl IndividualCall {
         )
     }
 
-    // Was: Diese Funktion kennzeichnet alerted.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn mark_alerted(&mut self, now: TdmaTime, setup_timeout: CallTimeoutSetupPhase) {
         if matches!(
             self.state,
@@ -576,49 +471,35 @@ impl IndividualCall {
     }
 
     #[inline]
-    // Was: Prüft, ob active zutrifft.
-    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     pub(super) fn is_active(&self) -> bool {
         self.state == IndividualCallState::Active
     }
 
     #[inline]
-    // Was: Prüft, ob simplex zutrifft.
-    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     pub(super) fn is_simplex(&self) -> bool {
         !self.simplex_duplex
     }
 
     #[inline]
-    // Was: Prüft, ob floor held by zutrifft.
-    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     pub(super) fn is_floor_held_by(&self, issi: u32) -> bool {
         self.floor_holder == Some(issi)
     }
 
-    // Was: Führt den Arbeitsschritt `grant_floor` für grant floor aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn grant_floor(&mut self, holder: TetraAddress) {
         self.floor_holder = Some(holder.ssi);
         self.queued_tx_demand = None;
     }
 
-    // Was: Diese Funktion gibt floor.
-    // Warum: Ressourcen werden dadurch rechtzeitig freigegeben und blockieren keine weiteren Vorgänge.
     pub(super) fn release_floor(&mut self) {
         self.floor_holder = None;
         self.queued_tx_demand = None;
     }
 
-    // Was: Führt den Arbeitsschritt `queue_tx_demand` für Warteschlange tx demand aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn queue_tx_demand(&mut self, requester: TetraAddress) -> TxDemandQueueResult {
         if self.is_floor_held_by(requester.ssi) {
             return TxDemandQueueResult::FromCurrentSpeaker;
         }
 
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.queued_tx_demand {
             Some(existing) if existing.ssi == requester.ssi => TxDemandQueueResult::AlreadyQueuedBySameUser,
             Some(_) => TxDemandQueueResult::QueueBusy,
@@ -629,8 +510,6 @@ impl IndividualCall {
         }
     }
 
-    // Was: Diese Funktion bricht queued tx demand.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn cancel_queued_tx_demand(&mut self, requester: TetraAddress) -> bool {
         if self.queued_tx_demand.is_some_and(|existing| existing.ssi == requester.ssi) {
             self.queued_tx_demand = None;
@@ -640,14 +519,10 @@ impl IndividualCall {
         }
     }
 
-    // Was: Führt den Arbeitsschritt `take_queued_tx_demand` für take queued tx demand aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn take_queued_tx_demand(&mut self) -> Option<TetraAddress> {
         self.queued_tx_demand.take()
     }
 
-    // Was: Diese Funktion aktiviert den vorgesehenen Arbeitsschritt.
-    // Warum: Die Zustandsänderung bleibt damit kontrolliert und für alle Aufrufer gleich.
     pub(super) fn activate(&mut self, now: TdmaTime) {
         self.formal_state = self.formal_state.after(CcFormalEvent::SetupComplete);
         self.state = IndividualCallState::Active;
@@ -657,19 +532,13 @@ impl IndividualCall {
         self.connect_request_sent = false;
     }
 
-    // Was: Führt den Arbeitsschritt `begin_disconnect` für begin disconnect aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn begin_disconnect(&mut self) {
         if self.formal_state == CcFormalState::Active {
             self.formal_state = self.formal_state.after(CcFormalEvent::DisconnectRequest);
         }
     }
 
-    // Was: Führt den Arbeitsschritt `begin_release` für begin release aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn begin_release(&mut self, cause: DisconnectCause) {
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let event = match cause {
             DisconnectCause::ExpiryOfTimer => CcFormalEvent::TimerExpired,
             _ => CcFormalEvent::ReleaseRequest,
@@ -681,29 +550,21 @@ impl IndividualCall {
         };
     }
 
-    // Was: Führt den Arbeitsschritt `begin_restore` für begin Wiederherstellung aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn begin_restore(&mut self) -> Result<(), CcFormalTransitionError> {
         self.formal_state = self.formal_state.transition(CcFormalEvent::RestoreRequest)?;
         Ok(())
     }
 
-    // Was: Führt den Arbeitsschritt `complete_restore` für complete Wiederherstellung aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn complete_restore(&mut self) {
         self.formal_state = self.formal_state.after(CcFormalEvent::RestoreComplete);
     }
 
-    // Was: Diese Funktion wendet modify.
-    // Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
     pub(super) fn apply_modify(&mut self) -> Result<(), CcFormalTransitionError> {
         self.formal_state = self.formal_state.transition(CcFormalEvent::ModifyRequest)?;
         Ok(())
     }
 
     #[inline]
-    // Was: Führt den Arbeitsschritt `setup_timeout_expired` für setup timeout expired aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn setup_timeout_expired(&self, now: TdmaTime) -> bool {
         if self.is_active() {
             return false;
@@ -721,8 +582,6 @@ impl IndividualCall {
     }
 
     #[inline]
-    // Was: Führt den Arbeitsschritt `active_timeout_expired` für active timeout expired aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn active_timeout_expired(&self, now: TdmaTime) -> bool {
         if !self.is_active() {
             return false;
@@ -738,14 +597,10 @@ impl IndividualCall {
 }
 
 #[cfg(test)]
-// Was: Bindet das Untermodul tests in diesen Bereich ein.
-// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::{CcFormalEvent, CcFormalState};
 
     #[test]
-    // Was: Führt den Arbeitsschritt `formal_cc_setup_active_release_flow` für formal cc setup active release flow aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn formal_cc_setup_active_release_flow() {
         let setup = CcFormalState::Idle.transition(CcFormalEvent::SetupRequest).unwrap();
         assert_eq!(setup, CcFormalState::Setup);
@@ -761,8 +616,6 @@ mod tests {
     }
 
     #[test]
-    // Was: Führt den Arbeitsschritt `formal_cc_disconnect_release_flow` für formal cc disconnect release flow aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn formal_cc_disconnect_release_flow() {
         let disconnect = CcFormalState::Active.transition(CcFormalEvent::DisconnectRequest).unwrap();
         assert_eq!(disconnect, CcFormalState::Disconnect);
@@ -772,8 +625,6 @@ mod tests {
     }
 
     #[test]
-    // Was: Führt den Arbeitsschritt `formal_cc_restoration_success_and_failure_flows` für formal cc restoration success and failure flows aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn formal_cc_restoration_success_and_failure_flows() {
         let restore = CcFormalState::Active.transition(CcFormalEvent::RestoreRequest).unwrap();
         assert_eq!(restore, CcFormalState::Restore);
@@ -782,8 +633,6 @@ mod tests {
     }
 
     #[test]
-    // Was: Führt den Arbeitsschritt `formal_cc_rejects_invalid_shortcuts` für formal cc rejects invalid shortcuts aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn formal_cc_rejects_invalid_shortcuts() {
         assert!(CcFormalState::Idle.transition(CcFormalEvent::SetupComplete).is_err());
         assert!(CcFormalState::Setup.transition(CcFormalEvent::RestoreRequest).is_err());

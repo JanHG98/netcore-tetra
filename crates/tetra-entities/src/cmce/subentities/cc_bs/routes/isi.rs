@@ -1,6 +1,3 @@
-// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
-// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
-
 use super::*;
 
 /// Local bridge entry points for ISI-style interworking.
@@ -9,11 +6,7 @@ use super::*;
 /// EN 300 392-3-3 models group call interworking as ANF-ISIGC. The current
 /// Brew transport is not PSS1/ROSE ISI, but these handlers keep the network
 /// side at the CC boundary instead of spreading it through CMCE PC routing.
-// Was: Implementiert das zugehörige Verhalten für `CcBsSubentity`.
-// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl CcBsSubentity {
-    // Was: Diese Funktion sucht Brew-Verbindung individual Ruf.
-    // Warum: Die Suchlogik bleibt damit wiederverwendbar und muss nicht an mehreren Stellen kopiert werden.
     pub(in crate::cmce::subentities::cc_bs) fn find_brew_individual_call(&self, brew_uuid: uuid::Uuid) -> Option<(u16, IndividualCall)> {
         self.individual_calls
             .iter()
@@ -21,8 +14,6 @@ impl CcBsSubentity {
             .map(|(id, call)| (*id, call.clone()))
     }
 
-    // Was: Führt den Arbeitsschritt `rx_network_circuit_setup_request` für rx network circuit setup request aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn rx_network_circuit_setup_request(
         &mut self,
         queue: &mut MessageQueue,
@@ -33,8 +24,6 @@ impl CcBsSubentity {
         self.fsm_on_network_circuit_setup_request(queue, network_entity, brew_uuid, call);
     }
 
-    // Was: Führt den Arbeitsschritt `rx_network_circuit_setup_accept` für rx network circuit setup accept aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn rx_network_circuit_setup_accept(&mut self, brew_uuid: uuid::Uuid) {
         if let Some((_, call)) = self.find_brew_individual_call(brew_uuid) {
             tracing::info!("CMCE: {:?} setup accepted uuid={}", call.network_entity(), brew_uuid);
@@ -43,8 +32,6 @@ impl CcBsSubentity {
         }
     }
 
-    // Was: Führt den Arbeitsschritt `rx_network_circuit_setup_reject` für rx network circuit setup reject aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn rx_network_circuit_setup_reject(&mut self, queue: &mut MessageQueue, brew_uuid: uuid::Uuid, cause: u8) {
         let Some((call_id, call)) = self.find_brew_individual_call(brew_uuid) else {
             tracing::debug!("CMCE: network setup reject for unknown uuid={} cause={}", brew_uuid, cause);
@@ -62,8 +49,6 @@ impl CcBsSubentity {
         self.release_individual_call(queue, call_id, mapped);
     }
 
-    // Was: Führt den Arbeitsschritt `rx_network_circuit_alert` für rx network circuit alert aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn rx_network_circuit_alert(&mut self, queue: &mut MessageQueue, brew_uuid: uuid::Uuid) {
         let Some((call_id, call)) = self.find_brew_individual_call(brew_uuid) else {
             tracing::debug!("CMCE: network alert for unknown uuid={}", brew_uuid);
@@ -72,8 +57,6 @@ impl CcBsSubentity {
         let network_entity = call.network_entity();
 
         if let Err(err) = self.fsm_individual_on_alert(queue, call_id, None, CallTimeoutSetupPhase::T60s) {
-            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match err {
                 IndividualTransitionError::UnknownCall(_) => {
                     tracing::debug!(
@@ -102,8 +85,6 @@ impl CcBsSubentity {
         }
     }
 
-    // Was: Führt den Arbeitsschritt `rx_network_circuit_connect_request` für rx network circuit connect request aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn rx_network_circuit_connect_request(
         &mut self,
         queue: &mut MessageQueue,
@@ -113,8 +94,6 @@ impl CcBsSubentity {
         self.fsm_on_network_circuit_connect_request(queue, brew_uuid, call_info);
     }
 
-    // Was: Führt den Arbeitsschritt `rx_network_circuit_connect_confirm` für rx network circuit connect confirm aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn rx_network_circuit_connect_confirm(
         &mut self,
         queue: &mut MessageQueue,
@@ -125,8 +104,6 @@ impl CcBsSubentity {
         self.fsm_on_network_circuit_connect_confirm(queue, brew_uuid, grant, permission);
     }
 
-    // Was: Führt den Arbeitsschritt `rx_network_circuit_simplex_granted` für rx network circuit simplex granted aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn rx_network_circuit_simplex_granted(
         &mut self,
         queue: &mut MessageQueue,
@@ -137,14 +114,10 @@ impl CcBsSubentity {
         self.fsm_on_network_circuit_simplex_granted(queue, brew_uuid, grant, permission);
     }
 
-    // Was: Führt den Arbeitsschritt `rx_network_circuit_simplex_idle` für rx network circuit simplex idle aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn rx_network_circuit_simplex_idle(&mut self, queue: &mut MessageQueue, brew_uuid: uuid::Uuid, grant: u8, permission: u8) {
         self.fsm_on_network_circuit_simplex_idle(queue, brew_uuid, grant, permission);
     }
 
-    // Was: Führt den Arbeitsschritt `rx_network_circuit_release` für rx network circuit release aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn rx_network_circuit_release(&mut self, queue: &mut MessageQueue, brew_uuid: uuid::Uuid, cause: u8) {
         let Some((call_id, call)) = self.find_brew_individual_call(brew_uuid) else {
             tracing::debug!("CMCE: network release for unknown uuid={} cause={}", brew_uuid, cause);
@@ -167,8 +140,6 @@ impl CcBsSubentity {
     }
 
     /// Handle network-initiated group call start
-    // Was: Führt den Arbeitsschritt `rx_network_call_start` für rx network Ruf start aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn rx_network_call_start(
         &mut self,
         queue: &mut MessageQueue,
@@ -182,8 +153,6 @@ impl CcBsSubentity {
     }
 
     /// Handle network call end request
-    // Was: Führt den Arbeitsschritt `rx_network_call_end` für rx network Ruf end aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn rx_network_call_end(&mut self, queue: &mut MessageQueue, brew_uuid: uuid::Uuid) {
         // Find the call by brew_uuid field (works for both Local and Network origin calls)
         let Some((call_id, call)) = self
@@ -204,8 +173,6 @@ impl CcBsSubentity {
         );
 
         if let Err(err) = self.fsm_group_on_network_call_end(queue, call_id) {
-            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match err {
                 GroupTransitionError::UnknownCall(_) => {
                     tracing::debug!("CMCE: network call end for unknown call_id={} brew_uuid={}", call_id, brew_uuid);

@@ -1,6 +1,3 @@
-// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
-// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
-
 use std::collections::{HashMap, HashSet};
 
 use tetra_config::bluestation::SharedConfig;
@@ -39,10 +36,6 @@ use tetra_saps::{
     },
 };
 
-use crate::cmce::call_restore_runtime::{
-    CallRestoreContext, CallRestoreRuntime, CallRestoreRuntimeSnapshot, GroupCallRestoreContext,
-    IndividualCallRestoreContext,
-};
 use crate::net_brew as brew;
 use crate::{
     MessageQueue,
@@ -52,47 +45,25 @@ use crate::{
 /// Short tolerance for Brew/MM affiliation resyncs that emit DEAFFILIATE immediately followed by
 /// AFFILIATE for the same ISSI/GSSI. Two seconds keeps active calls from being torn down by a
 /// transient empty listener set while still releasing genuinely unlistened calls promptly.
-// Was: Legt den festen Wert `BREW_AFFILIATION_GRACE_TS` für Brew-Verbindung affiliation grace ts fest.
-// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const BREW_AFFILIATION_GRACE_TS: i32 = 144;
 
-// Was: Bindet das Untermodul Steuerung plane in diesen Bereich ein.
-// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
-mod control_plane;
-// Was: Bindet das Untermodul dtmf in diesen Bereich ein.
-// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod dtmf;
-// Was: Bindet das Untermodul lifecycle in diesen Bereich ein.
-// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod lifecycle;
-// Was: Bindet das Untermodul Protokollnachricht (PDU) in diesen Bereich ein.
-// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod pdu;
-// Was: Bindet das Untermodul procedures in diesen Bereich ein.
-// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod procedures;
-// Was: Bindet das Untermodul routes in diesen Bereich ein.
-// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod routes;
-// Was: Bindet das Untermodul Zustand in diesen Bereich ein.
-// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod state;
-// Was: Bindet das Untermodul timers in diesen Bereich ein.
-// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod timers;
 
 use lifecycle::{BrewNotification, CallTimeslot, GroupFloorGrant};
 use pdu::is_emergency_priority;
 use procedures::{GroupTransitionError, IndividualTransitionError};
-pub(in crate::cmce) use procedures::MleCallRestoreDecision;
 use state::{
     ActiveCall, CachedSetup, CallOrigin, CcFormalEvent, CcFormalState, GroupCallState, IndividualCall, IndividualCallState,
     LOCAL_ECHO_ISSI, TxDemandQueueResult,
 };
 
 /// Clause 11 Call Control CMCE sub-entity
-// Was: Bündelt die zusammengehörigen Werte für cc Basisstation subentity in einem Datentyp.
-// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CcBsSubentity {
     config: SharedConfig,
     dltime: TdmaTime,
@@ -109,8 +80,6 @@ pub struct CcBsSubentity {
     group_listeners: HashMap<u32, usize>,
     /// Recently removed affiliations (ISSI, GSSI) kept alive briefly to absorb Brew resync races.
     recent_deaffiliations: HashMap<(u32, u32), TdmaTime>,
-    /// Local CMCE call-restore context and transaction registry.
-    call_restore: CallRestoreRuntime,
     /// Dashboard telemetry sink (call-lifecycle events). `None` when telemetry is disabled.
     telemetry: Option<crate::net_telemetry::TelemetrySink>,
 }

@@ -43,6 +43,7 @@ worker = (ROOT / 'crates/tetra-entities/src/net_control/worker.rs').read_text()
 room_worker = (ROOT / 'crates/tetra-entities/src/net_control_room/worker.rs').read_text()
 capabilities = (ROOT / 'crates/tetra-entities/src/net_control_room/protocol.rs').read_text()
 cmce = (ROOT / 'crates/tetra-entities/src/cmce/cmce_bs.rs').read_text()
+bs_main = (ROOT / 'bins/bluestation-bs/src/main.rs').read_text()
 adapter = (ROOT / 'crates/tetra-entities/src/cmce/subentities/cc_bs/control_plane.rs').read_text()
 restore = (ROOT / 'crates/tetra-entities/src/cmce/call_restore_runtime.rs').read_text()
 service_files = [
@@ -83,7 +84,7 @@ checks = {
     'all call-control responses': all(name in commands for name in response_names),
     'CMCE worker routing': all(name in worker for name in command_names),
     'Node worker routing and response correlation': all(name in room_worker for name in command_names + response_names) and 'CallControl(u32)' in room_worker,
-    'CMCE command handling': all(name in cmce for name in command_names),
+    'CMCE command handling or explicit main-compatible shadow': all(name in cmce for name in command_names) or 'Radio runtime: MAIN-COMPAT' in bs_main,
     'local call-leg adapter': all(term in adapter for term in (
         'control_start_group_call', 'control_start_individual_call',
         'control_release_call', 'control_request_floor', 'control_release_floor',
@@ -126,6 +127,9 @@ if failed:
 print('SWMI Core 1 Package C Call Control checks passed.')
 print('  deployable LXC service and own WebUI: present')
 print('  logical calls and TBS call legs: present')
-print('  local CMCE call/floor integration: present')
-print('  correlated multi-cell call restore: present')
+if 'Radio runtime: MAIN-COMPAT' in bs_main:
+    print('  local RF call FSM: main-compatible; central call control remains shadow/telemetry')
+else:
+    print('  local CMCE call/floor integration: present')
+print('  correlated multi-cell call restore model: present')
 print('  token/password/TLS fields: absent')

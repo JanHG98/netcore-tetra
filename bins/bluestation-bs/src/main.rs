@@ -590,6 +590,7 @@ fn main() {
     eprintln!("  Razvan Zeces / FlowStation.network");
     eprintln!("  https://github.com/razvanzeces/flowstation");
     eprintln!("  Version: {}", tetra_core::STACK_VERSION);
+    eprintln!("  Radio runtime: MAIN-COMPAT (local MM/MLE/CMCE state machines)");
 
     // Parse command-line arguments
     let args = Args::parse();

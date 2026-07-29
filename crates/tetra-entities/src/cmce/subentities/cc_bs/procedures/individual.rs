@@ -1,11 +1,6 @@
-// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
-// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
-
 use super::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-// Was: Listet die möglichen Varianten für individual Ereignis auf.
-// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub(in crate::cmce::subentities::cc_bs) enum IndividualEvent {
     CreateSetup,
     BindCalledContext,
@@ -16,8 +11,6 @@ pub(in crate::cmce::subentities::cc_bs) enum IndividualEvent {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-// Was: Listet die möglichen Varianten für individual transition error auf.
-// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub(in crate::cmce::subentities::cc_bs) enum IndividualTransitionError {
     UnknownCall(u16),
     DuplicateCall(u16),
@@ -32,11 +25,7 @@ pub(in crate::cmce::subentities::cc_bs) enum IndividualTransitionError {
     ConnectRequestAlreadySent(u16),
 }
 
-// Was: Implementiert das zugehörige Verhalten für `CcBsSubentity`.
-// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl CcBsSubentity {
-    // Was: Diese Funktion prüft individual transition.
-    // Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
     fn validate_individual_transition(
         call_id: u16,
         state: IndividualCallState,
@@ -68,8 +57,6 @@ impl CcBsSubentity {
         }
     }
 
-    // Was: Führt den Arbeitsschritt `fsm_individual_create_setup_call` für fsm individual create setup Ruf aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce::subentities::cc_bs) fn fsm_individual_create_setup_call(
         &mut self,
         call_id: u16,
@@ -115,8 +102,6 @@ impl CcBsSubentity {
         Ok(())
     }
 
-    // Was: Führt den Arbeitsschritt `fsm_individual_bind_called_context` für fsm individual bind called Kontext aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce::subentities::cc_bs) fn fsm_individual_bind_called_context(
         &mut self,
         call_id: u16,
@@ -145,8 +130,6 @@ impl CcBsSubentity {
         Ok(())
     }
 
-    // Was: Führt den Arbeitsschritt `fsm_individual_set_network_call` für fsm individual set network Ruf aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce::subentities::cc_bs) fn fsm_individual_set_network_call(
         &mut self,
         call_id: u16,
@@ -169,8 +152,6 @@ impl CcBsSubentity {
         Ok(())
     }
 
-    // Was: Führt den Arbeitsschritt `fsm_individual_mark_connect_request_sent` für fsm individual mark connect request sent aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce::subentities::cc_bs) fn fsm_individual_mark_connect_request_sent(
         &mut self,
         call_id: u16,
@@ -202,8 +183,6 @@ impl CcBsSubentity {
         Ok(())
     }
 
-    // Was: Führt den Arbeitsschritt `fsm_individual_on_alert` für fsm individual on alert aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce::subentities::cc_bs) fn fsm_individual_on_alert(
         &mut self,
         queue: &mut MessageQueue,
@@ -253,8 +232,6 @@ impl CcBsSubentity {
         Ok(())
     }
 
-    // Was: Führt den Arbeitsschritt `fsm_individual_transition_to_active` für fsm individual transition to active aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce::subentities::cc_bs) fn fsm_individual_transition_to_active(
         &mut self,
         call_id: u16,
@@ -272,8 +249,6 @@ impl CcBsSubentity {
     }
 
     /// Handle parsed U-ALERT.
-    // Was: Führt den Arbeitsschritt `fsm_on_u_alert` für fsm on u alert aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce::subentities::cc_bs) fn fsm_on_u_alert(
         &mut self,
         queue: &mut MessageQueue,
@@ -299,8 +274,6 @@ impl CcBsSubentity {
         }
 
         if let Err(err) = self.fsm_individual_on_alert(queue, call_id, Some((handle, link_id, endpoint_id)), CallTimeoutSetupPhase::T60s) {
-            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match err {
                 IndividualTransitionError::UnknownCall(_) => {
                     tracing::warn!("U-ALERT for unknown call_id={}", call_id);
@@ -319,8 +292,6 @@ impl CcBsSubentity {
     }
 
     /// Handle parsed U-CONNECT.
-    // Was: Führt den Arbeitsschritt `fsm_on_u_connect` für fsm on u connect aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce::subentities::cc_bs) fn fsm_on_u_connect(
         &mut self,
         queue: &mut MessageQueue,
@@ -357,8 +328,6 @@ impl CcBsSubentity {
         }
 
         if let Err(err) = self.fsm_individual_bind_called_context(call_id, handle, link_id, endpoint_id) {
-            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match err {
                 IndividualTransitionError::UnknownCall(_) => {
                     tracing::warn!("U-CONNECT context bind failed, unknown call_id={}", call_id);
@@ -404,8 +373,6 @@ impl CcBsSubentity {
             call_info.permission = 0;
 
             if let Err(err) = self.fsm_individual_mark_connect_request_sent(call_id, call_info.clone()) {
-                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match err {
                     IndividualTransitionError::ConnectRequestAlreadySent(_) => {
                         tracing::trace!(
@@ -678,13 +645,9 @@ impl CcBsSubentity {
         };
         queue.push_back(ack_msg_fallback);
 
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let activated = match self.fsm_individual_transition_to_active(call_id) {
             Ok(()) => true,
             Err(err) => {
-                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match err {
                     IndividualTransitionError::UnknownCall(_) => {
                         tracing::warn!("U-CONNECT activation failed, unknown call_id={}", call_id);

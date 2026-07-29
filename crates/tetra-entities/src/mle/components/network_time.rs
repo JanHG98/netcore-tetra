@@ -1,6 +1,3 @@
-// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
-// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
-
 use chrono::{Datelike, Offset, TimeZone, Utc};
 use std::str::FromStr;
 
@@ -15,8 +12,6 @@ use std::str::FromStr;
 ///   - Reserved (11 bits): set to all 1s (0x7FF)
 ///
 /// Returns `None` if the timezone name is invalid.
-// Was: Diese Funktion kodiert TETRA network time.
-// Warum: Alle Gegenstellen erhalten dadurch dasselbe erwartete Protokollformat.
 pub fn encode_tetra_network_time(tz_name: &str) -> Option<u64> {
     let tz: chrono_tz::Tz = chrono_tz::Tz::from_str(tz_name).ok()?;
     let now_utc = Utc::now();
@@ -24,8 +19,6 @@ pub fn encode_tetra_network_time(tz_name: &str) -> Option<u64> {
     encode_tetra_network_time_inner(now_utc, tz)
 }
 
-// Was: Diese Funktion kodiert TETRA network time inner.
-// Warum: Alle Gegenstellen erhalten dadurch dasselbe erwartete Protokollformat.
 fn encode_tetra_network_time_inner(now_utc: chrono::DateTime<Utc>, tz: chrono_tz::Tz) -> Option<u64> {
     // Seconds since Jan 1 00:00:00 UTC of the current year, divided by 2
     let year = now_utc.year();
@@ -53,15 +46,11 @@ fn encode_tetra_network_time_inner(now_utc: chrono::DateTime<Utc>, tz: chrono_tz
 }
 
 #[cfg(test)]
-// Was: Bindet das Untermodul tests in diesen Bereich ein.
-// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
     use chrono::TimeZone;
 
     #[test]
-    // Was: Prüft automatisch den Fall Kodierung known time.
-    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_encode_known_time() {
         // 2026-02-15 12:00:00 UTC
         let dt = Utc.with_ymd_and_hms(2026, 2, 15, 12, 0, 0).unwrap();
@@ -95,8 +84,6 @@ mod tests {
     }
 
     #[test]
-    // Was: Prüft automatisch den Fall Kodierung negative offset.
-    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_encode_negative_offset() {
         // 2026-01-15 12:00:00 UTC, New York (EST = UTC-5)
         let dt = Utc.with_ymd_and_hms(2026, 1, 15, 12, 0, 0).unwrap();
@@ -111,8 +98,6 @@ mod tests {
     }
 
     #[test]
-    // Was: Prüft automatisch den Fall Kodierung utc timezone.
-    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_encode_utc_timezone() {
         let dt = Utc.with_ymd_and_hms(2026, 2, 1, 0, 0, 0).unwrap();
         let tz: chrono_tz::Tz = "UTC".parse().unwrap();
@@ -124,8 +109,6 @@ mod tests {
     }
 
     #[test]
-    // Was: Prüft automatisch den Fall invalid timezone.
-    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_invalid_timezone() {
         assert!(encode_tetra_network_time("Invalid/Timezone").is_none());
     }

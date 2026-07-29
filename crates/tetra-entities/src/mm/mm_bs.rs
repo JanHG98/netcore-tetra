@@ -1,14 +1,9 @@
-// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
-// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
-
 use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
 
 use crate::mm::components::recovery_cache::{RecoveryCache, TerminalRecord};
-use crate::mm::mobility_runtime::{MmMobilityRuntime, MmMobilityRuntimeSnapshot, MmMobilityTimeout};
 use crate::net_control::{
-    ControlCommand, ControlEndpoint, ControlResponse, GroupMembershipPolicy,
-    GroupPolicyDefinition, MobilityClassOfMs, MobilityClientState, MobilityContextPayload,
+    ControlCommand, ControlEndpoint, ControlResponse, GroupMembershipPolicy, GroupPolicyDefinition,
 };
 use crate::net_telemetry::channel::TelemetrySink;
 use crate::{MessageQueue, TetraEntityTrait, net_brew};
@@ -16,12 +11,10 @@ use tetra_config::bluestation::{CentralGroupDefinition, CentralGroupPolicy, Shar
 use tetra_core::tetra_entities::TetraEntity;
 use tetra_core::{BitBuffer, Layer2Service, Sap, TdmaTime, TetraAddress, unimplemented_log};
 use tetra_saps::control::brew::{BrewSubscriberAction, MmSubscriberUpdate};
-use tetra_saps::common::{MleChannelCommandValid, MleFailCause};
-use tetra_saps::control::mle_cell_change::MleCellChangeControl;
-use tetra_saps::lmm::{LmmMlePrepareInd, LmmMleUnitdataReq};
+use tetra_saps::lmm::LmmMleUnitdataReq;
 use tetra_saps::{SapMsg, SapMsgInner};
 
-use crate::mm::components::client_state::{ClientMgrErr, MmClientMgr, MmClientMobilityContext, MmClientState};
+use crate::mm::components::client_state::{ClientMgrErr, MmClientMgr, MmClientState};
 use crate::mm::components::not_supported::make_ul_mm_pdu_function_not_supported;
 use tetra_pdus::mm::enums::energy_saving_mode::EnergySavingMode;
 use tetra_pdus::mm::enums::location_update_type::LocationUpdateType;
@@ -29,7 +22,6 @@ use tetra_pdus::mm::enums::mm_pdu_type_ul::MmPduTypeUl;
 use tetra_pdus::mm::enums::reject_cause::RejectCause;
 use tetra_pdus::mm::enums::status_downlink::StatusDownlink;
 use tetra_pdus::mm::enums::status_uplink::StatusUplink;
-use tetra_pdus::mm::fields::class_of_ms::ClassOfMs;
 use tetra_pdus::mm::fields::energy_saving_information::EnergySavingInformation;
 use tetra_pdus::mm::fields::group_identity_attachment::GroupIdentityAttachment;
 use tetra_pdus::mm::fields::group_identity_downlink::GroupIdentityDownlink;
@@ -39,7 +31,6 @@ use tetra_pdus::mm::pdus::d_attach_detach_group_identity::DAttachDetachGroupIden
 use tetra_pdus::mm::pdus::d_attach_detach_group_identity_acknowledgement::DAttachDetachGroupIdentityAcknowledgement;
 use tetra_pdus::mm::pdus::d_location_update_accept::DLocationUpdateAccept;
 use tetra_pdus::mm::pdus::d_location_update_command::DLocationUpdateCommand;
-use tetra_pdus::mm::pdus::d_location_update_proceeding::DLocationUpdateProceeding;
 use tetra_pdus::mm::pdus::d_location_update_reject::DLocationUpdateReject;
 use tetra_pdus::mm::pdus::d_mm_status::DMmStatus;
 use tetra_pdus::mm::pdus::u_attach_detach_group_identity::UAttachDetachGroupIdentity;
@@ -49,8 +40,6 @@ use tetra_pdus::mm::pdus::u_location_update_demand::ULocationUpdateDemand;
 use tetra_pdus::mm::pdus::u_mm_status::UMmStatus;
 use tetra_pdus::mm::pdus::u_tei_provide::UTeiProvide;
 
-// Was: Bündelt die zusammengehörigen Werte für Mobilitätsverwaltung Basisstation in einem Datentyp.
-// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MmBs {
     config: SharedConfig,
     telemetry: Option<TelemetrySink>,
@@ -74,24 +63,13 @@ pub struct MmBs {
     /// ghost while it re-registers (see `maybe_reactive_recovery`). Independent of `recovery`
     /// above — populated even when the proactive cache is disabled.
     reactive_recovery_cooldown: HashMap<u32, std::time::Instant>,
-
-    // MM migration / forward-registration state. This remains local air-interface
-    // state; a future mobility-core transports exported contexts between nodes.
-    mobility: MmMobilityRuntime,
-    current_time: TdmaTime,
 }
 
 /// Safety cap on `reactive_recovery_cooldown` so a churn of distinct unknown ISSIs can't grow it
 /// without bound; lapsed entries are pruned once this many are held.
-// Was: Legt den festen Wert `REACTIVE_RECOVERY_COOLDOWN_CAP` für reactive recovery cooldown cap fest.
-// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const REACTIVE_RECOVERY_COOLDOWN_CAP: usize = 4096;
 
-// Was: Implementiert das zugehörige Verhalten für `MmBs`.
-// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl MmBs {
-    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
-    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(config: SharedConfig, telemetry: Option<TelemetrySink>, control: Option<ControlEndpoint>) -> Self {
         let client_mgr = MmClientMgr::new(telemetry.clone());
         Self {
@@ -104,225 +82,7 @@ impl MmBs {
             recovery_attempts: HashMap::new(),
             recovery_last_frame: None,
             reactive_recovery_cooldown: HashMap::new(),
-            mobility: MmMobilityRuntime::new(),
-            current_time: TdmaTime::default(),
         }
-    }
-
-    fn select_location_update_accept_type(
-        requested: LocationUpdateType,
-        periodic_secs: u32,
-        ai_v2_common_scch_compat: bool,
-        migration_complete: bool,
-    ) -> LocationUpdateType {
-        if migration_complete {
-            return LocationUpdateType::DemandLocationUpdating;
-        }
-
-        // Keep the working `main` air-interface behaviour for AIv2/common-SCCH
-        // terminals (including Sepura): mirror the MS request type on every
-        // successful location update. Converting later roaming refreshes to
-        // PeriodicLocationUpdating caused the terminal to remain in MM handling,
-        // delay group selection/PTT until another refresh and repeatedly re-attach.
-        //
-        // The local T351 timer is still refreshed independently below, so mirroring
-        // the requested PDU type does not disable registration supervision.
-        if periodic_secs == 0 || ai_v2_common_scch_compat {
-            return requested;
-        }
-
-        LocationUpdateType::PeriodicLocationUpdating
-    }
-
-    // Was: Führt den Arbeitsschritt `mobility_snapshot` für Mobilität snapshot aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    pub fn mobility_snapshot(&self) -> MmMobilityRuntimeSnapshot {
-        self.mobility.snapshot(self.current_time)
-    }
-
-    // Was: Führt den Arbeitsschritt `export_mobility_context` für export Mobilität Kontext aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    pub fn export_mobility_context(&self, issi: u32) -> Option<MmClientMobilityContext> {
-        self.client_mgr.export_mobility_context(issi)
-    }
-
-    // Was: Führt den Arbeitsschritt `import_mobility_context` für import Mobilität Kontext aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    pub fn import_mobility_context(&mut self, local_issi: u32, context: &MmClientMobilityContext) {
-        self.mobility.register_local_identity(local_issi, context.issi);
-        self.client_mgr.import_mobility_context(local_issi, context);
-        self.config.state_write().subscribers.register(local_issi);
-        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
-        for &gssi in &context.groups {
-            self.config.state_write().subscribers.affiliate(local_issi, gssi);
-        }
-    }
-
-    // Was: Führt den Arbeitsschritt `mobility_context_to_payload` für Mobilität Kontext to payload aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    fn mobility_context_to_payload(context: MmClientMobilityContext) -> MobilityContextPayload {
-        MobilityContextPayload {
-            home_issi: context.issi,
-            state: match context.state {
-                MmClientState::Unknown => MobilityClientState::Unknown,
-                MmClientState::Attached => MobilityClientState::Attached,
-                MmClientState::Detached => MobilityClientState::Detached,
-            },
-            groups: context.groups,
-            energy_saving_mode: context.energy_saving_mode.into_raw() as u8,
-            monitoring_frame: context.monitoring_frame,
-            monitoring_multiframe: context.monitoring_multiframe,
-            class_of_ms: context.class_of_ms.map(|class| MobilityClassOfMs {
-                freq_simplex_duplex: class.freq_simplex_duplex,
-                multislot_phase_mod: class.multislot_phase_mod,
-                concurrent_multicarrier: class.concurrent_multicarrier,
-                voice: class.voice,
-                e2e_encryption_not_supported: class.e2e_encryption_not_supported,
-                circuit_mode_data: class.circuit_mode_data,
-                tetra_packet_data: class.tetra_packet_data,
-                fast_switching: class.fast_switching,
-                dck_encryption: class.dck_encryption,
-                clch_needed: class.clch_needed,
-                concurrent_circuit_mode: class.concurrent_circuit_mode,
-                original_advanced_link: class.original_advanced_link,
-                minimum_mode: class.minimum_mode,
-                carrier_specific_signalling: class.carrier_specific_signalling,
-                authentication: class.authentication,
-                sck_encryption: class.sck_encryption,
-                air_interface_version: class.air_interface_version,
-                common_scch: class.common_scch,
-                reserved_21: class.reserved_21,
-                mac_d_blck: class.mac_d_blck,
-                extended_advanced_link: class.extended_advanced_link,
-                d8psk: class.d8psk,
-            }),
-            last_handle: context.last_handle,
-            tei: context.tei,
-        }
-    }
-
-    // Was: Führt den Arbeitsschritt `mobility_payload_to_context` für Mobilität payload to Kontext aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    fn mobility_payload_to_context(payload: &MobilityContextPayload) -> Result<MmClientMobilityContext, String> {
-        let energy_saving_mode = EnergySavingMode::try_from(payload.energy_saving_mode as u64)
-            .map_err(|_| format!("invalid energy_saving_mode={}", payload.energy_saving_mode))?;
-        Ok(MmClientMobilityContext {
-            issi: payload.home_issi,
-            state: match payload.state {
-                MobilityClientState::Unknown => MmClientState::Unknown,
-                MobilityClientState::Attached => MmClientState::Attached,
-                MobilityClientState::Detached => MmClientState::Detached,
-            },
-            groups: payload.groups.clone(),
-            energy_saving_mode,
-            monitoring_frame: payload.monitoring_frame,
-            monitoring_multiframe: payload.monitoring_multiframe,
-            class_of_ms: payload.class_of_ms.as_ref().map(|class| ClassOfMs {
-                freq_simplex_duplex: class.freq_simplex_duplex,
-                multislot_phase_mod: class.multislot_phase_mod,
-                concurrent_multicarrier: class.concurrent_multicarrier,
-                voice: class.voice,
-                e2e_encryption_not_supported: class.e2e_encryption_not_supported,
-                circuit_mode_data: class.circuit_mode_data,
-                tetra_packet_data: class.tetra_packet_data,
-                fast_switching: class.fast_switching,
-                dck_encryption: class.dck_encryption,
-                clch_needed: class.clch_needed,
-                concurrent_circuit_mode: class.concurrent_circuit_mode,
-                original_advanced_link: class.original_advanced_link,
-                minimum_mode: class.minimum_mode,
-                carrier_specific_signalling: class.carrier_specific_signalling,
-                authentication: class.authentication,
-                sck_encryption: class.sck_encryption,
-                air_interface_version: class.air_interface_version,
-                common_scch: class.common_scch,
-                reserved_21: class.reserved_21,
-                mac_d_blck: class.mac_d_blck,
-                extended_advanced_link: class.extended_advanced_link,
-                d8psk: class.d8psk,
-            }),
-            last_handle: payload.last_handle,
-            tei: payload.tei,
-        })
-    }
-
-    // Was: Diese Funktion entfernt Mobilität Kontext.
-    // Warum: Das Entfernen bleibt damit vollständig und hinterlässt keinen widersprüchlichen Zustand.
-    fn remove_mobility_context(&mut self, issi: u32) -> Option<MmClientMobilityContext> {
-        let context = self.client_mgr.export_mobility_context(issi)?;
-        self.client_mgr.remove_client(issi);
-        self.mobility.forget_local_identity(issi);
-        self.config.state_write().subscribers.deregister(issi);
-        self.recovery_mark_dirty();
-        Some(context)
-    }
-
-    // Was: Führt den Arbeitsschritt `announce_imported_mobility_context` für announce imported Mobilität Kontext aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    fn announce_imported_mobility_context(
-        &self,
-        queue: &mut MessageQueue,
-        local_issi: u32,
-        context: &MmClientMobilityContext,
-    ) {
-        queue.push_back(SapMsg {
-            sap: Sap::Control,
-            src: TetraEntity::Mm,
-            dest: TetraEntity::Cmce,
-            msg: SapMsgInner::MmSubscriberUpdate(MmSubscriberUpdate {
-                issi: local_issi,
-                groups: Vec::new(),
-                action: BrewSubscriberAction::Register,
-            }),
-        });
-        if !context.groups.is_empty() {
-            queue.push_back(SapMsg {
-                sap: Sap::Control,
-                src: TetraEntity::Mm,
-                dest: TetraEntity::Cmce,
-                msg: SapMsgInner::MmSubscriberUpdate(MmSubscriberUpdate {
-                    issi: local_issi,
-                    groups: context.groups.clone(),
-                    action: BrewSubscriberAction::Affiliate,
-                }),
-            });
-        }
-        self.emit_subscriber_update(queue, local_issi, Vec::new(), BrewSubscriberAction::Register);
-        self.emit_subscriber_update(
-            queue,
-            local_issi,
-            context.groups.clone(),
-            BrewSubscriberAction::Affiliate,
-        );
-        if let Some(sink) = &self.telemetry {
-            sink.send(crate::net_telemetry::TelemetryEvent::MsRegistration { issi: local_issi });
-            sink.send(crate::net_telemetry::TelemetryEvent::MsGroupsSnapshot {
-                issi: local_issi,
-                gssis: context.groups.clone(),
-            });
-            sink.send(crate::net_telemetry::TelemetryEvent::MsEnergySaving {
-                issi: local_issi,
-                mode: context.energy_saving_mode.into_raw() as u8,
-            });
-        }
-    }
-
-    // Was: Führt den Arbeitsschritt `provide_migration_context` für provide migration Kontext aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    pub fn provide_migration_context(
-        &mut self,
-        vassi: u32,
-        context: MmClientMobilityContext,
-    ) -> Result<(), crate::mm::mobility_runtime::MmMobilityError> {
-        self.mobility
-            .provide_migration_context(vassi, context, self.current_time)
-    }
-
-    // Was: Führt den Arbeitsschritt `take_forward_context` für take forward Kontext aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    pub fn take_forward_context(&mut self, issi: u32) -> Option<MmClientMobilityContext> {
-        self.mobility.take_forward_context(issi)
     }
 
     /// Initialise restart recovery from the resolved cache path. Called once at startup from the
@@ -331,8 +91,6 @@ impl MmBs {
     /// fire when they answer), and seeds the replay queue. Emits no SAP messages — terminals are
     /// re-affiliated to CMCE/Brew only when they actually re-register. Honours the current ISSI
     /// whitelist and the optional `[recovery] issi_allowlist`.
-    // Was: Diese Funktion initialisiert recovery.
-    // Warum: Alle benötigten Startwerte werden so in einer festen Reihenfolge eingerichtet.
     pub fn init_recovery(&mut self, cache_path: PathBuf) {
         let rec_cfg = self.config.config().recovery.clone();
         let debounce = std::time::Duration::from_secs(rec_cfg.debounce_secs);
@@ -341,8 +99,6 @@ impl MmBs {
 
         let mut restored = 0usize;
         let mut skipped = 0usize;
-        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for rec in records.into_iter().take(rec_cfg.max_cached_issis as usize) {
             // Honour both the access-control whitelist and the optional recovery allowlist.
             let whitelisted = self.config.config().security.is_issi_allowed(rec.issi);
@@ -368,8 +124,6 @@ impl MmBs {
 
     /// Mark the recovery cache dirty (a flush is debounced from tick_start). No-op when recovery
     /// is disabled.
-    // Was: Führt den Arbeitsschritt `recovery_mark_dirty` für recovery mark dirty aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn recovery_mark_dirty(&mut self) {
         if let Some(cache) = &mut self.recovery {
             cache.mark_dirty();
@@ -377,8 +131,6 @@ impl MmBs {
     }
 
     /// Stop replaying to an ISSI that has (re-)registered. Called from the location-update path.
-    // Was: Führt den Arbeitsschritt `recovery_confirm` für recovery confirm aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn recovery_confirm(&mut self, issi: u32) {
         // Clear any reactive-recovery cooldown first: the radio answered, so a future re-drop of
         // this ISSI should be re-keyable immediately. Done before the proactive early-return so it
@@ -398,8 +150,6 @@ impl MmBs {
     /// frame to terminals still awaiting re-registration, round-robin, giving up on a terminal
     /// after `max_replay_attempts` (e.g. one powered off mid-outage). Goes inert when the queue
     /// drains.
-    // Was: Führt den Arbeitsschritt `drive_recovery_replay` für drive recovery replay aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn drive_recovery_replay(&mut self, queue: &mut MessageQueue, ts: TdmaTime) {
         if self.recovery.is_none() || self.recovery_pending.is_empty() {
             return;
@@ -418,8 +168,6 @@ impl MmBs {
         // ISSI's attempt budget faster than configured).
         let budget = (rec_cfg.replay_per_frame as usize).min(self.recovery_pending.len());
         let mut processed = 0usize;
-        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while processed < budget {
             let Some(issi) = self.recovery_pending.pop_front() else {
                 break;
@@ -447,8 +195,6 @@ impl MmBs {
 
     /// Debounced flush of the recovery cache. Takes the cache out of `self` so the snapshot
     /// closure can borrow `self.client_mgr` without a borrow conflict, then restores it.
-    // Was: Führt den Arbeitsschritt `recovery_maybe_flush` für recovery maybe flush aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn recovery_maybe_flush(&mut self) {
         let Some(mut cache) = self.recovery.take() else {
             return;
@@ -480,8 +226,6 @@ impl MmBs {
     /// and so covers the cases the cache misses (radio absent from the cache, or the sweep already
     /// gave up on it). Rate-limited per ISSI; gated by the access whitelist and the optional
     /// `[recovery] issi_allowlist`; on by default (`[recovery] reactive_enabled`).
-    // Was: Führt den Arbeitsschritt `maybe_reactive_recovery` für maybe reactive recovery aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn maybe_reactive_recovery(&mut self, queue: &mut MessageQueue, issi: u32) {
         // Fast path, the overwhelming common case: a radio MM already knows needs no recovery.
         // Checked before touching config so healthy traffic stays cheap.
@@ -535,8 +279,6 @@ impl MmBs {
     /// Implementation: sends Deregister to CMCE only (not Brew), then re-sends
     /// Register + Affiliate so subscriber_groups and group_listener counts are
     /// restored. Brew is not informed because the MS is still considered registered.
-    // Was: Diese Funktion gibt individual Ruf release for Teilnehmerkennung (ISSI).
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn emit_individual_call_release_for_issi(&mut self, queue: &mut MessageQueue, issi: u32) {
         let groups: Vec<u32> = self
             .client_mgr
@@ -588,8 +330,6 @@ impl MmBs {
         tracing::info!("MM: forced individual call release for ISSI {} (soft re-attach)", issi);
     }
 
-    // Was: Diese Funktion gibt Teilnehmer update.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn emit_subscriber_update(&self, queue: &mut MessageQueue, issi: u32, groups: Vec<u32>, action: BrewSubscriberAction) {
         // If brew is active, forward subscriber updates to the Brew entity.
         // Register/Deregister must always be sent for brew-routable ISSIs,
@@ -597,8 +337,6 @@ impl MmBs {
         // decides whether to send REGISTER or REREGISTER based on its own state.
         // Affiliate/Deaffiliate only sent when there are brew-routable groups.
         if net_brew::is_active(&self.config) {
-            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for dest in net_brew::BREW_ENTITIES {
                 if !net_brew::is_brew_local_issi_allowed_for_entity(&self.config, dest, issi)
                     || !net_brew::is_brew_issi_routable_for_entity(&self.config, dest, issi)
@@ -610,8 +348,6 @@ impl MmBs {
                     .filter(|gssi| net_brew::is_brew_gssi_routable_for_entity(&self.config, dest, **gssi))
                     .copied()
                     .collect::<Vec<u32>>();
-                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 let should_send = match action {
                     BrewSubscriberAction::Register | BrewSubscriberAction::Deregister => true,
                     BrewSubscriberAction::Affiliate | BrewSubscriberAction::Deaffiliate => !brew_groups.is_empty(),
@@ -656,8 +392,6 @@ impl MmBs {
         }
     }
 
-    // Was: Führt den Arbeitsschritt `rx_u_itsi_detach` für rx u itsi detach aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_u_itsi_detach(&mut self, _queue: &mut MessageQueue, mut message: SapMsg) {
         tracing::trace!("rx_u_itsi_detach");
         let SapMsgInner::LmmMleUnitdataInd(prim) = &mut message.msg else {
@@ -665,8 +399,6 @@ impl MmBs {
             return;
         };
 
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let pdu = match UItsiDetach::from_bitbuf(&mut prim.sdu) {
             Ok(pdu) => {
                 tracing::debug!("<- {:?}", pdu);
@@ -687,7 +419,6 @@ impl MmBs {
         let ssi = prim.received_address.ssi;
         let detached_client = self.client_mgr.remove_client(ssi);
         if let Some(client) = detached_client {
-            self.mobility.forget_local_identity(ssi);
             self.config.state_write().subscribers.deregister(ssi);
             if !client.groups.is_empty() {
                 let groups: Vec<u32> = client.groups.iter().copied().collect();
@@ -701,8 +432,6 @@ impl MmBs {
         self.recovery_mark_dirty();
     }
 
-    // Was: Führt den Arbeitsschritt `rx_u_location_update_demand` für rx u location update demand aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_u_location_update_demand(&mut self, queue: &mut MessageQueue, mut message: SapMsg) {
         tracing::trace!("rx_location_update_demand");
         let SapMsgInner::LmmMleUnitdataInd(prim) = &mut message.msg else {
@@ -710,8 +439,6 @@ impl MmBs {
             return;
         };
 
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let pdu = match ULocationUpdateDemand::from_bitbuf(&mut prim.sdu) {
             Ok(pdu) => {
                 tracing::debug!("<- {:?}", pdu);
@@ -729,104 +456,32 @@ impl MmBs {
         // isn't replayed to forever. No-op when recovery is disabled / ISSI not pending.
         self.recovery_confirm(prim.received_address.ssi);
 
-        // Migration, first stage: a migrating MS initially addresses the cell with its USSI and
-        // supplies its home MNI.  Allocate a local VASSI and answer with
-        // D-LOCATION-UPDATE-PROCEEDING.  The second, DemandLocationUpdating request is then sent
-        // under that VASSI and completes registration below.
-        if matches!(
-            pdu.location_update_type,
-            LocationUpdateType::MigratingLocationUpdating
-                | LocationUpdateType::ServiceRestorationMigratingLocationUpdating
-        ) {
-            let subscriber = prim.received_address;
-            let handle = prim.handle;
-            let client_mgr = &self.client_mgr;
-            let allocation = self.mobility.begin_migration(
-                subscriber,
-                handle,
-                &pdu,
-                self.current_time,
-                |candidate| client_mgr.client_is_known(candidate),
-            );
-            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
-            match allocation {
-                Ok((vassi, home_mni)) => {
-                    tracing::info!(
-                        "MM: migration proceeding for {} — allocated VASSI {} (home MNI {})",
-                        subscriber,
-                        vassi,
-                        home_mni
-                    );
-                    Self::send_d_location_update_proceeding(
-                        queue,
-                        subscriber,
-                        handle,
-                        vassi,
-                        home_mni,
-                    );
+        // Migration not supported: ETSI 16.4.1.1 case b) requires identity exchange via
+        // D-LOCATION-UPDATE-PROCEEDING which we don't implement. Reject with cause
+        // "Migration not supported" (12, Table 16.81) so the MS can act on it.
+        if pdu.location_update_type == LocationUpdateType::MigratingLocationUpdating
+            || pdu.location_update_type == LocationUpdateType::ServiceRestorationMigratingLocationUpdating
+        {
+            // Terminal wants to migrate to another network (e.g. SmartConnect).
+            // We don't implement D-LOCATION-UPDATE-PROCEEDING identity exchange (ETSI §16.4.1.1 case b),
+            // so we can't accept migration formally. But we MUST release the terminal from Brew
+            // so the destination network can register it without identity conflict.
+            // Send REJECT so terminal knows to try the other network, but first deregister from Brew.
+            let issi = prim.received_address.ssi;
+            tracing::info!("MM: ISSI {} migrating to another network — releasing from Brew", issi);
+            let detached = self.client_mgr.remove_client(issi);
+            if let Some(client) = detached {
+                self.config.state_write().subscribers.deregister(issi);
+                if !client.groups.is_empty() {
+                    let groups: Vec<u32> = client.groups.iter().copied().collect();
+                    self.emit_subscriber_update(queue, issi, groups, BrewSubscriberAction::Deaffiliate);
                 }
-                Err(error) => {
-                    tracing::warn!(?error, %subscriber, "MM: rejecting migration request");
-                    Self::send_d_location_update_reject_cause(
-                        queue,
-                        subscriber.ssi,
-                        handle,
-                        pdu.location_update_type,
-                        pdu.address_extension,
-                        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-                        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
-                        match error {
-                            crate::mm::mobility_runtime::MmMobilityError::MissingHomeMni => {
-                                RejectCause::MandatoryElementError
-                            }
-                            crate::mm::mobility_runtime::MmMobilityError::VassiPoolExhausted => {
-                                RejectCause::Congestion
-                            }
-                            _ => RejectCause::NetworkFailure,
-                        },
-                    );
-                }
+                self.emit_subscriber_update(queue, issi, Vec::new(), BrewSubscriberAction::Deregister);
             }
+            self.recovery_mark_dirty();
+            Self::send_d_location_update_reject(queue, issi, prim.handle, pdu.location_update_type, pdu.address_extension);
             return;
         }
-
-        // Migration, second stage: after D-LOCATION-UPDATE-PROCEEDING the MS immediately sends a
-        // DemandLocationUpdating request using the allocated VASSI.  Validate the home identity
-        // and optionally install a context imported from another TBS/Core before continuing through
-        // the ordinary registration and group-affiliation path.
-        let migration_completion = if pdu.location_update_type == LocationUpdateType::DemandLocationUpdating
-            && self.mobility.has_pending_vassi(prim.received_address.ssi)
-        {
-            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
-            match self
-                .mobility
-                .complete_migration(prim.received_address.ssi, &pdu, self.current_time)
-            {
-                Ok(completion) => {
-                    if let Some(context) = &completion.imported_context {
-                        self.client_mgr
-                            .import_mobility_context(completion.local_issi, context);
-                    }
-                    Some(completion)
-                }
-                Err(error) => {
-                    tracing::warn!(?error, "MM: migration identity validation failed");
-                    Self::send_d_location_update_reject_cause(
-                        queue,
-                        prim.received_address.ssi,
-                        prim.handle,
-                        pdu.location_update_type,
-                        pdu.address_extension,
-                        RejectCause::MessageConsistencyError,
-                    );
-                    return;
-                }
-            }
-        } else {
-            None
-        };
 
         // Check if we can satisfy this request, print unsupported stuff
         if !Self::feature_check_u_location_update_demand(&pdu) {
@@ -853,19 +508,9 @@ impl MmBs {
             .client_mgr
             .get_client_by_issi(prim.received_address.ssi)
             .map(|c| c.energy_saving_mode);
-        // A freshly attaching terminal may omit the optional energy-saving request.
-        // The BS nevertheless operates it as StayAlive. Send that decision explicitly in the
-        // very first D-LOCATION-UPDATE-ACCEPT instead of keeping it only as internal state.
-        //
-        // Sepura terminals otherwise perform a second RoamingLocationUpdating a few seconds
-        // after a successful ITSI attach: the first ACCEPT contains no energy-saving result,
-        // while the second one suddenly contains StayAlive. Keeping both ACCEPTs consistent
-        // avoids that immediate post-attach registration cycle.
-        let esi = Some(Self::registration_energy_saving_information(
-            prim.received_address.ssi,
-            pdu.energy_saving_mode,
-            prior_esm,
-        ));
+        let effective_esm_request = pdu.energy_saving_mode.or(prior_esm);
+
+        let esi = effective_esm_request.map(|esm| Self::grant_energy_saving(prim.received_address.ssi, esm));
 
         // Try to register the client
         let issi = prim.received_address.ssi;
@@ -875,43 +520,23 @@ impl MmBs {
         // The dashboard can override the config whitelist at runtime (state override takes
         // precedence so edits apply without a restart); fall back to the config value when
         // no override is set. An empty list (in either place) means "open network".
-        // For the second stage of migration the radio is addressed with the locally
-        // allocated VASSI. Access control must still be evaluated against the Home
-        // ISSI, otherwise every legitimate migration would fail when a whitelist is
-        // configured and the temporary VASSI is (correctly) absent from it.
-        let authorization_issi = migration_completion
-            .as_ref()
-            .map(|completion| completion.home_issi)
-            .or_else(|| self.mobility.home_issi_for_local(issi))
-            .unwrap_or(issi);
         let issi_allowed = {
             let state = self.config.state_read();
-            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             if !state.edge_fallback_mode.enforces_central_restrictions() {
-                // Local fallback ignores centrally supplied admission policy. A deliberately
-                // configured local static whitelist remains authoritative.
-                self.config.config().security.is_issi_allowed(authorization_issi)
+                // In local fallback the static site whitelist remains authoritative; centrally
+                // supplied policy never forces a radio re-registration or disconnect.
+                self.config.config().security.is_issi_allowed(issi)
             } else {
                 match &state.issi_whitelist_override {
                     Some(list) => {
-                        !state.issi_whitelist_deny_all
-                            && (list.is_empty() || list.contains(&authorization_issi))
+                        !state.issi_whitelist_deny_all && (list.is_empty() || list.contains(&issi))
                     }
-                    None => self
-                        .config
-                        .config()
-                        .security
-                        .is_issi_allowed(authorization_issi),
+                    None => self.config.config().security.is_issi_allowed(issi),
                 }
             }
         };
         if !issi_allowed {
-            tracing::warn!(
-                "MM: identity {} (local SSI {}) not in whitelist, rejecting registration",
-                authorization_issi,
-                issi
-            );
+            tracing::warn!("MM: ISSI {} not in whitelist, rejecting registration", issi);
             Self::send_d_location_update_reject(queue, issi, handle, pdu.location_update_type, pdu.address_extension);
             return;
         }
@@ -1004,8 +629,6 @@ impl MmBs {
                 if !old_groups.is_empty() {
                     {
                         let mut state = self.config.state_write();
-                        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-                        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                         for &gssi in &old_groups {
                             state.subscribers.affiliate(issi, gssi);
                         }
@@ -1047,8 +670,6 @@ impl MmBs {
         }
 
         if is_new {
-            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match self.client_mgr.try_register_client(issi, true) {
                 Ok(_) => {
                     self.config.state_write().subscribers.register(issi);
@@ -1115,8 +736,6 @@ impl MmBs {
                 } else if !prior_groups.is_empty() {
                     {
                         let mut state = self.config.state_write();
-                        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-                        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                         for &gssi in &prior_groups {
                             state.subscribers.deaffiliate(issi, gssi);
                         }
@@ -1142,11 +761,8 @@ impl MmBs {
             None
         };
 
-        // Coverage-return re-affiliation after a confirmed registry drop (fixes
-        // "PTT no longer works after leaving and returning to coverage", workaround = DMO→TMO).
-        // A normal roaming/service-restoration refresh while the subscriber is still registered
-        // must not emit another Affiliate: the listener state is already present and central
-        // churn here can race CMCE call teardown.
+        // Coverage-return re-affiliation (fixes "PTT no longer works after leaving and
+        // returning to coverage", workaround = DMO→TMO).
         //
         // Sequence that breaks PTT:
         //   1. MS affiliates to a GSSI → CMCE group_listeners[gssi] += 1. PTT works.
@@ -1160,9 +776,10 @@ impl MmBs {
         //      ("please wait" on the radio). DMO→TMO forces an ItsiAttach with a full group
         //      report, which is why that clears it.
         //
-        // Fix only after an actual registry drop: client_mgr still retains the groups, while
-        // CMCE and the subscriber registry have intentionally removed the live affiliation.
-        if was_dropped && !_has_groups {
+        // Fix: when a *known* MS re-registers without supplying a group report, but we
+        // still hold groups for it in client_mgr, re-emit Affiliate for those groups so
+        // CMCE's group_listeners (and Brew) are resynced with what the MS believes.
+        if !is_new && !_has_groups {
             let stored_groups: Vec<u32> = self
                 .client_mgr
                 .get_client_by_issi(issi)
@@ -1170,15 +787,13 @@ impl MmBs {
                 .unwrap_or_default();
             if !stored_groups.is_empty() {
                 tracing::info!(
-                    "MM: ISSI {} returned after a confirmed registry drop without group report; restoring {} stored group(s) {:?}",
+                    "MM: ISSI {} re-registered without group report but has {} stored group(s) {:?} — re-affiliating to resync CMCE/Brew (coverage-return fix)",
                     issi,
                     stored_groups.len(),
                     stored_groups
                 );
                 {
                     let mut state = self.config.state_write();
-                    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-                    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                     for &gssi in &stored_groups {
                         state.subscribers.affiliate(issi, gssi);
                     }
@@ -1233,14 +848,9 @@ impl MmBs {
             None
         };
 
-        // Preserve the proven `main` compatibility for AIv2/common-SCCH radios.
-        // Sepura terminals in this capability class expect the Location Update Accept
-        // to mirror the request type not only on the first ITSI attach, but also on
-        // later roaming refreshes. The SWMI-only conversion to periodic registration
-        // delayed group selection and normal PTT until a further refresh arrived.
-        //
-        // ClassOfMs is not Copy, so inspect it before moving it into client_mgr.
-        let ai_v2_common_scch_compat = pdu
+        // Hytera compatibility needs to inspect class_of_ms before we move it into client_mgr.
+        // ClassOfMs is not Copy, so doing this later would borrow a moved value.
+        let hytera_periodic_accept_compat = pdu
             .class_of_ms
             .as_ref()
             .map(|class| class.common_scch && class.air_interface_version >= 2)
@@ -1255,31 +865,38 @@ impl MmBs {
         // Registration / affiliation / EE state changed — persist for restart recovery (debounced).
         self.recovery_mark_dirty();
 
-        // Select the registration type returned in D-LOCATION-UPDATE-ACCEPT.
-        // Mobility completion still uses DemandLocationUpdating, while ordinary
-        // AIv2/common-SCCH traffic follows the known-good `main` behaviour.
+        // Periodic registration compatibility:
+        //
+        // Historically we forced the D-LOCATION-UPDATE-ACCEPT type to
+        // PeriodicLocationUpdating whenever `[cell] periodic_registration_secs > 0`, even for an
+        // initial ITSI attach. Motorola/Sepura tolerate this, but Hytera terminals that advertise
+        // AI v2 + common SCCH have been observed to accept the registration and affiliation, but
+        // then refuse/abort the first PTT ("please wait" -> "PTT rejected" -> re-attach).
+        //
+        // Keep the periodic registration timer internally (`reset_registration_timer` above still
+        // runs), but do not force the *accept PDU type* to PeriodicLocationUpdating for this
+        // Hytera-like capability set. Mirroring the MS request type is also the least surprising
+        // response for an initial ITSI attach: attach in, attach accepted.
         let periodic_secs = self.config.config().cell.periodic_registration_secs;
-        let accept_type = Self::select_location_update_accept_type(
-            pdu.location_update_type,
-            periodic_secs,
-            ai_v2_common_scch_compat,
-            migration_completion.is_some(),
-        );
-        if periodic_secs > 0 && ai_v2_common_scch_compat {
-            tracing::debug!(
-                "MM: ISSI {} AIv2/common-SCCH compatibility mirrors {:?} in D-LOCATION-UPDATE-ACCEPT",
-                issi,
-                pdu.location_update_type
-            );
-        }
+
+        let accept_type = if periodic_secs > 0 && !hytera_periodic_accept_compat {
+            LocationUpdateType::PeriodicLocationUpdating
+        } else {
+            if periodic_secs > 0 && hytera_periodic_accept_compat {
+                tracing::debug!(
+                    "MM: ISSI {} uses AIv2/common-SCCH; mirroring {:?} in D-LOCATION-UPDATE-ACCEPT instead of forcing PeriodicLocationUpdating (Hytera periodic-registration compatibility)",
+                    issi,
+                    pdu.location_update_type
+                );
+            }
+            pdu.location_update_type
+        };
 
         // Build D-LOCATION UPDATE ACCEPT pdu
         let pdu_response = DLocationUpdateAccept {
             location_update_accept_type: accept_type,
             ssi: Some(issi as u64),
-            address_extension: migration_completion
-                .as_ref()
-                .map(|completion| completion.home_mni as u64),
+            address_extension: None,
             subscriber_class: None,
             energy_saving_information: esi,
             scch_information_and_distribution_on_18th_frame: scch_info,
@@ -1342,147 +959,8 @@ impl MmBs {
         }
     }
 
-    // Was: Führt den Arbeitsschritt `rx_lmm_mle_prepare_ind` für rx lmm MLE-Verbindungssteuerung prepare ind aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    fn rx_lmm_mle_prepare_ind(&mut self, queue: &mut MessageQueue, mut indication: LmmMlePrepareInd) {
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
-        let pdu = match ULocationUpdateDemand::from_bitbuf(&mut indication.sdu) {
-            Ok(pdu) => pdu,
-            Err(error) => {
-                tracing::warn!(?error, %indication.subscriber, "MM: invalid forward-registration PDU in U-PREPARE");
-                queue.push_back(SapMsg {
-                    sap: Sap::Control,
-                    src: TetraEntity::Mm,
-                    dest: TetraEntity::Mle,
-                    msg: SapMsgInner::MleCellChangeControl(MleCellChangeControl::RejectPrepare {
-                        subscriber: indication.subscriber,
-                        cause: MleFailCause::MsNotAllowedOnCell,
-                        mm_sdu: None,
-                    }),
-                });
-                return;
-            }
-        };
-
-        let Some(context) = self.client_mgr.export_mobility_context(indication.subscriber.ssi) else {
-            tracing::warn!(%indication.subscriber, "MM: forward registration requested for unknown subscriber");
-            let reject = DLocationUpdateReject {
-                location_update_type: pdu.location_update_type,
-                reject_cause: RejectCause::ForwardRegistrationFailure as u8,
-                cipher_control: false,
-                ciphering_parameters: None,
-                address_extension: pdu.address_extension,
-                cell_type_control: None,
-                proprietary: None,
-            };
-            let mut mm_sdu = BitBuffer::new_autoexpand(32);
-            let _ = reject.to_bitbuf(&mut mm_sdu);
-            mm_sdu.seek(0);
-            queue.push_back(SapMsg {
-                sap: Sap::Control,
-                src: TetraEntity::Mm,
-                dest: TetraEntity::Mle,
-                msg: SapMsgInner::MleCellChangeControl(MleCellChangeControl::RejectPrepare {
-                    subscriber: indication.subscriber,
-                    cause: MleFailCause::MsNotAllowedOnCell,
-                    mm_sdu: Some(mm_sdu),
-                }),
-            });
-            return;
-        };
-
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
-        let completion = match self.mobility.begin_forward_registration(
-            indication.subscriber,
-            indication.cell_identifier_ca,
-            &pdu,
-            context.clone(),
-            self.current_time,
-        ) {
-            Ok(completion) => completion,
-            Err(error) => {
-                tracing::warn!(?error, %indication.subscriber, "MM: rejecting forward registration");
-                let reject = DLocationUpdateReject {
-                    location_update_type: pdu.location_update_type,
-                    reject_cause: RejectCause::ForwardRegistrationFailure as u8,
-                    cipher_control: false,
-                    ciphering_parameters: None,
-                    address_extension: pdu.address_extension,
-                    cell_type_control: None,
-                    proprietary: None,
-                };
-                let mut mm_sdu = BitBuffer::new_autoexpand(32);
-                let _ = reject.to_bitbuf(&mut mm_sdu);
-                mm_sdu.seek(0);
-                queue.push_back(SapMsg {
-                    sap: Sap::Control,
-                    src: TetraEntity::Mm,
-                    dest: TetraEntity::Mle,
-                    msg: SapMsgInner::MleCellChangeControl(MleCellChangeControl::RejectPrepare {
-                        subscriber: indication.subscriber,
-                        cause: MleFailCause::MsNotAllowedOnCell,
-                        mm_sdu: Some(mm_sdu),
-                    }),
-                });
-                return;
-            }
-        };
-
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
-        let energy_saving_information = match context.energy_saving_mode {
-            EnergySavingMode::StayAlive => None,
-            mode => Some(Self::grant_energy_saving(indication.subscriber.ssi, mode)),
-        };
-        let accept = DLocationUpdateAccept {
-            location_update_accept_type: pdu.location_update_type,
-            ssi: Some(indication.subscriber.ssi as u64),
-            address_extension: pdu.address_extension,
-            subscriber_class: None,
-            energy_saving_information,
-            scch_information_and_distribution_on_18th_frame: None,
-            new_registered_area: None,
-            security_downlink: None,
-            group_identity_location_accept: None,
-            default_group_attachment_lifetime: None,
-            authentication_downlink: None,
-            group_identity_security_related_information: None,
-            cell_type_control: None,
-            proprietary: None,
-        };
-        let mut mm_sdu = BitBuffer::new_autoexpand(64);
-        if let Err(error) = accept.to_bitbuf(&mut mm_sdu) {
-            tracing::error!(?error, "MM: failed encoding forward-registration accept");
-            return;
-        }
-        mm_sdu.seek(0);
-        let _ = self
-            .mobility
-            .accept_forward_registration(indication.subscriber.ssi, self.current_time);
-        tracing::info!(
-            "MM: forward registration accepted for {} toward LA {}",
-            indication.subscriber,
-            completion.target_location_area
-        );
-        queue.push_back(SapMsg {
-            sap: Sap::Control,
-            src: TetraEntity::Mm,
-            dest: TetraEntity::Mle,
-            msg: SapMsgInner::MleCellChangeControl(MleCellChangeControl::GrantPrepare {
-                subscriber: indication.subscriber,
-                command: MleChannelCommandValid::ChangeChannelImmediately,
-                target_cell: None,
-                mm_sdu: Some(mm_sdu),
-            }),
-        });
-    }
-
     /// Rebuild StackState.ee_monitoring_windows from the live client registry. See the field doc
     /// in tetra_config StackState and `MmClientMgr::ee_monitoring_windows`.
-    // Was: Diese Funktion veröffentlicht monitoring windows.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn publish_monitoring_windows(&self) {
         let map: std::collections::HashMap<u32, (u8, u8, u8)> = self
             .client_mgr
@@ -1501,20 +979,7 @@ impl MmBs {
     /// Used both by the initial location update (U-LOCATION-UPDATING-DEMAND) and by mid-session
     /// energy saving toggles (U-MM-STATUS / ChangeOfEnergySavingModeRequest) so the two paths
     /// behave identically.
-    // Was: Führt den Arbeitsschritt `grant_energy_saving` für grant energy saving aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    fn registration_energy_saving_information(
-        issi: u32,
-        requested: Option<EnergySavingMode>,
-        prior: Option<EnergySavingMode>,
-    ) -> EnergySavingInformation {
-        let effective = requested.or(prior).unwrap_or(EnergySavingMode::StayAlive);
-        Self::grant_energy_saving(issi, effective)
-    }
-
     fn grant_energy_saving(issi: u32, requested: EnergySavingMode) -> EnergySavingInformation {
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let granted_esm = match requested {
             EnergySavingMode::StayAlive => EnergySavingMode::StayAlive,
             EnergySavingMode::Eg1 => EnergySavingMode::Eg1,
@@ -1528,8 +993,6 @@ impl MmBs {
             tracing::debug!("MS {} requested {:?}, capping to {:?}", issi, requested, granted_esm);
         }
 
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let (frame_number, multiframe_number) = match crate::mm::components::client_state::ee_cycle_frames(granted_esm) {
             None => (None, None), // StayAlive — no monitoring window
             Some(cycle) => {
@@ -1561,8 +1024,6 @@ impl MmBs {
         }
     }
 
-    // Was: Führt den Arbeitsschritt `rx_u_mm_status` für rx u Mobilitätsverwaltung Status aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_u_mm_status(&mut self, queue: &mut MessageQueue, mut message: SapMsg) {
         tracing::trace!("rx_u_mm_status");
         let SapMsgInner::LmmMleUnitdataInd(prim) = &mut message.msg else {
@@ -1570,8 +1031,6 @@ impl MmBs {
             return;
         };
 
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let pdu = match UMmStatus::from_bitbuf(&mut prim.sdu) {
             Ok(pdu) => {
                 tracing::debug!("<- {:?}", pdu);
@@ -1587,8 +1046,6 @@ impl MmBs {
         let handle = prim.handle;
 
         let mut handled = false;
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match pdu.status_uplink {
             StatusUplink::ChangeOfEnergySavingModeRequest => {
                 // Parse energy saving mode from the sub-PDU payload
@@ -1702,8 +1159,6 @@ impl MmBs {
         }
     }
 
-    // Was: Führt den Arbeitsschritt `rx_u_attach_detach_group_identity` für rx u attach detach Gruppe identity aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_u_attach_detach_group_identity(&mut self, queue: &mut MessageQueue, mut message: SapMsg) {
         tracing::trace!("rx_u_attach_detach_group_identity");
         let SapMsgInner::LmmMleUnitdataInd(prim) = &mut message.msg else {
@@ -1713,8 +1168,6 @@ impl MmBs {
 
         let issi = prim.received_address.ssi;
 
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let pdu = match UAttachDetachGroupIdentity::from_bitbuf(&mut prim.sdu) {
             Ok(pdu) => {
                 tracing::debug!("<- {:?}", pdu);
@@ -1730,34 +1183,11 @@ impl MmBs {
         // (rx_u_location_update_demand). Without this, an unknown ISSI can self-register
         // via the group-attach path below, bypassing the whitelist and growing the client
         // registry without bound.
-        // For the second stage of migration the radio is addressed with the locally
-        // allocated VASSI. Access control must still be evaluated against the Home
-        // ISSI, otherwise every legitimate migration would fail when a whitelist is
-        // configured and the temporary VASSI is (correctly) absent from it.
-        let authorization_issi = self
-            .mobility
-            .home_issi_for_local(issi)
-            .unwrap_or(issi);
         let issi_allowed = {
             let state = self.config.state_read();
-            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
-            if !state.edge_fallback_mode.enforces_central_restrictions() {
-                // Local fallback ignores centrally supplied admission policy. A deliberately
-                // configured local static whitelist remains authoritative.
-                self.config.config().security.is_issi_allowed(authorization_issi)
-            } else {
-                match &state.issi_whitelist_override {
-                    Some(list) => {
-                        !state.issi_whitelist_deny_all
-                            && (list.is_empty() || list.contains(&authorization_issi))
-                    }
-                    None => self
-                        .config
-                        .config()
-                        .security
-                        .is_issi_allowed(authorization_issi),
-                }
+            match &state.issi_whitelist_override {
+                Some(list) => list.is_empty() || list.contains(&issi),
+                None => self.config.config().security.is_issi_allowed(issi),
             }
         };
         if !issi_allowed {
@@ -1789,8 +1219,6 @@ impl MmBs {
             if !self.client_mgr.client_is_known(issi) {
                 // Client unknown (e.g. never registered via location update).
                 // Re-register so group attachment can proceed.
-                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match self.client_mgr.try_register_client(issi, true) {
                     Ok(_) => {
                         self.config.state_write().subscribers.register(issi);
@@ -1811,15 +1239,11 @@ impl MmBs {
                     .get_client_by_issi(issi)
                     .map(|client| client.groups.iter().copied().collect())
                     .unwrap_or_default();
-                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match self.client_mgr.client_detach_all_groups(issi) {
                     Ok(_) => {
                         if !prior_groups.is_empty() {
                             {
                                 let mut state = self.config.state_write();
-                                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-                                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                                 for &gssi in &prior_groups {
                                     state.subscribers.deaffiliate(issi, gssi);
                                 }
@@ -1849,8 +1273,6 @@ impl MmBs {
         // (FH-BUG-022 reopened, FH-BUG-025). Now the BS only affiliates what it can
         // confirm; the MS will keep re-requesting the remaining groups in subsequent
         // attach cycles per ETSI clause 16.4.3.
-        // Was: Legt den festen Wert `MAX_GROUPS_PER_ATTACH` für max groups per attach fest.
-        // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
         const MAX_GROUPS_PER_ATTACH: usize = 12;
         // feature_check_u_attach_detach_group_identity above guarantees this is Some,
         // but use let-else instead of .unwrap() so a future refactor that loosens that
@@ -1913,8 +1335,6 @@ impl MmBs {
         queue.push_back(msg);
     }
 
-    // Was: Führt den Arbeitsschritt `rx_lmm_mle_unitdata_ind` für rx lmm MLE-Verbindungssteuerung unitdata ind aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_lmm_mle_unitdata_ind(&mut self, queue: &mut MessageQueue, mut message: SapMsg) {
         // unimplemented_log!("rx_lmm_mle_unitdata_ind for MM component");
         let SapMsgInner::LmmMleUnitdataInd(prim) = &mut message.msg else {
@@ -1932,8 +1352,6 @@ impl MmBs {
             return;
         };
 
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match pdu_type {
             MmPduTypeUl::UAuthentication => unimplemented_log!("UAuthentication"),
             MmPduTypeUl::UItsiDetach => self.rx_u_itsi_detach(queue, message),
@@ -1950,11 +1368,11 @@ impl MmBs {
         };
     }
 
-
-    // Was: Führt den Arbeitsschritt `group_policy_allows_attach` für Gruppe policy allows attach aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    fn group_policy_allows_attach(&self, local_issi: u32, gssi: u32) -> bool {
-        let policy_issi = self.mobility.home_issi_for_local(local_issi).unwrap_or(local_issi);
+    /// Read-only central group policy gate. This deliberately does not rewrite MM state,
+    /// trigger re-affiliation or send unsolicited location-update commands. The local air
+    /// procedure remains identical to `main`; the Core only decides whether a requested
+    /// affiliation may be accepted.
+    fn group_policy_allows_attach(&self, issi: u32, gssi: u32) -> bool {
         let state = self.config.state_read();
         if !state.edge_fallback_mode.enforces_central_restrictions() {
             return true;
@@ -1962,51 +1380,21 @@ impl MmBs {
         state
             .group_policy_override
             .as_ref()
-            .map(|policy| policy.allows_affiliation(policy_issi, gssi))
+            .map(|policy| policy.allows_affiliation(issi, gssi))
             .unwrap_or(true)
     }
 
-    // Was: Führt den Arbeitsschritt `group_policy_allows_dgna` für Gruppe policy allows dgna aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    fn group_policy_allows_dgna(&self, local_issi: u32, gssi: u32) -> bool {
-        let policy_issi = self.mobility.home_issi_for_local(local_issi).unwrap_or(local_issi);
-        let state = self.config.state_read();
-        if !state.edge_fallback_mode.enforces_central_restrictions() {
-            return true;
-        }
-        state
-            .group_policy_override
-            .as_ref()
-            .map(|policy| policy.allows_dgna(policy_issi, gssi))
-            .unwrap_or(true)
-    }
-
-    // Was: Führt den Arbeitsschritt `group_policy_class_of_usage` für Gruppe policy class of usage aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    fn group_policy_class_of_usage(&self, gssi: u32) -> u8 {
-        let state = self.config.state_read();
-        if !state.edge_fallback_mode.enforces_central_restrictions() {
-            return Self::DGNA_CLASS_OF_USAGE;
-        }
-        state
-            .group_policy_override
-            .as_ref()
-            .map(|policy| policy.class_of_usage(gssi, Self::DGNA_CLASS_OF_USAGE))
-            .unwrap_or(Self::DGNA_CLASS_OF_USAGE)
-    }
-
-    // Was: Diese Funktion wendet Gruppe policy.
-    // Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
-    fn apply_group_policy(
+    /// Store a centrally supplied group policy without reconciling live radios. Automatic
+    /// detach/attach and re-registration were the source of the SWMI regression. Existing
+    /// affiliations stay untouched; the policy is enforced on the next explicit attach request.
+    fn install_group_policy_main_compat(
         &mut self,
-        queue: &mut MessageQueue,
         revision: u64,
         allow_unlisted_groups: bool,
         enforce_memberships: bool,
-        reconcile_registered: bool,
         groups: Vec<GroupPolicyDefinition>,
         memberships: Vec<GroupMembershipPolicy>,
-    ) -> Result<(u32, u32, u32, u32), String> {
+    ) -> Result<(u32, u32), String> {
         if self
             .config
             .state_read()
@@ -2020,8 +1408,6 @@ impl MmBs {
         }
 
         let mut definitions = HashMap::new();
-        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for group in groups {
             if group.gssi == 0 || group.gssi > 0xFF_FFFF {
                 return Err(format!("invalid GSSI {}", group.gssi));
@@ -2045,8 +1431,6 @@ impl MmBs {
         let mut allowed = HashMap::<u32, std::collections::HashSet<u32>>::new();
         let mut automatic = HashMap::<u32, std::collections::HashSet<u32>>::new();
         let mut membership_count = 0u32;
-        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for membership in memberships {
             if membership.issi == 0 || membership.issi > 0xFF_FFFF {
                 return Err(format!("invalid membership ISSI {}", membership.issi));
@@ -2055,9 +1439,15 @@ impl MmBs {
                 return Err(format!("invalid membership GSSI {}", membership.gssi));
             }
             if membership.allowed {
-                allowed.entry(membership.issi).or_default().insert(membership.gssi);
+                allowed
+                    .entry(membership.issi)
+                    .or_default()
+                    .insert(membership.gssi);
                 if membership.auto_attach {
-                    automatic.entry(membership.issi).or_default().insert(membership.gssi);
+                    automatic
+                        .entry(membership.issi)
+                        .or_default()
+                        .insert(membership.gssi);
                 }
                 membership_count += 1;
             }
@@ -2072,56 +1462,16 @@ impl MmBs {
             automatic_memberships: automatic,
         };
         let group_count = policy.groups.len() as u32;
-        self.config.state_write().group_policy_override = Some(policy.clone());
+        self.config.state_write().group_policy_override = Some(policy);
         if let Err(error) = crate::net_control_room::edge_store::persist_edge_policy_cache(&self.config) {
-            tracing::warn!("MM: failed to persist central group policy for edge fallback: {}", error);
+            tracing::warn!(
+                "MM: failed to persist central group policy for edge fallback: {}",
+                error
+            );
         }
-
-        let mut attached_count = 0u32;
-        let mut detached_count = 0u32;
-        let central_restrictions_active = self
-            .config
-            .state_read()
-            .edge_fallback_mode
-            .enforces_central_restrictions();
-        if reconcile_registered && central_restrictions_active {
-            let local_issis = self.client_mgr.all_known_issis();
-            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
-            for local_issi in local_issis {
-                let policy_issi = self.mobility.home_issi_for_local(local_issi).unwrap_or(local_issi);
-                let current: Vec<u32> = self
-                    .client_mgr
-                    .get_client_by_issi(local_issi)
-                    .map(|client| client.groups.iter().copied().collect())
-                    .unwrap_or_default();
-                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
-                for gssi in current {
-                    if !policy.allows_affiliation(policy_issi, gssi)
-                        && self.do_dgna(queue, local_issi, gssi, false, true)
-                    {
-                        detached_count += 1;
-                    }
-                }
-                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
-                for gssi in policy.automatic_groups_for(policy_issi) {
-                    let already_attached = self
-                        .client_mgr
-                        .get_client_by_issi(local_issi)
-                        .is_some_and(|client| client.groups.contains(&gssi));
-                    if !already_attached && self.do_dgna(queue, local_issi, gssi, true, true) {
-                        attached_count += 1;
-                    }
-                }
-            }
-        }
-        Ok((group_count, membership_count, attached_count, detached_count))
+        Ok((group_count, membership_count))
     }
 
-    // Was: Diese Funktion bindet detach groups.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn try_attach_detach_groups(
         &mut self,
         queue: &mut MessageQueue,
@@ -2132,8 +1482,6 @@ impl MmBs {
         let mut aff_groups = Vec::new();
         let mut deaff_groups = Vec::new();
 
-        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for giu in giu_vec.iter() {
             // Currently only address_type=0 (plain GSSI) is implemented. Anything else
             // (vgssi, address extension, missing gssi) is unsupported — log and skip.
@@ -2149,8 +1497,6 @@ impl MmBs {
             let is_detach = giu.group_identity_detachment_uplink.is_some();
 
             if is_detach {
-                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match self.client_mgr.client_group_attach(issi, gssi, false) {
                     Ok(changed) => {
                         if changed {
@@ -2182,8 +1528,6 @@ impl MmBs {
                     );
                     continue;
                 }
-                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match self.client_mgr.client_group_attach(issi, gssi, true) {
                     Ok(changed) => {
                         if changed {
@@ -2260,8 +1604,6 @@ impl MmBs {
     /// with full group identity report
     /// Send D-ATTACH-DETACH-GROUP-IDENTITY-ACKNOWLEDGEMENT with reject.
     /// ETSI EN 300 392-2 §16.3.4: used when MS is not registered.
-    // Was: Diese Funktion sendet d attach detach ack reject.
-    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_d_attach_detach_ack_reject(&self, queue: &mut MessageQueue, issi: u32, handle: u32) {
         let pdu = DAttachDetachGroupIdentityAcknowledgement {
             group_identity_accept_reject: 1, // 1 = reject per ETSI §14.8.7
@@ -2293,8 +1635,6 @@ impl MmBs {
         queue.push_back(msg);
     }
 
-    // Was: Diese Funktion sendet d attach detach ack.
-    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_d_attach_detach_ack(&self, queue: &mut MessageQueue, issi: u32, handle: u32, groups: &[u32]) {
         use tetra_pdus::mm::fields::group_identity_attachment::GroupIdentityAttachment;
         use tetra_pdus::mm::fields::group_identity_downlink::GroupIdentityDownlink;
@@ -2348,8 +1688,6 @@ impl MmBs {
     /// Class of usage advertised in DGNA group attachments. 4 mirrors the value the normal
     /// affiliation ACK path (`send_d_attach_detach_ack`) already sends, so DGNA-assigned groups
     /// behave identically to ones the radio affiliated itself.
-    // Was: Legt den festen Wert `DGNA_CLASS_OF_USAGE` für dgna class of usage fest.
-    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const DGNA_CLASS_OF_USAGE: u8 = 4;
 
     /// DGNA (Dynamic Group Number Assignment) — BS-initiated group attach/detach for one terminal,
@@ -2360,9 +1698,7 @@ impl MmBs {
     /// removes the group in its own list. Brew is intentionally not involved.
     ///
     /// Returns `true` if the command was accepted and a PDU was sent to the terminal.
-    // Was: Führt den Arbeitsschritt `do_dgna` für do dgna aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    fn do_dgna(&mut self, queue: &mut MessageQueue, issi: u32, gssi: u32, attach: bool, force: bool) -> bool {
+    fn do_dgna(&mut self, queue: &mut MessageQueue, issi: u32, gssi: u32, attach: bool) -> bool {
         let verb = if attach { "assign" } else { "deassign" };
 
         // The terminal must be registered on the cell — we cannot regroup a radio that is not here.
@@ -2376,19 +1712,8 @@ impl MmBs {
             return false;
         }
 
-        if attach && !force && !self.group_policy_allows_dgna(issi, gssi) {
-            tracing::warn!(
-                "DGNA: central group policy rejected assignment ISSI {} -> GSSI {}",
-                issi,
-                gssi
-            );
-            return false;
-        }
-
         // Apply to the MM client registry. client_group_attach also validates the GSSI is a legal
         // group address (range + is_group + may_attach); an invalid GSSI returns an error here.
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.client_mgr.client_group_attach(issi, gssi, attach) {
             Ok(_changed) => {
                 // Mirror into the shared subscriber state used for local call/SDS routing and notify
@@ -2409,10 +1734,7 @@ impl MmBs {
         }
 
         // Push the unsolicited D-ATTACH/DETACH GROUP IDENTITY to the terminal.
-        // When a central policy is active, use its class-of-usage value; otherwise retain
-        // the historic local default.
-        let class_of_usage = self.group_policy_class_of_usage(gssi);
-        self.send_d_attach_detach_group_identity(queue, issi, gssi, attach, class_of_usage);
+        self.send_d_attach_detach_group_identity(queue, issi, gssi, attach);
 
         // Persist for restart recovery (debounced) and refresh the dashboard with the full group set.
         self.recovery_mark_dirty();
@@ -2438,23 +1760,14 @@ impl MmBs {
     /// Build and queue an unsolicited D-ATTACH/DETACH GROUP IDENTITY for a single GSSI, addressed to
     /// `issi`, requesting an acknowledgement. `attach == true` carries a (persistent) group identity
     /// attachment; `false` carries a detachment. Used by [`Self::do_dgna`].
-    // Was: Diese Funktion sendet d attach detach Gruppe identity.
-    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
-    fn send_d_attach_detach_group_identity(
-        &self,
-        queue: &mut MessageQueue,
-        issi: u32,
-        gssi: u32,
-        attach: bool,
-        class_of_usage: u8,
-    ) {
+    fn send_d_attach_detach_group_identity(&self, queue: &mut MessageQueue, issi: u32, gssi: u32, attach: bool) {
         let gid = GroupIdentityDownlink {
             group_identity_attachment: attach.then_some(GroupIdentityAttachment {
                 // 0 = "attachment not needed" → persistent on the MS until an explicit detach.
                 // Matches the affiliation-ACK path; see try_attach_detach_groups for why lifetime=0
                 // (not 1) is correct for scan-list-heavy Motorola radios (FH-BUG-022).
                 group_identity_attachment_lifetime: 0,
-                class_of_usage: class_of_usage.min(15),
+                class_of_usage: Self::DGNA_CLASS_OF_USAGE,
             }),
             // 2-bit group identity detachment field; 0 = unknown/default. The attach/detach type
             // identifier plus the GSSI are what make the MS drop the group.
@@ -2510,16 +1823,12 @@ impl MmBs {
     /// Handle U-ATTACH/DETACH GROUP IDENTITY ACKNOWLEDGEMENT — the terminal's reply to a BS-initiated
     /// D-ATTACH/DETACH GROUP IDENTITY (DGNA). BS-side group state is committed optimistically when the
     /// DGNA is issued, so this is confirmation/telemetry only: log the outcome.
-    // Was: Führt den Arbeitsschritt `rx_u_attach_detach_group_identity_ack` für rx u attach detach Gruppe identity ack aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_u_attach_detach_group_identity_ack(&mut self, _queue: &mut MessageQueue, mut message: SapMsg) {
         let SapMsgInner::LmmMleUnitdataInd(prim) = &mut message.msg else {
             tracing::error!("BUG: unexpected message or state -- routing error");
             return;
         };
         let issi = prim.received_address.ssi;
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match UAttachDetachGroupIdentityAcknowledgement::from_bitbuf(&mut prim.sdu) {
             Ok(pdu) => tracing::info!("DGNA: ISSI {} acknowledged group identity change: {:?}", issi, pdu),
             Err(e) => tracing::warn!(
@@ -2531,8 +1840,6 @@ impl MmBs {
         }
     }
 
-    // Was: Diese Funktion sendet d location update command.
-    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_d_location_update_command(queue: &mut MessageQueue, issi: u32, handle: u32) {
         let pdu = DLocationUpdateCommand {
             group_identity_report: true,
@@ -2567,47 +1874,7 @@ impl MmBs {
         queue.push_back(msg);
     }
 
-    // Was: Diese Funktion sendet d location update proceeding.
-    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
-    fn send_d_location_update_proceeding(
-        queue: &mut MessageQueue,
-        address: TetraAddress,
-        handle: u32,
-        vassi: u32,
-        home_mni: u32,
-    ) {
-        let pdu = DLocationUpdateProceeding {
-            ssi: vassi,
-            address_extension: home_mni,
-            proprietary: None,
-        };
-        let mut sdu = BitBuffer::new_autoexpand(16);
-        if let Err(error) = pdu.to_bitbuf(&mut sdu) {
-            tracing::error!(?error, "MM: failed serializing D-LOCATION-UPDATE-PROCEEDING");
-            return;
-        }
-        sdu.seek(0);
-        queue.push_back(SapMsg {
-            sap: Sap::LmmSap,
-            src: TetraEntity::Mm,
-            dest: TetraEntity::Mle,
-            msg: SapMsgInner::LmmMleUnitdataReq(LmmMleUnitdataReq {
-                sdu,
-                handle,
-                address,
-                layer2service: Layer2Service::Acknowledged,
-                stealing_permission: false,
-                stealing_repeats_flag: false,
-                encryption_flag: false,
-                is_null_pdu: false,
-                tx_reporter: None,
-            }),
-        });
-    }
-
     /// Sends a D-LOCATION UPDATE REJECT PDU (ETSI clause 16.9.2.9)
-    // Was: Diese Funktion sendet d location update reject.
-    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_d_location_update_reject(
         queue: &mut MessageQueue,
         issi: u32,
@@ -2625,8 +1892,6 @@ impl MmBs {
         )
     }
 
-    // Was: Diese Funktion sendet d location update reject cause.
-    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_d_location_update_reject_cause(
         queue: &mut MessageQueue,
         issi: u32,
@@ -2670,8 +1935,6 @@ impl MmBs {
     }
 
     /// Sends a D-MM-STATUS with ChangeOfEnergySavingModeResponse
-    // Was: Diese Funktion sendet d Mobilitätsverwaltung Status energy saving.
-    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_d_mm_status_energy_saving(queue: &mut MessageQueue, issi: u32, handle: u32, esi: EnergySavingInformation) {
         let pdu = DMmStatus {
             status_downlink: StatusDownlink::ChangeOfEnergySavingModeResponse,
@@ -2702,8 +1965,6 @@ impl MmBs {
         queue.push_back(msg);
     }
 
-    // Was: Führt den Arbeitsschritt `feature_check_u_itsi_detach` für feature check u itsi detach aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn feature_check_u_itsi_detach(pdu: &UItsiDetach) -> bool {
         let supported = true;
         if pdu.address_extension.is_some() {
@@ -2715,8 +1976,6 @@ impl MmBs {
         supported
     }
 
-    // Was: Führt den Arbeitsschritt `rx_u_tei_provide` für rx u tei provide aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_u_tei_provide(&mut self, _queue: &mut MessageQueue, mut message: SapMsg) {
         tracing::trace!("rx_u_tei_provide");
         let SapMsgInner::LmmMleUnitdataInd(prim) = &mut message.msg else {
@@ -2724,8 +1983,6 @@ impl MmBs {
             return;
         };
 
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let pdu = match UTeiProvide::from_bitbuf(&mut prim.sdu) {
             Ok(pdu) => {
                 tracing::debug!("<- {:?}", pdu);
@@ -2746,11 +2003,11 @@ impl MmBs {
         }
     }
 
-    // Was: Führt den Arbeitsschritt `feature_check_u_location_update_demand` für feature check u location update demand aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn feature_check_u_location_update_demand(pdu: &ULocationUpdateDemand) -> bool {
         let mut supported = true;
-        if pdu.location_update_type == LocationUpdateType::DisabledMsUpdating {
+        if pdu.location_update_type == LocationUpdateType::MigratingLocationUpdating
+            || pdu.location_update_type == LocationUpdateType::DisabledMsUpdating
+        {
             unimplemented_log!("Unsupported {}", pdu.location_update_type);
             supported = false;
         }
@@ -2793,8 +2050,6 @@ impl MmBs {
 
     /// Check for unsupported features in U-ATTACH/DETACH GROUP IDENTITY
     /// Returns false if a critical feature is missing
-    // Was: Führt den Arbeitsschritt `feature_check_u_attach_detach_group_identity` für feature check u attach detach Gruppe identity aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn feature_check_u_attach_detach_group_identity(pdu: &UAttachDetachGroupIdentity) -> bool {
         let mut supported = true;
         if pdu.group_identity_report == true {
@@ -2815,133 +2070,47 @@ impl MmBs {
     }
 }
 
-// Was: Implementiert das zugehörige Verhalten für `TetraEntityTrait for MmBs`.
-// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl TetraEntityTrait for MmBs {
-    // Was: Führt den Arbeitsschritt `entity` für entity aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn entity(&self) -> TetraEntity {
         TetraEntity::Mm
     }
 
-    // Was: Diese Funktion setzt Konfiguration.
-    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     fn set_config(&mut self, config: SharedConfig) {
         self.config = config;
     }
 
-    // Was: Diese Funktion bearbeitet start.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn tick_start(&mut self, queue: &mut MessageQueue, ts: TdmaTime) {
-        self.current_time = ts;
-        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
-        for timeout in self.mobility.tick(ts) {
-            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
-            match timeout {
-                MmMobilityTimeout::Migration {
-                    subscriber,
-                    handle,
-                    location_update_type,
-                    address_extension,
-                } => Self::send_d_location_update_reject_cause(
-                    queue,
-                    subscriber.ssi,
-                    handle,
-                    location_update_type,
-                    address_extension,
-                    RejectCause::ExpiryOfTimer,
-                ),
-                MmMobilityTimeout::ForwardRegistration { subscriber } => {
-                    let reject = DLocationUpdateReject {
-                        location_update_type: LocationUpdateType::ServiceRestorationRoamingLocationUpdating,
-                        reject_cause: RejectCause::ForwardRegistrationFailure as u8,
-                        cipher_control: false,
-                        ciphering_parameters: None,
-                        address_extension: None,
-                        cell_type_control: None,
-                        proprietary: None,
-                    };
-                    let mut mm_sdu = BitBuffer::new_autoexpand(32);
-                    let _ = reject.to_bitbuf(&mut mm_sdu);
-                    mm_sdu.seek(0);
-                    queue.push_back(SapMsg {
-                        sap: Sap::Control,
-                        src: TetraEntity::Mm,
-                        dest: TetraEntity::Mle,
-                        msg: SapMsgInner::MleCellChangeControl(MleCellChangeControl::RejectPrepare {
-                            subscriber,
-                            cause: MleFailCause::NeighbourCellEnquiryUnavailableOrTemporaryBreak,
-                            mm_sdu: Some(mm_sdu),
-                        }),
-                    });
-                }
-            }
-        }
-        // Drain control commands addressed to the MM entity. We collect into a Vec first so the
-        // immutable borrow on `self.control` is released before the handlers run — DGNA needs
-        // `&mut self` (client registry, subscriber state, telemetry).
+        // Main-compatible policy bridge: Core commands update admission state only. They never
+        // issue D-LOCATION-UPDATE-COMMAND, detach live subscribers, rebuild CMCE state or alter
+        // the air-interface registration procedure.
         if self.control.is_some() {
             let responder = self.control.clone();
             let mut cmds = Vec::new();
             if let Some(cep) = &self.control {
-                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 while let Some(cmd) = cep.try_recv() {
                     cmds.push(cmd);
                 }
             }
-            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for cmd in cmds {
-                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match cmd {
                     ControlCommand::Dgna { issi, gssi, attach } => {
-                        self.do_dgna(queue, issi, gssi, attach, false);
+                        self.do_dgna(queue, issi, gssi, attach);
                     }
-                    ControlCommand::GroupAccessPolicyApply {
+                    ControlCommand::GroupDgnaApply {
                         handle,
-                        revision,
-                        allow_unlisted_groups,
-                        enforce_memberships,
-                        reconcile_registered,
-                        groups,
-                        memberships,
+                        issi,
+                        gssi,
+                        attach,
+                        force: _,
                     } => {
-                        let result = self.apply_group_policy(
-                            queue,
-                            revision,
-                            allow_unlisted_groups,
-                            enforce_memberships,
-                            reconcile_registered,
-                            groups,
-                            memberships,
-                        );
-                        if let Some(cep) = responder.as_ref() {
-                            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-                            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
-                            match result {
-                                Ok((group_count, membership_count, attached_count, detached_count)) => {
-                                    cep.respond(ControlResponse::GroupAccessPolicyApplied {
-                                        handle, revision, success: true, group_count, membership_count,
-                                        attached_count, detached_count,
-                                        message: "group access policy applied".to_string(),
-                                    });
-                                }
-                                Err(message) => cep.respond(ControlResponse::GroupAccessPolicyApplied {
-                                    handle, revision, success: false, group_count: 0, membership_count: 0,
-                                    attached_count: 0, detached_count: 0, message,
-                                }),
-                            }
-                        }
-                    }
-                    ControlCommand::GroupDgnaApply { handle, issi, gssi, attach, force } => {
-                        let success = self.do_dgna(queue, issi, gssi, attach, force);
+                        let success = self.do_dgna(queue, issi, gssi, attach);
                         if let Some(cep) = responder.as_ref() {
                             cep.respond(ControlResponse::GroupDgnaApplied {
-                                handle, issi, gssi, attach, success,
+                                handle,
+                                issi,
+                                gssi,
+                                attach,
+                                success,
                                 message: if success {
                                     "DGNA command applied".to_string()
                                 } else {
@@ -2950,44 +2119,50 @@ impl TetraEntityTrait for MmBs {
                             });
                         }
                     }
-                    ControlCommand::MobilityExportContext { handle, issi } => {
-                        let context = self.export_mobility_context(issi).map(Self::mobility_context_to_payload);
-                        let found = context.is_some();
-                        if let Some(cep) = responder.as_ref() {
-                            cep.respond(ControlResponse::MobilityContextExported {
-                                handle,
-                                issi,
-                                found,
-                                context,
-                                message: if found {
-                                    "mobility context exported".to_string()
-                                } else {
-                                    "subscriber is not registered on this node".to_string()
-                                },
-                            });
-                        }
-                    }
-                    ControlCommand::MobilityImportContext {
+                    ControlCommand::GroupAccessPolicyApply {
                         handle,
-                        local_issi,
-                        context,
+                        revision,
+                        allow_unlisted_groups,
+                        enforce_memberships,
+                        reconcile_registered: _,
+                        groups,
+                        memberships,
                     } => {
-                        let result = Self::mobility_payload_to_context(&context).and_then(|internal| {
-                            if self.client_mgr.client_is_known(local_issi) {
-                                return Err(format!("local ISSI {} already exists", local_issi));
-                            }
-                            self.import_mobility_context(local_issi, &internal);
-                            self.announce_imported_mobility_context(queue, local_issi, &internal);
-                            self.recovery_mark_dirty();
-                            Ok(())
-                        });
+                        let result = self.install_group_policy_main_compat(
+                            revision,
+                            allow_unlisted_groups,
+                            enforce_memberships,
+                            groups,
+                            memberships,
+                        );
                         if let Some(cep) = responder.as_ref() {
-                            cep.respond(ControlResponse::MobilityContextImported {
-                                handle,
-                                local_issi,
-                                success: result.is_ok(),
-                                message: result.err().unwrap_or_else(|| "mobility context imported".to_string()),
-                            });
+                            match result {
+                                Ok((group_count, membership_count)) => {
+                                    cep.respond(ControlResponse::GroupAccessPolicyApplied {
+                                        handle,
+                                        revision,
+                                        success: true,
+                                        group_count,
+                                        membership_count,
+                                        attached_count: 0,
+                                        detached_count: 0,
+                                        message: "group policy stored; live main-compatible RF state left untouched"
+                                            .to_string(),
+                                    });
+                                }
+                                Err(message) => {
+                                    cep.respond(ControlResponse::GroupAccessPolicyApplied {
+                                        handle,
+                                        revision,
+                                        success: false,
+                                        group_count: 0,
+                                        membership_count: 0,
+                                        attached_count: 0,
+                                        detached_count: 0,
+                                        message,
+                                    });
+                                }
+                            }
                         }
                     }
                     ControlCommand::SubscriberAccessPolicyApply {
@@ -2995,7 +2170,7 @@ impl TetraEntityTrait for MmBs {
                         revision,
                         allow_all,
                         mut allowed_issis,
-                        disconnect_unauthorized,
+                        disconnect_unauthorized: _,
                     } => {
                         allowed_issis.retain(|issi| *issi > 0 && *issi <= 0xFF_FFFF);
                         allowed_issis.sort_unstable();
@@ -3003,65 +2178,25 @@ impl TetraEntityTrait for MmBs {
                         if allow_all {
                             allowed_issis.clear();
                         }
-
-                        let central_restrictions_active = self
-                            .config
-                            .state_read()
-                            .edge_fallback_mode
-                            .enforces_central_restrictions();
-                        let to_disconnect: Vec<u32> = if central_restrictions_active
-                            && disconnect_unauthorized
-                            && !allow_all
-                        {
-                            let registered_local_issis: Vec<u32> = {
-                                let state = self.config.state_read();
-                                state.subscribers.all_registered_issis().collect()
-                            };
-                            registered_local_issis
-                                .into_iter()
-                                .filter(|local_issi| {
-                                    let policy_issi = self
-                                        .mobility
-                                        .home_issi_for_local(*local_issi)
-                                        .unwrap_or(*local_issi);
-                                    !allowed_issis.contains(&policy_issi)
-                                })
-                                .collect()
-                        } else {
-                            Vec::new()
-                        };
-
                         {
                             let mut state = self.config.state_write();
                             state.issi_whitelist_deny_all = !allow_all && allowed_issis.is_empty();
                             state.issi_whitelist_override = Some(allowed_issis.clone());
                             state.subscriber_policy_revision = revision;
                         }
-                        if let Err(error) = crate::net_control_room::edge_store::persist_edge_policy_cache(&self.config) {
-                            tracing::warn!("MM: failed to persist central subscriber policy for edge fallback: {}", error);
+                        if let Err(error) =
+                            crate::net_control_room::edge_store::persist_edge_policy_cache(&self.config)
+                        {
+                            tracing::warn!(
+                                "MM: failed to persist central subscriber policy for edge fallback: {}",
+                                error
+                            );
                         }
-
-                        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-                        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
-                        for issi in &to_disconnect {
-                            queue.push_back(SapMsg {
-                                sap: Sap::Control,
-                                src: TetraEntity::Mm,
-                                dest: TetraEntity::Mm,
-                                msg: SapMsgInner::MmSubscriberUpdate(MmSubscriberUpdate {
-                                    issi: *issi,
-                                    groups: Vec::new(),
-                                    action: BrewSubscriberAction::Deregister,
-                                }),
-                            });
-                        }
-
                         tracing::info!(
                             revision,
                             allow_all,
                             allowed_count = allowed_issis.len(),
-                            disconnected_count = to_disconnect.len(),
-                            "MM: central subscriber access policy applied"
+                            "MM: central subscriber policy stored in main-compatible mode (no live disconnect)"
                         );
                         if let Some(cep) = responder.as_ref() {
                             cep.respond(ControlResponse::SubscriberAccessPolicyApplied {
@@ -3070,63 +2205,17 @@ impl TetraEntityTrait for MmBs {
                                 success: true,
                                 allow_all,
                                 allowed_count: allowed_issis.len() as u32,
-                                disconnected_count: to_disconnect.len() as u32,
-                                message: "subscriber access policy applied".to_string(),
-                            });
-                        }
-                    }
-                    ControlCommand::MobilityRemoveContext {
-                        handle,
-                        issi,
-                        reason,
-                    } => {
-                        let removed = self.remove_mobility_context(issi);
-                        if let Some(context) = &removed {
-                            if !context.groups.is_empty() {
-                                self.emit_subscriber_update(
-                                    queue,
-                                    issi,
-                                    context.groups.clone(),
-                                    BrewSubscriberAction::Deaffiliate,
-                                );
-                            }
-                            self.emit_subscriber_update(
-                                queue,
-                                issi,
-                                Vec::new(),
-                                BrewSubscriberAction::Deregister,
-                            );
-                            queue.push_back(SapMsg {
-                                sap: Sap::Control,
-                                src: TetraEntity::Mm,
-                                dest: TetraEntity::Cmce,
-                                msg: SapMsgInner::MmSubscriberUpdate(MmSubscriberUpdate {
-                                    issi,
-                                    groups: Vec::new(),
-                                    action: BrewSubscriberAction::Deregister,
-                                }),
-                            });
-                            tracing::info!(
-                                "MM: removed transferred context for ISSI {} ({})",
-                                issi,
-                                reason
-                            );
-                        }
-                        if let Some(cep) = responder.as_ref() {
-                            cep.respond(ControlResponse::MobilityContextRemoved {
-                                handle,
-                                issi,
-                                success: true,
-                                message: if removed.is_some() {
-                                    "source mobility context removed".to_string()
-                                } else {
-                                    "source mobility context already absent".to_string()
-                                },
+                                disconnected_count: 0,
+                                message: "subscriber policy stored; live radios were not re-registered"
+                                    .to_string(),
                             });
                         }
                     }
                     _ => {
-                        tracing::warn!("MM: ignoring unsupported control command {:?}", cmd);
+                        tracing::debug!(
+                            "MM: control command ignored by main-compatible local air interface: {:?}",
+                            cmd
+                        );
                     }
                 }
             }
@@ -3136,8 +2225,6 @@ impl TetraEntityTrait for MmBs {
         // Uses wall-clock time — no TDMA precision needed.
         let interval_secs = self.config.config().cell.periodic_registration_secs;
         let expired = self.client_mgr.collect_expired_registrations(interval_secs);
-        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for issi in expired {
             // Restart-recovery interlock: never expire/remove a client the recovery sweep is
             // still replaying to. The sweep owns its lifecycle until it confirms (re-register →
@@ -3269,8 +2356,6 @@ impl TetraEntityTrait for MmBs {
             // stale/incorrect window can never suppress the probe forever. The grace clock only
             // starts once the COMMAND is actually sent, so a deferred wake-window send still gets
             // the full grace to answer.
-            // Was: Legt den festen Wert `T351_EE_WINDOW_WAIT_SECS` für t351 ee window wait secs fest.
-            // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
             const T351_EE_WINDOW_WAIT_SECS: u64 = 6;
             if self
                 .client_mgr
@@ -3294,19 +2379,12 @@ impl TetraEntityTrait for MmBs {
         self.publish_monitoring_windows();
     }
 
-    // Was: Führt den Arbeitsschritt `rx_prim` für rx prim aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_prim(&mut self, queue: &mut MessageQueue, message: SapMsg) {
         tracing::debug!("rx_prim: {:?}", message);
         // tracing::debug!(ts=%message.dltime, "rx_prim: {:?}", message);
 
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match message.sap {
             Sap::LmmSap => match message.msg {
-                SapMsgInner::LmmMlePrepareInd(indication) => {
-                    self.rx_lmm_mle_prepare_ind(queue, indication);
-                }
                 SapMsgInner::LmmMleUnitdataInd(_) => {
                     self.rx_lmm_mle_unitdata_ind(queue, message);
                 }
@@ -3316,8 +2394,6 @@ impl TetraEntityTrait for MmBs {
                 }
             },
             Sap::Control => {
-                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match message.msg {
                     SapMsgInner::BrewReconnected => {
                         self.rx_brew_reconnected(queue);
@@ -3335,8 +2411,6 @@ impl TetraEntityTrait for MmBs {
                         }
                         // Forward to Brew entity for optional export to Brew server.
                         // BrewEntity applies its own rate limiting and checks feature_rssi_export.
-                        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-                        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                         for dest in net_brew::BREW_ENTITIES {
                             if net_brew::is_active_for_entity(&self.config, dest) {
                                 queue.push_back(SapMsg {
@@ -3386,7 +2460,7 @@ impl TetraEntityTrait for MmBs {
                     SapMsgInner::MmDgnaRequest { issi, gssi, attach } => {
                         // Dashboard-originated DGNA, forwarded by CMCE (the dashboard control channel
                         // terminates there). The group machinery lives here in MM.
-                        self.do_dgna(queue, issi, gssi, attach, false);
+                        self.do_dgna(queue, issi, gssi, attach);
                     }
                     _ => {
                         tracing::warn!("mm_bs: unexpected Control message from {:?}", message.src);
@@ -3400,14 +2474,10 @@ impl TetraEntityTrait for MmBs {
     }
 }
 
-// Was: Implementiert das zugehörige Verhalten für `MmBs`.
-// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl MmBs {
     /// Called when Brew backhaul reconnects. Sends D-LOCATION-UPDATE-COMMAND to all
     /// locally registered MS to force them to re-affiliate. This fixes the PTT-denied
     /// symptom where MS units registered before a Brew disconnect never re-register.
-    // Was: Führt den Arbeitsschritt `rx_brew_reconnected` für rx Brew-Verbindung reconnected aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_brew_reconnected(&mut self, queue: &mut MessageQueue) {
         let issis = self.client_mgr.all_known_issis();
         if issis.is_empty() {
@@ -3418,8 +2488,6 @@ impl MmBs {
             "mm_bs: BrewReconnected — sending D-LOCATION-UPDATE-COMMAND to {} MS unit(s)",
             issis.len()
         );
-        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for issi in issis {
             // handle = 0: addressed by ISSI on the MCCH (the handle is inert — see
             // all_known_issis). This path was previously dead because it filtered on
@@ -3432,22 +2500,16 @@ impl MmBs {
 }
 
 #[cfg(test)]
-// Was: Bindet das Untermodul ee tests in diesen Bereich ein.
-// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod ee_tests {
     use super::*;
     use tetra_core::TdmaTime;
 
     #[test]
-    // Was: Führt den Arbeitsschritt `grant_energy_saving_produces_spec_valid_start_point` für grant energy saving produces spec valid start und weitere Angaben aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn grant_energy_saving_produces_spec_valid_start_point() {
         // ETSI Table 16.40: Frame Number ∈ 1..=18, Multiframe Number ∈ 1..=60 (MN=0 is reserved
         // ONLY for StayAlive). The old (issi/18)%cycle formula produced MN=0 for half the radios —
         // an invalid anchor a conformant radio rejects (FH-BUG-034). Every active grant must now be
         // valid AND its start point must itself be a wake frame in the matching gating window.
-        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for mode in [
             EnergySavingMode::Eg1,
             EnergySavingMode::Eg2,
@@ -3455,8 +2517,6 @@ mod ee_tests {
             EnergySavingMode::Eg5,
             EnergySavingMode::Eg7,
         ] {
-            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for issi in [1u32, 2, 17, 18, 19, 2260596, 2269000, 9_999_999] {
                 let esi = MmBs::grant_energy_saving(issi, mode);
                 let frame = esi.frame_number.expect("active EE carries a frame number");
@@ -3479,99 +2539,12 @@ mod ee_tests {
     }
 
     #[test]
-    fn ai_v2_common_scch_mirrors_initial_attach_type() {
-        assert_eq!(
-            MmBs::select_location_update_accept_type(
-                LocationUpdateType::ItsiAttach,
-                3600,
-                true,
-                false,
-            ),
-            LocationUpdateType::ItsiAttach
-        );
-    }
-
-    #[test]
-    fn ai_v2_common_scch_mirrors_roaming_refresh_type() {
-        assert_eq!(
-            MmBs::select_location_update_accept_type(
-                LocationUpdateType::RoamingLocationUpdating,
-                3600,
-                true,
-                false,
-            ),
-            LocationUpdateType::RoamingLocationUpdating
-        );
-        assert_eq!(
-            MmBs::select_location_update_accept_type(
-                LocationUpdateType::ServiceRestorationRoamingLocationUpdating,
-                3600,
-                true,
-                false,
-            ),
-            LocationUpdateType::ServiceRestorationRoamingLocationUpdating
-        );
-    }
-
-    #[test]
-    fn non_compat_terminal_still_receives_periodic_accept() {
-        assert_eq!(
-            MmBs::select_location_update_accept_type(
-                LocationUpdateType::RoamingLocationUpdating,
-                3600,
-                false,
-                false,
-            ),
-            LocationUpdateType::PeriodicLocationUpdating
-        );
-    }
-
-    #[test]
-    fn disabled_periodic_registration_preserves_requested_type() {
-        assert_eq!(
-            MmBs::select_location_update_accept_type(
-                LocationUpdateType::RoamingLocationUpdating,
-                0,
-                false,
-                false,
-            ),
-            LocationUpdateType::RoamingLocationUpdating
-        );
-    }
-
-    #[test]
-    fn migration_completion_remains_demand_location_update() {
-        assert_eq!(
-            MmBs::select_location_update_accept_type(
-                LocationUpdateType::MigratingLocationUpdating,
-                3600,
-                true,
-                true,
-            ),
-            LocationUpdateType::DemandLocationUpdating
-        );
-    }
-
-    #[test]
-    fn registration_without_energy_saving_request_explicitly_grants_stay_alive() {
-        // Mirrors a fresh ITSI attach: neither the PDU nor an existing client state supplies ESM.
-        let esi = MmBs::registration_energy_saving_information(5102, None, None);
-        assert_eq!(esi.energy_saving_mode, EnergySavingMode::StayAlive);
-        assert!(esi.frame_number.is_none());
-        assert!(esi.multiframe_number.is_none());
-    }
-
-    #[test]
-    // Was: Führt den Arbeitsschritt `grant_energy_saving_stay_alive_and_eg4_7_capping` für grant energy saving stay alive and eg4 und weitere Angaben aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn grant_energy_saving_stay_alive_and_eg4_7_capping() {
         // StayAlive → no monitoring window.
         let esi = MmBs::grant_energy_saving(42, EnergySavingMode::StayAlive);
         assert_eq!(esi.energy_saving_mode, EnergySavingMode::StayAlive);
         assert!(esi.frame_number.is_none() && esi.multiframe_number.is_none());
         // Eg4..Eg7 capped to Eg3 to bound call-setup latency.
-        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for mode in [
             EnergySavingMode::Eg4,
             EnergySavingMode::Eg5,
@@ -3581,8 +2554,6 @@ mod ee_tests {
             assert_eq!(MmBs::grant_energy_saving(42, mode).energy_saving_mode, EnergySavingMode::Eg3);
         }
         // Eg1..Eg3 granted as requested.
-        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for mode in [EnergySavingMode::Eg1, EnergySavingMode::Eg2, EnergySavingMode::Eg3] {
             assert_eq!(MmBs::grant_energy_saving(42, mode).energy_saving_mode, mode);
         }

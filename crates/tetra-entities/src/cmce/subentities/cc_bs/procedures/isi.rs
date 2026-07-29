@@ -1,6 +1,3 @@
-// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
-// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
-
 use super::*;
 
 /// ANF-ISIIC/ANF-ISIGC-adjacent procedures for the local network bridge.
@@ -9,14 +6,8 @@ use super::*;
 /// ETSI PSS1/ROSE ISI PDUs. The split is intentional: individual-call and
 /// group-call interworking belongs beside CC procedures, while PC remains the
 /// CMCE route discriminator.
-// Was: Implementiert das zugehörige Verhalten für `CcBsSubentity`.
-// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl CcBsSubentity {
-    // Was: Führt den Arbeitsschritt `network_setup_timeout_from_secs` für network setup timeout from secs aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn network_setup_timeout_from_secs(secs: u32) -> CallTimeoutSetupPhase {
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match secs {
             0 | 1 => CallTimeoutSetupPhase::T1s,
             2 => CallTimeoutSetupPhase::T2s,
@@ -28,11 +19,7 @@ impl CcBsSubentity {
         }
     }
 
-    // Was: Führt den Arbeitsschritt `network_setup_timeout` für network setup timeout aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn network_setup_timeout(&self, network_entity: TetraEntity) -> CallTimeoutSetupPhase {
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match network_entity {
             TetraEntity::Asterisk => Self::network_setup_timeout_from_secs(self.config.config().asterisk.inbound_setup_timeout_secs),
             _ => CallTimeoutSetupPhase::T60s,
@@ -40,8 +27,6 @@ impl CcBsSubentity {
     }
 
     /// Handle network-initiated circuit setup request (network bridge -> local called MS).
-    // Was: Führt den Arbeitsschritt `fsm_on_network_circuit_setup_request` für fsm on network circuit setup request aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce::subentities::cc_bs) fn fsm_on_network_circuit_setup_request(
         &mut self,
         queue: &mut MessageQueue,
@@ -144,8 +129,6 @@ impl CcBsSubentity {
 
         let circuit_called = {
             let mut state = self.config.state_write();
-            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match self.circuits.allocate_circuit_with_capacity(
                 Direction::Both,
                 communication,
@@ -307,8 +290,6 @@ impl CcBsSubentity {
                 queued_tx_demand: None,
             },
         ) {
-            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match err {
                 IndividualTransitionError::DuplicateCall(_) => {
                     tracing::warn!(
@@ -334,8 +315,6 @@ impl CcBsSubentity {
     }
 
     /// Handle network circuit connect request (network bridge -> local called MS).
-    // Was: Führt den Arbeitsschritt `fsm_on_network_circuit_connect_request` für fsm on network circuit connect request aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce::subentities::cc_bs) fn fsm_on_network_circuit_connect_request(
         &mut self,
         queue: &mut MessageQueue,
@@ -379,8 +358,6 @@ impl CcBsSubentity {
         let is_simplex = call.is_simplex();
 
         if let Err(err) = self.fsm_individual_set_network_call(call_id, call_info.clone()) {
-            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match err {
                 IndividualTransitionError::UnknownCall(_) => {
                     tracing::warn!(
@@ -469,13 +446,9 @@ impl CcBsSubentity {
         };
         Self::signal_umac_circuit_open(queue, &circuit, self.dltime, None, CircuitDlMediaSource::SwMI);
 
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let activated = match self.fsm_individual_transition_to_active(call_id) {
             Ok(()) => true,
             Err(err) => {
-                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match err {
                     IndividualTransitionError::UnknownCall(_) => {
                         tracing::warn!("CMCE: {:?} connect request activation unknown call_id={}", network_entity, call_id);
@@ -561,8 +534,6 @@ impl CcBsSubentity {
     }
 
     /// Handle network circuit connect confirm (network bridge -> local calling MS).
-    // Was: Führt den Arbeitsschritt `fsm_on_network_circuit_connect_confirm` für fsm on network circuit connect confirm aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce::subentities::cc_bs) fn fsm_on_network_circuit_connect_confirm(
         &mut self,
         queue: &mut MessageQueue,
@@ -615,8 +586,6 @@ impl CcBsSubentity {
         let is_simplex = call.is_simplex();
         let remote_grant = TransmissionGrant::try_from((grant & 0x03) as u64).unwrap_or(TransmissionGrant::Granted);
         let local_grant = if is_simplex {
-            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match remote_grant {
                 TransmissionGrant::Granted => TransmissionGrant::GrantedToOtherUser,
                 TransmissionGrant::GrantedToOtherUser => TransmissionGrant::Granted,
@@ -710,13 +679,9 @@ impl CcBsSubentity {
         };
         Self::signal_umac_circuit_open(queue, &circuit, self.dltime, None, CircuitDlMediaSource::SwMI);
 
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let activated = match self.fsm_individual_transition_to_active(call_id) {
             Ok(()) => true,
             Err(err) => {
-                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match err {
                     IndividualTransitionError::UnknownCall(_) => {
                         tracing::warn!("CMCE: {:?} connect confirm activation unknown call_id={}", network_entity, call_id);
@@ -739,8 +704,6 @@ impl CcBsSubentity {
         };
 
         if activated && is_simplex {
-            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match local_grant {
                 TransmissionGrant::Granted => {
                     if let Some(call_state) = self.individual_calls.get_mut(&call_id) {
@@ -802,8 +765,6 @@ impl CcBsSubentity {
     }
 
     /// Handle network-initiated group call start.
-    // Was: Führt den Arbeitsschritt `fsm_on_network_call_start` für fsm on network Ruf start aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce::subentities::cc_bs) fn fsm_on_network_call_start(
         &mut self,
         queue: &mut MessageQueue,
@@ -860,8 +821,6 @@ impl CcBsSubentity {
             );
 
             if let Err(err) = self.fsm_group_on_network_call_start(queue, call_id, network_entity, brew_uuid, source_issi) {
-                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match err {
                     GroupTransitionError::UnknownCall(_) => {
                         tracing::warn!(
@@ -892,8 +851,6 @@ impl CcBsSubentity {
 
         // New network call - allocate circuit
         let traffic_slot_capacity = self.traffic_slot_capacity();
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let circuit = match {
             let mut state = self.config.state_write();
             self.circuits.allocate_circuit_with_capacity(

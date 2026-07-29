@@ -1,259 +1,94 @@
-// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
-// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
-
-use crate::mle::cell_change_runtime::{
-    MleCellChangeOutbound, MleCellChangeRuntime, MleCellChangeRuntimeSnapshot,
-};
 use crate::mle::components::broadcast::MleBroadcast;
-use crate::mle::ltpd_runtime::{LtpdRuntime, LtpdRuntimeRole, LtpdRuntimeSnapshot};
 use crate::{MessageQueue, TetraEntityTrait};
 use tetra_config::bluestation::SharedConfig;
 use tetra_core::tetra_entities::TetraEntity;
-use tetra_core::{
-    BitBuffer, EndpointId, Layer2Service, LinkId, Sap, TdmaTime, TetraAddress,
-    unimplemented_log,
-};
-use tetra_pdus::mle::enums::mle_pdu_type_ul::MlePduTypeUl;
-use tetra_pdus::mle::enums::mle_protocol_discriminator::MleProtocolDiscriminator;
-use tetra_pdus::mle::pdus::u_channel_request::UChannelRequest;
-use tetra_pdus::mle::pdus::u_prepare::UPrepare;
-use tetra_pdus::mle::pdus::u_restore::URestore;
-use tetra_saps::common::{
-    ChannelChangeHandle, LowerLayerResourceAvailability, MleBroadcastParameters,
-    PermittedTemporaryServices, ReceivedAddressType,
-};
-use tetra_saps::control::mle_cell_change::MleCellChangeControl;
-use tetra_saps::lcmc::{LcmcMleRestoreInd, LcmcMleUnitdataInd};
-use tetra_saps::lmm::{LmmMlePrepareInd, LmmMleUnitdataInd};
+use tetra_core::{BitBuffer, Layer2Service, Sap, TdmaTime, unimplemented_log};
+use tetra_saps::lcmc::LcmcMleUnitdataInd;
+use tetra_saps::lmm::LmmMleUnitdataInd;
 use tetra_saps::ltpd::LtpdMleUnitdataInd;
 use tetra_saps::tla::{TlaTlDataReqBl, TlaTlUnitdataReqBl};
 use tetra_saps::{SapMsg, SapMsgInner};
 
-// Was: Bündelt die zusammengehörigen Werte für MLE-Verbindungssteuerung Basisstation in einem Datentyp.
-// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+use tetra_pdus::mle::enums::mle_pdu_type_dl::MlePduTypeDl;
+use tetra_pdus::mle::enums::mle_protocol_discriminator::MleProtocolDiscriminator;
+
 pub struct MleBs {
     config: SharedConfig,
     broadcast: MleBroadcast,
-    ltpd: LtpdRuntime,
-    cell_change: MleCellChangeRuntime,
-    current_time: TdmaTime,
 }
 
 /// Multiframes at which D-NWRK-BROADCAST is sent within each hyperframe.
 /// Two broadcasts per hyperframe (~30.6s interval) for faster time/date display on terminals.
 /// BlueStation default was 1 per hyperframe (~61.2s) which is slow on cold attach.
 /// We don't use the first multiframe to avoid congestion with other hyperframe-triggered events.
-// Was: Legt den festen Wert `MLE_BROADCAST_MULTIFRAMES` für MLE-Verbindungssteuerung broadcast multiframes fest.
-// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const MLE_BROADCAST_MULTIFRAMES: [u8; 2] = [20, 50];
 /// Frame at which D-NWRK-BROADCAST is sent within the broadcast multiframe.
-// Was: Legt den festen Wert `MLE_BROADCAST_FRAME` für MLE-Verbindungssteuerung broadcast Funkrahmen fest.
-// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const MLE_BROADCAST_FRAME: u8 = 1;
 
-// Was: Implementiert das zugehörige Verhalten für `MleBs`.
-// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl MleBs {
-    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
-    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(config: SharedConfig) -> Self {
         let broadcast = MleBroadcast::new(config.clone());
-        let ltpd = {
-            let cfg = config.config();
-            LtpdRuntime::new(
-                LtpdRuntimeRole::Swmi,
-                cfg.net.mcc,
-                cfg.net.mnc,
-                MleBroadcastParameters {
-                    mcc: Some(cfg.net.mcc),
-                    mnc: Some(cfg.net.mnc),
-                    location_area: Some(cfg.cell.location_area),
-                    colour_code: Some(cfg.cell.colour_code),
-                    main_carrier: Some(cfg.cell.main_carrier),
-                    packet_data_supported: Some(cfg.cell.sndcp_service),
-                    data_priority_supported: Some(true),
-                },
-            )
+        Self { config, broadcast }
+    }
+
+    fn rx_tla_mle_pdu(&mut self, _queue: &mut MessageQueue, message: SapMsg) {
+        tracing::trace!("rx_tla_mle_pdu");
+
+        // Extract tm_sdu from whatever primitive we have
+        let tm_sdu = {
+            match message.msg {
+                SapMsgInner::TlaTlDataIndBl(prim) => prim.tl_sdu,
+                _ => {
+                    tracing::error!("BUG: unexpected message or state -- routing error");
+                    return;
+                }
+            }
         };
-        Self {
-            config,
-            broadcast,
-            ltpd,
-            cell_change: MleCellChangeRuntime::new(),
-            current_time: TdmaTime::default(),
-        }
-    }
+        let Some(sdu) = tm_sdu else {
+            tracing::debug!("rx_tla_mle_pdu: no tm_sdu");
+            return;
+        };
 
-    /// Read-only packet-data SAP state for the TBS WebUI and future Node Gateway.
-    // Was: Führt den Arbeitsschritt `ltpd_snapshot` für TETRA-Paketdatentransport snapshot aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    pub fn ltpd_snapshot(&self) -> LtpdRuntimeSnapshot {
-        self.ltpd.snapshot()
-    }
-
-    /// Read-only cell-change state for the local TBS WebUI and future Node Gateway.
-    // Was: Führt den Arbeitsschritt `cell_change_snapshot` für cell change snapshot aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    pub fn cell_change_snapshot(&self) -> MleCellChangeRuntimeSnapshot {
-        self.cell_change.snapshot(self.current_time)
-    }
-
-    /// Notify SNDCP that lower-layer packet-data resources disappeared.
-    // Was: Führt den Arbeitsschritt `ltpd_notify_break` für TETRA-Paketdatentransport notify break aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    pub fn ltpd_notify_break(&mut self, queue: &mut MessageQueue) {
-        self.ltpd.notify_break(queue);
-    }
-
-    /// Notify SNDCP that lower-layer packet-data resources are available again.
-    // Was: Führt den Arbeitsschritt `ltpd_notify_resume` für TETRA-Paketdatentransport notify resume aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    pub fn ltpd_notify_resume(&mut self, queue: &mut MessageQueue) {
-        self.ltpd.notify_resume(queue);
-    }
-
-    // Was: Führt den Arbeitsschritt `ltpd_set_busy` für TETRA-Paketdatentransport set busy aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    pub fn ltpd_set_busy(&mut self, queue: &mut MessageQueue, busy: bool) {
-        self.ltpd.set_busy(queue, busy);
-    }
-
-    // Was: Führt den Arbeitsschritt `ltpd_set_disabled` für TETRA-Paketdatentransport set disabled aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    pub fn ltpd_set_disabled(
-        &mut self,
-        queue: &mut MessageQueue,
-        disabled: bool,
-        permitted_services: PermittedTemporaryServices,
-    ) {
-        self.ltpd.set_disabled(queue, disabled, permitted_services);
-    }
-
-    // Was: Führt den Arbeitsschritt `rx_tla_mle_pdu` für rx tla MLE-Verbindungssteuerung Protokollnachricht (PDU) aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    fn rx_tla_mle_pdu(
-        &mut self,
-        queue: &mut MessageQueue,
-        subscriber: TetraAddress,
-        endpoint_id: EndpointId,
-        link_id: LinkId,
-        mut sdu: BitBuffer,
-    ) {
-        tracing::trace!(
-            %subscriber,
-            endpoint_id,
-            link_id,
-            "MLE: received infrastructure-side cell-change PDU"
-        );
-
+        // Determine which type of TL-SDU we have and call handler function
         let Some(bits) = sdu.peek_bits(3) else {
-            tracing::warn!("MLE: cell-change PDU is shorter than the PDU type");
-            self.cell_change.record_parse_error();
+            tracing::warn!("insufficient bits: {}", sdu.dump_bin());
             return;
         };
-        let Ok(pdu_type) = MlePduTypeUl::try_from(bits) else {
-            tracing::warn!("MLE: invalid uplink PDU type {} in {}", bits, sdu.dump_bin());
-            self.cell_change.record_parse_error();
+        let Ok(pdu_type) = MlePduTypeDl::try_from(bits) else {
+            tracing::warn!("invalid pdu type: {} in {}", bits, sdu.dump_bin());
             return;
         };
 
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match pdu_type {
-            MlePduTypeUl::UPrepare => match UPrepare::from_bitbuf(&mut sdu) {
-                Ok(pdu) => {
-                    self.cell_change.observe_prepare(
-                        subscriber,
-                        endpoint_id,
-                        link_id,
-                        &pdu,
-                        self.current_time,
-                    );
-                    if let Some(mm_sdu) = pdu.sdu {
-                        queue.push_back(SapMsg {
-                            sap: Sap::LmmSap,
-                            src: TetraEntity::Mle,
-                            dest: TetraEntity::Mm,
-                            msg: SapMsgInner::LmmMlePrepareInd(LmmMlePrepareInd {
-                                sdu: mm_sdu,
-                                subscriber,
-                                endpoint_id,
-                                link_id,
-                                cell_identifier_ca: pdu.cell_identifier_ca,
-                            }),
-                        });
-                    }
-                }
-                Err(error) => {
-                    tracing::warn!(?error, %subscriber, "MLE: failed to parse U-PREPARE");
-                    self.cell_change.record_parse_error();
-                }
-            },
-            MlePduTypeUl::URestore => match URestore::from_bitbuf(&mut sdu) {
-                Ok(pdu) => {
-                    self.cell_change.observe_restore(
-                        subscriber,
-                        endpoint_id,
-                        link_id,
-                        &pdu,
-                        self.current_time,
-                    );
-                    if let Some(cmce_sdu) = pdu.sdu {
-                        queue.push_back(SapMsg {
-                            sap: Sap::LcmcSap,
-                            src: TetraEntity::Mle,
-                            dest: TetraEntity::Cmce,
-                            msg: SapMsgInner::LcmcMleRestoreInd(LcmcMleRestoreInd {
-                                sdu: cmce_sdu,
-                                subscriber,
-                                endpoint_id,
-                                link_id,
-                                previous_mcc: pdu.mcc,
-                                previous_mnc: pdu.mnc,
-                                previous_location_area: pdu.la,
-                            }),
-                        });
-                    } else {
-                        tracing::warn!(%subscriber, "MLE: U-RESTORE contains no CMCE restore SDU");
-                    }
-                }
-                Err(error) => {
-                    tracing::warn!(?error, %subscriber, "MLE: failed to parse U-RESTORE");
-                    self.cell_change.record_parse_error();
-                }
-            },
-            MlePduTypeUl::UChannelRequest => match UChannelRequest::from_bitbuf(&mut sdu) {
-                Ok(pdu) => self.cell_change.observe_channel_request(
-                    subscriber,
-                    endpoint_id,
-                    link_id,
-                    &pdu,
-                    self.current_time,
-                ),
-                Err(error) => {
-                    tracing::warn!(?error, %subscriber, "MLE: failed to parse U-CHANNEL-REQUEST");
-                    self.cell_change.record_parse_error();
-                }
-            },
-            MlePduTypeUl::UPrepareDa => {
-                unimplemented_log!("U-PREPARE-DA remains outside the conventional-access baseline")
+            MlePduTypeDl::DNewCell => {
+                unimplemented_log!("DNewCell")
             }
-            MlePduTypeUl::UIrregularChannelAdvice => {
-                unimplemented_log!("U-IRREGULAR-CHANNEL-ADVICE")
+            MlePduTypeDl::DPrepareFail => {
+                unimplemented_log!("DPrepareFail")
             }
-            MlePduTypeUl::UChannelClassAdvice => {
-                unimplemented_log!("U-CHANNEL-CLASS-ADVICE")
+            MlePduTypeDl::DNwrkBroadcast => {
+                unimplemented_log!("DNwrkBroadcast")
             }
-            MlePduTypeUl::ExtPdu => unimplemented_log!("MLE uplink extension PDU"),
+            MlePduTypeDl::DNwrkBroadcastExt => {
+                unimplemented_log!("DNwrkBroadcastExt")
+            } // TODO FIXME CHECK this option and assocaited int
+            MlePduTypeDl::DRestoreAck => {
+                unimplemented_log!("DRestoreAck")
+            }
+            MlePduTypeDl::DRestoreFail => {
+                unimplemented_log!("DRestoreFail")
+            }
+            MlePduTypeDl::DChannelResponse => {
+                unimplemented_log!("DChannelResponse")
+            }
+            MlePduTypeDl::ExtPdu => {
+                unimplemented_log!("ExtPdu")
+            }
         }
     }
 
-    // Was: Führt den Arbeitsschritt `rx_tla_prim` für rx tla prim aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_tla_prim(&mut self, queue: &mut MessageQueue, message: SapMsg) {
         tracing::trace!("rx_tla_prim");
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match message.msg {
             SapMsgInner::TlaTlDataIndBl(_) => {
                 self.rx_tla_data_ind_bl(queue, message);
@@ -271,8 +106,6 @@ impl MleBs {
     /// Route unacknowledged basic-link traffic. SNDCP SN-UNITDATA uses this path;
     /// dropping TL-UNITDATA here leaves PDP activation working while every browser request
     /// disappears between LLC and SNDCP.
-    // Was: Führt den Arbeitsschritt `rx_tla_unitdata_ind_bl` für rx tla unitdata ind bl aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_tla_unitdata_ind_bl(&mut self, queue: &mut MessageQueue, mut message: SapMsg) {
         let SapMsgInner::TlaTlUnitdataIndBl(prim) = &mut message.msg else {
             tracing::error!("BUG: unexpected message or state -- routing error");
@@ -298,28 +131,15 @@ impl MleBs {
             return;
         };
 
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match pdu_type {
             MleProtocolDiscriminator::Sndcp => {
-                self.ltpd.observe_inbound(
-                    prim.main_address,
-                    prim.endpoint_id,
-                    prim.link_id,
-                    prim.air_interface_encryption != 0,
-                    self.current_time,
-                );
                 let indication = LtpdMleUnitdataInd {
                     sdu,
                     endpoint_id: prim.endpoint_id,
                     link_id: prim.link_id,
                     received_tetra_address: prim.main_address,
-                    received_address_type: ReceivedAddressType::from_tetra_address(prim.main_address),
                     chan_change_resp_req: prim.chan_change_resp_req,
-                    chan_change_handle: prim
-                        .chan_change_handle
-                        .and_then(|value| u32::try_from(value).ok())
-                        .map(ChannelChangeHandle),
+                    chan_change_handle: prim.chan_change_handle,
                 };
                 queue.push_back(SapMsg {
                     sap: Sap::TlpdSap,
@@ -334,8 +154,6 @@ impl MleBs {
         }
     }
 
-    // Was: Führt den Arbeitsschritt `rx_tla_data_ind_bl` für rx tla data ind bl aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_tla_data_ind_bl(&mut self, queue: &mut MessageQueue, mut message: SapMsg) {
         // Take ownership of bitbuf and read protocol discriminator
         let SapMsgInner::TlaTlDataIndBl(prim) = &mut message.msg else {
@@ -363,8 +181,6 @@ impl MleBs {
         };
 
         // Dispatch to appropriate component (or to self if for MLE)
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match pdu_type {
             MleProtocolDiscriminator::Mm => {
                 let m = LmmMleUnitdataInd {
@@ -399,19 +215,11 @@ impl MleBs {
                 queue.push_back(msg);
             }
             MleProtocolDiscriminator::Sndcp => {
-                self.ltpd.observe_inbound(
-                    prim.main_address,
-                    prim.endpoint_id,
-                    prim.link_id,
-                    prim.air_interface_encryption != 0,
-                    self.current_time,
-                );
                 let m = LtpdMleUnitdataInd {
                     sdu,
                     endpoint_id: prim.endpoint_id,
                     link_id: prim.link_id,
                     received_tetra_address: prim.main_address,
-                    received_address_type: ReceivedAddressType::from_tetra_address(prim.main_address),
                     chan_change_resp_req: false, // TODO FIXME
                     chan_change_handle: None,    // TODO FIXME
                 };
@@ -426,13 +234,7 @@ impl MleBs {
                 queue.push_back(msg);
             }
             MleProtocolDiscriminator::Mle => {
-                self.rx_tla_mle_pdu(
-                    queue,
-                    prim.main_address,
-                    prim.endpoint_id,
-                    prim.link_id,
-                    sdu,
-                );
+                self.rx_tla_mle_pdu(queue, message);
             }
             MleProtocolDiscriminator::TetraManagementEntity => {
                 unimplemented_log!("MleProtocolDiscriminator::TetraManagementEntity");
@@ -440,113 +242,13 @@ impl MleBs {
         }
     }
 
-    // Was: Führt den Arbeitsschritt `queue_cell_change_outbound` für Warteschlange cell change outbound aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    fn queue_cell_change_outbound(
-        &mut self,
-        queue: &mut MessageQueue,
-        mut outbound: MleCellChangeOutbound,
-    ) {
-        outbound.pdu.seek(0);
-        let pdu_len = outbound.pdu.get_len();
-        let mut tl_sdu = BitBuffer::new(3 + pdu_len);
-        tl_sdu.write_bits(MleProtocolDiscriminator::Mle.into_raw(), 3);
-        tl_sdu.copy_bits(&mut outbound.pdu, pdu_len);
-        tl_sdu.seek(0);
-
-        queue.push_back(SapMsg {
-            sap: Sap::TlaSap,
-            src: TetraEntity::Mle,
-            dest: TetraEntity::Llc,
-            msg: SapMsgInner::TlaTlDataReqBl(TlaTlDataReqBl {
-                main_address: outbound.subscriber,
-                link_id: outbound.link_id,
-                endpoint_id: outbound.endpoint_id,
-                tl_sdu,
-                stealing_permission: false,
-                subscriber_class: 0,
-                fcs_flag: false,
-                air_interface_encryption: None,
-                stealing_repeats_flag: None,
-                data_class_info: None,
-                req_handle: 0,
-                graceful_degradation: None,
-                chan_alloc: outbound.chan_alloc,
-                tx_reporter: None,
-            }),
-        });
-    }
-
-    // Was: Führt den Arbeitsschritt `rx_cell_change_control` für rx cell change Steuerung aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    fn rx_cell_change_control(&mut self, queue: &mut MessageQueue, control: MleCellChangeControl) {
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
-        match self.cell_change.handle_control(control, self.current_time) {
-            Ok(outbound) => self.queue_cell_change_outbound(queue, outbound),
-            Err(error) => tracing::warn!(?error, "MLE: rejected cell-change control command"),
-        }
-    }
-
-    // Was: Führt den Arbeitsschritt `rx_tlmc_prim` für rx tlmc prim aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    fn rx_tlmc_prim(&mut self, queue: &mut MessageQueue, message: SapMsg) {
+    fn rx_tlmc_prim(&mut self, _queue: &mut MessageQueue, _message: SapMsg) {
         tracing::trace!("rx_tlmc_prim");
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
-        match message.msg {
-            SapMsgInner::TlmcConfigureInd(indication) => {
-                tracing::info!(
-                    "TLMC: endpoint {} resource {:?} ({:?})",
-                    indication.endpoint_id,
-                    indication.lower_layer_resource_availability,
-                    indication.reason
-                );
-                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
-                match indication.lower_layer_resource_availability {
-                    LowerLayerResourceAvailability::Available => self.ltpd.notify_resume(queue),
-                    LowerLayerResourceAvailability::Unavailable => self.ltpd.notify_break(queue),
-                }
-            }
-            SapMsgInner::TlmcConfigureConf(confirm) => {
-                tracing::debug!("TLMC: lower-layer configuration confirmed: {:?}", confirm);
-            }
-            SapMsgInner::TlmcMeasurementInd(indication) => {
-                tracing::trace!("TLMC: serving-channel measurement: {:?}", indication.measurement);
-            }
-            SapMsgInner::TlmcMonitorInd(indication) => {
-                tracing::trace!("TLMC: monitor indication: {:?}", indication);
-            }
-            SapMsgInner::TlmcAssessmentInd(indication) => {
-                tracing::trace!("TLMC: assessment indication: {:?}", indication);
-            }
-            SapMsgInner::TlmcScanConf(confirm) => {
-                tracing::debug!("TLMC: scan completed: {:?}", confirm);
-            }
-            SapMsgInner::TlmcScanReportInd(indication) => {
-                tracing::trace!("TLMC: scan report: {:?}", indication);
-            }
-            SapMsgInner::TlmcCellReadConf(confirm) => {
-                tracing::debug!("TLMC: cell read completed: {:?}", confirm);
-            }
-            SapMsgInner::TlmcSelectInd(indication) => {
-                tracing::debug!("TLMC: lower-layer channel-change indication: {:?}", indication);
-            }
-            SapMsgInner::TlmcSelectConf(confirm) => {
-                tracing::debug!("TLMC: selection completed: {:?}", confirm);
-            }
-            SapMsgInner::TlmcReportInd(report) => {
-                tracing::warn!("TLMC: lower-layer report: {:?}", report);
-            }
-            other => {
-                tracing::warn!("TLMC: MLE-BS received unexpected request primitive: {:?}", other);
-            }
-        }
+        // TLMC SAP not implemented yet. Log instead of panicking so an unexpected
+        // primitive doesn't kill the whole MLE worker.
+        unimplemented_log!("rx_tlmc_prim called but TLMC SAP is not implemented");
     }
 
-    // Was: Führt den Arbeitsschritt `rx_lmm_mle_unitdata_req` für rx lmm MLE-Verbindungssteuerung unitdata req aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_lmm_mle_unitdata_req(&mut self, queue: &mut MessageQueue, mut message: SapMsg) {
         tracing::trace!("rx_lmm_mle_unitdata_req");
         let SapMsgInner::LmmMleUnitdataReq(prim) = &mut message.msg else {
@@ -592,12 +294,8 @@ impl MleBs {
         queue.push_back(sapmsg);
     }
 
-    // Was: Führt den Arbeitsschritt `rx_lmm_prim` für rx lmm prim aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_lmm_prim(&mut self, queue: &mut MessageQueue, message: SapMsg) {
         tracing::trace!("rx_lmm_prim");
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match &message.msg {
             SapMsgInner::LmmMleUnitdataReq(_prim) => {
                 self.rx_lmm_mle_unitdata_req(queue, message);
@@ -608,15 +306,16 @@ impl MleBs {
         }
     }
 
-    // Was: Führt den Arbeitsschritt `rx_tlpd_prim` für rx tlpd prim aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    fn rx_tlpd_prim(&mut self, queue: &mut MessageQueue, message: SapMsg) {
+    fn rx_tlpd_prim(&mut self, _queue: &mut MessageQueue, _message: SapMsg) {
         tracing::trace!("rx_tlpd_prim");
-        self.ltpd.handle_primitive(queue, message, self.current_time);
+        unimplemented_log!("rx_tlpd_prim called but TLPD SAP is not implemented");
+        // match &message.msg {
+        //     _ => {
+        //         panic!();
+        //     }
+        // }
     }
 
-    // Was: Führt den Arbeitsschritt `rx_lcmc_mle_unitdata_req` für rx lcmc MLE-Verbindungssteuerung unitdata req aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_lcmc_mle_unitdata_req(&mut self, queue: &mut MessageQueue, mut message: SapMsg) {
         tracing::trace!("rx_lcmc_mle_unitdata_req");
         let SapMsgInner::LcmcMleUnitdataReq(prim) = &mut message.msg else {
@@ -692,12 +391,8 @@ impl MleBs {
         queue.push_back(sapmsg);
     }
 
-    // Was: Führt den Arbeitsschritt `rx_lcmc_prim` für rx lcmc prim aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_lcmc_prim(&mut self, queue: &mut MessageQueue, message: SapMsg) {
         tracing::trace!("rx_lcmc_prim");
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match &message.msg {
             SapMsgInner::LcmcMleUnitdataReq(_) => {
                 self.rx_lcmc_mle_unitdata_req(queue, message);
@@ -709,26 +404,12 @@ impl MleBs {
     }
 }
 
-// Was: Implementiert das zugehörige Verhalten für `TetraEntityTrait for MleBs`.
-// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl TetraEntityTrait for MleBs {
-    // Was: Führt den Arbeitsschritt `entity` für entity aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn entity(&self) -> TetraEntity {
         TetraEntity::Mle
     }
 
-    // Was: Diese Funktion bearbeitet start.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn tick_start(&mut self, queue: &mut MessageQueue, ts: TdmaTime) {
-        self.current_time = ts;
-        self.ltpd.tick(queue, ts);
-        let timed_out = self.cell_change.tick(ts);
-        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
-        for outbound in timed_out {
-            self.queue_cell_change_outbound(queue, outbound);
-        }
         // Broadcast D-NWRK-BROADCAST twice per hyperframe (~30.6s interval) if timezone is configured.
         // Two evenly-spaced slots [20, 50] avoid congestion with other hyperframe-triggered events
         // and give terminals a faster time/date update after cold attach.
@@ -738,14 +419,10 @@ impl TetraEntityTrait for MleBs {
         }
     }
 
-    // Was: Führt den Arbeitsschritt `rx_prim` für rx prim aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_prim(&mut self, queue: &mut MessageQueue, message: SapMsg) {
         tracing::debug!("rx_prim: {:?}", message);
         // tracing::debug!(ts=%message.dltime, "rx_prim: {:?}", message);
 
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match message.sap {
             Sap::TlaSap => {
                 self.rx_tla_prim(queue, message);
@@ -765,14 +442,6 @@ impl TetraEntityTrait for MleBs {
             Sap::LcmcSap => {
                 self.rx_lcmc_prim(queue, message);
             }
-            Sap::Control => match message.msg {
-                SapMsgInner::MleCellChangeControl(control) => {
-                    self.rx_cell_change_control(queue, control);
-                }
-                other => {
-                    tracing::warn!(?other, "MLE: unsupported control primitive");
-                }
-            },
             _ => {
                 tracing::error!("BUG: unexpected message or state -- routing error");
                 return;

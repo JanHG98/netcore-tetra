@@ -1,23 +1,16 @@
-// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
-// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
-
 use crate::net_control::{ControlCommand, ControlEndpoint, ControlResponse};
 use crate::net_telemetry::TelemetrySink;
 use crate::{MessageQueue, TetraEntityTrait};
 use tetra_config::bluestation::SharedConfig;
 use tetra_core::tetra_entities::TetraEntity;
 use tetra_core::{Sap, TdmaTime, unimplemented_log};
-use tetra_saps::control::mle_cell_change::MleCellChangeControl;
 use tetra_saps::{SapMsg, SapMsgInner};
 
 use super::components::pc_bs::{ControlRoute, LcmcRoute, PcBs};
-use super::call_restore_runtime::{CallRestoreContext, CallRestoreRuntimeSnapshot};
 use super::subentities::cc_bs::CcBsSubentity;
 use super::subentities::sds_bs::{SdsBsSubentity, SdsPendingAction};
 use super::subentities::ss_bs::SsBsSubentity;
 
-// Was: Bündelt die zusammengehörigen Werte für CMCE-Rufsteuerung Basisstation in einem Datentyp.
-// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CmceBs {
     config: SharedConfig,
     telemetry: Option<TelemetrySink>,
@@ -30,11 +23,7 @@ pub struct CmceBs {
     ss: SsBsSubentity,
 }
 
-// Was: Implementiert das zugehörige Verhalten für `CmceBs`.
-// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl CmceBs {
-    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
-    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(config: SharedConfig, telemetry: Option<TelemetrySink>, control: Option<ControlEndpoint>) -> Self {
         let mut sds = SdsBsSubentity::new(config.clone());
         if let Some(ref sink) = telemetry {
@@ -58,14 +47,10 @@ impl CmceBs {
         }
     }
 
-    // Was: Diese Funktion setzt dashboard Steuerung.
-    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_dashboard_control(&mut self, endpoint: ControlEndpoint) {
         self.dashboard_control = Some(endpoint);
     }
 
-    // Was: Diese Funktion setzt wx cmd sender.
-    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_wx_cmd_sender(&mut self, tx: crossbeam_channel::Sender<ControlCommand>) {
         self.sds.set_wx_cmd_sender(tx);
     }
@@ -74,8 +59,6 @@ impl CmceBs {
     /// `responder` is supplied so request/response commands can reply) and the dashboard
     /// control link (where `responder` is `None`). Unknown commands are logged, never panic —
     /// a control-plane peer must not be able to crash the base station.
-    // Was: Führt den Arbeitsschritt `do_control_command` für do Steuerung command aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn do_control_command(
         sds: &mut SdsBsSubentity,
         cc: &mut CcBsSubentity,
@@ -83,8 +66,6 @@ impl CmceBs {
         cmd: ControlCommand,
         responder: Option<&ControlEndpoint>,
     ) {
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match cmd {
             ControlCommand::SendSds { handle, .. } => {
                 let success = sds.rx_sds_from_control(queue, cmd);
@@ -98,57 +79,12 @@ impl CmceBs {
                     cep.respond(ControlResponse::SendSdsResponse { handle, success });
                 }
             }
-            ControlCommand::DeliverSds { handle, .. } => {
-                let success = sds.rx_sds_from_control(queue, cmd);
-                if let Some(cep) = responder {
-                    cep.respond(ControlResponse::SdsDeliveryResponse {
-                        handle,
-                        success,
-                        message: if success {
-                            "SDS accepted by local edge".to_string()
-                        } else {
-                            "SDS rejected by local edge".to_string()
-                        },
-                    });
-                }
-            }
-            ControlCommand::SendStatus { handle, source_ssi, dest_ssi, pre_coded_status } => {
-                let success = sds.send_status_from_control(
-                    queue,
-                    source_ssi,
-                    dest_ssi,
-                    pre_coded_status,
-                );
-                if let Some(cep) = responder {
-                    cep.respond(ControlResponse::SdsDeliveryResponse {
-                        handle,
-                        success,
-                        message: if success {
-                            "status accepted by local edge".to_string()
-                        } else {
-                            "status rejected by local edge".to_string()
-                        },
-                    });
-                }
-            }
             ControlCommand::KickMs { issi } => {
                 tracing::info!("CMCE: KickMs issi={} requested", issi);
                 let success = cc.kick_ms(queue, issi);
                 if let Some(cep) = responder {
                     cep.respond(ControlResponse::KickMsResponse { issi, success });
                 }
-            }
-            ControlCommand::MobilityExportContext { .. }
-            | ControlCommand::MobilityImportContext { .. }
-            | ControlCommand::MobilityRemoveContext { .. }
-            | ControlCommand::SubscriberAccessPolicyApply { .. }
-            | ControlCommand::GroupAccessPolicyApply { .. }
-            | ControlCommand::GroupDgnaApply { .. }
-            | ControlCommand::PacketDataContextDeactivate { .. }
-            | ControlCommand::PacketDataContextModify { .. }
-            | ControlCommand::PacketDataWake { .. }
-            | ControlCommand::PacketDataEndOfData { .. } => {
-                tracing::warn!("CMCE: MM command reached CMCE instead of MM; ignoring");
             }
             ControlCommand::Dgna { issi, gssi, attach } => {
                 // The dashboard control channel terminates at CMCE, but DGNA is a Mobility
@@ -166,162 +102,6 @@ impl CmceBs {
                     dest: TetraEntity::Mm,
                     msg: SapMsgInner::MmDgnaRequest { issi, gssi, attach },
                 });
-            }
-            ControlCommand::CallControlGroupStart {
-                handle,
-                operation_id,
-                source_issi,
-                gssi,
-                priority,
-            } => {
-                let result = cc.control_start_group_call(
-                    queue,
-                    &operation_id,
-                    source_issi,
-                    gssi,
-                    priority,
-                );
-                if let Some(cep) = responder {
-                    cep.respond(ControlResponse::CallControlLegStarted {
-                        handle,
-                        operation_id,
-                        kind: result.kind,
-                        success: result.success,
-                        call_id: result.call_id,
-                        timeslot: result.timeslot,
-                        usage: result.usage,
-                        floor_holder: result.floor_holder,
-                        message: result.message,
-                    });
-                }
-            }
-            ControlCommand::CallControlIndividualStart {
-                handle,
-                operation_id,
-                calling_issi,
-                called_issi,
-                simplex,
-                priority,
-            } => {
-                let result = cc.control_start_individual_call(
-                    queue,
-                    &operation_id,
-                    calling_issi,
-                    called_issi,
-                    simplex,
-                    priority,
-                );
-                if let Some(cep) = responder {
-                    cep.respond(ControlResponse::CallControlLegStarted {
-                        handle,
-                        operation_id,
-                        kind: result.kind,
-                        success: result.success,
-                        call_id: result.call_id,
-                        timeslot: result.timeslot,
-                        usage: result.usage,
-                        floor_holder: result.floor_holder,
-                        message: result.message,
-                    });
-                }
-            }
-            ControlCommand::CallControlRelease { handle, call_id, cause } => {
-                let result = cc.control_release_call(queue, call_id, cause);
-                if let Some(cep) = responder {
-                    cep.respond(ControlResponse::CallControlLegReleased {
-                        handle,
-                        call_id,
-                        success: result.success,
-                        message: result.message,
-                    });
-                }
-            }
-            ControlCommand::CallControlFloorRequest {
-                handle,
-                call_id,
-                source_issi,
-                force,
-            } => {
-                let result = cc.control_request_floor(
-                    queue,
-                    call_id,
-                    source_issi,
-                    force,
-                );
-                if let Some(cep) = responder {
-                    cep.respond(ControlResponse::CallControlFloorChanged {
-                        handle,
-                        call_id,
-                        success: result.success,
-                        floor_holder: result.floor_holder,
-                        queued_issi: result.queued_issi,
-                        message: result.message,
-                    });
-                }
-            }
-            ControlCommand::CallControlFloorRelease { handle, call_id } => {
-                let result = cc.control_release_floor(queue, call_id);
-                if let Some(cep) = responder {
-                    cep.respond(ControlResponse::CallControlFloorChanged {
-                        handle,
-                        call_id,
-                        success: result.success,
-                        floor_holder: result.floor_holder,
-                        queued_issi: result.queued_issi,
-                        message: result.message,
-                    });
-                }
-            }
-            ControlCommand::CallControlExportRestoreContext { handle, call_id } => {
-                let context = cc.control_export_restore_context(call_id);
-                let found = context.is_some();
-                if let Some(cep) = responder {
-                    cep.respond(ControlResponse::CallControlRestoreContextExported {
-                        handle,
-                        call_id,
-                        found,
-                        context,
-                        message: if found {
-                            "restore context exported".to_string()
-                        } else {
-                            "call or restore context not found".to_string()
-                        },
-                    });
-                }
-            }
-            ControlCommand::CallControlImportRestoreContext { handle, context } => {
-                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
-                let call_id = match &context {
-                    crate::net_control::ManagedCallRestoreContextPayload::Group { call_id, .. }
-                    | crate::net_control::ManagedCallRestoreContextPayload::Individual { call_id, .. } => *call_id,
-                };
-                let result = cc.control_import_restore_context(context);
-                if let Some(cep) = responder {
-                    cep.respond(ControlResponse::CallControlRestoreContextImported {
-                        handle,
-                        call_id,
-                        success: result.is_ok(),
-                        message: result
-                            .map(|_| "restore context installed".to_string())
-                            .unwrap_or_else(|error| error),
-                    });
-                }
-            }
-            ControlCommand::CallControlRemoveRestoreContext { handle, call_id } => {
-                let removed = cc.control_remove_restore_context(call_id);
-                if let Some(cep) = responder {
-                    cep.respond(ControlResponse::CallControlRestoreContextRemoved {
-                        handle,
-                        call_id,
-                        success: removed,
-                        message: if removed {
-                            "restore context removed".to_string()
-                        } else {
-                            "restore context not found".to_string()
-                        },
-                    });
-                }
             }
             ControlCommand::RestartService => {
                 tracing::info!("CMCE: RestartService requested");
@@ -395,8 +175,6 @@ impl CmceBs {
         }
     }
 
-    // Was: Führt den Arbeitsschritt `rx_lcmc_mle_unitdata_ind` für rx lcmc MLE-Verbindungssteuerung unitdata ind aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn rx_lcmc_mle_unitdata_ind(&mut self, _queue: &mut MessageQueue, mut message: SapMsg) {
         tracing::trace!("rx_lcmc_mle_unitdata_ind");
 
@@ -404,8 +182,6 @@ impl CmceBs {
             return;
         };
 
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match route {
             LcmcRoute::CcRd => {
                 self.cc.route_rd_deliver(_queue, message);
@@ -424,98 +200,17 @@ impl CmceBs {
             }
         };
     }
-
-    /// Handle an MLE U-RESTORE indication and return the embedded CMCE response
-    /// through D-RESTORE-ACK, or a standards-defined D-RESTORE-FAIL when no call
-    /// context can be restored on this cell.
-    // Was: Führt den Arbeitsschritt `rx_lcmc_mle_restore_ind` für rx lcmc MLE-Verbindungssteuerung Wiederherstellung ind aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    pub fn rx_lcmc_mle_restore_ind(&mut self, queue: &mut MessageQueue, message: SapMsg) {
-        let SapMsgInner::LcmcMleRestoreInd(indication) = message.msg else {
-            tracing::error!("CMCE: invalid primitive routed to restore indication handler");
-            return;
-        };
-
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
-        match self.cc.handle_mle_call_restore(
-            queue,
-            indication.subscriber,
-            indication.endpoint_id,
-            indication.link_id,
-            indication.previous_mcc,
-            indication.previous_mnc,
-            indication.previous_location_area,
-            indication.sdu,
-        ) {
-            super::subentities::cc_bs::MleCallRestoreDecision::Acknowledge {
-                cmce_sdu,
-                chan_alloc,
-            } => {
-                queue.push_back(SapMsg {
-                    sap: Sap::Control,
-                    src: TetraEntity::Cmce,
-                    dest: TetraEntity::Mle,
-                    msg: SapMsgInner::MleCellChangeControl(MleCellChangeControl::AcknowledgeRestore {
-                        subscriber: indication.subscriber,
-                        cmce_sdu,
-                        chan_alloc,
-                    }),
-                });
-            }
-            super::subentities::cc_bs::MleCallRestoreDecision::Reject(cause) => {
-                queue.push_back(SapMsg {
-                    sap: Sap::Control,
-                    src: TetraEntity::Cmce,
-                    dest: TetraEntity::Mle,
-                    msg: SapMsgInner::MleCellChangeControl(MleCellChangeControl::RejectRestore {
-                        subscriber: indication.subscriber,
-                        cause,
-                    }),
-                });
-            }
-        }
-    }
-
-    /// Read-only restore diagnostics for the TBS WebUI and Node Gateway.
-    // Was: Führt den Arbeitsschritt `call_restore_snapshot` für Ruf Wiederherstellung snapshot aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    pub fn call_restore_snapshot(&self) -> CallRestoreRuntimeSnapshot {
-        self.cc.call_restore_snapshot()
-    }
-
-    /// Install a call context received from the source TBS or future call core.
-    // Was: Führt den Arbeitsschritt `install_call_restore_context` für install Ruf Wiederherstellung Kontext aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    pub fn install_call_restore_context(&mut self, context: CallRestoreContext) {
-        self.cc.install_call_restore_context(context);
-    }
-
-    /// Export an active local call as a transferable restore context.
-    // Was: Führt den Arbeitsschritt `export_call_restore_context` für export Ruf Wiederherstellung Kontext aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    pub fn export_call_restore_context(&self, call_id: u16) -> Option<CallRestoreContext> {
-        self.cc.export_call_restore_context(call_id)
-    }
 }
 
-// Was: Implementiert das zugehörige Verhalten für `TetraEntityTrait for CmceBs`.
-// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl TetraEntityTrait for CmceBs {
-    // Was: Führt den Arbeitsschritt `entity` für entity aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn entity(&self) -> TetraEntity {
         TetraEntity::Cmce
     }
 
-    // Was: Diese Funktion setzt Konfiguration.
-    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     fn set_config(&mut self, config: SharedConfig) {
         self.config = config;
     }
 
-    // Was: Diese Funktion bearbeitet start.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn tick_start(&mut self, queue: &mut MessageQueue, ts: TdmaTime) {
         // Propagate tick to subentities
         self.cc.tick_start(queue, ts);
@@ -527,16 +222,12 @@ impl TetraEntityTrait for CmceBs {
 
         // Process incoming control commands, if the main control link is enabled (request/response).
         if let Some(cep) = &self.control {
-            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             while let Some(cmd) = cep.try_recv() {
                 CmceBs::do_control_command(&mut self.sds, &mut self.cc, queue, cmd, Some(cep));
             }
         }
         // Process commands from the dashboard control link (fire-and-forget, no responder).
         if let Some(cep) = &self.dashboard_control {
-            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             while let Some(cmd) = cep.try_recv() {
                 CmceBs::do_control_command(&mut self.sds, &mut self.cc, queue, cmd, None);
             }
@@ -544,17 +235,11 @@ impl TetraEntityTrait for CmceBs {
 
         // Drain SDS-triggered actions that require access to CcBsSubentity.
         let pending = std::mem::take(&mut self.sds.pending_actions);
-        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for action in pending {
-            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match action {
                 SdsPendingAction::KickAll => {
                     let issis: Vec<u32> = self.cc.subscriber_issis();
                     tracing::info!("SDS-CMD: kick_all — deregistering {} subscribers", issis.len());
-                    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-                    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                     for issi in issis {
                         self.cc.kick_ms(queue, issi);
                     }
@@ -563,21 +248,14 @@ impl TetraEntityTrait for CmceBs {
         }
     }
 
-    // Was: Führt den Arbeitsschritt `rx_prim` für rx prim aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_prim(&mut self, queue: &mut MessageQueue, message: SapMsg) {
         tracing::debug!("rx_prim: {:?}", message);
         // tracing::debug!(ts=%message.dltime, "rx_prim: {:?}", message);
 
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match message.sap {
             Sap::LcmcSap => match message.msg {
                 SapMsgInner::LcmcMleUnitdataInd(_) => {
                     self.rx_lcmc_mle_unitdata_ind(queue, message);
-                }
-                SapMsgInner::LcmcMleRestoreInd(_) => {
-                    self.rx_lcmc_mle_restore_ind(queue, message);
                 }
                 _ => {
                     panic!("Unexpected message on LcmcSap: {:?}", message.msg);

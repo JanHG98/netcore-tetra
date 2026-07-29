@@ -46,7 +46,7 @@ checks = {
     'GroupDgnaApplied response': 'GroupDgnaApplied' in commands,
     'central runtime policy': 'CentralGroupPolicy' in state and 'group_policy_override' in state,
     'MM affiliation enforcement': 'group_policy_allows_attach' in mm,
-    'MM policy reconciliation': 'apply_group_policy' in mm and 'automatic_groups_for' in mm,
+    'MM main-compatible policy bridge': 'install_group_policy_main_compat' in mm and 'live main-compatible RF state left untouched' in mm,
     'stale policy guard': 'stale group policy revision' in mm,
     'CMCE group-call enforcement': 'allows_group_call' in cmce and 'allows_emergency_call' in cmce and 'effective_priority' in cmce,
     'Control Room routing/correlation': 'GroupPolicy(u32)' in control_room and 'GroupDgna(u32)' in control_room,

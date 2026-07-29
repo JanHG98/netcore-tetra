@@ -1,6 +1,3 @@
-// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
-// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
-
 use tetra_config::bluestation::SharedConfig;
 use tetra_config::bluestation::sec_cell::CfgBsServiceDetails;
 use tetra_core::{BitBuffer, Sap, SsiType, TetraAddress, tetra_entities::TetraEntity};
@@ -13,27 +10,19 @@ use tetra_saps::{SapMsg, SapMsgInner, tla::TlaTlUnitdataReqBl};
 use crate::{MessageQueue, mle::components::network_time};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-// Was: Listet die möglichen Varianten für broadcast type auf.
-// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum BroadcastType {
     /// Initial value and value when no broadcast types are enabled
     None,
     NetworkTime,
 }
 
-// Was: Bündelt die zusammengehörigen Werte für MLE-Verbindungssteuerung broadcast in einem Datentyp.
-// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MleBroadcast {
     config: SharedConfig,
     last_broadcast_type: BroadcastType,
     time_broadcast: Option<String>,
 }
 
-// Was: Implementiert das zugehörige Verhalten für `MleBroadcast`.
-// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl MleBroadcast {
-    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
-    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(config: SharedConfig) -> Self {
         let time_broadcast = config.config().cell.timezone.clone();
         Self {
@@ -44,14 +33,10 @@ impl MleBroadcast {
     }
 
     /// Send the next broadcast message based on the configured broadcast types and internal state.
-    // Was: Diese Funktion sendet broadcast.
-    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     pub fn send_broadcast(&mut self, queue: &mut MessageQueue) {
         let broadcast_type = self.determine_next_broadcast_type();
         self.last_broadcast_type = broadcast_type;
 
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match broadcast_type {
             BroadcastType::NetworkTime => {
                 self.send_d_nwrk_broadcast(queue);
@@ -63,11 +48,7 @@ impl MleBroadcast {
     }
 
     /// Determines the next type for the next broadcast message
-    // Was: Führt den Arbeitsschritt `determine_next_broadcast_type` für determine next broadcast type aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn determine_next_broadcast_type(&self) -> BroadcastType {
-        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.last_broadcast_type {
             BroadcastType::None => {
                 // Send broadcast if either time OR neighbor cells are configured.
@@ -82,8 +63,6 @@ impl MleBroadcast {
         }
     }
 
-    // Was: Diese Funktion sendet d nwrk broadcast.
-    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_d_nwrk_broadcast(&self, queue: &mut MessageQueue) {
         // Encode time if a timezone is configured. If encoding fails (e.g. DST
         // ambiguity or invalid timezone), continue without time — the broadcast
@@ -160,8 +139,6 @@ impl MleBroadcast {
 
     /// Common transmission path — serializes the PDU, prepends the MLE
     /// protocol discriminator, and pushes a TLA-UNITDATA req onto the queue.
-    // Was: Diese Funktion überträgt Protokollnachricht (PDU).
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn transmit_pdu(&self, queue: &mut MessageQueue, pdu: DNwrkBroadcast, label: &str) {
         // Use autoexpand buffer — with up to 7 fully-populated neighbour cells the PDU
         // can exceed 900 bits, so a fixed-size buffer would silently corrupt the output.
@@ -208,8 +185,6 @@ impl MleBroadcast {
     }
 }
 
-// Was: Führt den Arbeitsschritt `cfg_to_bs_service_details` für cfg to Basisstation Dienst details aus.
-// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn cfg_to_bs_service_details(c: &CfgBsServiceDetails) -> BsServiceDetails {
     BsServiceDetails {
         registration: c.registration,

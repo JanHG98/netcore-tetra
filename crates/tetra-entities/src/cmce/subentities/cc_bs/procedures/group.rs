@@ -1,11 +1,6 @@
-// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
-// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
-
 use super::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-// Was: Listet die möglichen Varianten für Gruppe Ereignis auf.
-// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub(in crate::cmce::subentities::cc_bs) enum GroupEvent {
     TxDemand,
     TxCeased,
@@ -14,8 +9,6 @@ pub(in crate::cmce::subentities::cc_bs) enum GroupEvent {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-// Was: Listet die möglichen Varianten für Gruppe transition error auf.
-// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub(in crate::cmce::subentities::cc_bs) enum GroupTransitionError {
     UnknownCall(u16),
     InvalidTransition {
@@ -32,11 +25,7 @@ pub(in crate::cmce::subentities::cc_bs) enum GroupTransitionError {
     MissingCachedSetup(u16),
 }
 
-// Was: Implementiert das zugehörige Verhalten für `CcBsSubentity`.
-// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl CcBsSubentity {
-    // Was: Diese Funktion prüft Gruppe transition.
-    // Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
     fn validate_group_transition(
         call_id: u16,
         state: GroupCallState,
@@ -74,8 +63,6 @@ impl CcBsSubentity {
         }
     }
 
-    // Was: Führt den Arbeitsschritt `fsm_send_d_tx_granted_individual` für fsm send d tx granted individual aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fsm_send_d_tx_granted_individual(
         &self,
         queue: &mut MessageQueue,
@@ -115,8 +102,6 @@ impl CcBsSubentity {
         queue.push_back(msg);
     }
 
-    // Was: Führt den Arbeitsschritt `fsm_group_on_tx_demand` für fsm Gruppe on tx demand aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce::subentities::cc_bs) fn fsm_group_on_tx_demand(
         &mut self,
         queue: &mut MessageQueue,
@@ -156,8 +141,6 @@ impl CcBsSubentity {
         let dest_addr = cached.dest_addr;
 
         if let Some(queue_result) = queue_result {
-            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match queue_result {
                 TxDemandQueueResult::FromCurrentSpeaker => {
                     tracing::trace!(
@@ -218,8 +201,6 @@ impl CcBsSubentity {
         Ok(())
     }
 
-    // Was: Führt den Arbeitsschritt `fsm_group_on_tx_ceased` für fsm Gruppe on tx ceased aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce::subentities::cc_bs) fn fsm_group_on_tx_ceased(
         &mut self,
         queue: &mut MessageQueue,
@@ -303,8 +284,6 @@ impl CcBsSubentity {
         Ok(())
     }
 
-    // Was: Führt den Arbeitsschritt `fsm_group_on_network_call_start` für fsm Gruppe on network Ruf start aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce::subentities::cc_bs) fn fsm_group_on_network_call_start(
         &mut self,
         queue: &mut MessageQueue,
@@ -356,8 +335,6 @@ impl CcBsSubentity {
         Ok(())
     }
 
-    // Was: Führt den Arbeitsschritt `fsm_group_on_network_call_end` für fsm Gruppe on network Ruf end aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(in crate::cmce::subentities::cc_bs) fn fsm_group_on_network_call_end(
         &mut self,
         queue: &mut MessageQueue,
