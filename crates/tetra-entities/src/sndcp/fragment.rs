@@ -380,7 +380,8 @@ mod tests {
         // Copied option 0x82/len4, followed by non-copied option 0x02/len4.
         packet.splice(20..20, [0x82, 4, 0xaa, 0xbb, 0x02, 4, 0xcc, 0xdd]);
         packet[0] = 0x47;
-        packet[2..4].copy_from_slice(&(packet.len() as u16).to_be_bytes());
+        let total_len = packet.len() as u16;
+	packet[2..4].copy_from_slice(&total_len.to_be_bytes());
         packet[10..12].copy_from_slice(&0u16.to_be_bytes());
         let checksum = internet_checksum(&packet[..28]);
         packet[10..12].copy_from_slice(&checksum.to_be_bytes());
