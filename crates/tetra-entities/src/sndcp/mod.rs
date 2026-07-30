@@ -13,6 +13,9 @@ pub mod sndcp_bs;
 // Was: Bindet das Untermodul WAP-Dienst IP-Daten in diesen Bereich ein.
 // Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 pub mod wap_ip;
+// Was: Bindet das vollständig verlinkte XHTML-/WML-WAP-Portal ein.
+// Warum: Status-, Betriebs-, Netz- und Medienseiten bleiben dadurch zentral geroutet und Openwave-kompatibel.
+pub mod wap_portal;
 // Was: Bindet das Untermodul WAP-Dienst Status in diesen Bereich ein.
 // Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 pub mod wap_status;

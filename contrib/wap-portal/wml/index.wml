@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE wml PUBLIC "-//WAPFORUM//DTD WML 1.1//EN" "http://www.wapforum.org/DTD/wml_1.1.xml">
+<wml>
+<card id="main" title="NetCore WAP">
+<p>
+<b>NetCore WAP</b><br/>
+Startportal fuer NetCore-Tetra.<br/>
+<a href="status.wml">Betrieb</a><br/>
+<a href="radio.wml">Netz</a><br/>
+<a href="media-library.wml">Info</a>
+</p>
+</card>
+</wml>

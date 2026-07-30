@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE wml PUBLIC "-//WAPFORUM//DTD WML 1.1//EN" "http://www.wapforum.org/DTD/wml_1.1.xml">
+<wml>
+<card id="main" title="Control Room">
+<p>
+<b>Control Room</b><br/>
+Leitstellensteuerung und Betriebsstatus.<br/>
+<a href="sds.wml">P</a> <a href="health.wml">N</a> <a href="index.wml">H</a>
+</p>
+</card>
+</wml>
