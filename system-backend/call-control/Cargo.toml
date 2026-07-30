@@ -45,6 +45,7 @@ serde = { workspace = true }
 # Was: Bindet die Abhängigkeit `serde_json` in dieses Rust-Paket ein.
 # Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 serde_json = "1.0"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
 # Was: Bindet die Abhängigkeit `toml` in dieses Rust-Paket ein.
 # Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 toml = { workspace = true }

@@ -61,6 +61,8 @@ pub struct NodeRecord {
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SubscriberRecord {
     pub issi: u32,
+    /// Monotonically increasing route revision. Changes whenever registration or serving TBS changes.
+    pub route_generation: u64,
     pub serving_node: Option<String>,
     pub registered: bool,
     pub groups: BTreeSet<u32>,
@@ -68,6 +70,31 @@ pub struct SubscriberRecord {
     pub last_rssi_dbfs: Option<f32>,
     pub first_seen: String,
     pub last_seen: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum RouteState {
+    Confirmed,
+    Stale,
+    Detached,
+    Unknown,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SubscriberRoute {
+    pub issi: u32,
+    pub state: RouteState,
+    pub registered: bool,
+    pub serving_node: Option<String>,
+    pub location_area: Option<u16>,
+    pub node_connected: bool,
+    pub node_stale: bool,
+    pub first_seen: Option<String>,
+    pub last_seen: Option<String>,
+    pub age_ms: Option<i64>,
+    pub route_generation: u64,
+    pub confidence: &'static str,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -228,6 +255,54 @@ impl SharedMobility {
         let mut subscribers: Vec<_> = state.subscribers.values().cloned().collect();
         subscribers.sort_by_key(|subscriber| subscriber.issi);
         subscribers
+    }
+
+    /// Canonical subscriber route used by Call Control and future gateways.
+    pub fn subscriber_route(&self, issi: u32) -> SubscriberRoute {
+        let state = self.0.lock().expect("mobility state poisoned");
+        let Some(subscriber) = state.subscribers.get(&issi) else {
+            return SubscriberRoute {
+                issi,
+                state: RouteState::Unknown,
+                registered: false,
+                serving_node: None,
+                location_area: None,
+                node_connected: false,
+                node_stale: false,
+                first_seen: None,
+                last_seen: None,
+                age_ms: None,
+                route_generation: 0,
+                confidence: "none",
+            };
+        };
+        let node = subscriber.serving_node.as_ref().and_then(|id| state.nodes.get(id));
+        let node_connected = node.map(|n| n.connected).unwrap_or(false);
+        let node_stale = node.map(|n| n.stale).unwrap_or(true);
+        let location_area = node.map(|n| n.location_area);
+        let age_ms = chrono::DateTime::parse_from_rfc3339(&subscriber.last_seen).ok()
+            .map(|seen| (chrono::Utc::now() - seen.with_timezone(&chrono::Utc)).num_milliseconds().max(0));
+        let (route_state, confidence) = if subscriber.registered && node_connected && !node_stale {
+            (RouteState::Confirmed, "confirmed")
+        } else if subscriber.registered && subscriber.serving_node.is_some() {
+            (RouteState::Stale, "last_known")
+        } else {
+            (RouteState::Detached, "detached")
+        };
+        SubscriberRoute {
+            issi,
+            state: route_state,
+            registered: subscriber.registered,
+            serving_node: subscriber.serving_node.clone(),
+            location_area,
+            node_connected,
+            node_stale,
+            first_seen: Some(subscriber.first_seen.clone()),
+            last_seen: Some(subscriber.last_seen.clone()),
+            age_ms,
+            route_generation: subscriber.route_generation,
+            confidence,
+        }
     }
 
     // Was: Führt den Arbeitsschritt `transfers` für transfers aus.
@@ -668,6 +743,7 @@ fn apply_telemetry(state: &mut MobilityState, node_id: &str, event: TelemetryEve
             }
             let subscriber = state.subscribers.entry(issi).or_insert_with(|| SubscriberRecord {
                 issi,
+                route_generation: 1,
                 serving_node: None,
                 registered: false,
                 groups: BTreeSet::new(),
@@ -676,16 +752,27 @@ fn apply_telemetry(state: &mut MobilityState, node_id: &str, event: TelemetryEve
                 first_seen: now.clone(),
                 last_seen: now.clone(),
             });
+            let changed = subscriber.serving_node.as_deref() != Some(node_id) || !subscriber.registered;
+            if changed {
+                subscriber.route_generation = subscriber.route_generation.saturating_add(1);
+            }
             subscriber.serving_node = Some(node_id.to_string());
             subscriber.registered = true;
-            subscriber.last_seen = now;
+            subscriber.last_seen = now.clone();
+            let event_kind = if changed { "subscriber_route_changed" } else { "subscriber_registered" };
+            push_event(state, event_kind, None, Some(node_id.to_string()), Some(issi), json!({"serving_node": node_id}));
         }
         TelemetryEvent::MsDeregistration { issi } | TelemetryEvent::MsTimeoutDrop { issi } => {
-            if let Some(subscriber) = state.subscribers.get_mut(&issi) {
+            let detached = if let Some(subscriber) = state.subscribers.get_mut(&issi) {
                 if subscriber.serving_node.as_deref() == Some(node_id) {
                     subscriber.registered = false;
-                    subscriber.last_seen = now;
-                }
+                    subscriber.route_generation = subscriber.route_generation.saturating_add(1);
+                    subscriber.last_seen = now.clone();
+                    true
+                } else { false }
+            } else { false };
+            if detached {
+                push_event(state, "subscriber_detached", None, Some(node_id.to_string()), Some(issi), json!({"serving_node": node_id}));
             }
         }
         TelemetryEvent::MsGroupAttach { issi, gssis } => {
@@ -726,6 +813,7 @@ fn ensure_subscriber<'a>(
 ) -> &'a mut SubscriberRecord {
     let subscriber = state.subscribers.entry(issi).or_insert_with(|| SubscriberRecord {
         issi,
+        route_generation: 1,
         serving_node: Some(node_id.to_string()),
         registered: true,
         groups: BTreeSet::new(),
@@ -875,6 +963,7 @@ fn apply_control_response(
             }
             let mut target = state.subscribers.get(&issi).cloned().unwrap_or(SubscriberRecord {
                 issi: target_local_issi,
+                route_generation: 1,
                 serving_node: None,
                 registered: false,
                 groups: BTreeSet::new(),

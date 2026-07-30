@@ -21,6 +21,14 @@ url = "ws://10.0.1.XX:8080/ws/backend"
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 reconnect_secs = 5
 
+# Canonical subscriber route source. Call Control asks Mobility Core which TBS currently serves an ISSI.
+[mobility_core]
+enabled = true
+base_url = "http://10.0.1.XX:8090"
+timeout_ms = 1500
+allow_local_fallback = false
+accept_stale_route = false
+
 # Was: Öffnet den Konfigurationsabschnitt `storage`.
 # Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [storage]

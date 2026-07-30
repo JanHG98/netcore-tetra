@@ -52,3 +52,7 @@ Der Dienst darf nur in einem isolierten Testnetz betrieben werden. Andere Securi
 Der Mobility Core koordiniert den zentralen MM-Kontext. Die zeitkritischen Air-Interface-Verfahren, MLE-Zellwechsel und CMCE-Call-Restore-State-Machines bleiben in der jeweiligen TBS.
 
 Eine spätere produktive Ausbaustufe ergänzt persistente Datenhaltung, gegenseitige Dienstauthentisierung, TLS, RBAC und Audit-Signaturen.
+
+## Kanonischer Teilnehmer-Routenresolver
+
+Phase 1 stellt `GET /api/v1/subscribers/{issi}/route` bereit. Die Antwort enthält Serving-TBS, Location Area, Registrierungszustand, TBS-Verbindungszustand und eine monotone `route_generation`. Call Control verwendet diese Route für Individualrufe.

@@ -24,6 +24,49 @@ use crate::protocol::{BackendEvent, BackendRequest, GatewaySnapshot};
 // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const DATABASE_SCHEMA_VERSION: u32 = 1;
 
+#[derive(Debug, Clone, Deserialize)]
+struct MobilityRouteResponse {
+    issi: u32,
+    state: String,
+    registered: bool,
+    serving_node: Option<String>,
+    node_connected: bool,
+    node_stale: bool,
+    route_generation: u64,
+    confidence: String,
+}
+
+fn resolve_mobility_route(config: &crate::config::MobilityCoreClientConfig, issi: u32) -> Result<String, String> {
+    let url = format!("{}/api/v1/subscribers/{}/route", config.base_url.trim_end_matches('/'), issi);
+    let client = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_millis(config.timeout_ms))
+        .build()
+        .map_err(|error| format!("cannot create Mobility Core client: {error}"))?;
+    let response = client.get(&url).send()
+        .map_err(|error| format!("Mobility Core route lookup failed for ISSI {issi}: {error}"))?;
+    if response.status() == reqwest::StatusCode::NOT_FOUND {
+        return Err(format!("Mobility Core has no route for called ISSI {issi}"));
+    }
+    if !response.status().is_success() {
+        return Err(format!("Mobility Core route lookup for ISSI {issi} returned HTTP {}", response.status()));
+    }
+    let route: MobilityRouteResponse = response.json()
+        .map_err(|error| format!("invalid Mobility Core route response for ISSI {issi}: {error}"))?;
+    if route.issi != issi {
+        return Err(format!("Mobility Core returned route for ISSI {} instead of {issi}", route.issi));
+    }
+    let acceptable = route.registered && route.serving_node.is_some()
+        && ((route.state == "confirmed" && route.node_connected && !route.node_stale)
+            || (config.accept_stale_route && route.state == "stale"));
+    if !acceptable {
+        return Err(format!(
+            "called ISSI {issi} has no usable route (state={}, confidence={}, generation={})",
+            route.state, route.confidence, route.route_generation
+        ));
+    }
+    Ok(route.serving_node.expect("checked above"))
+}
+
 #[derive(Debug, Clone, Serialize)]
 // Was: Bündelt die zusammengehörigen Werte für Ruf Steuerung Status in einem Datentyp.
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
@@ -814,11 +857,29 @@ impl SharedCalls {
         &self,
         input: IndividualCallInput,
     ) -> Result<(LogicalCall, Vec<BackendRequest>), String> {
+        let explicit_target = input.target_node.clone();
+        let mobility_config = {
+            let state = self.0.lock().expect("call state poisoned");
+            state.config.mobility_core.clone()
+        };
+        let canonical_target = if explicit_target.is_none() && mobility_config.enabled {
+            match resolve_mobility_route(&mobility_config, input.called_issi) {
+                Ok(node_id) => Some(node_id),
+                Err(error) if mobility_config.allow_local_fallback => {
+                    tracing::warn!("{}; falling back to local Call Control participant cache", error);
+                    None
+                }
+                Err(error) => return Err(error),
+            }
+        } else {
+            None
+        };
+
         let mut state = self.0.lock().expect("call state poisoned");
         state.validate_ssi(input.calling_issi, "calling ISSI")?;
         state.validate_ssi(input.called_issi, "called ISSI")?;
         state.ensure_call_capacity()?;
-        let target = state.select_individual_target(input.called_issi, input.target_node)?;
+        let target = state.select_individual_target(input.called_issi, explicit_target.or(canonical_target))?;
 
         let logical_call_id = Uuid::new_v4().to_string();
         let operation_id = Uuid::new_v4().to_string();

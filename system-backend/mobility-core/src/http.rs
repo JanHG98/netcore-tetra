@@ -100,6 +100,17 @@ fn route(
         ("GET", "/api/v1/status") => json_response(200, &mobility.status()),
         ("GET", "/api/v1/nodes") => json_response(200, &mobility.nodes()),
         ("GET", "/api/v1/subscribers") => json_response(200, &mobility.subscribers()),
+        _ if request.method == "GET" && request.path.starts_with("/api/v1/subscribers/") && request.path.ends_with("/route") => {
+            let value = request.path.trim_start_matches("/api/v1/subscribers/").trim_end_matches("/route").trim_end_matches('/');
+            match value.parse::<u32>() {
+                Ok(issi) if issi <= 0x00ff_ffff => {
+                    let route = mobility.subscriber_route(issi);
+                    let status = if matches!(route.state, crate::state::RouteState::Unknown) { 404 } else { 200 };
+                    json_response(status, &route)
+                }
+                _ => json_response(400, &json!({"error":"invalid ISSI"})),
+            }
+        }
         ("GET", "/api/v1/transfers") => json_response(200, &mobility.transfers()),
         ("GET", "/api/v1/events") => {
             let limit = request.query.get("limit")
@@ -165,6 +176,7 @@ fn openapi() -> serde_json::Value {
             "/api/v1/status": { "get": {} },
             "/api/v1/nodes": { "get": {} },
             "/api/v1/subscribers": { "get": {} },
+            "/api/v1/subscribers/{issi}/route": { "get": { "description": "Canonical serving-TBS route for one ISSI" } },
             "/api/v1/transfers": { "get": {}, "post": {} },
             "/api/v1/transfers/{id}/cancel": { "post": {} },
             "/api/v1/events": { "get": {} },

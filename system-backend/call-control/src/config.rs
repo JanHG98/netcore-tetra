@@ -18,6 +18,7 @@ pub const OPEN_LAB_MODE: &str = "open_lab";
 pub struct CallControlConfig {
     pub server: ServerConfig,
     pub node_gateway: NodeGatewayConfig,
+    pub mobility_core: MobilityCoreClientConfig,
     pub storage: StorageConfig,
     pub calls: CallsConfig,
     pub security: SecurityConfig,
@@ -33,6 +34,7 @@ impl Default for CallControlConfig {
         Self {
             server: ServerConfig::default(),
             node_gateway: NodeGatewayConfig::default(),
+            mobility_core: MobilityCoreClientConfig::default(),
             storage: StorageConfig::default(),
             calls: CallsConfig::default(),
             security: SecurityConfig::default(),
@@ -80,6 +82,9 @@ impl CallControlConfig {
         if !self.node_gateway.url.starts_with("ws://") {
             return Err("node_gateway.url must use ws:// in the open lab package".to_string());
         }
+        if self.mobility_core.enabled && !self.mobility_core.base_url.starts_with("http://") {
+            return Err("mobility_core.base_url must use http:// in the open lab package".to_string());
+        }
         if !self.security.allow_remote_management && !self.server.bind.ip().is_loopback() {
             return Err(
                 "server.bind must use a loopback address when allow_remote_management=false"
@@ -88,6 +93,7 @@ impl CallControlConfig {
         }
         self.server.history_limit = self.server.history_limit.max(100);
         self.node_gateway.reconnect_secs = self.node_gateway.reconnect_secs.max(1);
+        self.mobility_core.timeout_ms = self.mobility_core.timeout_ms.clamp(100, 10_000);
         self.calls.command_timeout_secs = self.calls.command_timeout_secs.max(5);
         self.calls.restore_timeout_secs = self.calls.restore_timeout_secs.max(10);
         self.calls.reconcile_interval_secs = self.calls.reconcile_interval_secs.max(1);
@@ -137,6 +143,27 @@ impl Default for NodeGatewayConfig {
         Self {
             url: "ws://127.0.0.1:8080/ws/backend".to_string(),
             reconnect_secs: 5,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct MobilityCoreClientConfig {
+    pub enabled: bool,
+    pub base_url: String,
+    pub timeout_ms: u64,
+    pub allow_local_fallback: bool,
+    pub accept_stale_route: bool,
+}
+impl Default for MobilityCoreClientConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            base_url: "http://127.0.0.1:8090".to_string(),
+            timeout_ms: 1500,
+            allow_local_fallback: false,
+            accept_stale_route: false,
         }
     }
 }

@@ -56,3 +56,7 @@ Routinggraphen über `POST /api/v1/media/route-ready` für die aktuelle Ereignis
 bestätigt hat. Ein älteres oder für eine andere Topologie gesendetes ACK wird abgewiesen.
 Bei funkausgelösten Rufen schützt der Kaltstart-Vorpuffer des Media Switch zusätzlich die
 ersten Sprachframes, während die restlichen Ziel-Legs aufgebaut werden.
+
+## Mobility-Core-Routing
+
+Individualrufe ohne explizite Ziel-TBS werden über den Mobility Core aufgelöst. Die Einstellungen befinden sich im Abschnitt `[mobility_core]`. Im Normalbetrieb bleiben lokaler Fallback und stale Routen deaktiviert.
