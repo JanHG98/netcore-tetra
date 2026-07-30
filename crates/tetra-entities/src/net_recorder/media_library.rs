@@ -23,10 +23,24 @@ struct RemoteAsset {
 }
 
 #[derive(Debug, Serialize)]
+struct RecordingSourceMetadata {
+    station_id: String,
+    recording_id: String,
+    recorded_at: String,
+    ended_at: String,
+    source_issi: u32,
+    destination_id: u32,
+    destination_type: String,
+    duration_ms: u64,
+    call_id: u16,
+}
+
+#[derive(Debug, Serialize)]
 struct ImportRequest {
     schema: &'static str,
     source: &'static str,
     source_reference: String,
+    source_metadata: RecordingSourceMetadata,
     source_url: String,
     name: String,
     filename: String,
@@ -298,6 +312,17 @@ fn register_recording(
         schema: "netcore-media-import-v1",
         source: "basisstation-recording",
         source_reference: format!("{}:{}", inner.media_library.station_id, metadata.id),
+        source_metadata: RecordingSourceMetadata {
+            station_id: inner.media_library.station_id.clone(),
+            recording_id: metadata.id.clone(),
+            recorded_at: metadata.started_at.clone(),
+            ended_at: metadata.ended_at.clone(),
+            source_issi: metadata.source_issi,
+            destination_id: metadata.destination_id,
+            destination_type: metadata.destination_type.clone(),
+            duration_ms: metadata.duration_ms,
+            call_id: metadata.call_id,
+        },
         source_url: source_url.clone(),
         name: title,
         filename,

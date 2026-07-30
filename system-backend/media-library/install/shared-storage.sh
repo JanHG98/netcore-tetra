@@ -57,8 +57,11 @@ netcore_prepare_media_shared_storage() {
 
     # OPEN LAB / SMB interoperability: NFS-created directories must remain
     # traversable and writable by Windows clients using the parallel SMB share.
-    # Existing directories are repaired as well; contents are not modified.
+    # Repair both the root and every existing child. Earlier versions created
+    # UUID directories with 0700/0600, which blocked the parallel SMB share.
     chmod 0777 "${share_root%/}/${shared_directory}"
+    find "${share_root%/}/${shared_directory}" -xdev -type d -exec chmod 0777 {} +
+    find "${share_root%/}/${shared_directory}" -xdev -type f -exec chmod 0666 {} +
   done
 
   echo "Shared media storage prepared at ${share_root}:"

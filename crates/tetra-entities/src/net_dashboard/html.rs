@@ -10644,7 +10644,7 @@ function updateAudioSourceHeader(){
   const source=currentAudioSource(),root=document.getElementById('audio-root'),state=document.getElementById('audio-source-state');
   if(!source){if(root)root.textContent='—';if(state)state.textContent='Quelle nicht gefunden';return;}
   if(root)root.textContent=source.path||'—';
-  if(state){state.textContent=source.available?(source.source_type==='server'?'SERVER ONLINE':'LOKAL'):'NICHT VERFÜGBAR';state.style.color=source.available?'var(--success)':'var(--danger)';state.title=source.error||'';}
+  if(state){const labels={server:'SERVER ONLINE',media_library:'MEDIA LIBRARY ONLINE',local:'LOKAL'};state.textContent=source.available?(labels[source.source_type]||String(source.source_type||'ONLINE').toUpperCase()):'NICHT VERFÜGBAR';state.style.color=source.available?'var(--success)':'var(--danger)';state.title=source.error||'';}
 }
 async function loadAudioSources(){
   const r=await fetch('/api/audio/sources',{cache:'no-store'}),j=await r.json().catch(()=>({error:'HTTP '+r.status}));
@@ -10666,21 +10666,24 @@ async function loadAudioStatus(){
   }catch(e){document.getElementById('audio-state').textContent='NICHT VERFÜGBAR';document.getElementById('audio-error').textContent=String(e);}
 }
 async function browseAudio(path){
-  audioCurrentPath=path||'';document.getElementById('audio-path').textContent='/'+audioCurrentPath;updateAudioSourceHeader();
+  audioCurrentPath=path||'';document.getElementById('audio-path').textContent=audioCurrentSource==='media-library'?'Katalog':'/'+audioCurrentPath;updateAudioSourceHeader();
   try{const url='/api/audio/browse?source='+encodeURIComponent(audioCurrentSource)+'&path='+encodeURIComponent(audioCurrentPath),r=await fetch(url,{cache:'no-store'}),j=await r.json();if(!r.ok)throw new Error(j.error||'HTTP '+r.status);audioEntries=j.entries||[];renderAudioEntries();}
   catch(e){audioEntries=[];document.getElementById('audio-tbody').innerHTML='<tr><td colspan="4" class="sds-empty">'+escHtml(e)+'</td></tr>';}
 }
 function audioJsArg(value){return escAttr(JSON.stringify(String(value)));}
 function renderAudioEntries(){
-  const tb=document.getElementById('audio-tbody');if(!audioEntries.length){tb.innerHTML='<tr><td colspan="4" class="sds-empty">Keine WAV-/MP3-Dateien vorhanden.</td></tr>';return;}
+  const tb=document.getElementById('audio-tbody');if(!audioEntries.length){const hint=audioCurrentSource==='media-library'?'Keine fertigen Medien in der Media Library. Prüfe Import/Verarbeitung im Media-Library-WebUI.':'Keine WAV-/MP3-Dateien vorhanden.';tb.innerHTML='<tr><td colspan="4" class="sds-empty">'+escHtml(hint)+'</td></tr>';return;}
   const sourceArg=audioJsArg(audioCurrentSource);
   tb.innerHTML=audioEntries.map(e=>{
     const pathArg=audioJsArg(e.path),nameArg=audioJsArg(e.name);
-    const rowCtx=e.entry_type==='file'?' class="audio-context-row" oncontextmenu="return openAudioContext(event,\'media\','+pathArg+','+nameArg+','+sourceArg+')"':'';
+    const canPlay=e.playable!==false;
+    const rowCtx=e.entry_type==='file'&&canPlay?' class="audio-context-row" oncontextmenu="return openAudioContext(event,\'media\','+pathArg+','+nameArg+','+sourceArg+')"':'';
+    const sendButton=canPlay?'<button class="btn btn-sm btn-primary" onclick="openAudioSend(\'media\','+pathArg+','+nameArg+','+sourceArg+')">Senden an…</button>':'<button class="btn btn-sm" disabled title="Zuerst in der Media Library freigeben">Nicht freigegeben</button>';
     const actions=e.entry_type==='directory'
       ? '<div class="audio-row-actions"><button class="btn btn-sm" onclick="browseAudio('+pathArg+')">Öffnen</button></div>'
-      : '<div class="audio-row-actions"><span class="audio-desktop-actions"><button class="btn btn-sm" onclick="previewAudioFile('+pathArg+','+nameArg+','+sourceArg+')">▶ Vorschau</button><button class="btn btn-sm btn-primary" onclick="openAudioSend(\'media\','+pathArg+','+nameArg+','+sourceArg+')">Senden an…</button></span><button type="button" class="btn btn-sm audio-more-btn" aria-label="Weitere Aktionen" aria-haspopup="menu" onclick="return openAudioContextFromButton(event,\'media\','+pathArg+','+nameArg+','+sourceArg+')">⋮</button></div>';
-    return '<tr'+rowCtx+'><td>'+escHtml(e.name)+'</td><td>'+escHtml(e.entry_type==='directory'?'Ordner':String(e.extension||'').toUpperCase())+'</td><td>'+escHtml(e.size_bytes==null?'—':recFmtBytes(e.size_bytes))+'</td><td>'+actions+'</td></tr>';
+      : '<div class="audio-row-actions"><span class="audio-desktop-actions"><button class="btn btn-sm" onclick="previewAudioFile('+pathArg+','+nameArg+','+sourceArg+')">▶ Vorschau</button>'+sendButton+'</span>'+(canPlay?'<button type="button" class="btn btn-sm audio-more-btn" aria-label="Weitere Aktionen" aria-haspopup="menu" onclick="return openAudioContextFromButton(event,\'media\','+pathArg+','+nameArg+','+sourceArg+')">⋮</button>':'')+'</div>';
+    const typeText=e.entry_type==='directory'?'Ordner':(String(e.extension||'').toUpperCase()+(e.status?' · '+e.status:''));
+    return '<tr'+rowCtx+'><td>'+escHtml(e.name)+'</td><td>'+escHtml(typeText)+'</td><td>'+escHtml(e.size_bytes==null?'—':recFmtBytes(e.size_bytes))+'</td><td>'+actions+'</td></tr>';
   }).join('');
 }
 function previewAudioFile(path,label,sourceId){

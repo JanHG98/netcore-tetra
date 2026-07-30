@@ -364,6 +364,8 @@ impl AudioPlayerHandle {
                     entry_type: "directory".to_string(),
                     size_bytes: None,
                     extension: None,
+                    playable: None,
+                    status: None,
                 });
             } else if file_type.is_file() {
                 let extension = entry
@@ -380,6 +382,8 @@ impl AudioPlayerHandle {
                     entry_type: "file".to_string(),
                     size_bytes: entry.metadata().ok().map(|metadata| metadata.len()),
                     extension,
+                    playable: None,
+                    status: None,
                 });
             }
         }
@@ -400,7 +404,7 @@ impl AudioPlayerHandle {
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn preview_media_path(&self, source_id: &str, relative_path: &str) -> Result<PathBuf, String> {
         if source_id.trim() == "media-library" {
-            return self.download_media_library_preview(relative_path).map(|value| value.0);
+            return self.download_media_library_preview(relative_path, false).map(|value| value.0);
         }
         let root = self.find_media_root(source_id)?;
         let canonical_root = canonical_media_root(root)?;
@@ -431,7 +435,7 @@ impl AudioPlayerHandle {
         priority: Option<u8>,
     ) -> Result<String, String> {
         if source_id.trim() == "media-library" {
-            let (path, display_name) = self.download_media_library_preview(relative_path)?;
+            let (path, display_name) = self.download_media_library_preview(relative_path, true)?;
             return self.play_resolved(
                 ResolvedAudioSource {
                     path,
@@ -661,28 +665,28 @@ impl AudioPlayerHandle {
                 response.status()
             ));
         }
-        let asset = response
+        response
             .json::<RemoteMediaAsset>()
-            .map_err(|error| format!("invalid Media Library asset response: {error}"))?;
-        self.validate_remote_asset(&asset)?;
-        Ok(asset)
+            .map_err(|error| format!("invalid Media Library asset response: {error}"))
     }
 
-    fn validate_remote_asset(&self, asset: &RemoteMediaAsset) -> Result<(), String> {
+    fn validate_remote_preview(&self, asset: &RemoteMediaAsset) -> Result<(), String> {
         if self.inner.media_library.only_ready && asset.state != "ready" {
             return Err(format!("asset is not ready (state={})", asset.state));
-        }
-        if self.inner.media_library.only_approved && asset.approval != "approved" {
-            return Err(format!(
-                "asset is not approved (approval={})",
-                asset.approval
-            ));
         }
         if !asset.preview_ready {
             return Err(asset
                 .last_error
                 .clone()
                 .unwrap_or_else(|| "asset has no playable preview".to_string()));
+        }
+        Ok(())
+    }
+
+    fn validate_remote_playout(&self, asset: &RemoteMediaAsset) -> Result<(), String> {
+        self.validate_remote_preview(asset)?;
+        if self.inner.media_library.only_approved && asset.approval != "approved" {
+            return Err("Medium ist noch nicht freigegeben. Bitte zuerst in der Media Library freigeben.".to_string());
         }
         Ok(())
     }
@@ -705,9 +709,8 @@ impl AudioPlayerHandle {
             if self.inner.media_library.only_ready {
                 query.append_pair("state", "ready");
             }
-            if self.inner.media_library.only_approved {
-                query.append_pair("approval", "approved");
-            }
+            // Draft assets remain visible for preview and operator review. The
+            // playout path still enforces only_approved before a radio call starts.
         }
         let response = self
             .inner
@@ -726,13 +729,15 @@ impl AudioPlayerHandle {
             .map_err(|error| format!("invalid Media Library catalogue: {error}"))?;
         let mut entries = assets
             .into_iter()
-            .filter(|asset| self.validate_remote_asset(asset).is_ok())
+            .filter(|asset| self.validate_remote_preview(asset).is_ok())
             .map(|asset| {
                 let title = asset.title.trim();
+                let approved = asset.approval == "approved";
+                let playable = !self.inner.media_library.only_approved || approved;
                 let name = if title.is_empty() {
                     asset.original_filename.clone()
                 } else {
-                    format!("{} · {}", title, asset.kind)
+                    title.to_string()
                 };
                 MediaEntry {
                     name,
@@ -740,6 +745,12 @@ impl AudioPlayerHandle {
                     entry_type: "file".to_string(),
                     size_bytes: asset.size_bytes,
                     extension: Some("wav".to_string()),
+                    playable: Some(playable),
+                    status: Some(if approved {
+                        format!("FREIGEGEBEN · {}", asset.kind.to_ascii_uppercase())
+                    } else {
+                        format!("ENTWURF · {}", asset.kind.to_ascii_uppercase())
+                    }),
                 }
             })
             .collect::<Vec<_>>();
@@ -754,8 +765,14 @@ impl AudioPlayerHandle {
     fn download_media_library_preview(
         &self,
         asset_id: &str,
+        require_playout_approval: bool,
     ) -> Result<(PathBuf, String), String> {
         let asset = self.media_library_asset(asset_id)?;
+        if require_playout_approval {
+            self.validate_remote_playout(&asset)?;
+        } else {
+            self.validate_remote_preview(&asset)?;
+        }
         let cached = self
             .inner
             .cache_root

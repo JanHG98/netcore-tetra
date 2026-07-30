@@ -32,6 +32,22 @@ pub struct AudioMetadata {
     pub tetra_frame_count: Option<u64>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+// Was: Bewahrt die für verständliche Archivnamen relevanten Metadaten einer Basisstationsaufzeichnung.
+// Warum: Das NFS-/SMB-Archiv kann dadurch nach Datum sortieren und Dateien ohne UUID-Rätsel benennen.
+pub struct SourceRecordingMetadata {
+    pub station_id: Option<String>,
+    pub recording_id: Option<String>,
+    pub recorded_at: Option<String>,
+    pub ended_at: Option<String>,
+    pub source_issi: Option<u32>,
+    pub destination_id: Option<u32>,
+    pub destination_type: Option<String>,
+    pub duration_ms: Option<u64>,
+    pub call_id: Option<u16>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 // Was: Bündelt die zusammengehörigen Werte für asset Datensatz in einem Datentyp.
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
@@ -46,6 +62,8 @@ pub struct AssetRecord {
     pub source: String,
     pub source_url: Option<String>,
     pub source_reference: Option<String>,
+    #[serde(default)]
+    pub source_metadata: Option<SourceRecordingMetadata>,
     pub original_filename: String,
     pub media_type: String,
     pub original_path: Option<PathBuf>,
@@ -193,6 +211,8 @@ pub struct ImportUrlInput {
     pub source: Option<String>,
     /// Stable idempotency key supplied by the source system.
     pub source_reference: Option<String>,
+    #[serde(default)]
+    pub source_metadata: Option<SourceRecordingMetadata>,
     pub source_url: String,
     pub name: String,
     pub filename: Option<String>,

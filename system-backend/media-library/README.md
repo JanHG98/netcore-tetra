@@ -123,6 +123,6 @@ Noch nicht enthalten sind:
 
 ## Basisstation integration
 
-The base station can register completed WAV recordings by URL. The Media Library pulls the file, processes it, and automatically archives recordings to `storage.recording_archive_root`. Ready and approved assets are exposed to the base station Audio Centre, which downloads the preview into its local cache before starting radio playout.
+The base station can register completed WAV recordings by URL. The Media Library pulls the file, processes it, and automatically archives recordings to `storage.recording_archive_root`. The shared archive uses `YYYY/MM/DD` and descriptive filenames derived from recording metadata. Ready draft assets remain visible for preview; radio playout is still blocked until approval. The Audio Centre downloads the preview into its local cache before starting radio playout.
 
-See `Docs/MEDIA_LIBRARY_BASISSTATION_INTEGRATION.md` for configuration and rollout steps.
+See `Docs/MEDIA_LIBRARY_BASISSTATION_INTEGRATION.md` and `Docs/MEDIA_LIBRARY_ARCHIVE_UI_FIX.md` for configuration, migration and rollout steps.

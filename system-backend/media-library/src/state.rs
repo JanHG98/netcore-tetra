@@ -5,9 +5,10 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fs;
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
+use std::os::unix::fs::PermissionsExt;
 use std::sync::{Arc, Mutex, MutexGuard};
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, FixedOffset, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use uuid::Uuid;
@@ -59,6 +60,84 @@ struct LibraryInner {
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SharedLibrary {
     inner: Arc<Mutex<LibraryInner>>,
+}
+
+fn archive_timestamp(asset: &AssetRecord) -> DateTime<FixedOffset> {
+    asset
+        .source_metadata
+        .as_ref()
+        .and_then(|metadata| metadata.recorded_at.as_deref())
+        .and_then(|value| DateTime::parse_from_rfc3339(value).ok())
+        .unwrap_or_else(|| asset.created_at.fixed_offset())
+}
+
+fn archive_token(value: &str, fallback: &str) -> String {
+    media::safe_filename(value, fallback)
+        .replace(' ', "-")
+        .replace('.', "-")
+        .trim_matches('-')
+        .chars()
+        .take(80)
+        .collect::<String>()
+}
+
+fn archive_stem(asset: &AssetRecord, timestamp: DateTime<FixedOffset>) -> String {
+    let short_id = asset.asset_id.chars().filter(|character| character.is_ascii_hexdigit()).take(8).collect::<String>();
+    let time = timestamp.format("%H-%M-%S").to_string();
+    if asset.kind == "recording" {
+        if let Some(metadata) = asset.source_metadata.as_ref() {
+            let call_type = match metadata.destination_type.as_deref() {
+                Some("group") => "Gruppenruf",
+                Some("individual") => "Einzelruf",
+                _ => "Funkruf",
+            };
+            let destination_kind = if metadata.destination_type.as_deref() == Some("group") {
+                "GSSI"
+            } else {
+                "ISSI"
+            };
+            let destination = metadata.destination_id.map(|value| format!("{destination_kind}-{value}")).unwrap_or_else(|| destination_kind.to_string());
+            let source = metadata.source_issi.map(|value| format!("von-ISSI-{value}")).unwrap_or_else(|| "Quelle-unbekannt".to_string());
+            let duration = metadata.duration_ms.map(|value| format!("{}s", value.saturating_add(999) / 1000)).unwrap_or_else(|| "Dauer-unbekannt".to_string());
+            return format!("{time}_{call_type}_{destination}_{source}_{duration}_{short_id}");
+        }
+        // Legacy imports did not yet carry source_metadata, but their title is
+        // "Gruppenruf <source> → <destination> · <timestamp>". Preserve useful
+        // names during migration/re-archiving instead of falling back to UUIDs.
+        let call_part = asset.title.split(" · ").next().unwrap_or(asset.title.as_str());
+        let parts = call_part.split_whitespace().collect::<Vec<_>>();
+        if parts.len() >= 4 && matches!(parts[0], "Gruppenruf" | "Einzelruf") {
+            let destination_kind = if parts[0] == "Gruppenruf" { "GSSI" } else { "ISSI" };
+            let duration = asset.metadata.duration_ms
+                .map(|value| format!("{}s", value.saturating_add(999) / 1000))
+                .unwrap_or_else(|| "Dauer-unbekannt".to_string());
+            return format!("{time}_{}_{destination_kind}-{}_von-ISSI-{}_{duration}_{short_id}", parts[0], parts[3], parts[1]);
+        }
+    }
+    let kind = match asset.kind.as_str() {
+        "tts" => "TTS".to_string(),
+        "recording" => "Funkruf".to_string(),
+        value => archive_token(value, "Medium"),
+    };
+    let title = archive_token(&asset.title, "Ohne-Titel");
+    format!("{time}_{kind}_{title}_{short_id}")
+}
+
+fn set_shared_mode(path: &Path, mode: u32) -> Result<(), String> {
+    fs::set_permissions(path, fs::Permissions::from_mode(mode))
+        .map_err(|error| format!("cannot set shared permissions on {}: {error}", path.display()))
+}
+
+fn prepare_archive_day(root: &Path, timestamp: DateTime<FixedOffset>) -> Result<PathBuf, String> {
+    let year = root.join(timestamp.format("%Y").to_string());
+    let month = year.join(timestamp.format("%m").to_string());
+    let day = month.join(timestamp.format("%d").to_string());
+    for directory in [root, year.as_path(), month.as_path(), day.as_path()] {
+        fs::create_dir_all(directory)
+            .map_err(|error| format!("cannot create archive directory {}: {error}", directory.display()))?;
+        set_shared_mode(directory, 0o777)?;
+    }
+    Ok(day)
 }
 
 // Was: Implementiert das zugehörige Verhalten für `SharedLibrary`.
@@ -302,6 +381,7 @@ impl SharedLibrary {
             source: "local_upload".to_string(),
             source_url: None,
             source_reference: None,
+            source_metadata: None,
             original_filename: filename,
             media_type,
             original_path: Some(original_path),
@@ -384,6 +464,9 @@ impl SharedLibrary {
                         .get_mut(&asset_id)
                         .expect("idempotent asset still exists");
                     asset.source_url = Some(input.source_url.clone());
+                    if input.source_metadata.is_some() {
+                        asset.source_metadata = input.source_metadata.clone();
+                    }
                     if let Some(size_bytes) = input.size_bytes {
                         asset.size_bytes = Some(size_bytes);
                     }
@@ -455,6 +538,7 @@ impl SharedLibrary {
             source,
             source_url: Some(input.source_url),
             source_reference,
+            source_metadata: input.source_metadata,
             original_filename: media::safe_filename(&filename, "import.bin"),
             media_type: input.media_type.unwrap_or_else(|| media_type_from_filename(&filename)),
             original_path: None,
@@ -516,6 +600,7 @@ impl SharedLibrary {
             schema: Some("netcore-media-import-v1".to_string()),
             source: Some("recorder".to_string()),
             source_reference: Some(recording_id.to_string()),
+            source_metadata: None,
             source_url: format!("{recorder_url}/api/v1/recordings/{recording_id}/audio.tacelp"),
             name: input.name.unwrap_or_else(|| format!("Recording {recording_id}")),
             filename: Some(format!("{recording_id}.tacelp")),
@@ -710,50 +795,59 @@ impl SharedLibrary {
         if asset.state != "ready" {
             return Err("only ready assets can be archived".to_string());
         }
-        let archive_version = Utc::now().format("%Y%m%dT%H%M%S%.3fZ").to_string();
-        let destination = archive_root.join(asset_id).join(archive_version);
-        fs::create_dir_all(&destination)
-            .map_err(|error| format!("cannot create archive directory: {error}"))?;
+        let timestamp = archive_timestamp(&asset);
+        let destination = prepare_archive_day(&archive_root, timestamp)?;
+        let stem = archive_stem(&asset, timestamp);
         let mut archived_files = Vec::new();
-        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
-        for source in [asset.original_path.as_ref(), asset.preview_path.as_ref(), asset.tetra_path.as_ref()]
-            .into_iter()
-            .flatten()
+        // Was: Kopiert Original, Vorschau und TETRA-Cache mit verständlichen, gemeinsamen Dateinamen in den Tagesordner.
+        // Warum: Windows-Benutzer sehen sofort Zeit, Rufart, Ziel, Quelle und Dauer statt UUID-Unterordnern.
+        for (role, source) in [
+            ("original", asset.original_path.as_ref()),
+            ("preview", asset.preview_path.as_ref()),
+            ("tetra", asset.tetra_path.as_ref()),
+        ]
+        .into_iter()
+        .filter_map(|(role, source)| source.map(|source| (role, source)))
         {
             if source.is_file() {
-                let filename = source.file_name().ok_or_else(|| "asset path has no filename".to_string())?;
-                let copied = destination.join(filename);
+                let extension = source.extension().and_then(|value| value.to_str()).unwrap_or("bin");
+                let filename = format!("{stem}_{role}.{extension}");
+                let copied = destination.join(&filename);
                 let size_bytes = media::copy_atomic(
                     source,
                     &copied,
                     inner.config.storage.fsync_imports,
                 )?;
+                set_shared_mode(&copied, 0o666)?;
                 archived_files.push(json!({
-                    "filename":filename.to_string_lossy(),
+                    "filename":filename,
+                    "role":role,
                     "size_bytes":size_bytes,
                     "sha256":media::sha256_file(&copied)?,
                 }));
             }
         }
+        let manifest_path = destination.join(format!("{stem}_metadata.json"));
         let manifest = json!({
-            "schema":"netcore-media-library-archive-v1",
+            "schema":"netcore-media-library-archive-v2",
+            "layout":"year/month/day",
             "archived_at":Utc::now(),
             "asset":&asset,
             "files":archived_files,
         });
         media::write_atomic(
-            &destination.join("manifest.json"),
+            &manifest_path,
             &serde_json::to_vec_pretty(&manifest).map_err(|error| error.to_string())?,
             inner.config.storage.fsync_imports,
         )?;
+        set_shared_mode(&manifest_path, 0o666)?;
         let stored = inner.state.assets.get_mut(asset_id).expect("asset still exists");
         stored.archived = true;
-        stored.archive_path = Some(destination.clone());
+        stored.archive_path = Some(manifest_path.clone());
         stored.updated_at = Utc::now();
         let result = stored.clone();
-        push_event_locked(&mut inner, "asset_archived", Some(asset_id), None, json!({"path":destination}));
-        audit_locked(&mut inner, actor(input.actor.as_deref()), "archive", "asset", asset_id, "ok", json!({"path":destination}));
+        push_event_locked(&mut inner, "asset_archived", Some(asset_id), None, json!({"path":manifest_path}));
+        audit_locked(&mut inner, actor(input.actor.as_deref()), "archive", "asset", asset_id, "ok", json!({"path":manifest_path}));
         persist_locked(&mut inner)?;
         Ok(result)
     }

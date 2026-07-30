@@ -1,31 +1,31 @@
-# Storage-Format
+# Media-Library-Speicherformat
+
+## Aktive Bibliothek
+
+Die aktive, vom Dienst verwaltete Bibliothek bleibt lokal unter
+`/var/lib/netcore-media-library/assets/<asset-id>/`. Dort liegen weiterhin
+`original.*`, `preview.wav` und optional `audio.tacelp`.
+
+## Gemeinsames NFS-/SMB-Archiv
+
+Archivierte Dateien werden ohne UUID-Zwischenordner nach Kalenderdatum abgelegt:
 
 ```text
-/var/lib/netcore-media-library/
-├── state.json
-├── backups/
-└── assets/
-    └── <asset-id>/
-        ├── original.wav|mp3|tacelp
-        ├── preview.wav
-        ├── audio.tacelp
-        └── metadata.json
+/mnt/nfs-share/Recordings/
+└── 2026/
+    └── 07/
+        └── 29/
+            ├── 23-39-15_Gruppenruf_GSSI-2000_von-ISSI-4010001_12s_6ef665e4_original.wav
+            ├── 23-39-15_Gruppenruf_GSSI-2000_von-ISSI-4010001_12s_6ef665e4_preview.wav
+            ├── 23-39-15_Gruppenruf_GSSI-2000_von-ISSI-4010001_12s_6ef665e4_tetra.tacelp
+            └── 23-39-15_Gruppenruf_GSSI-2000_von-ISSI-4010001_12s_6ef665e4_metadata.json
 ```
 
-`original.*` bleibt unverändert. `preview.wav` ist das hörbare kanonische 8-kHz-PCM-Format. `audio.tacelp` enthält ohne Header exakt 35 Byte pro TETRA-Sprachblock.
+Für TTS- und normale Medien gelten dieselben Jahres-/Monats-/Tagesordner. Der
+Dateiname enthält Zeit, Typ, Titel und eine kurze Asset-ID zur Kollisionsvermeidung.
+Die Metadaten-Datei enthält den vollständigen Asset-Datensatz, Prüfsummen und
+Dateigrößen.
 
-Die globale `state.json` ist die Runtime-Datenbank. `metadata.json` ist ein lesbarer Sidecar pro Asset und kann für Recovery oder Archivprüfung verwendet werden.
-
-## Archiv
-
-Bei jeder Archivierung wird eine neue unveränderliche Version angelegt:
-
-```text
-/mnt/nfs-share/Media-Library/<asset-id>/<UTC-version>/
-├── original.*
-├── preview.wav          # falls vorhanden
-├── audio.tacelp         # falls vorhanden
-└── manifest.json        # Asset-Metadaten, Größe und SHA-256 jeder Kopie
-```
-
-Die Archivkopie wird nie als laufende Playout-Quelle verwendet. Das aktuelle Asset verweist nur auf die zuletzt erfolgreich erzeugte Archivversion.
+Archivordner werden explizit mit `0777`, Archivdateien mit `0666` angelegt. Das
+ist in der OPEN-LAB-Umgebung beabsichtigt, damit NFS- und SMB-Clients dieselben
+Dateien bearbeiten können.

@@ -30,12 +30,17 @@ cargo build --release --package netcore-media-library --manifest-path "${ROOT}/C
 # Was: Kopiert eine Datei mit festgelegten Rechten und Eigentümern.
 # Warum: Korrekte Dateirechte sind für einen sicheren und reproduzierbaren Dienststart notwendig.
 install -o root -g root -m 0755 "${ROOT}/target/release/netcore-media-library" "${PREFIX}/bin/netcore-media-library"
+install -o root -g root -m 0755 "${ROOT}/system-backend/media-library/install/migrate-archive-layout.py" "${PREFIX}/bin/migrate-archive-layout.py"
 # Was: Kopiert eine Datei mit festgelegten Rechten und Eigentümern.
 # Warum: Korrekte Dateirechte sind für einen sicheren und reproduzierbaren Dienststart notwendig.
 install -o root -g root -m 0644 "${ROOT}/system-backend/media-library/README.md" "${PREFIX}/README.md"
 # Was: Kopiert eine Datei mit festgelegten Rechten und Eigentümern.
 # Warum: Korrekte Dateirechte sind für einen sicheren und reproduzierbaren Dienststart notwendig.
 install -o root -g root -m 0644 "${ROOT}/system-backend/media-library/systemd/netcore-media-library.service" "${SERVICE}"
+# Bestehende UUID-Archive werden einmalig in YYYY/MM/DD mit verständlichen
+# Dateinamen migriert. Bei einer Neuinstallation ist der Lauf einfach leer.
+python3 "${PREFIX}/bin/migrate-archive-layout.py" --config "${CONFIG}"
+netcore_prepare_media_shared_storage "${CONFIG}"
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../shared/install" && pwd)/lxc-network.sh"
 netcore_configure_lxc_endpoint "${CONFIG}" "media-library" "8230"
 # Was: Steuert den zugehörigen systemd-Dienst.
