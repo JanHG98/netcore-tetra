@@ -3,6 +3,7 @@
 # NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
 
 set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 CONFIG_SRC="$REPO_ROOT/system-backend/recorder/config/recorder.example.toml"
@@ -60,7 +61,7 @@ install -m 0755 target/release/netcore-recorder /usr/local/bin/netcore-recorder
 # Was: Kopiert eine Datei mit festgelegten Rechten und Eigentümern.
 # Warum: Korrekte Dateirechte sind für einen sicheren und reproduzierbaren Dienststart notwendig.
 install -m 0644 "$UNIT_SRC" /etc/systemd/system/netcore-recorder.service
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../shared/install" && pwd)/lxc-network.sh"
+source "${SCRIPT_DIR}/../../shared/install/lxc-network.sh"
 netcore_configure_lxc_endpoint "/etc/netcore/recorder.toml" "recorder" "8140"
 # Was: Steuert den zugehörigen systemd-Dienst.
 # Warum: Systemd soll Start, Stopp, Neustart und automatischen Boot des Dienstes zuverlässig verwalten.

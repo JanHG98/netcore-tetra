@@ -3,6 +3,7 @@
 # NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
 
 set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 PREFIX="${PREFIX:-/opt/netcore-media-library}"
 CONFIG="${CONFIG:-/etc/netcore/media-library.toml}"
@@ -69,7 +70,7 @@ install -o root -g root -m 0644 "${ROOT}/system-backend/media-library/systemd/ne
 python3 "${PREFIX}/bin/migrate-archive-layout.py" --config "${CONFIG}"
 netcore_prepare_media_local_storage "${CONFIG}"
 netcore_prepare_media_shared_storage "${CONFIG}"
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../shared/install" && pwd)/lxc-network.sh"
+source "${SCRIPT_DIR}/../../shared/install/lxc-network.sh"
 netcore_configure_lxc_endpoint "${CONFIG}" "media-library" "8230"
 # Was: Steuert den zugehörigen systemd-Dienst.
 # Warum: Systemd soll Start, Stopp, Neustart und automatischen Boot des Dienstes zuverlässig verwalten.

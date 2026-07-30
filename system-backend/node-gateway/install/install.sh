@@ -3,6 +3,7 @@
 # NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
 
 set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Was: Prüft die folgende Voraussetzung und führt den passenden Zweig aus.
 # Warum: Fehlende Rechte, Dateien oder Einstellungen sollen früh und verständlich behandelt werden.
@@ -48,7 +49,7 @@ fi
 # Was: Kopiert eine Datei mit festgelegten Rechten und Eigentümern.
 # Warum: Korrekte Dateirechte sind für einen sicheren und reproduzierbaren Dienststart notwendig.
 install -m 0644 system-backend/node-gateway/systemd/netcore-node-gateway.service /etc/systemd/system/netcore-node-gateway.service
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../shared/install" && pwd)/lxc-network.sh"
+source "${SCRIPT_DIR}/../../shared/install/lxc-network.sh"
 netcore_configure_lxc_endpoint "/etc/netcore/node-gateway.toml" "node-gateway" "8080"
 # Was: Steuert den zugehörigen systemd-Dienst.
 # Warum: Systemd soll Start, Stopp, Neustart und automatischen Boot des Dienstes zuverlässig verwalten.

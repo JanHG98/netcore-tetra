@@ -3,6 +3,7 @@
 # NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
 
 set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Was: Prüft die folgende Voraussetzung und führt den passenden Zweig aus.
 # Warum: Fehlende Rechte, Dateien oder Einstellungen sollen früh und verständlich behandelt werden.
 if [[ ${EUID} -ne 0 ]]; then echo "Bitte als root ausführen." >&2; exit 1; fi
@@ -37,7 +38,7 @@ if [[ ! -f /etc/netcore/subscriber-core.toml ]]; then install -m 0644 system-bac
 # Was: Kopiert eine Datei mit festgelegten Rechten und Eigentümern.
 # Warum: Korrekte Dateirechte sind für einen sicheren und reproduzierbaren Dienststart notwendig.
 install -m 0644 system-backend/subscriber-core/systemd/netcore-subscriber-core.service /etc/systemd/system/netcore-subscriber-core.service
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../shared/install" && pwd)/lxc-network.sh"
+source "${SCRIPT_DIR}/../../shared/install/lxc-network.sh"
 netcore_configure_lxc_endpoint "/etc/netcore/subscriber-core.toml" "subscriber-core" "8100"
 # Was: Steuert den zugehörigen systemd-Dienst.
 # Warum: Systemd soll Start, Stopp, Neustart und automatischen Boot des Dienstes zuverlässig verwalten.

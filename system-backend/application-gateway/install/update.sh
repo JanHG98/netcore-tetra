@@ -3,6 +3,7 @@
 # NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
 
 set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 PREFIX="${PREFIX:-/opt/netcore-application-gateway}"
 [[ ${EUID} -eq 0 ]] || { echo "update.sh must run as root" >&2; exit 1; }
@@ -21,7 +22,7 @@ install -o root -g root -m 0644 "${ROOT}/system-backend/application-gateway/READ
 # Was: Kopiert eine Datei mit festgelegten Rechten und Eigentümern.
 # Warum: Korrekte Dateirechte sind für einen sicheren und reproduzierbaren Dienststart notwendig.
 install -o root -g root -m 0644 "${ROOT}/system-backend/application-gateway/systemd/netcore-application-gateway.service" /etc/systemd/system/netcore-application-gateway.service
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../shared/install" && pwd)/lxc-network.sh"
+source "${SCRIPT_DIR}/../../shared/install/lxc-network.sh"
 netcore_configure_lxc_endpoint "/etc/netcore/application-gateway.toml" "application-gateway" "8220"
 # Was: Steuert den zugehörigen systemd-Dienst.
 # Warum: Systemd soll Start, Stopp, Neustart und automatischen Boot des Dienstes zuverlässig verwalten.

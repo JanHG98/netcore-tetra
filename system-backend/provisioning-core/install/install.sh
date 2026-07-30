@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 [[ ${EUID} -eq 0 ]] || { echo "Bitte als root ausführen." >&2; exit 1; }
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 cd "$ROOT"
@@ -31,7 +32,7 @@ if [[ ! -f /etc/netcore/provisioning-core.toml ]]; then
 fi
 install -o root -g root -m 0644 system-backend/provisioning-core/systemd/netcore-provisioning-core.service /etc/systemd/system/netcore-provisioning-core.service
 
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../shared/install" && pwd)/lxc-network.sh"
+source "${SCRIPT_DIR}/../../shared/install/lxc-network.sh"
 netcore_configure_lxc_endpoint "/etc/netcore/provisioning-core.toml" "provisioning-core" "8125"
 
 systemctl daemon-reload

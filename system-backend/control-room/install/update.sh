@@ -3,7 +3,8 @@
 # NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
 
 set -euo pipefail
-ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 # Was: Baut oder prüft die Rust-Komponenten.
 # Warum: So wird vor Installation oder Start sichergestellt, dass der Quellcode technisch verwendbar ist.
 cargo build --release --package netcore-control-room --manifest-path "$ROOT/Cargo.toml"
@@ -16,7 +17,7 @@ install -m 0755 "$ROOT/target/release/netcore-control-room" /usr/local/bin/netco
 # Was: Kopiert eine Datei mit festgelegten Rechten und Eigentümern.
 # Warum: Korrekte Dateirechte sind für einen sicheren und reproduzierbaren Dienststart notwendig.
 install -m 0644 "$ROOT/system-backend/control-room/systemd/netcore-control-room.service" /etc/systemd/system/netcore-control-room.service
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../shared/install" && pwd)/lxc-network.sh"
+source "${SCRIPT_DIR}/../../shared/install/lxc-network.sh"
 netcore_configure_lxc_endpoint "/etc/netcore-control-room/control-room.toml" "control-room" "9010"
 chown root:netcore /etc/netcore-control-room/control-room.toml
 chmod 0640 /etc/netcore-control-room/control-room.toml

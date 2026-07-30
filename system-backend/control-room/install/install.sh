@@ -3,7 +3,8 @@
 # NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
 
 set -euo pipefail
-ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 # Was: Prüft die folgende Voraussetzung und führt den passenden Zweig aus.
 # Warum: Fehlende Rechte, Dateien oder Einstellungen sollen früh und verständlich behandelt werden.
 if ! id -u netcore >/dev/null 2>&1; then
@@ -33,7 +34,7 @@ if [[ ! -f /etc/netcore-control-room/control-room.toml ]]; then
 fi
 chown root:netcore /etc/netcore-control-room/control-room.toml
 chmod 0640 /etc/netcore-control-room/control-room.toml
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../shared/install" && pwd)/lxc-network.sh"
+source "${SCRIPT_DIR}/../../shared/install/lxc-network.sh"
 netcore_configure_lxc_endpoint "/etc/netcore-control-room/control-room.toml" "control-room" "9010"
 chown root:netcore /etc/netcore-control-room/control-room.toml
 chmod 0640 /etc/netcore-control-room/control-room.toml
