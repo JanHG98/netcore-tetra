@@ -186,8 +186,25 @@ NEW_BINARY="$REPO_ROOT/target/release/bluestation-bs"
 
 if [[ "$MIGRATE_LOCAL_TTS_CONFIG" != "0" && -f "$CONFIG_PATH" ]]; then
     command -v python3 >/dev/null 2>&1 || die "python3 wird für die TTS-Konfigurationsmigration benötigt."
-    "$REPO_ROOT/install/remove-local-tts-config.py" "$CONFIG_PATH"
+
+    # Keep the exact owner/group/mode. The helper performs an atomic replace and
+    # runs as root, so without this guard config.toml could become root:root 0640
+    # and fail the unit's ExecStartPre read check before the new binary starts.
+    read -r CONFIG_UID CONFIG_GID CONFIG_MODE < <(stat -c '%u %g %a' "$CONFIG_PATH")
+    python3 "$REPO_ROOT/install/remove-local-tts-config.py" "$CONFIG_PATH"
+    chown "$CONFIG_UID:$CONFIG_GID" "$CONFIG_PATH"
+    chmod "$CONFIG_MODE" "$CONFIG_PATH"
 fi
+
+SERVICE_USER="$(systemctl show "$UNIT" -p User --value 2>/dev/null || true)"
+[[ -n "$SERVICE_USER" ]] || SERVICE_USER=root
+if [[ "$SERVICE_USER" == root ]]; then
+    test -r "$CONFIG_PATH" || die "$CONFIG_PATH ist für root nicht lesbar."
+else
+    runuser -u "$SERVICE_USER" -- test -r "$CONFIG_PATH" \
+        || die "$CONFIG_PATH ist für den Dienstbenutzer '$SERVICE_USER' nicht lesbar. Prüfe Eigentümer, Gruppe und Modus."
+fi
+log "Konfiguration ist für den Dienstbenutzer '$SERVICE_USER' lesbar."
 
 backup_dir="/var/backups/netcore-tetra"
 mkdir -p "$backup_dir"

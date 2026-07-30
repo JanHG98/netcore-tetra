@@ -788,22 +788,15 @@ impl SharedLibrary {
             .get(asset_id)
             .cloned()
             .ok_or_else(|| "asset not found".to_string())?;
+        // Kind-specific assets must never silently fall back into another archive.
+        // Recordings belong below Recordings, generated speech below TTS-Dateien,
+        // and only generic uploads use the Media-Library archive root.
         let archive_root = match asset.kind.as_str() {
-            "recording" => inner
-                .config
-                .storage
-                .recording_archive_root
-                .clone()
-                .or_else(|| inner.config.storage.archive_root.clone()),
-            "tts" => inner
-                .config
-                .storage
-                .tts_archive_root
-                .clone()
-                .or_else(|| inner.config.storage.archive_root.clone()),
+            "recording" => inner.config.storage.recording_archive_root.clone(),
+            "tts" => inner.config.storage.tts_archive_root.clone(),
             _ => inner.config.storage.archive_root.clone(),
         }
-        .ok_or_else(|| format!("archive root is not configured for kind {}", asset.kind))?;
+        .ok_or_else(|| format!("dedicated archive root is not configured for kind {}", asset.kind))?;
         if !archive_root.is_dir() {
             inner.archive_available = false;
             return Err(format!("archive root {} is not mounted", archive_root.display()));

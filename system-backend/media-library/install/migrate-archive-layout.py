@@ -247,6 +247,112 @@ def atomic_json(path: Path, data: dict[str, Any]) -> None:
             pass
 
 
+
+def path_is_below(path: Path, root: Path) -> bool:
+    try:
+        path.resolve(strict=False).relative_to(root.resolve(strict=False))
+        return True
+    except ValueError:
+        return False
+
+
+def configured_root_for_asset(asset: dict[str, Any], storage: dict[str, Any]) -> Path | None:
+    kind = str(asset.get("kind") or "other").strip().lower()
+    key = (
+        "recording_archive_root"
+        if kind == "recording"
+        else "tts_archive_root"
+        if kind == "tts"
+        else "archive_root"
+    )
+    value = storage.get(key)
+    return Path(value) if value else None
+
+
+def cleanup_empty_archive_parents(start: Path, archive_roots: list[Path]) -> None:
+    roots = {root.resolve(strict=False) for root in archive_roots}
+    current = start
+    while current.exists() and current.resolve(strict=False) not in roots:
+        try:
+            current.rmdir()
+        except OSError:
+            break
+        current = current.parent
+
+
+def relocate_archived_asset(
+    asset: dict[str, Any],
+    storage: dict[str, Any],
+    archive_roots: list[Path],
+) -> Path | None:
+    current_value = asset.get("archive_path")
+    if not current_value:
+        return None
+    current_manifest = Path(str(current_value))
+    desired_root = configured_root_for_asset(asset, storage)
+    if desired_root is None or not desired_root.is_dir():
+        return None
+    if path_is_below(current_manifest, desired_root):
+        return None
+    if not current_manifest.is_file():
+        log(
+            f"WARNUNG: Archivpfad für {asset.get('asset_id', 'unbekannt')} fehlt: "
+            f"{current_manifest}"
+        )
+        return None
+
+    timestamp = archive_time(asset)
+    target_day = (
+        desired_root
+        / timestamp.strftime("%Y")
+        / timestamp.strftime("%m")
+        / timestamp.strftime("%d")
+    )
+    target_day.mkdir(parents=True, exist_ok=True)
+    for parent in [desired_root, target_day.parent.parent, target_day.parent, target_day]:
+        parent.chmod(0o777)
+
+    manifest_data = json.loads(current_manifest.read_text(encoding="utf-8"))
+    file_names: list[str] = []
+    for item in manifest_data.get("files") or []:
+        if isinstance(item, dict) and item.get("filename"):
+            file_names.append(str(item["filename"]))
+
+    # Old or partially generated manifests may not have a files array. In that
+    # case, collect every sibling belonging to the same descriptive stem.
+    stem = current_manifest.name
+    if stem.endswith("_metadata.json"):
+        stem = stem[: -len("_metadata.json")]
+    elif stem.endswith(".json"):
+        stem = stem[:-5]
+    if not file_names:
+        file_names = [
+            candidate.name
+            for candidate in current_manifest.parent.glob(f"{stem}_*")
+            if candidate.is_file() and candidate != current_manifest
+        ]
+
+    for filename in sorted(set(file_names)):
+        source = current_manifest.parent / filename
+        if not source.is_file():
+            continue
+        move_or_merge(source, target_day / filename)
+
+    target_manifest = target_day / current_manifest.name
+    manifest_asset = manifest_data.setdefault("asset", {})
+    manifest_asset["archive_path"] = str(target_manifest)
+    manifest_data["schema"] = "netcore-media-library-archive-v2"
+    manifest_data["layout"] = "kind/year/month/day"
+    atomic_json(target_manifest, manifest_data)
+    target_manifest.chmod(0o666)
+    if current_manifest != target_manifest:
+        current_manifest.unlink(missing_ok=True)
+    cleanup_empty_archive_parents(current_manifest.parent, archive_roots)
+    asset["archive_path"] = str(target_manifest)
+    asset["archived"] = True
+    return target_manifest
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="/etc/netcore/media-library.toml")
@@ -288,17 +394,39 @@ def main() -> int:
                 log(f"{asset_id} -> {new_path}")
         chmod_tree(root)
 
-    if state and migrated:
+    relocated: dict[str, str] = {}
+    if state:
         assets = state.get("assets") or {}
         for asset_id, path in migrated.items():
             asset = assets.get(asset_id)
             if isinstance(asset, dict):
                 asset["archive_path"] = path
                 asset["archived"] = True
-        atomic_json(state_path, state)
-        log(f"state.json für {len(migrated)} Assets aktualisiert")
 
-    log(f"Fertig. Migriert: {len(migrated)}")
+        # Enforce the physical archive roots after the legacy-layout migration:
+        # recordings -> Recordings, TTS -> TTS-Dateien, generic media -> Media-Library.
+        for asset_id, asset in assets.items():
+            if not isinstance(asset, dict):
+                continue
+            new_path = relocate_archived_asset(asset, storage, roots)
+            if new_path is not None:
+                relocated[str(asset_id)] = str(new_path)
+                log(f"{asset_id}: nach {new_path} einsortiert")
+
+        if migrated or relocated:
+            atomic_json(state_path, state)
+            log(
+                f"state.json aktualisiert: {len(migrated)} Layout-Migrationen, "
+                f"{len(relocated)} Kategoriekorrekturen"
+            )
+
+    for root in roots:
+        chmod_tree(root)
+
+    log(
+        f"Fertig. Layout migriert: {len(migrated)}, "
+        f"falsch einsortierte Archive verschoben: {len(relocated)}"
+    )
     return 0
 
 

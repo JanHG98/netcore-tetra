@@ -27,6 +27,12 @@ install -d -o "${SERVICE_USER}" -g "${SERVICE_GROUP}" -m 0750 \
 
 full_install=0
 [[ -x "${VENV}/bin/python" ]] || full_install=1
+# A venv directory alone is not proof of a completed installation. Repair
+# interrupted installs where Python exists but piper-tts[http] is missing.
+if [[ ${full_install} -eq 0 ]]; then
+  "${VENV}/bin/python" -c 'import piper, piper.http_server, piper.download_voices' \
+    >/dev/null 2>&1 || full_install=1
+fi
 if [[ "${MODE}" == "1" || "${MODE}" == "true" || "${MODE}" == "force" ]]; then
   full_install=1
 fi
@@ -42,7 +48,7 @@ if [[ ${full_install} -eq 1 ]]; then
   PIPER_PORT="${PIPER_PORT}" \
   DEFAULT_VOICE="${DEFAULT_VOICE}" \
   VOICE_LIST="${VOICE_LIST}" \
-  "${ROOT}/system-backend/tts/install-piper.sh"
+  bash "${ROOT}/system-backend/tts/install-piper.sh"
 else
   echo "[Media Library] Existing Piper virtualenv found; checking service unit and models."
 
@@ -70,7 +76,7 @@ else
     VENV="${VENV}" \
     VOICE_DIR="${VOICE_DIR}" \
     VOICE_LIST="${VOICE_LIST}" \
-    "${ROOT}/system-backend/tts/install-extra-voices.sh"
+    bash "${ROOT}/system-backend/tts/install-extra-voices.sh"
   fi
 
   chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "${VOICE_DIR}" "${TTS_CACHE}" "${TTS_TEMPLATES}"
@@ -87,8 +93,7 @@ for _ in $(seq 1 30); do
   sleep 1
 done
 
-echo "[Media Library] WARNING: Piper did not become ready within 30 seconds." >&2
-systemctl --no-pager --full status netcore-piper.service || true
-# The Media Library still starts and exposes a clear PIPER OFFLINE status. This
-# keeps ordinary recordings and media available while Piper is repaired.
-exit 0
+echo "[Media Library] ERROR: Piper did not become ready within 30 seconds." >&2
+systemctl --no-pager --full status netcore-piper.service >&2 || true
+journalctl -u netcore-piper.service -n 100 --no-pager >&2 || true
+exit 1

@@ -66,5 +66,5 @@ Asset-API bereit.
 Der bisherige `[tts]`-Abschnitt wird aus `/etc/netcore/config.toml` entfernt. Die
 Basisstation benötigt nur ihre bestehende `[media_library]`-Anbindung. Im
 Media-Library-Dateibrowser erscheinen fertige TTS-Dateien automatisch im virtuellen
-Baum `Jahr/Monat/Tag`. Entwürfe können vorgehört werden; eine Funk-Aussendung wird
+Baum `Recordings/Jahr/Monat/Tag`, `TTS-Dateien/Jahr/Monat/Tag` beziehungsweise `Media-Library/Jahr/Monat/Tag`. Entwürfe können vorgehört werden; eine Funk-Aussendung wird
 bei `only_approved = true` erst nach Freigabe zugelassen.

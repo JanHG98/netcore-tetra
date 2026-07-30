@@ -21,7 +21,7 @@ fi
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/shared-storage.sh"
 netcore_prepare_media_local_storage "${CONFIG}"
 netcore_prepare_media_shared_storage "${CONFIG}"
-"$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/ensure-piper.sh"
+bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/ensure-piper.sh"
 # Was: Baut oder prüft die Rust-Komponenten.
 # Warum: So wird vor Installation oder Start sichergestellt, dass der Quellcode technisch verwendbar ist.
 cargo build --release --package netcore-media-library --manifest-path "${ROOT}/Cargo.toml"

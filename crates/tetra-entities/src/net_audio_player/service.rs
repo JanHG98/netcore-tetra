@@ -757,37 +757,53 @@ impl AudioPlayerHandle {
         items.sort_by(|left, right| right.timestamp.cmp(&left.timestamp));
 
         match components.as_slice() {
-            [] => Ok(media_library_directory_entries(
-                items.iter().map(|item| item.year.as_str()),
-                "",
-                |value| value.to_string(),
+            [] => Ok(media_library_category_entries(
+                items.iter().map(|item| item.category.as_str()),
             )),
-            [year] => Ok(media_library_directory_entries(
+            [category] => Ok(media_library_directory_entries(
                 items
                     .iter()
-                    .filter(|item| item.year == *year)
+                    .filter(|item| item.category == *category)
+                    .map(|item| item.year.as_str()),
+                category,
+                |value| value.to_string(),
+            )),
+            [category, year] => Ok(media_library_directory_entries(
+                items
+                    .iter()
+                    .filter(|item| item.category == *category && item.year == *year)
                     .map(|item| item.month.as_str()),
-                year,
+                &format!("{category}/{year}"),
                 media_library_month_label,
             )),
-            [year, month] => Ok(media_library_directory_entries(
+            [category, year, month] => Ok(media_library_directory_entries(
                 items
                     .iter()
-                    .filter(|item| item.year == *year && item.month == *month)
+                    .filter(|item| {
+                        item.category == *category && item.year == *year && item.month == *month
+                    })
                     .map(|item| item.day.as_str()),
-                &format!("{year}/{month}"),
+                &format!("{category}/{year}/{month}"),
                 |value| value.to_string(),
             )),
-            [year, month, day] => {
+            [category, year, month, day] => {
                 let mut entries = items
                     .into_iter()
-                    .filter(|item| item.year == *year && item.month == *month && item.day == *day)
+                    .filter(|item| {
+                        item.category == *category
+                            && item.year == *year
+                            && item.month == *month
+                            && item.day == *day
+                    })
                     .map(|item| {
                         let approved = item.asset.approval == "approved";
                         let playable = !self.inner.media_library.only_approved || approved;
                         MediaEntry {
                             name: item.display_name,
-                            path: format!("{year}/{month}/{day}/{}", item.asset.asset_id),
+                            path: format!(
+                                "{category}/{year}/{month}/{day}/{}",
+                                item.asset.asset_id
+                            ),
                             entry_type: "file".to_string(),
                             size_bytes: item.asset.size_bytes,
                             extension: Some("wav".to_string()),
@@ -906,6 +922,7 @@ impl AudioPlayerHandle {
 struct MediaLibraryVirtualItem {
     asset: RemoteMediaAsset,
     timestamp: DateTime<FixedOffset>,
+    category: String,
     year: String,
     month: String,
     day: String,
@@ -915,9 +932,10 @@ struct MediaLibraryVirtualItem {
 impl MediaLibraryVirtualItem {
     fn from_asset(asset: RemoteMediaAsset) -> Self {
         let timestamp = remote_asset_timestamp(&asset);
-        let (year, month, day, display_name) = remote_asset_archive_location(&asset)
+        let (category, year, month, day, display_name) = remote_asset_archive_location(&asset)
             .unwrap_or_else(|| {
                 (
+                    media_library_category(&asset).to_string(),
                     timestamp.format("%Y").to_string(),
                     timestamp.format("%m").to_string(),
                     timestamp.format("%d").to_string(),
@@ -927,6 +945,7 @@ impl MediaLibraryVirtualItem {
         Self {
             asset,
             timestamp,
+            category,
             year,
             month,
             day,
@@ -955,16 +974,51 @@ fn media_library_browse_components(path: &str) -> Result<Vec<String>, String> {
             _ => None,
         })
         .collect::<Vec<_>>();
-    if components.len() > 3 {
+    if components.len() > 4 {
         return Err("invalid Media Library catalogue path".to_string());
     }
     for (index, component) in components.iter().enumerate() {
-        let expected_len = if index == 0 { 4 } else { 2 };
-        if component.len() != expected_len || !component.chars().all(|value| value.is_ascii_digit()) {
+        let valid = match index {
+            0 => matches!(component.as_str(), "Recordings" | "TTS-Dateien" | "Media-Library"),
+            1 => component.len() == 4 && component.chars().all(|value| value.is_ascii_digit()),
+            2 | 3 => component.len() == 2 && component.chars().all(|value| value.is_ascii_digit()),
+            _ => false,
+        };
+        if !valid {
             return Err("invalid Media Library catalogue path".to_string());
         }
     }
     Ok(components)
+}
+
+fn media_library_category_entries<'a, I>(values: I) -> Vec<MediaEntry>
+where
+    I: IntoIterator<Item = &'a str>,
+{
+    let present = values
+        .into_iter()
+        .collect::<std::collections::BTreeSet<_>>();
+    ["Recordings", "TTS-Dateien", "Media-Library"]
+        .into_iter()
+        .filter(|category| present.contains(*category))
+        .map(|category| MediaEntry {
+            name: category.to_string(),
+            path: category.to_string(),
+            entry_type: "directory".to_string(),
+            size_bytes: None,
+            extension: None,
+            playable: None,
+            status: None,
+        })
+        .collect()
+}
+
+fn media_library_category(asset: &RemoteMediaAsset) -> &'static str {
+    match asset.kind.trim().to_ascii_lowercase().as_str() {
+        "recording" => "Recordings",
+        "tts" => "TTS-Dateien",
+        _ => "Media-Library",
+    }
 }
 
 fn media_library_directory_entries<'a, I, F>(
@@ -1040,7 +1094,7 @@ fn remote_asset_timestamp(asset: &RemoteMediaAsset) -> DateTime<FixedOffset> {
 
 fn remote_asset_archive_location(
     asset: &RemoteMediaAsset,
-) -> Option<(String, String, String, String)> {
+) -> Option<(String, String, String, String, String)> {
     let path = Path::new(asset.archive_path.as_deref()?);
     let manifest = path.file_name()?.to_str()?;
     let day = path.parent()?.file_name()?.to_str()?.to_string();
@@ -1063,7 +1117,13 @@ fn remote_asset_archive_location(
         .strip_suffix("_metadata.json")
         .or_else(|| manifest.strip_suffix(".json"))
         .unwrap_or(manifest);
-    Some((year, month, day, format!("{stem}.wav")))
+    Some((
+        media_library_category(asset).to_string(),
+        year,
+        month,
+        day,
+        format!("{stem}.wav"),
+    ))
 }
 
 fn remote_asset_display_name(
@@ -1286,7 +1346,7 @@ mod media_library_tree_tests {
     #[test]
     fn media_library_asset_id_accepts_virtual_tree_path() {
         let value = media_library_asset_id(
-            "2026/07/29/6ef665e4-b996-489c-8ee1-2d107efbe4ba",
+            "Recordings/2026/07/29/6ef665e4-b996-489c-8ee1-2d107efbe4ba",
         )
         .expect("virtual asset path must resolve");
         assert_eq!(value, "6ef665e4-b996-489c-8ee1-2d107efbe4ba");
@@ -1298,18 +1358,31 @@ mod media_library_tree_tests {
             "/mnt/nfs-share/Recordings/2026/07/29/21-39-15_Gruppenruf_GSSI-15201_von-ISSI-5102_6ef665e4_metadata.json",
         );
         let location = remote_asset_archive_location(&asset).expect("archive layout must be recognized");
-        assert_eq!(location.0, "2026");
-        assert_eq!(location.1, "07");
-        assert_eq!(location.2, "29");
+        assert_eq!(location.0, "Recordings");
+        assert_eq!(location.1, "2026");
+        assert_eq!(location.2, "07");
+        assert_eq!(location.3, "29");
         assert_eq!(
-            location.3,
+            location.4,
             "21-39-15_Gruppenruf_GSSI-15201_von-ISSI-5102_6ef665e4.wav"
         );
     }
 
     #[test]
     fn media_library_browser_stops_at_day_level() {
-        assert!(media_library_browse_components("2026/07/29").is_ok());
-        assert!(media_library_browse_components("2026/07/29/asset").is_err());
+        assert!(media_library_browse_components("Recordings/2026/07/29").is_ok());
+        assert!(media_library_browse_components("TTS-Dateien/2026/07/30").is_ok());
+        assert!(media_library_browse_components("2026/07/29").is_err());
+        assert!(media_library_browse_components("Recordings/2026/07/29/asset").is_err());
+    }
+
+    #[test]
+    fn tts_assets_are_always_grouped_under_tts_dateien() {
+        let mut asset = asset_with_archive_path(
+            "/mnt/nfs-share/Recordings/2026/07/30/10-00-00_TTS_Test_6ef665e4_metadata.json",
+        );
+        asset.kind = "tts".to_string();
+        let location = remote_asset_archive_location(&asset).expect("TTS archive layout must be recognized");
+        assert_eq!(location.0, "TTS-Dateien");
     }
 }

@@ -147,7 +147,7 @@ the shared NFS/SMB archive are explicitly opened to directories `0777` and files
 
 ## Basisstations-Katalog nach Jahr/Monat/Tag
 
-Die Basisstations-Audio-Zentrale spiegelt die Archivstruktur der Media Library als virtuellen Baum `Jahr/Monat/Tag`. Dabei bleibt die Media Library die API-Quelle; NFS wird von der Basisstation nicht direkt als Playout-Quelle verwendet. Archivierte Assets übernehmen Ordner und verständlichen Dateinamen aus `archive_path`, noch nicht archivierte Assets werden anhand ihrer Aufnahme-/Erstellungszeit einsortiert.
+Die Basisstations-Audio-Zentrale spiegelt die Archivstruktur der Media Library als virtuellen Baum `Recordings/Jahr/Monat/Tag`, `TTS-Dateien/Jahr/Monat/Tag` beziehungsweise `Media-Library/Jahr/Monat/Tag`. Dabei bleibt die Media Library die API-Quelle; NFS wird von der Basisstation nicht direkt als Playout-Quelle verwendet. Archivierte Assets übernehmen Ordner und verständlichen Dateinamen aus `archive_path`, noch nicht archivierte Assets werden anhand ihrer Aufnahme-/Erstellungszeit einsortiert.
 
 ## Zentrale Piper-TTS-Erzeugung
 

@@ -109,6 +109,6 @@ weist `[media_library]` mit `Unrecognized top-level fields` ab und fällt auf
 
 Piper, Texteingabe und Vorlagen laufen ausschließlich in der Media Library. Den
 bisherigen `[tts]`-Abschnitt auf der Basisstation entfernen. Fertige TTS-Assets
-erscheinen automatisch im Media-Library-Dateibrowser unter `Jahr/Monat/Tag`;
+erscheinen automatisch im Media-Library-Dateibrowser unter `Recordings/Jahr/Monat/Tag`, `TTS-Dateien/Jahr/Monat/Tag` oder `Media-Library/Jahr/Monat/Tag`;
 Vorschau und Aussendung verwenden denselben lokalen Cachepfad wie andere Medien.
 Die vollständige Konfiguration steht in `Docs/MEDIA_LIBRARY_CENTRAL_TTS.md`.

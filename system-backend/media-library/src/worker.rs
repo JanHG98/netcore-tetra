@@ -101,12 +101,10 @@ pub fn run_cycle(
                 tracing::info!(asset_id = %asset_id, "Media processing completed");
                 let auto_archive = (asset.kind == "recording"
                     && config.runtime.auto_archive_recordings
-                    && (config.storage.recording_archive_root.is_some()
-                        || config.storage.archive_root.is_some()))
+                    && config.storage.recording_archive_root.is_some())
                     || (asset.kind == "tts"
                         && config.runtime.auto_archive_tts
-                        && (config.storage.tts_archive_root.is_some()
-                            || config.storage.archive_root.is_some()));
+                        && config.storage.tts_archive_root.is_some());
                 if auto_archive && !asset.archived {
                     if let Err(error) = library.archive_asset(
                         &asset_id,

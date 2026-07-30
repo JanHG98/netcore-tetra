@@ -4,10 +4,10 @@
 //! WAP 1.x/2.0 WTP/WSP adapter over IPv4/UDP.
 
 use super::ip::{IPV4_PROTOCOL_UDP, IPV4_UDP_HEADER_BYTES, IpError, build_ipv4_udp_npdu, parse_ipv4_packet, parse_udp_datagram};
-use super::wap_portal::{
-    WapMarkup, WapPage, WapPortalRoute, parse_portal_path, render_portal_page,
+use super::wap_status::{
+    WapStatusSnapshot, render_browser_wml, render_browser_wml_sector, render_browser_xhtml,
+    render_browser_xhtml_sector, render_raw_xhtml,
 };
-use super::wap_status::{WapStatusSnapshot, render_raw_xhtml};
 
 // Was: Legt den festen Wert `WTP_PDU_INVOKE` für wtp Protokollnachricht (PDU) invoke fest.
 // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
@@ -258,33 +258,33 @@ fn normalize_path(uri: &str) -> String {
     }
 }
 
-// Was: Ermittelt eine erlaubte XHTML-/WML-Portalseite aus URI und Richtlinie.
-// Warum: Alle Portalpfade nutzen dieselbe Zugriffskontrolle und die alten Status-Sektor-Links bleiben kompatibel.
-fn portal_route(uri: &str, policy: WapPolicy) -> Option<WapPortalRoute> {
+// Was: Führt den Arbeitsschritt `path_allowed` für path allowed aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn path_allowed(uri: &str, policy: WapPolicy) -> Option<bool> {
     let base = normalize_path(uri);
-    let mut route = parse_portal_path(&base)?;
-
-    // Kompatibilität zum bisherigen Status-Sektor: ?s=1 zeigt die Health-Seite.
-    if route.page == WapPage::Status && uri.split('#').next().unwrap_or(uri).contains("?s=1") {
-        route.page = WapPage::Health;
+    if base == "/" && policy.accept_root_path {
+        Some(false)
+    } else if matches!(base.as_str(), "/status" | "/status.xhtml") && policy.accept_status_path {
+        Some(false)
+    } else if base == "/status.wml" && policy.accept_status_wml_path {
+        Some(true)
+    } else {
+        None
     }
-
-    let allowed = match (route.markup, route.page) {
-        (WapMarkup::Xhtml, WapPage::Home) => policy.accept_root_path,
-        (WapMarkup::Xhtml, _) => policy.accept_status_path,
-        (WapMarkup::Wml, _) => policy.accept_status_wml_path,
-    };
-    allowed.then_some(route)
 }
 
-// Was: Erzeugt die WSP-Antwort für eine NetCore-Portalseite.
-// Warum: Content-Type, Seitenformat und Openwave-Größenlimit bleiben dadurch immer synchron.
+// Was: Führt den Arbeitsschritt `wsp_status_reply` für wsp Status reply aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn wsp_status_reply(path: &str, policy: WapPolicy, snapshot: &WapStatusSnapshot) -> Result<Vec<u8>, WapError> {
-    let route = portal_route(path, policy).ok_or(WapError::UnsupportedPath)?;
-    let body = render_portal_page(route, snapshot);
-    let ct = match route.markup {
-        WapMarkup::Wml => WSP_CONTENT_WML,
-        WapMarkup::Xhtml => WSP_CONTENT_XHTML,
+    let wml = path_allowed(path, policy).ok_or(WapError::UnsupportedPath)?;
+    let sector = path.split('#').next().unwrap_or(path).contains("?s=");
+    let (ct, body) = if wml {
+        let body = if sector { render_browser_wml_sector(snapshot, 144) } else { render_browser_wml(snapshot, 144) };
+        (WSP_CONTENT_WML, body)
+    } else if sector {
+        (WSP_CONTENT_XHTML, render_browser_xhtml_sector(snapshot, 144))
+    } else {
+        (WSP_CONTENT_XHTML, render_browser_xhtml(snapshot, 104))
     };
     let mut out = vec![WSP_REPLY, 0x20, 0x01, ct];
     out.extend_from_slice(body.as_bytes());
@@ -383,8 +383,8 @@ pub fn build_response_npdu(
         if matches!(wtp_type, WTP_PDU_INVOKE | WTP_PDU_ACK | WTP_PDU_ABORT) {
             handle_wtp(udp.payload, policy, snapshot)?
         } else if let Some(path) = plain_get_path(udp.payload) {
-            let route = portal_route(path, policy).ok_or(WapError::UnsupportedPath)?;
-            Some(render_portal_page(route, snapshot).into_bytes())
+            let _ = path_allowed(path, policy).ok_or(WapError::UnsupportedPath)?;
+            Some(render_raw_xhtml(snapshot, 576 - IPV4_UDP_HEADER_BYTES).into_bytes())
         } else {
             return Err(WapError::UnsupportedPayload);
         }
@@ -485,40 +485,6 @@ mod tests {
         let response = handle_wtp(&request, policy, &snapshot()).unwrap().unwrap();
         assert_eq!(&response[..7], &[0x12, 0x92, 0x34, 0x04, 0x20, 0x01, WSP_CONTENT_XHTML]);
         assert!(response.len() <= 3 + 4 + 104);
-    }
-
-    #[test]
-    fn readable_wml_alias_returns_wml_content_type() {
-        let uri = b"/media-library.wml";
-        let mut request = vec![0x0b, 0x12, 0x35, 0x12, WSP_GET, uri.len() as u8];
-        request.extend_from_slice(uri);
-        let policy = WapPolicy {
-            accept_empty_probe: true,
-            accept_root_path: true,
-            accept_status_path: true,
-            accept_status_wml_path: true,
-            max_request_payload_bytes: 1024,
-        };
-        let response = handle_wtp(&request, policy, &snapshot()).unwrap().unwrap();
-        assert_eq!(response[6], WSP_CONTENT_WML);
-        assert!(std::str::from_utf8(&response[7..]).unwrap().starts_with("<wml><card><p>"));
-    }
-
-    #[test]
-    fn legacy_status_sector_query_maps_to_health_page() {
-        let uri = b"/status.xhtml?s=1";
-        let mut request = vec![0x0b, 0x12, 0x36, 0x12, WSP_GET, uri.len() as u8];
-        request.extend_from_slice(uri);
-        let policy = WapPolicy {
-            accept_empty_probe: true,
-            accept_root_path: true,
-            accept_status_path: true,
-            accept_status_wml_path: true,
-            max_request_payload_bytes: 1024,
-        };
-        let response = handle_wtp(&request, policy, &snapshot()).unwrap().unwrap();
-        assert_eq!(response[6], WSP_CONTENT_XHTML);
-        assert!(std::str::from_utf8(&response[7..]).unwrap().contains("Health"));
     }
 
     #[test]

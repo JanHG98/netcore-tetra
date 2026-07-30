@@ -10,11 +10,9 @@ Der Dienst ist bewusst **kein allgemeiner Internetzugang**. Das Funkgerät erhä
 
 - Gateway/Server: `10.0.0.1`
 - UDP-Port: `9200`
-- Startseite XHTML: `/` oder `/index.xhtml`
-- Startseite WML: `/index.wml`
-- Kompakte Openwave-Pfade: `/x` und `/w`
-- Status: `/status.xhtml` und `/status.wml`
-- Vollstaendige Seitenliste: `Docs/WAP_PORTAL.md`
+- Startseite: `/`
+- XHTML: `/status.xhtml`
+- WML: `/status.wml`
 
 ## Eingebaute Funktionen
 
@@ -54,8 +52,6 @@ Der Dienst ist bewusst **kein allgemeiner Internetzugang**. Das Funkgerät erhä
 - WSP GET mit ein- oder mehrbyteigem UIntVar
 - absolute und relative WAP-URIs
 - einfache Klartext-Anfrage `GET /…`
-- vollstaendig verlinktes NetCore-Portal mit 19 Seiten je Format
-- lesbare `.xhtml`-/`.wml`-Aliase und kurze `/x/...`-/`/w/...`-Openwave-Pfade
 - Openwave-taugliche XHTML-/WML-Seiten mit harten Größenlimits
 
 ### Live-Statusseite
@@ -70,13 +66,6 @@ Die Seite enthält in kompakter Form:
 - wartende Live-SDS
 - Uptime
 - letzte WAP-/PDP-Aktivität
-
-
-### WAP-Portal
-
-Das Portal enthaelt Status-, Teilnehmer-, Gruppen-, Ruf-, SDS-, Funkzellen-, Paketdaten-, Gateway-, Backend-, Media-Library-, Recorder-, TTS-, Diagnose-, Hilfe- und Projektseiten. Jede Seite wird als XHTML und WML angeboten und bleibt innerhalb ihres Formats navigierbar.
-
-Die bestehenden Konfigurationsfelder `accept_status_path` und `accept_status_wml_path` werden aus Abwaertskompatibilitaet beibehalten; sie schalten nun die gesamte XHTML- beziehungsweise WML-Portalfamilie frei. Details und alle Routen stehen in `Docs/WAP_PORTAL.md`.
 
 ## Konfiguration
 

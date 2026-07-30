@@ -18,6 +18,8 @@ def main() -> None:
     bs_main = read("bins/bluestation-bs/src/main.rs")
     bs_updater = read("install/update-basisstation.sh")
     player = read("crates/tetra-entities/src/net_audio_player/service.rs")
+    media_state = read("system-backend/media-library/src/state.rs")
+    archive_migration = read("system-backend/media-library/install/migrate-archive-layout.py")
 
     for route in (
         "/api/v1/tts/status",
@@ -52,6 +54,13 @@ def main() -> None:
     assert 'query.append_pair("kind"' not in player
     assert 'format!("FREIGEGEBEN · {}", item.asset.kind.to_ascii_uppercase())' in player
     assert 'source_id: Some("media-library".to_string())' in player
+    assert '"tts" => "TTS-Dateien"' in player
+    assert '"recording" => "Recordings"' in player
+    assert '"TTS-Dateien" | "Media-Library"' in player
+    assert '"tts" => inner.config.storage.tts_archive_root.clone()' in media_state
+    assert '"recording" => inner.config.storage.recording_archive_root.clone()' in media_state
+    assert 'relocate_archived_asset' in archive_migration
+    assert 'falsch einsortierte Archive verschoben' in archive_migration
 
     config = tomllib.loads(
         read("system-backend/media-library/config/media-library.example.toml")
