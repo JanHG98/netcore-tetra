@@ -10644,7 +10644,7 @@ function updateAudioSourceHeader(){
   const source=currentAudioSource(),root=document.getElementById('audio-root'),state=document.getElementById('audio-source-state');
   if(!source){if(root)root.textContent='—';if(state)state.textContent='Quelle nicht gefunden';return;}
   if(root)root.textContent=source.path||'—';
-  if(state){const labels={server:'SERVER ONLINE',media_library:'MEDIA LIBRARY ONLINE',local:'LOKAL'};state.textContent=source.available?(labels[source.source_type]||String(source.source_type||'ONLINE').toUpperCase()):'NICHT VERFÜGBAR';state.style.color=source.available?'var(--success)':'var(--danger)';state.title=source.error||'';}
+  if(state){const labels={server:'SERVER ONLINE',media_library:'MEDIA LIBRARY ONLINE',local:'LOKAL'},label=source.id==='media-library'?'MEDIA LIBRARY ONLINE':(labels[source.source_type]||String(source.source_type||'ONLINE').toUpperCase());state.textContent=source.available?label:'NICHT VERFÜGBAR';state.style.color=source.available?'var(--success)':'var(--danger)';state.title=source.error||'';}
 }
 async function loadAudioSources(){
   const r=await fetch('/api/audio/sources',{cache:'no-store'}),j=await r.json().catch(()=>({error:'HTTP '+r.status}));
@@ -10666,7 +10666,7 @@ async function loadAudioStatus(){
   }catch(e){document.getElementById('audio-state').textContent='NICHT VERFÜGBAR';document.getElementById('audio-error').textContent=String(e);}
 }
 async function browseAudio(path){
-  audioCurrentPath=path||'';document.getElementById('audio-path').textContent=audioCurrentSource==='media-library'?'Katalog':'/'+audioCurrentPath;updateAudioSourceHeader();
+  audioCurrentPath=path||'';document.getElementById('audio-path').textContent='/'+audioCurrentPath;updateAudioSourceHeader();
   try{const url='/api/audio/browse?source='+encodeURIComponent(audioCurrentSource)+'&path='+encodeURIComponent(audioCurrentPath),r=await fetch(url,{cache:'no-store'}),j=await r.json();if(!r.ok)throw new Error(j.error||'HTTP '+r.status);audioEntries=j.entries||[];renderAudioEntries();}
   catch(e){audioEntries=[];document.getElementById('audio-tbody').innerHTML='<tr><td colspan="4" class="sds-empty">'+escHtml(e)+'</td></tr>';}
 }

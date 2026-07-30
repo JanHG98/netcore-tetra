@@ -22,6 +22,32 @@ netcore_media_set_storage_path() {
   fi
 }
 
+
+netcore_prepare_media_local_storage() {
+  local service_user="${NETCORE_MEDIA_SERVICE_USER:-netcore-media-library}"
+  local service_group="${NETCORE_MEDIA_SERVICE_GROUP:-netcore-media-library}"
+  local local_root="${NETCORE_MEDIA_LOCAL_ROOT:-/var/lib/netcore-media-library}"
+  local config_path="${1:-/etc/netcore/media-library.toml}"
+
+  # Migration and update helpers run as root. Repair ownership afterwards so
+  # an atomically replaced state.json or a root-created .part file cannot make
+  # the service fail with PermissionDenied on startup.
+  install -d -o "${service_user}" -g "${service_group}" -m 0750 \
+    "${local_root}" \
+    "${local_root}/assets" \
+    "${local_root}/tmp" \
+    "${local_root}/backups"
+
+  chown -R "${service_user}:${service_group}" "${local_root}"
+  find "${local_root}" -xdev -type d -exec chmod 0750 {} +
+  find "${local_root}" -xdev -type f -exec chmod 0640 {} +
+
+  if [[ -e "${config_path}" ]]; then
+    chown root:"${service_group}" "${config_path}"
+    chmod 0640 "${config_path}"
+  fi
+}
+
 netcore_prepare_media_shared_storage() {
   local config_path="$1"
   local share_root="${NETCORE_MEDIA_SHARE_ROOT:-/mnt/nfs-share}"

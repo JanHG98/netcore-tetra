@@ -153,13 +153,29 @@ impl SharedLibrary {
             &config.storage.temp_root,
             &config.storage.backup_root,
         ] {
-            fs::create_dir_all(directory)?;
+            fs::create_dir_all(directory).map_err(|error| {
+                std::io::Error::new(
+                    error.kind(),
+                    format!("cannot create local Media Library directory {}: {error}", directory.display()),
+                )
+            })?;
         }
         if let Some(parent) = config.storage.state_file.parent() {
-            fs::create_dir_all(parent)?;
+            fs::create_dir_all(parent).map_err(|error| {
+                std::io::Error::new(
+                    error.kind(),
+                    format!("cannot create state directory {}: {error}", parent.display()),
+                )
+            })?;
         }
         let mut state = if config.storage.state_file.is_file() {
-            serde_json::from_slice::<PersistentState>(&fs::read(&config.storage.state_file)?)?
+            let bytes = fs::read(&config.storage.state_file).map_err(|error| {
+                std::io::Error::new(
+                    error.kind(),
+                    format!("cannot read Media Library state {}: {error}", config.storage.state_file.display()),
+                )
+            })?;
+            serde_json::from_slice::<PersistentState>(&bytes)?
         } else {
             PersistentState::default()
         };

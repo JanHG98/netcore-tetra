@@ -53,9 +53,10 @@ RuntimeDirectory=netcore-media-library
 # Was: Setzt `ConfigurationDirectory` im Abschnitt `Service`.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit der Dienst auf jedem System gleich und nachvollziehbar arbeitet.
 ConfigurationDirectory=netcore
-# Was: Setzt eine offene Dateimaske für das gemeinsam per NFS und SMB verwendete Archiv.
-# Warum: Neu erzeugte Archivordner und Dateien müssen auch für Windows-Clients zugänglich bleiben.
-UMask=0000
+# Was: Hält lokale Zustands-, Cache- und Arbeitsdateien standardmäßig privat.
+# Warum: Die freigegebenen NFS/SMB-Archivdateien erhalten im Archivcode gezielt 0777/0666;
+# lokale state.json-, Cache- und Asset-Dateien dürfen dadurch nicht versehentlich offen werden.
+UMask=0077
 # Was: Setzt `NoNewPrivileges` im Abschnitt `Service`.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit der Dienst auf jedem System gleich und nachvollziehbar arbeitet.
 NoNewPrivileges=true

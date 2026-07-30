@@ -23,6 +23,7 @@ if [[ ! -e "${CONFIG}" ]]; then
   install -o root -g netcore-media-library -m 0640 "${ROOT}/system-backend/media-library/config/media-library.example.toml" "${CONFIG}"
 fi
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/shared-storage.sh"
+netcore_prepare_media_local_storage "${CONFIG}"
 netcore_prepare_media_shared_storage "${CONFIG}"
 # Was: Baut oder prüft die Rust-Komponenten.
 # Warum: So wird vor Installation oder Start sichergestellt, dass der Quellcode technisch verwendbar ist.
@@ -40,6 +41,7 @@ install -o root -g root -m 0644 "${ROOT}/system-backend/media-library/systemd/ne
 # Bestehende UUID-Archive werden einmalig in YYYY/MM/DD mit verständlichen
 # Dateinamen migriert. Bei einer Neuinstallation ist der Lauf einfach leer.
 python3 "${PREFIX}/bin/migrate-archive-layout.py" --config "${CONFIG}"
+netcore_prepare_media_local_storage "${CONFIG}"
 netcore_prepare_media_shared_storage "${CONFIG}"
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../shared/install" && pwd)/lxc-network.sh"
 netcore_configure_lxc_endpoint "${CONFIG}" "media-library" "8230"

@@ -8,6 +8,7 @@ use std::process::Command;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use chrono::{DateTime, FixedOffset, Timelike};
 use reqwest::blocking::Client;
 use serde::Deserialize;
 
@@ -77,6 +78,22 @@ struct MediaRoot {
     cache_before_decode: bool,
 }
 
+#[derive(Debug, Clone, Deserialize, Default)]
+#[serde(default)]
+struct RemoteSourceRecordingMetadata {
+    recorded_at: Option<String>,
+    source_issi: Option<u32>,
+    destination_id: Option<u32>,
+    destination_type: Option<String>,
+    duration_ms: Option<u64>,
+}
+
+#[derive(Debug, Clone, Deserialize, Default)]
+#[serde(default)]
+struct RemoteAudioMetadata {
+    duration_ms: Option<u64>,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 struct RemoteMediaAsset {
     asset_id: String,
@@ -87,6 +104,14 @@ struct RemoteMediaAsset {
     approval: String,
     size_bytes: Option<u64>,
     preview_ready: bool,
+    #[serde(default)]
+    source_metadata: Option<RemoteSourceRecordingMetadata>,
+    #[serde(default)]
+    metadata: RemoteAudioMetadata,
+    #[serde(default)]
+    archive_path: Option<String>,
+    #[serde(default)]
+    created_at: Option<String>,
     #[serde(default)]
     last_error: Option<String>,
 }
@@ -334,10 +359,7 @@ impl AudioPlayerHandle {
     // Warum: Die Zusammenstellung der Einträge bleibt damit konsistent und wiederverwendbar.
     pub fn list_media(&self, source_id: &str, relative: &str) -> Result<Vec<MediaEntry>, String> {
         if source_id.trim() == "media-library" {
-            if !relative.trim().trim_matches('/').is_empty() {
-                return Err("Media Library is presented as a flat asset catalogue".to_string());
-            }
-            return self.list_media_library();
+            return self.list_media_library(relative);
         }
         let root = self.find_media_root(source_id)?;
         let canonical_root = canonical_media_root(root)?;
@@ -646,9 +668,7 @@ impl AudioPlayerHandle {
         if !self.media_library_source_enabled() {
             return Err("Media Library audio source is disabled".to_string());
         }
-        let asset_id = Uuid::parse_str(asset_id.trim())
-            .map_err(|_| "invalid Media Library asset id".to_string())?
-            .to_string();
+        let asset_id = media_library_asset_id(asset_id)?;
         let endpoint = format!(
             "{}/api/v1/assets/{asset_id}",
             self.inner.media_library.base_url
@@ -691,10 +711,11 @@ impl AudioPlayerHandle {
         Ok(())
     }
 
-    fn list_media_library(&self) -> Result<Vec<MediaEntry>, String> {
+    fn list_media_library(&self, relative: &str) -> Result<Vec<MediaEntry>, String> {
         if !self.media_library_source_enabled() {
             return Err("Media Library audio source is disabled".to_string());
         }
+        let components = media_library_browse_components(relative)?;
         let mut url = reqwest::Url::parse(&format!(
             "{}/api/v1/assets",
             self.inner.media_library.base_url
@@ -727,39 +748,63 @@ impl AudioPlayerHandle {
         let assets = response
             .json::<Vec<RemoteMediaAsset>>()
             .map_err(|error| format!("invalid Media Library catalogue: {error}"))?;
-        let mut entries = assets
+        let mut items = assets
             .into_iter()
             .filter(|asset| self.validate_remote_preview(asset).is_ok())
-            .map(|asset| {
-                let title = asset.title.trim();
-                let approved = asset.approval == "approved";
-                let playable = !self.inner.media_library.only_approved || approved;
-                let name = if title.is_empty() {
-                    asset.original_filename.clone()
-                } else {
-                    title.to_string()
-                };
-                MediaEntry {
-                    name,
-                    path: asset.asset_id,
-                    entry_type: "file".to_string(),
-                    size_bytes: asset.size_bytes,
-                    extension: Some("wav".to_string()),
-                    playable: Some(playable),
-                    status: Some(if approved {
-                        format!("FREIGEGEBEN · {}", asset.kind.to_ascii_uppercase())
-                    } else {
-                        format!("ENTWURF · {}", asset.kind.to_ascii_uppercase())
-                    }),
-                }
-            })
+            .map(MediaLibraryVirtualItem::from_asset)
             .collect::<Vec<_>>();
-        entries.sort_by(|left, right| {
-            left.name
-                .to_ascii_lowercase()
-                .cmp(&right.name.to_ascii_lowercase())
-        });
-        Ok(entries)
+
+        items.sort_by(|left, right| right.timestamp.cmp(&left.timestamp));
+
+        match components.as_slice() {
+            [] => Ok(media_library_directory_entries(
+                items.iter().map(|item| item.year.as_str()),
+                "",
+                |value| value.to_string(),
+            )),
+            [year] => Ok(media_library_directory_entries(
+                items
+                    .iter()
+                    .filter(|item| item.year == *year)
+                    .map(|item| item.month.as_str()),
+                year,
+                media_library_month_label,
+            )),
+            [year, month] => Ok(media_library_directory_entries(
+                items
+                    .iter()
+                    .filter(|item| item.year == *year && item.month == *month)
+                    .map(|item| item.day.as_str()),
+                &format!("{year}/{month}"),
+                |value| value.to_string(),
+            )),
+            [year, month, day] => {
+                let mut entries = items
+                    .into_iter()
+                    .filter(|item| item.year == *year && item.month == *month && item.day == *day)
+                    .map(|item| {
+                        let approved = item.asset.approval == "approved";
+                        let playable = !self.inner.media_library.only_approved || approved;
+                        MediaEntry {
+                            name: item.display_name,
+                            path: format!("{year}/{month}/{day}/{}", item.asset.asset_id),
+                            entry_type: "file".to_string(),
+                            size_bytes: item.asset.size_bytes,
+                            extension: Some("wav".to_string()),
+                            playable: Some(playable),
+                            status: Some(if approved {
+                                format!("FREIGEGEBEN · {}", item.asset.kind.to_ascii_uppercase())
+                            } else {
+                                format!("ENTWURF · {}", item.asset.kind.to_ascii_uppercase())
+                            }),
+                        }
+                    })
+                    .collect::<Vec<_>>();
+                entries.sort_by(|left, right| right.name.cmp(&left.name));
+                Ok(entries)
+            }
+            _ => Err("invalid Media Library catalogue path".to_string()),
+        }
     }
 
     fn download_media_library_preview(
@@ -853,6 +898,241 @@ impl AudioPlayerHandle {
             .iter()
             .find(|root| root.id == source_id)
             .ok_or_else(|| format!("unknown media source '{source_id}'"))
+    }
+}
+
+
+#[derive(Debug, Clone)]
+struct MediaLibraryVirtualItem {
+    asset: RemoteMediaAsset,
+    timestamp: DateTime<FixedOffset>,
+    year: String,
+    month: String,
+    day: String,
+    display_name: String,
+}
+
+impl MediaLibraryVirtualItem {
+    fn from_asset(asset: RemoteMediaAsset) -> Self {
+        let timestamp = remote_asset_timestamp(&asset);
+        let (year, month, day, display_name) = remote_asset_archive_location(&asset)
+            .unwrap_or_else(|| {
+                (
+                    timestamp.format("%Y").to_string(),
+                    timestamp.format("%m").to_string(),
+                    timestamp.format("%d").to_string(),
+                    remote_asset_display_name(&asset, &timestamp),
+                )
+            });
+        Self {
+            asset,
+            timestamp,
+            year,
+            month,
+            day,
+            display_name,
+        }
+    }
+}
+
+fn media_library_asset_id(path: &str) -> Result<String, String> {
+    let clean = safe_relative_path(path)?;
+    let asset_id = clean
+        .file_name()
+        .and_then(|value| value.to_str())
+        .ok_or_else(|| "invalid Media Library asset path".to_string())?;
+    Uuid::parse_str(asset_id)
+        .map(|value| value.to_string())
+        .map_err(|_| "invalid Media Library asset id".to_string())
+}
+
+fn media_library_browse_components(path: &str) -> Result<Vec<String>, String> {
+    let clean = safe_relative_path(path)?;
+    let components = clean
+        .components()
+        .filter_map(|component| match component {
+            Component::Normal(value) => value.to_str().map(str::to_string),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    if components.len() > 3 {
+        return Err("invalid Media Library catalogue path".to_string());
+    }
+    for (index, component) in components.iter().enumerate() {
+        let expected_len = if index == 0 { 4 } else { 2 };
+        if component.len() != expected_len || !component.chars().all(|value| value.is_ascii_digit()) {
+            return Err("invalid Media Library catalogue path".to_string());
+        }
+    }
+    Ok(components)
+}
+
+fn media_library_directory_entries<'a, I, F>(
+    values: I,
+    parent: &str,
+    label: F,
+) -> Vec<MediaEntry>
+where
+    I: IntoIterator<Item = &'a str>,
+    F: Fn(&str) -> String,
+{
+    let mut values = values
+        .into_iter()
+        .map(str::to_string)
+        .collect::<std::collections::BTreeSet<_>>()
+        .into_iter()
+        .collect::<Vec<_>>();
+    values.sort_by(|left, right| right.cmp(left));
+    values
+        .into_iter()
+        .map(|value| MediaEntry {
+            name: label(&value),
+            path: if parent.is_empty() {
+                value.clone()
+            } else {
+                format!("{parent}/{value}")
+            },
+            entry_type: "directory".to_string(),
+            size_bytes: None,
+            extension: None,
+            playable: None,
+            status: None,
+        })
+        .collect()
+}
+
+fn media_library_month_label(month: &str) -> String {
+    let name = match month {
+        "01" => "Januar",
+        "02" => "Februar",
+        "03" => "März",
+        "04" => "April",
+        "05" => "Mai",
+        "06" => "Juni",
+        "07" => "Juli",
+        "08" => "August",
+        "09" => "September",
+        "10" => "Oktober",
+        "11" => "November",
+        "12" => "Dezember",
+        _ => return month.to_string(),
+    };
+    format!("{month} – {name}")
+}
+
+fn remote_asset_timestamp(asset: &RemoteMediaAsset) -> DateTime<FixedOffset> {
+    asset
+        .source_metadata
+        .as_ref()
+        .and_then(|metadata| metadata.recorded_at.as_deref())
+        .and_then(|value| DateTime::parse_from_rfc3339(value).ok())
+        .or_else(|| {
+            asset
+                .created_at
+                .as_deref()
+                .and_then(|value| DateTime::parse_from_rfc3339(value).ok())
+        })
+        .unwrap_or_else(|| {
+            DateTime::parse_from_rfc3339("1970-01-01T00:00:00+00:00")
+                .expect("constant RFC3339 timestamp must parse")
+        })
+}
+
+fn remote_asset_archive_location(
+    asset: &RemoteMediaAsset,
+) -> Option<(String, String, String, String)> {
+    let path = Path::new(asset.archive_path.as_deref()?);
+    let manifest = path.file_name()?.to_str()?;
+    let day = path.parent()?.file_name()?.to_str()?.to_string();
+    let month = path.parent()?.parent()?.file_name()?.to_str()?.to_string();
+    let year = path
+        .parent()?
+        .parent()?
+        .parent()?
+        .file_name()?
+        .to_str()?
+        .to_string();
+    if year.len() != 4
+        || month.len() != 2
+        || day.len() != 2
+        || !year.chars().chain(month.chars()).chain(day.chars()).all(|value| value.is_ascii_digit())
+    {
+        return None;
+    }
+    let stem = manifest
+        .strip_suffix("_metadata.json")
+        .or_else(|| manifest.strip_suffix(".json"))
+        .unwrap_or(manifest);
+    Some((year, month, day, format!("{stem}.wav")))
+}
+
+fn remote_asset_display_name(
+    asset: &RemoteMediaAsset,
+    timestamp: &DateTime<FixedOffset>,
+) -> String {
+    let time = format!("{:02}-{:02}-{:02}", timestamp.hour(), timestamp.minute(), timestamp.second());
+    let short_id = asset
+        .asset_id
+        .chars()
+        .filter(|value| value.is_ascii_hexdigit())
+        .take(8)
+        .collect::<String>();
+    if asset.kind == "recording" {
+        if let Some(metadata) = asset.source_metadata.as_ref() {
+            let call_type = match metadata.destination_type.as_deref() {
+                Some("group") => "Gruppenruf",
+                Some("individual") => "Einzelruf",
+                _ => "Funkruf",
+            };
+            let destination_kind = if metadata.destination_type.as_deref() == Some("group") {
+                "GSSI"
+            } else {
+                "ISSI"
+            };
+            let destination = metadata
+                .destination_id
+                .map(|value| format!("{destination_kind}-{value}"))
+                .unwrap_or_else(|| format!("{destination_kind}-unbekannt"));
+            let source = metadata
+                .source_issi
+                .map(|value| format!("von-ISSI-{value}"))
+                .unwrap_or_else(|| "Quelle-unbekannt".to_string());
+            let duration = metadata
+                .duration_ms
+                .or(asset.metadata.duration_ms)
+                .map(|value| format!("{}s", value.saturating_add(999) / 1000))
+                .unwrap_or_else(|| "Dauer-unbekannt".to_string());
+            return format!("{time}_{call_type}_{destination}_{source}_{duration}_{short_id}.wav");
+        }
+    }
+    let title = safe_virtual_filename(if asset.title.trim().is_empty() {
+        &asset.original_filename
+    } else {
+        &asset.title
+    });
+    let kind = safe_virtual_filename(&asset.kind.to_ascii_uppercase());
+    format!("{time}_{kind}_{title}_{short_id}.wav")
+}
+
+fn safe_virtual_filename(value: &str) -> String {
+    let mut result = value
+        .chars()
+        .map(|character| {
+            if character.is_ascii_alphanumeric() || matches!(character, '-' | '_') {
+                character
+            } else {
+                '-'
+            }
+        })
+        .collect::<String>();
+    while result.contains("--") {
+        result = result.replace("--", "-");
+    }
+    let result = result.trim_matches('-');
+    if result.is_empty() {
+        "Ohne-Titel".to_string()
+    } else {
+        result.chars().take(100).collect()
     }
 }
 
@@ -979,4 +1259,57 @@ pub(crate) fn detect_ffmpeg(path: &str) -> bool {
         .output()
         .map(|output| output.status.success())
         .unwrap_or(false)
+}
+
+#[cfg(test)]
+mod media_library_tree_tests {
+    use super::*;
+
+    fn asset_with_archive_path(path: &str) -> RemoteMediaAsset {
+        RemoteMediaAsset {
+            asset_id: "6ef665e4-b996-489c-8ee1-2d107efbe4ba".to_string(),
+            title: "Gruppenruf 5102 → 15201".to_string(),
+            original_filename: "recording.wav".to_string(),
+            kind: "recording".to_string(),
+            state: "ready".to_string(),
+            approval: "approved".to_string(),
+            size_bytes: Some(1024),
+            preview_ready: true,
+            source_metadata: None,
+            metadata: RemoteAudioMetadata::default(),
+            archive_path: Some(path.to_string()),
+            created_at: Some("2026-07-29T21:39:15+02:00".to_string()),
+            last_error: None,
+        }
+    }
+
+    #[test]
+    fn media_library_asset_id_accepts_virtual_tree_path() {
+        let value = media_library_asset_id(
+            "2026/07/29/6ef665e4-b996-489c-8ee1-2d107efbe4ba",
+        )
+        .expect("virtual asset path must resolve");
+        assert_eq!(value, "6ef665e4-b996-489c-8ee1-2d107efbe4ba");
+    }
+
+    #[test]
+    fn media_library_archive_path_is_mirrored() {
+        let asset = asset_with_archive_path(
+            "/mnt/nfs-share/Recordings/2026/07/29/21-39-15_Gruppenruf_GSSI-15201_von-ISSI-5102_6ef665e4_metadata.json",
+        );
+        let location = remote_asset_archive_location(&asset).expect("archive layout must be recognized");
+        assert_eq!(location.0, "2026");
+        assert_eq!(location.1, "07");
+        assert_eq!(location.2, "29");
+        assert_eq!(
+            location.3,
+            "21-39-15_Gruppenruf_GSSI-15201_von-ISSI-5102_6ef665e4.wav"
+        );
+    }
+
+    #[test]
+    fn media_library_browser_stops_at_day_level() {
+        assert!(media_library_browse_components("2026/07/29").is_ok());
+        assert!(media_library_browse_components("2026/07/29/asset").is_err());
+    }
 }

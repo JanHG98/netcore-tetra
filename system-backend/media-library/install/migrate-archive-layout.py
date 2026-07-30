@@ -219,6 +219,12 @@ def migrate_manifest(manifest_path: Path) -> tuple[str, Path] | None:
 
 def atomic_json(path: Path, data: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+
+    # The migration runs as root from install/update.sh. Preserve the original
+    # service ownership across the atomic replacement; otherwise state.json
+    # becomes root:root 0640 and the netcore-media-library service immediately
+    # fails with EACCES on its next start.
+    original_stat = path.stat() if path.exists() else None
     fd, temp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".part", dir=path.parent)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
@@ -226,7 +232,13 @@ def atomic_json(path: Path, data: dict[str, Any]) -> None:
             handle.write("\n")
             handle.flush()
             os.fsync(handle.fileno())
-        os.chmod(temp_name, 0o640)
+
+        if original_stat is not None:
+            os.chown(temp_name, original_stat.st_uid, original_stat.st_gid)
+            os.chmod(temp_name, original_stat.st_mode & 0o777)
+        else:
+            os.chmod(temp_name, 0o600)
+
         os.replace(temp_name, path)
     finally:
         try:

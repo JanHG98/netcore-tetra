@@ -18,6 +18,7 @@ if [[ ! -e "${CONFIG}" ]]; then
   install -o root -g netcore-media-library -m 0640 "${ROOT}/system-backend/media-library/config/media-library.example.toml" "${CONFIG}"
 fi
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/shared-storage.sh"
+netcore_prepare_media_local_storage "${CONFIG}"
 netcore_prepare_media_shared_storage "${CONFIG}"
 # Was: Baut oder prüft die Rust-Komponenten.
 # Warum: So wird vor Installation oder Start sichergestellt, dass der Quellcode technisch verwendbar ist.
@@ -47,6 +48,7 @@ install -o root -g root -m 0644 "${ROOT}/system-backend/media-library/README.md"
 # Warum: Korrekte Dateirechte sind für einen sicheren und reproduzierbaren Dienststart notwendig.
 install -o root -g root -m 0644 "${ROOT}/system-backend/media-library/systemd/netcore-media-library.service" /etc/systemd/system/netcore-media-library.service
 python3 "${PREFIX}/bin/migrate-archive-layout.py" --config "${CONFIG}"
+netcore_prepare_media_local_storage "${CONFIG}"
 # Nach der Migration alle alten und neuen Archivdateien erneut für den
 # parallelen SMB-Zugriff öffnen.
 netcore_prepare_media_shared_storage "${CONFIG}"

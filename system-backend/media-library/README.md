@@ -126,3 +126,22 @@ Noch nicht enthalten sind:
 The base station can register completed WAV recordings by URL. The Media Library pulls the file, processes it, and automatically archives recordings to `storage.recording_archive_root`. The shared archive uses `YYYY/MM/DD` and descriptive filenames derived from recording metadata. Ready draft assets remain visible for preview; radio playout is still blocked until approval. The Audio Centre downloads the preview into its local cache before starting radio playout.
 
 See `Docs/MEDIA_LIBRARY_BASISSTATION_INTEGRATION.md` and `Docs/MEDIA_LIBRARY_ARCHIVE_UI_FIX.md` for configuration, migration and rollout steps.
+
+## PermissionDenied directly after archive migration
+
+The installer and archive-layout migration run as root, while the service runs as
+`netcore-media-library`. Current installers preserve/repair ownership of
+`/var/lib/netcore-media-library` after migration. Existing affected installations
+can be repaired without rebuilding:
+
+```bash
+sudo ./system-backend/media-library/install/repair-permissions.sh
+```
+
+Local state and cache data remain private (`UMask=0077`). Only files copied into
+the shared NFS/SMB archive are explicitly opened to directories `0777` and files
+`0666` for the OPEN LAB multiprotocol share.
+
+## Basisstations-Katalog nach Jahr/Monat/Tag
+
+Die Basisstations-Audio-Zentrale spiegelt die Archivstruktur der Media Library als virtuellen Baum `Jahr/Monat/Tag`. Dabei bleibt die Media Library die API-Quelle; NFS wird von der Basisstation nicht direkt als Playout-Quelle verwendet. Archivierte Assets übernehmen Ordner und verständlichen Dateinamen aus `archive_path`, noch nicht archivierte Assets werden anhand ihrer Aufnahme-/Erstellungszeit einsortiert.
