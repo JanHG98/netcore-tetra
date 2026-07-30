@@ -83,7 +83,9 @@ Gepackte `.tacelp`-Dateien sind sofort funkbereit, wenn ihre Größe ein positiv
 
 ## Playout
 
-Für einen Job wird eine vorhandene `session_id` benötigt. Vor dem Start prüft der Worker den gespeicherten SHA-256 des TETRA-Caches. Anschließend liest er `audio.tacelp` frameweise und ruft im festen 60-ms-Takt auf:
+Im Betriebsmodus `shadow` werden Aussendungen als Metadaten-Jobs protokolliert und anschließend als `shadowed` abgeschlossen. Dafür reichen `ready` und `approved`; ein TETRA-Cache ist nicht erforderlich, weil keine Audioframes gelesen oder gesendet werden.
+
+Im Betriebsmodus `authoritative` wird weiterhin zwingend ein validierter gepackter TETRA-Cache verlangt. Für einen echten Job wird außerdem eine vorhandene `session_id` benötigt. Vor dem Start prüft der Worker den gespeicherten SHA-256 des TETRA-Caches. Anschließend liest er `audio.tacelp` frameweise und ruft im festen 60-ms-Takt auf:
 
 ```text
 POST /api/v1/sessions/{session_id}/inject

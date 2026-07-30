@@ -28,7 +28,7 @@ netcore_prepare_media_shared_storage "${CONFIG}"
 bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/ensure-piper.sh"
 # Was: Baut oder prüft die Rust-Komponenten.
 # Warum: So wird vor Installation oder Start sichergestellt, dass der Quellcode technisch verwendbar ist.
-cargo build --release --package netcore-media-library --manifest-path "${ROOT}/Cargo.toml"
+bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/cargo-build.sh" "${ROOT}" netcore-media-library
 # Was: Kopiert eine Datei mit festgelegten Rechten und Eigentümern.
 # Warum: Korrekte Dateirechte sind für einen sicheren und reproduzierbaren Dienststart notwendig.
 install -o root -g root -m 0755 "${ROOT}/target/release/netcore-media-library" "${PREFIX}/bin/netcore-media-library"

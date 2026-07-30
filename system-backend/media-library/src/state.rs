@@ -884,7 +884,16 @@ impl SharedLibrary {
         if asset.approval != "approved" {
             return Err("asset is not approved".to_string());
         }
-        if !asset.broadcast_ready || asset.tetra_path.as_ref().is_none_or(|path| !path.is_file()) {
+        // In shadow mode the dispatch job is intentionally metadata-only and is
+        // completed as `shadowed` before any media frame is read. Requiring a
+        // packed TETRA cache here would hide every normal WAV/TTS asset even
+        // though no codec output is needed. Authoritative dispatch keeps the
+        // strict playout-cache requirement.
+        let shadow_dispatch = !dispatch_requires_tetra_cache(&inner.config.runtime.operating_mode);
+        if !shadow_dispatch
+            && (!asset.broadcast_ready
+                || asset.tetra_path.as_ref().is_none_or(|path| !path.is_file()))
+        {
             return Err("asset has no validated packed TETRA playout cache".to_string());
         }
         let hint = asset.broadcast_hint.clone().unwrap_or_default();
@@ -1553,6 +1562,10 @@ impl SharedLibrary {
     }
 }
 
+fn dispatch_requires_tetra_cache(operating_mode: &str) -> bool {
+    operating_mode != SHADOW_MODE
+}
+
 fn archive_roots_available(config: &MediaLibraryConfig) -> bool {
     let roots = [
         config.storage.archive_root.as_ref(),
@@ -1831,4 +1844,20 @@ fn bool_metric(value: bool) -> u8 {
 // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn lock(inner: &Arc<Mutex<LibraryInner>>) -> MutexGuard<'_, LibraryInner> {
     inner.lock().expect("media library state poisoned")
+}
+
+
+#[cfg(test)]
+mod dispatch_mode_tests {
+    use super::dispatch_requires_tetra_cache;
+
+    #[test]
+    fn shadow_dispatch_is_metadata_only_and_does_not_require_tetra_cache() {
+        assert!(!dispatch_requires_tetra_cache("shadow"));
+    }
+
+    #[test]
+    fn authoritative_dispatch_still_requires_validated_tetra_cache() {
+        assert!(dispatch_requires_tetra_cache("authoritative"));
+    }
 }
