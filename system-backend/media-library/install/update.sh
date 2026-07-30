@@ -7,6 +7,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 PREFIX="${PREFIX:-/opt/netcore-media-library}"
 [[ ${EUID} -eq 0 ]] || { echo "update.sh must run as root" >&2; exit 1; }
 CONFIG="${CONFIG:-/etc/netcore/media-library.toml}"
+id -u netcore-media-library >/dev/null 2>&1 || useradd --system --home /var/lib/netcore-media-library --shell /usr/sbin/nologin netcore-media-library
 # Was: Kopiert eine Datei mit festgelegten Rechten und Eigentümern.
 # Warum: Korrekte Dateirechte sind für einen sicheren und reproduzierbaren Dienststart notwendig.
 install -d -o root -g root -m 0755 "$(dirname "${CONFIG}")"
@@ -20,6 +21,7 @@ fi
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/shared-storage.sh"
 netcore_prepare_media_local_storage "${CONFIG}"
 netcore_prepare_media_shared_storage "${CONFIG}"
+"$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/ensure-piper.sh"
 # Was: Baut oder prüft die Rust-Komponenten.
 # Warum: So wird vor Installation oder Start sichergestellt, dass der Quellcode technisch verwendbar ist.
 cargo build --release --package netcore-media-library --manifest-path "${ROOT}/Cargo.toml"

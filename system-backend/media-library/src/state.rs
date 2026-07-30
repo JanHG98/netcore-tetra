@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::os::unix::fs::PermissionsExt;
 use std::sync::{Arc, Mutex, MutexGuard};
 
-use chrono::{DateTime, FixedOffset, Utc};
+use chrono::{DateTime, FixedOffset, Local, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use uuid::Uuid;
@@ -68,7 +68,7 @@ fn archive_timestamp(asset: &AssetRecord) -> DateTime<FixedOffset> {
         .as_ref()
         .and_then(|metadata| metadata.recorded_at.as_deref())
         .and_then(|value| DateTime::parse_from_rfc3339(value).ok())
-        .unwrap_or_else(|| asset.created_at.fixed_offset())
+        .unwrap_or_else(|| asset.created_at.with_timezone(&Local).fixed_offset())
 }
 
 fn archive_token(value: &str, fallback: &str) -> String {
@@ -394,9 +394,9 @@ impl SharedLibrary {
             state: "processing".to_string(),
             approval: if approve { "approved" } else { "draft" }.to_string(),
             tags: normalize_tags(input.tags),
-            source: "local_upload".to_string(),
+            source: clean_optional(input.source).unwrap_or_else(|| "local_upload".to_string()),
             source_url: None,
-            source_reference: None,
+            source_reference: clean_optional(input.source_reference),
             source_metadata: None,
             original_filename: filename,
             media_type,
@@ -412,8 +412,8 @@ impl SharedLibrary {
             preview_ready: false,
             broadcast_ready: false,
             archived: false,
-            voice: None,
-            text: None,
+            voice: clean_optional(input.voice),
+            text: clean_optional(input.text),
             broadcast_hint: input.broadcast,
             duplicate_of,
             processing_attempts: 0,

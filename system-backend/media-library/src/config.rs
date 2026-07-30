@@ -27,6 +27,7 @@ pub struct MediaLibraryConfig {
     pub storage: StorageConfig,
     pub runtime: RuntimeConfig,
     pub codec: CodecConfig,
+    pub tts: TtsConfig,
     pub dependencies: DependencyConfig,
 }
 
@@ -42,6 +43,7 @@ impl Default for MediaLibraryConfig {
             storage: StorageConfig::default(),
             runtime: RuntimeConfig::default(),
             codec: CodecConfig::default(),
+            tts: TtsConfig::default(),
             dependencies: DependencyConfig::default(),
         }
     }
@@ -115,6 +117,41 @@ impl MediaLibraryConfig {
         self.codec.decoder_command = clean_command(&self.codec.decoder_command);
         if self.codec.frame_bytes != 35 {
             return Err("codec.frame_bytes must remain 35 for packed TETRA speech service 0".into());
+        }
+        self.tts.endpoint = self.tts.endpoint.trim().trim_end_matches('/').to_string();
+        self.tts.default_voice = self.tts.default_voice.trim().to_string();
+        if self.tts.enabled
+            && !self.tts.endpoint.starts_with("http://")
+            && !self.tts.endpoint.starts_with("https://")
+        {
+            return Err("tts.endpoint must use http:// or https://".into());
+        }
+        if !self.tts.template_directory.is_absolute() {
+            return Err("tts.template_directory must be an absolute path".into());
+        }
+        if !(0.5..=1.5).contains(&self.tts.default_speed) {
+            return Err("tts.default_speed must be between 0.50 and 1.50".into());
+        }
+        self.tts.max_text_characters = self.tts.max_text_characters.clamp(1, 20_000);
+        self.tts.synthesis_timeout_secs = self.tts.synthesis_timeout_secs.max(5);
+        self.tts.max_output_file_mb = self.tts.max_output_file_mb.clamp(1, 256);
+        if self.tts.voices.is_empty() {
+            return Err("tts.voices must contain at least one configured voice".into());
+        }
+        let mut voice_ids = std::collections::BTreeSet::new();
+        for voice in &mut self.tts.voices {
+            voice.id = voice.id.trim().to_string();
+            voice.name = voice.name.trim().to_string();
+            voice.provider_voice = voice.provider_voice.trim().to_string();
+            if voice.id.is_empty() || voice.name.is_empty() || voice.provider_voice.is_empty() {
+                return Err("tts voice id, name and provider_voice must not be empty".into());
+            }
+            if !voice_ids.insert(voice.id.clone()) {
+                return Err(format!("duplicate tts voice id '{}'", voice.id));
+            }
+        }
+        if !self.tts.voices.iter().any(|voice| voice.id == self.tts.default_voice) {
+            return Err(format!("tts.default_voice '{}' is not configured", self.tts.default_voice));
         }
         // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
         // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
@@ -324,6 +361,55 @@ impl Default for CodecConfig {
             decoder_command: Vec::new(),
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct TtsConfig {
+    pub enabled: bool,
+    pub endpoint: String,
+    pub template_directory: PathBuf,
+    pub default_voice: String,
+    pub default_speed: f32,
+    pub max_text_characters: usize,
+    pub synthesis_timeout_secs: u64,
+    pub max_output_file_mb: u64,
+    pub voices: Vec<TtsVoiceConfig>,
+}
+
+impl Default for TtsConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            endpoint: "http://127.0.0.1:5005".to_string(),
+            template_directory: PathBuf::from("/var/lib/netcore-media-library/tts/templates"),
+            default_voice: "de-thorsten".to_string(),
+            default_speed: 0.95,
+            max_text_characters: 2_000,
+            synthesis_timeout_secs: 90,
+            max_output_file_mb: 25,
+            voices: default_tts_voices(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TtsVoiceConfig {
+    pub id: String,
+    pub name: String,
+    pub provider_voice: String,
+    #[serde(default)]
+    pub speaker_id: Option<u32>,
+}
+
+fn default_tts_voices() -> Vec<TtsVoiceConfig> {
+    vec![
+        TtsVoiceConfig { id: "de-thorsten".into(), name: "Deutsch – Thorsten (mittel)".into(), provider_voice: "de_DE-thorsten-medium".into(), speaker_id: None },
+        TtsVoiceConfig { id: "de-thorsten-high".into(), name: "Deutsch – Thorsten (hoch)".into(), provider_voice: "de_DE-thorsten-high".into(), speaker_id: None },
+        TtsVoiceConfig { id: "de-karlsson".into(), name: "Deutsch – Karlsson".into(), provider_voice: "de_DE-karlsson-low".into(), speaker_id: None },
+        TtsVoiceConfig { id: "de-pavoque".into(), name: "Deutsch – Pavoque".into(), provider_voice: "de_DE-pavoque-low".into(), speaker_id: None },
+        TtsVoiceConfig { id: "de-thorsten-neutral".into(), name: "Deutsch – Thorsten emotional (neutral)".into(), provider_voice: "de_DE-thorsten_emotional-medium".into(), speaker_id: Some(4) },
+    ]
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

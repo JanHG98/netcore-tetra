@@ -4,14 +4,14 @@
 
 set -euo pipefail
 
-SERVICE_USER="${SERVICE_USER:-bluestation}"
+SERVICE_USER="${SERVICE_USER:-netcore-media-library}"
 SERVICE_GROUP="${SERVICE_GROUP:-$SERVICE_USER}"
 DEFAULT_VOICE="${DEFAULT_VOICE:-${VOICE:-de_DE-thorsten-medium}}"
 VOICE_LIST="${VOICE_LIST:-de_DE-thorsten-medium de_DE-thorsten-high de_DE-karlsson-low de_DE-pavoque-low de_DE-thorsten_emotional-medium}"
 VENV="${VENV:-/opt/netcore-piper}"
-VOICE_DIR="${VOICE_DIR:-/var/lib/netcore/piper}"
-TTS_CACHE="${TTS_CACHE:-/var/cache/netcore/tts}"
-TTS_TEMPLATES="${TTS_TEMPLATES:-/var/lib/netcore/tts/templates}"
+VOICE_DIR="${VOICE_DIR:-/var/lib/netcore-media-library/piper}"
+TTS_CACHE="${TTS_CACHE:-/var/lib/netcore-media-library/tts/cache}"
+TTS_TEMPLATES="${TTS_TEMPLATES:-/var/lib/netcore-media-library/tts/templates}"
 PIPER_PORT="${PIPER_PORT:-5005}"
 UNIT_PATH="/etc/systemd/system/netcore-piper.service"
 

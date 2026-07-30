@@ -201,6 +201,14 @@ pub struct UploadInput {
     pub approve: Option<bool>,
     pub actor: Option<String>,
     pub broadcast: Option<BroadcastHint>,
+    #[serde(default)]
+    pub source: Option<String>,
+    #[serde(default)]
+    pub source_reference: Option<String>,
+    #[serde(default)]
+    pub voice: Option<String>,
+    #[serde(default)]
+    pub text: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

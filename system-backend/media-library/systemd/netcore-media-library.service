@@ -12,10 +12,10 @@ Description=NetCore-Tetra Media Library (OPEN LAB)
 Documentation=file:/opt/netcore-media-library/README.md
 # Was: Legt die Startreihenfolge gegenüber anderen Einheiten fest.
 # Warum: Abhängige Netzwerk- oder Systemfunktionen müssen zuerst verfügbar sein.
-After=network-online.target
+After=network-online.target netcore-piper.service
 # Was: Nennt Einheiten, die gemeinsam gestartet werden sollen.
 # Warum: Zusammengehörige Dienste stehen dadurch beim Start möglichst vollständig bereit.
-Wants=network-online.target
+Wants=network-online.target netcore-piper.service
 
 # Was: Beginnt den Abschnitt `Service`.
 # Warum: Zusammengehörige Start-, Laufzeit- oder Installationswerte bleiben dadurch geordnet.

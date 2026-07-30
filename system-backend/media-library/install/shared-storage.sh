@@ -36,7 +36,10 @@ netcore_prepare_media_local_storage() {
     "${local_root}" \
     "${local_root}/assets" \
     "${local_root}/tmp" \
-    "${local_root}/backups"
+    "${local_root}/backups" \
+    "${local_root}/tts/cache" \
+    "${local_root}/tts/templates" \
+    "${local_root}/piper"
 
   chown -R "${service_user}:${service_group}" "${local_root}"
   find "${local_root}" -xdev -type d -exec chmod 0750 {} +

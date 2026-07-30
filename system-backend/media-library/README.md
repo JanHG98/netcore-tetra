@@ -29,7 +29,7 @@ Der Dienst läuft auf **Port 8230** und besitzt eine eigene WebUI.
 ## Architekturgrenze
 
 ```text
-Application Gateway / Upload / Recorder
+Application Gateway / Upload / Recorder / Piper-TTS
                  │
                  ▼
           Media Library
@@ -67,7 +67,7 @@ Jeder erreichbare Client kann Assets hochladen, freigeben, archivieren, löschen
 http://<media-library-lxc>:8230/
 ```
 
-Die Oberfläche enthält Übersicht, Bibliothek, Upload/URL-Import, Recorder-Import, Vorschau, Aussendung, Jobs, Storage/Audit und API.
+Die Oberfläche enthält Übersicht, Bibliothek, zentrale **TTS-/Piper-Erzeugung mit Vorlagen**, Upload/URL-Import, Recorder-Import, Vorschau, Aussendung, Jobs, Storage/Audit und API.
 
 ## Audio- und Codec-Verhalten
 
@@ -99,6 +99,9 @@ GET  /health/ready
 GET  /metrics
 GET  /openapi.json
 GET  /api/v1/assets
+GET  /api/v1/tts/status
+GET  /api/v1/tts/templates
+POST /api/v1/tts/generate
 POST /api/v1/assets/upload-json
 POST /api/v1/assets/import-url
 POST /api/v1/recorder/import
@@ -145,3 +148,13 @@ the shared NFS/SMB archive are explicitly opened to directories `0777` and files
 ## Basisstations-Katalog nach Jahr/Monat/Tag
 
 Die Basisstations-Audio-Zentrale spiegelt die Archivstruktur der Media Library als virtuellen Baum `Jahr/Monat/Tag`. Dabei bleibt die Media Library die API-Quelle; NFS wird von der Basisstation nicht direkt als Playout-Quelle verwendet. Archivierte Assets übernehmen Ordner und verständlichen Dateinamen aus `archive_path`, noch nicht archivierte Assets werden anhand ihrer Aufnahme-/Erstellungszeit einsortiert.
+
+## Zentrale Piper-TTS-Erzeugung
+
+Piper läuft im Media-Library-LXC als `netcore-piper.service`. Texte, Stimmen und
+Vorlagen werden in der Media-Library-WebUI verwaltet. Jede Synthese wird als normales
+Asset mit `kind = "tts"` angelegt, verarbeitet und nach
+`storage.tts_archive_root` archiviert. Die Basisstation enthält keine lokale
+TTS-Oberfläche mehr; sie sieht fertige TTS-Assets über ihren bestehenden
+Media-Library-Dateibrowser und lädt sie vor der Aussendung vollständig in den lokalen
+Cache. Siehe `Docs/MEDIA_LIBRARY_CENTRAL_TTS.md`.

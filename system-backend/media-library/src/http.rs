@@ -19,6 +19,7 @@ use crate::model::{
     RecorderImportInput, UploadInput,
 };
 use crate::state::SharedLibrary;
+use crate::tts::{TtsGenerateInput, TtsService, TtsTemplateDeleteInput, TtsTemplateInput};
 use crate::worker;
 
 // Was: Diese Funktion startet HTTP server.
@@ -26,6 +27,7 @@ use crate::worker;
 pub fn spawn_http_server(
     config: MediaLibraryConfig,
     library: SharedLibrary,
+    tts: TtsService,
 ) -> std::io::Result<thread::JoinHandle<()>> {
     let listener = TcpListener::bind(config.server.bind)?;
     tracing::info!("Media Library WebUI/API listening on http://{}", config.server.bind);
@@ -39,8 +41,9 @@ pub fn spawn_http_server(
                 Ok(stream) => {
                     let config = config.clone();
                     let library = library.clone();
+                    let tts = tts.clone();
                     thread::spawn(move || {
-                        if let Err(error) = handle_connection(stream, config, library) {
+                        if let Err(error) = handle_connection(stream, config, library, tts) {
                             tracing::warn!("Media Library HTTP connection failed: {error}");
                         }
                     });
@@ -82,9 +85,10 @@ fn handle_connection(
     mut stream: TcpStream,
     config: MediaLibraryConfig,
     library: SharedLibrary,
+    tts: TtsService,
 ) -> Result<(), String> {
     let request = read_request(&mut stream, config.server.max_body_bytes)?;
-    let response = route(request, config, library);
+    let response = route(request, config, library, tts);
     write_response(&mut stream, response).map_err(|error| error.to_string())
 }
 
@@ -94,6 +98,7 @@ fn route(
     request: HttpRequest,
     config: MediaLibraryConfig,
     library: SharedLibrary,
+    tts: TtsService,
 ) -> HttpResponse {
     if request.method == "OPTIONS" {
         return empty(204);
@@ -109,6 +114,34 @@ fn route(
         }
         ("GET", "/api/v1/status") => json_response(200, &library.status()),
         ("GET", "/api/v1/config") => json_response(200, &library.config_view()),
+        ("GET", "/api/v1/tts/status") => json_response(200, &tts.status()),
+        ("GET", "/api/v1/tts/voices") => json_response(200, &json!({"voices":tts.voices()})),
+        ("GET", "/api/v1/tts/templates") => match tts.templates() {
+            Ok(templates) => json_response(200, &json!({"templates":templates})),
+            Err(error) => conflict(error),
+        },
+        ("POST", "/api/v1/tts/templates/save") => {
+            match parse_json::<TtsTemplateInput>(&request.body).and_then(|input| tts.save_template(input)) {
+                Ok(template) => json_response(200, &json!({"template":template})),
+                Err(error) => conflict(error),
+            }
+        }
+        ("POST", "/api/v1/tts/templates/delete") => {
+            match parse_json::<TtsTemplateDeleteInput>(&request.body)
+                .and_then(|input| tts.delete_template(&input.id))
+            {
+                Ok(()) => empty(204),
+                Err(error) => conflict(error),
+            }
+        }
+        ("POST", "/api/v1/tts/generate") => {
+            match parse_json::<TtsGenerateInput>(&request.body)
+                .and_then(|input| tts.generate(&library, input))
+            {
+                Ok(result) => json_response(201, &result),
+                Err(error) => conflict(error),
+            }
+        }
         ("GET", "/api/v1/assets") => json_response(
             200,
             &library.assets(
@@ -374,6 +407,12 @@ fn openapi() -> Value {
             "/health/ready":{"get":{}},
             "/api/v1/status":{"get":{}},
             "/api/v1/assets":{"get":{}},
+            "/api/v1/tts/status":{"get":{}},
+            "/api/v1/tts/voices":{"get":{}},
+            "/api/v1/tts/templates":{"get":{}},
+            "/api/v1/tts/templates/save":{"post":{}},
+            "/api/v1/tts/templates/delete":{"post":{}},
+            "/api/v1/tts/generate":{"post":{}},
             "/api/v1/assets/upload-json":{"post":{}},
             "/api/v1/assets/import-url":{"post":{}},
             "/api/v1/recorder/import":{"post":{}},
@@ -680,7 +719,7 @@ const INDEX_HTML: &str = r##"<!doctype html>
 <div class="lab">⚠ OPEN LAB – keine Anmeldung, keine Tokens, kein TLS. Jeder erreichbare Client darf Medien hochladen, freigeben, archivieren, löschen und in bestehende Ruf-Sessions einspeisen.</div>
 <header><div><h1>Media Library</h1><div class="muted">Audio-Assets, TTS, Recorder-Import, Vorschau, TETRA-Cache und kontrollierte Aussendung</div></div><div><span id="mode" class="pill">…</span> <span id="deps"></span></div></header>
 <div class="layout"><nav>
-<button data-page="overview" class="active">Übersicht</button><button data-page="library">Bibliothek</button><button data-page="import">Import / Upload</button><button data-page="recorder">Recorder</button><button data-page="dispatch">Aussendung</button><button data-page="jobs">Jobs</button><button data-page="maintenance">Storage / Audit</button><button data-page="api">API</button>
+<button data-page="overview" class="active">Übersicht</button><button data-page="library">Bibliothek</button><button data-page="tts">TTS / Piper</button><button data-page="import">Import / Upload</button><button data-page="recorder">Recorder</button><button data-page="dispatch">Aussendung</button><button data-page="jobs">Jobs</button><button data-page="maintenance">Storage / Audit</button><button data-page="api">API</button>
 </nav><main>
 <section id="overview" class="page active"><div class="cards" id="cards"></div><div class="grid2"><div class="panel"><h2>Pipeline</h2><pre>Upload / URL / Recorder
   → Formatprüfung + SHA-256
@@ -689,12 +728,44 @@ const INDEX_HTML: &str = r##"<!doctype html>
   → Freigabe
   → vorhandene Media-Switch-Session</pre><div class="notice">Die Media Library erzeugt absichtlich keinen CMCE-Ruf. Für eine Aussendung muss bereits eine passende Media-Switch-Session existieren.</div></div><div class="panel"><h2>Letzte Ereignisse</h2><pre id="recentEvents">Lade …</pre></div></div></section>
 <section id="library" class="page"><div class="toolbar"><input id="search" placeholder="Titel, Tag, Datei, Text …"><select id="kindFilter"><option value="">alle Typen</option><option>tts</option><option>recording</option><option>announcement</option><option>alarm</option><option>music</option><option>prompt</option><option>other</option></select><select id="approvalFilter"><option value="">alle Freigaben</option><option>draft</option><option>approved</option><option>rejected</option></select><button class="primary" onclick="refresh()">Suchen</button></div><div class="panel scroll"><table><thead><tr><th>Asset</th><th>Quelle / Datei</th><th>Audio</th><th>Status</th><th>Freigabe</th><th>Aktionen</th></tr></thead><tbody id="assetRows"></tbody></table></div></section>
+<section id="tts" class="page">
+<div class="grid2">
+  <div class="panel">
+    <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><div><h2>Piper Textdurchsage</h2><div class="muted" id="ttsProviderDetail">Lade Status …</div></div><div><span id="ttsProviderState" class="pill">PRÜFE …</span> <button onclick="loadCentralTts()">Aktualisieren</button></div></div>
+    <div class="formgrid" style="margin-top:14px">
+      <label class="wide">Sprechtext<textarea id="ttsText" rows="8" maxlength="2000" placeholder="Text der Durchsage eingeben …" oninput="updateTtsCount()"></textarea><span class="small muted" id="ttsCount">0 Zeichen</span></label>
+      <label>Stimme<select id="ttsVoice"></select></label>
+      <label>Sprechtempo<div style="display:flex;gap:10px;align-items:center"><input id="ttsSpeed" type="range" min="50" max="150" step="5" value="95" oninput="updateTtsSpeed()" style="width:100%"><b id="ttsSpeedLabel">95 %</b></div></label>
+      <label class="wide">Name der Durchsage<input id="ttsName" maxlength="120" placeholder="z. B. Evakuierung Haupthalle"></label>
+      <label><input id="ttsApprove" type="checkbox"> sofort für Aussendungen freigeben</label>
+      <label>Tags, Komma-getrennt<input id="ttsTags" value="durchsage"></label>
+    </div>
+    <div class="toolbar"><button class="primary" id="ttsGenerate" onclick="generateCentralTts()">Als TTS-Medium speichern</button></div>
+    <pre id="ttsOutput">Bereit.</pre>
+    <audio id="ttsPreview" controls preload="metadata" style="display:none"></audio>
+  </div>
+  <div class="panel">
+    <h2>TTS-Vorlagen</h2>
+    <div class="formgrid">
+      <label class="wide">Vorlage<select id="ttsTemplateSelect" onchange="selectCentralTtsTemplate()"><option value="">Keine Vorlage ausgewählt</option></select></label>
+      <label class="wide">Vorlagenname<input id="ttsTemplateName" maxlength="120" placeholder="z. B. Evakuierung Haupthalle"></label>
+    </div>
+    <div class="toolbar"><button onclick="newCentralTtsTemplate()">Neue Vorlage</button><button class="primary" onclick="saveCentralTtsTemplate()">Speichern</button><button class="danger" id="ttsTemplateDelete" onclick="deleteCentralTtsTemplate()" disabled>Löschen</button></div>
+    <div class="muted small" id="ttsTemplateState">Vorlagen werden zentral in der Media Library gespeichert.</div>
+  </div>
+</div>
+<div class="notice">Die Basisstation erzeugt selbst keine TTS-Dateien mehr. Fertige TTS-Assets erscheinen nach Verarbeitung und Freigabe automatisch im Media-Library-Dateibrowser der Basisstation.</div>
+</section>
 <section id="import" class="page"><div class="grid2"><form class="panel" onsubmit="uploadAsset(event)"><h2>Datei hochladen</h2><div class="formgrid"><label>Name<input id="uName" required></label><label>Typ<select id="uKind"><option>announcement</option><option>tts</option><option>alarm</option><option>music</option><option>prompt</option><option>other</option></select></label><label class="wide">Datei<input id="uFile" type="file" accept="audio/wav,audio/mpeg,.tacelp" required></label><label class="wide">Tags, Komma-getrennt<input id="uTags"></label><label class="wide">Beschreibung<textarea id="uDescription" rows="3"></textarea></label><label><input id="uApprove" type="checkbox"> sofort freigeben</label></div><button class="primary">Hochladen</button><pre id="uploadOutput"></pre></form><form class="panel" onsubmit="importUrl(event)"><h2>URL importieren</h2><div class="formgrid"><label>Name<input id="iName" required></label><label>Typ<select id="iKind"><option>tts</option><option>announcement</option><option>recording</option><option>other</option></select></label><label class="wide">Source URL<input id="iUrl" type="url" required></label><label>Media-Type<input id="iMediaType" value="audio/wav"></label><label>SHA-256 optional<input id="iSha"></label><label><input id="iApprove" type="checkbox"> sofort freigeben</label></div><button class="primary">Import einreihen</button><pre id="importOutput"></pre></form></div></section>
 <section id="recorder" class="page"><div class="grid2"><form class="panel" onsubmit="importRecorder(event)"><h2>Recorder-Aufnahme übernehmen</h2><div class="formgrid"><label>Recording-ID<input id="rId" required></label><label>Name optional<input id="rName"></label><label><input id="rApprove" type="checkbox"> sofort freigeben</label></div><button class="primary">TACELP importieren</button><pre id="recorderOutput"></pre></form><div class="panel"><h2>Saubere Trennung</h2><p>Der Recorder bleibt das unveränderte Beweis-/Archivsystem. Die Media Library importiert bei Bedarf eine Kopie des gepackten <span class="mono">audio.tacelp</span> und verwaltet daraus Vorschau, Freigabe und Wiedergabe.</p><p>Legal Hold und Recorder-Retention werden dadurch nicht verändert.</p></div></div></section>
 <section id="dispatch" class="page"><div class="grid2"><form class="panel" onsubmit="createDispatch(event)"><h2>Asset aussenden</h2><div class="formgrid"><label>Asset<select id="dAsset" required></select></label><label>Media Session ID<input id="dSession" required></label><label>Ziel-Node optional<input id="dNode"></label><label>Ziel-Timeslot optional<input id="dTs" type="number" min="1" max="7"></label><label>Zieltyp<select id="dKind"><option value="">nur Metadatum</option><option>group</option><option>individual</option></select></label><label>Ziel-ID optional<input id="dDestination" type="number"></label><label>Priorität<input id="dPriority" type="number" min="0" max="15" value="3"></label></div><button class="primary">Job einreihen</button></form><div class="panel"><h2>Vorschau</h2><select id="previewAsset" onchange="showPreview()"></select><audio id="player" controls></audio><div id="wave" class="wave"></div><pre id="dispatchOutput">Noch kein Job.</pre></div></div></section>
 <section id="jobs" class="page"><div class="toolbar"><select id="jobFilter"><option value="">alle Zustände</option><option>queued</option><option>playing</option><option>completed</option><option>failed</option><option>cancelled</option><option>shadowed</option></select><button class="primary" onclick="processNow()">Jetzt verarbeiten</button></div><div class="panel scroll"><table><thead><tr><th>Job</th><th>Asset / Session</th><th>Status</th><th>Fortschritt</th><th>Fehler</th><th>Aktionen</th></tr></thead><tbody id="jobRows"></tbody></table></div></section>
 <section id="maintenance" class="page"><div class="toolbar"><button onclick="maintenance()">Reconcile / Retention</button><button onclick="backup()">State-Backup</button><button onclick="location.href='/api/v1/export.json'">JSON-Export</button></div><div class="grid2"><div class="panel"><h2>Konfiguration</h2><pre id="configView"></pre></div><div class="panel"><h2>Audit</h2><pre id="auditView"></pre></div></div></section>
-<section id="api" class="page"><div class="panel"><h2>API</h2><p><a href="/openapi.json">OpenAPI</a> · <a href="/metrics">Prometheus Metrics</a> · <a href="/health/ready">Readiness</a></p><pre>POST /api/v1/assets/upload-json
+<section id="api" class="page"><div class="panel"><h2>API</h2><p><a href="/openapi.json">OpenAPI</a> · <a href="/metrics">Prometheus Metrics</a> · <a href="/health/ready">Readiness</a></p><pre>GET  /api/v1/tts/status
+GET  /api/v1/tts/voices
+GET  /api/v1/tts/templates
+POST /api/v1/tts/generate
+POST /api/v1/assets/upload-json
 POST /api/v1/assets/import-url
 POST /api/v1/recorder/import
 POST /api/v1/assets/{id}/approve
@@ -704,9 +775,20 @@ POST /api/v1/dispatch
 POST /api/v1/jobs/{id}/cancel</pre></div></section>
 </main></div>
 <script>
-const el=id=>document.getElementById(id);let assets=[],jobs=[];const pages=[...document.querySelectorAll('.page')];document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');pages.forEach(p=>p.classList.toggle('active',p.id===b.dataset.page));if(b.dataset.page==='dispatch')showPreview()});
+const el=id=>document.getElementById(id);let assets=[],jobs=[],centralTtsStatus=null,centralTtsVoices=[],centralTtsTemplates=[],centralTtsTemplateId='';const pages=[...document.querySelectorAll('.page')];document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');pages.forEach(p=>p.classList.toggle('active',p.id===b.dataset.page));if(b.dataset.page==='dispatch')showPreview();if(b.dataset.page==='tts')loadCentralTts()});
 async function api(path,opt){const r=await fetch(path,opt);if(!r.ok&&r.status!==204){let e={};try{e=await r.json()}catch{}throw new Error(e.error||r.statusText)}if(r.status===204)return null;return r.json()}
 function post(path,body){return api(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})})}function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}function pill(v){return `<span class="pill ${esc(v)}">${esc(v)}</span>`}function bytes(n){if(n==null)return '–';const u=['B','KiB','MiB','GiB'];let i=0;while(n>=1024&&i<u.length-1){n/=1024;i++}return n.toFixed(i?1:0)+' '+u[i]}function duration(ms){if(ms==null)return '–';return (ms/1000).toFixed(1)+' s'}
+function updateTtsCount(){const text=el('ttsText')?.value||'',max=centralTtsStatus?.max_text_characters||2000;if(el('ttsText'))el('ttsText').maxLength=max;if(el('ttsCount'))el('ttsCount').textContent=[...text].length+' / '+max+' Zeichen'}
+function updateTtsSpeed(){if(el('ttsSpeedLabel'))el('ttsSpeedLabel').textContent=(el('ttsSpeed')?.value||95)+' %'}
+function renderCentralTts(){const status=centralTtsStatus||{},online=!!status.provider_available;if(el('ttsProviderState')){el('ttsProviderState').textContent=online?'PIPER ONLINE':'PIPER OFFLINE';el('ttsProviderState').className='pill '+(online?'ready':'failed')}if(el('ttsProviderDetail'))el('ttsProviderDetail').textContent=status.provider_endpoint||'Piper nicht konfiguriert';if(el('ttsGenerate'))el('ttsGenerate').disabled=!online||!centralTtsVoices.some(v=>v.id===el('ttsVoice')?.value&&v.available);updateTtsCount();updateTtsSpeed()}
+async function loadCentralTts(){try{const[s,v,t]=await Promise.all([api('/api/v1/tts/status'),api('/api/v1/tts/voices'),api('/api/v1/tts/templates')]);centralTtsStatus=s;centralTtsVoices=Array.isArray(v.voices)?v.voices:[];centralTtsTemplates=Array.isArray(t.templates)?t.templates:[];const voice=el('ttsVoice'),wanted=voice?.value||s.default_voice||'';if(voice){voice.innerHTML=centralTtsVoices.map(row=>`<option value="${esc(row.id)}" ${row.id===wanted?'selected':''} ${row.available?'':'disabled'}>${esc(row.name+(row.available?'':' · NICHT INSTALLIERT'))}</option>`).join('')||'<option value="">Keine Stimme</option>';if(!voice.value){const first=centralTtsVoices.find(row=>row.available);if(first)voice.value=first.id}}const select=el('ttsTemplateSelect');if(select){select.innerHTML='<option value="">Keine Vorlage ausgewählt</option>'+centralTtsTemplates.map(row=>`<option value="${esc(row.id)}">${esc(row.name)}</option>`).join('');if(centralTtsTemplateId&&centralTtsTemplates.some(row=>row.id===centralTtsTemplateId))select.value=centralTtsTemplateId}if(el('ttsSpeed')&&!el('ttsSpeed').dataset.initialized){el('ttsSpeed').value=Math.round(Number(s.default_speed||0.95)*100);el('ttsSpeed').dataset.initialized='1'}if(el('ttsApprove')&&!el('ttsApprove').dataset.initialized){el('ttsApprove').checked=!!s.auto_approve_tts;el('ttsApprove').dataset.initialized='1'}renderCentralTts()}catch(error){centralTtsStatus={provider_available:false,provider_error:error.message};if(el('ttsOutput'))el('ttsOutput').textContent='TTS-Statusfehler: '+error.message;renderCentralTts()}}
+function selectCentralTtsTemplate(){centralTtsTemplateId=el('ttsTemplateSelect')?.value||'';const row=centralTtsTemplates.find(item=>item.id===centralTtsTemplateId);if(row){el('ttsTemplateName').value=row.name;el('ttsText').value=row.text;el('ttsVoice').value=row.voice_id;el('ttsSpeed').value=Math.round(Number(row.speed||0.95)*100)}el('ttsTemplateDelete').disabled=!row;updateTtsCount();updateTtsSpeed();renderCentralTts()}
+function newCentralTtsTemplate(){centralTtsTemplateId='';if(el('ttsTemplateSelect'))el('ttsTemplateSelect').value='';if(el('ttsTemplateName'))el('ttsTemplateName').value='';if(el('ttsTemplateDelete'))el('ttsTemplateDelete').disabled=true}
+function centralTtsTemplatePayload(){const name=el('ttsTemplateName').value.trim(),text=el('ttsText').value.trim();if(!name)throw new Error('Bitte einen Vorlagennamen eingeben.');if(!text)throw new Error('Bitte einen Sprechtext eingeben.');return{id:centralTtsTemplateId||null,name,text,voice_id:el('ttsVoice').value,speed:Number(el('ttsSpeed').value)/100}}
+async function saveCentralTtsTemplate(){try{const out=await post('/api/v1/tts/templates/save',centralTtsTemplatePayload());centralTtsTemplateId=out.template.id;el('ttsTemplateState').textContent='Vorlage gespeichert.';await loadCentralTts();el('ttsTemplateSelect').value=centralTtsTemplateId;el('ttsTemplateDelete').disabled=false}catch(error){alert(error.message)}}
+async function deleteCentralTtsTemplate(){if(!centralTtsTemplateId)return;if(!confirm('Vorlage wirklich löschen?'))return;try{await post('/api/v1/tts/templates/delete',{id:centralTtsTemplateId});newCentralTtsTemplate();el('ttsTemplateState').textContent='Vorlage gelöscht.';await loadCentralTts()}catch(error){alert(error.message)}}
+async function waitForTtsAsset(id){for(let i=0;i<90;i++){const asset=await api('/api/v1/assets/'+encodeURIComponent(id));if(asset.state==='ready'){return asset}if(asset.state==='failed')throw new Error(asset.last_error||'TTS-Verarbeitung fehlgeschlagen');await new Promise(resolve=>setTimeout(resolve,1000))}throw new Error('TTS wird weiterhin verarbeitet. Die Datei erscheint später in der Bibliothek.')}
+async function generateCentralTts(){const name=el('ttsName').value.trim()||(centralTtsTemplates.find(row=>row.id===centralTtsTemplateId)?.name||'').trim(),text=el('ttsText').value.trim();if(!name){alert('Bitte einen Namen der Durchsage eingeben.');return}if(!text){alert('Bitte einen Sprechtext eingeben.');return}const button=el('ttsGenerate');button.disabled=true;el('ttsOutput').textContent='Piper erzeugt die WAV …';try{const result=await post('/api/v1/tts/generate',{name,text,voice_id:el('ttsVoice').value,speed:Number(el('ttsSpeed').value)/100,approve:el('ttsApprove').checked,tags:(el('ttsTags').value||'').split(',').map(x=>x.trim()).filter(Boolean),actor:'media-library-webui'});el('ttsOutput').textContent='Asset '+result.asset.asset_id+' wurde angelegt und wird verarbeitet …';const asset=await waitForTtsAsset(result.asset.asset_id);el('ttsOutput').textContent='TTS gespeichert: '+asset.title+' · '+asset.state+' · '+asset.approval;const player=el('ttsPreview');player.src='/api/v1/assets/'+encodeURIComponent(asset.asset_id)+'/preview?_='+Date.now();player.style.display='block';player.load();await refresh()}catch(error){el('ttsOutput').textContent=error.message}finally{renderCentralTts()}}
 async function refresh(){try{const q=new URLSearchParams({limit:'1000'});if(el('search')?.value)q.set('q',el('search').value);if(el('kindFilter')?.value)q.set('kind',el('kindFilter').value);if(el('approvalFilter')?.value)q.set('approval',el('approvalFilter').value);const jq=new URLSearchParams({limit:'1000'});if(el('jobFilter')?.value)jq.set('state',el('jobFilter').value);const[s,a,j,e,c,au]=await Promise.all([api('/api/v1/status'),api('/api/v1/assets?'+q),api('/api/v1/jobs?'+jq),api('/api/v1/events?limit=40'),api('/api/v1/config'),api('/api/v1/audit?limit=80')]);assets=a;jobs=j;el('mode').textContent=s.operating_mode;el('mode').className='pill '+(s.operating_mode==='authoritative'?'ready':'draft');el('deps').innerHTML=(s.media_switch_connected?'<span class="ok">● Media</span>':'<span class="bad">● Media</span>')+' '+(s.recorder_connected?'<span class="ok">● Recorder</span>':'<span class="bad">● Recorder</span>')+' '+(s.application_gateway_connected?'<span class="ok">● AppGW</span>':'<span class="bad">● AppGW</span>');el('cards').innerHTML=[['Assets',s.assets_total],['bereit',s.assets_ready],['freigegeben',s.assets_approved],['Preview',s.preview_ready],['TETRA-ready',s.broadcast_ready],['Import',s.assets_importing],['Jobs aktiv',s.jobs_queued+s.jobs_playing],['Speicher',bytes(s.storage_used_bytes)]].map(x=>`<div class="card"><div class="muted">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');el('recentEvents').textContent=e.map(x=>`${x.timestamp} #${x.seq} ${x.kind} ${x.asset_id||''} ${x.job_id||''}`).join('\n');renderAssets();renderJobs();renderSelects();el('configView').textContent=JSON.stringify(c,null,2);el('auditView').textContent=au.map(x=>`${x.timestamp} ${x.actor} ${x.action} ${x.object_type}/${x.object_id} ${x.result}`).join('\n')}catch(e){el('deps').innerHTML='<span class="bad">UI: '+esc(e.message)+'</span>'}}
 function renderAssets(){el('assetRows').innerHTML=assets.map(a=>`<tr><td><b>${esc(a.title)}</b><br><span class="mono small">${esc(a.asset_id)}</span><br>${pill(a.kind)} ${a.tags.map(t=>pill(t)).join(' ')}</td><td>${esc(a.source)}<br>${esc(a.original_filename)}<br><span class="muted">${bytes(a.size_bytes)} · ${esc(a.sha256?.slice(0,12)||'–')}</span></td><td>${esc(a.metadata.format||'–')} / ${esc(a.metadata.codec||'–')}<br>${duration(a.metadata.duration_ms)} · ${a.metadata.tetra_frame_count??'–'} Frames<br>${a.preview_ready?'<span class="ok">Preview</span>':'<span class="muted">kein Preview</span>'} · ${a.broadcast_ready?'<span class="ok">TETRA</span>':'<span class="warn">kein TETRA-Cache</span>'}</td><td>${pill(a.state)}${a.last_error?'<br><span class="bad">'+esc(a.last_error)+'</span>':''}${a.archived?'<br><span class="ok">archiviert</span>':''}</td><td>${pill(a.approval)}<br>${esc(a.approved_by||'')}</td><td>${a.preview_ready?`<button onclick="preview('${a.asset_id}')">Anhören</button>`:''} ${a.approval!=='approved'?`<button class="primary" onclick="approve('${a.asset_id}')">Freigeben</button>`:`<button onclick="reject('${a.asset_id}')">Sperren</button>`} <button onclick="reprocess('${a.asset_id}')">Neu verarbeiten</button> <button onclick="archiveAsset('${a.asset_id}')">Archiv</button> <button class="danger" onclick="deleteAsset('${a.asset_id}')">Löschen</button></td></tr>`).join('')}
 function renderJobs(){el('jobRows').innerHTML=jobs.map(j=>{const pct=j.frame_count?Math.round(j.frame_index*100/j.frame_count):0;return `<tr><td><span class="mono">${esc(j.job_id)}</span><br>${esc(j.created_at)}</td><td>${esc(j.asset_id)}<br>Session ${esc(j.session_id)}</td><td>${pill(j.state)}<br>Versuch ${j.attempts}/${j.max_attempts}</td><td>${j.frame_index}/${j.frame_count} (${pct}%)<br>Ziel-Queues ${j.queued_targets}</td><td>${esc(j.last_error||'')}</td><td>${['queued','playing'].includes(j.state)?`<button class="danger" onclick="cancelJob('${j.job_id}')">Abbrechen</button>`:''} ${['failed','cancelled','shadowed'].includes(j.state)?`<button onclick="retryJob('${j.job_id}')">Retry ab Frame 0</button>`:''}</td></tr>`}).join('')}

@@ -22,6 +22,8 @@ UNIT="${UNIT:-}"
 BINARY_PATH="${BINARY_PATH:-}"
 CARGO_FEATURES="${CARGO_FEATURES:-}"
 BUILD_USER="${BUILD_USER:-${SUDO_USER:-root}}"
+DISABLE_LOCAL_PIPER="${DISABLE_LOCAL_PIPER:-1}"
+MIGRATE_LOCAL_TTS_CONFIG="${MIGRATE_LOCAL_TTS_CONFIG:-1}"
 
 log() { printf '[NetCore Basisstation Update] %s\n' "$*"; }
 die() { printf '[NetCore Basisstation Update] FEHLER: %s\n' "$*" >&2; exit 1; }
@@ -182,6 +184,11 @@ run_as_builder "${build_cmd[@]}"
 NEW_BINARY="$REPO_ROOT/target/release/bluestation-bs"
 [[ -x "$NEW_BINARY" ]] || die "Build erfolgreich gemeldet, aber $NEW_BINARY fehlt."
 
+if [[ "$MIGRATE_LOCAL_TTS_CONFIG" != "0" && -f "$CONFIG_PATH" ]]; then
+    command -v python3 >/dev/null 2>&1 || die "python3 wird für die TTS-Konfigurationsmigration benötigt."
+    "$REPO_ROOT/install/remove-local-tts-config.py" "$CONFIG_PATH"
+fi
+
 backup_dir="/var/backups/netcore-tetra"
 mkdir -p "$backup_dir"
 stamp="$(date +%Y%m%d-%H%M%S)"
@@ -223,6 +230,11 @@ if grep -Eq 'Unrecognized top-level fields: \["media_library"\]|Primary config .
     rollback "Die neue Instanz meldet [media_library] weiterhin als unbekannt."
 fi
 
-log "Update erfolgreich. Die laufende Binary akzeptiert [media_library]."
+if [[ "$DISABLE_LOCAL_PIPER" != "0" ]] && systemctl cat netcore-piper.service >/dev/null 2>&1; then
+    log "Deaktiviere den nicht mehr benötigten lokalen Piper-Dienst auf der Basisstation ..."
+    systemctl disable --now netcore-piper.service ||         log "WARNUNG: netcore-piper.service konnte nicht automatisch deaktiviert werden."
+fi
+
+log "Update erfolgreich. Die laufende Binary akzeptiert [media_library] und verwendet zentrale TTS-Assets."
 log "Status: $(systemctl is-active "$UNIT")"
 log "Kontrolle: journalctl -u $UNIT -n 100 --no-pager"

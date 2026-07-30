@@ -15,9 +15,9 @@ Diese Erweiterung verbindet die lokale Basisstations-Aufzeichnung bidirektional 
 6. Ein Marker `<recording>.media-library` verhindert doppelte Imports und hält den Asset-Zustand fest.
 7. Ist die Media Library vorübergehend nicht erreichbar, bleibt die lokale Aufnahme bestehen und wird erneut versucht.
 
-### Medien zur Basisstation
+### Medien und TTS zur Basisstation
 
-1. Die Audio-Zentrale listet `ready`/`approved` Assets über die Media-Library-API.
+1. Die Audio-Zentrale listet fertige Assets – einschließlich `kind = "tts"` – über die Media-Library-API.
 2. Beim Vorhören oder Aussenden wird `preview.wav` in den lokalen Audiocache der Basisstation geladen.
 3. Erst nach vollständigem Download und vollständiger ACELP-Aufbereitung wird der TETRA-Ruf aufgebaut.
 4. Während der Aussendung wird nicht live über HTTP oder NFS gestreamt.
@@ -48,7 +48,6 @@ Direkte NFS-Archivierung der Basisstation wird bei dieser Architektur abgeschalt
 ```toml
 [recording]
 archive_enabled = false
-tts_archive_enabled = false
 ```
 
 Die lokalen Aufzeichnungen unter `/var/lib/netcore/recordings` bleiben die ausfallsichere Quelle, bis die Media Library den Asset-Zustand `ready` bestätigt hat.
@@ -72,7 +71,7 @@ auto_archive_recordings = true
 auto_archive_tts = true
 ```
 
-Die Installation und Aktualisierung der Media Library legen die drei Verzeichnisse nur an, wenn `/mnt/nfs-share` wirklich gemountet ist. Im OPEN-LAB-Betrieb werden sie mit `0777` erstellt bzw. repariert, damit paralleler SMB-Zugriff funktioniert. Die systemd-Unit verwendet `UMask=0000` und erlaubt Schreibzugriff auf alle drei Pfade.
+Die Installation und Aktualisierung der Media Library legen die drei Verzeichnisse nur an, wenn `/mnt/nfs-share` wirklich gemountet ist. Im OPEN-LAB-Betrieb werden Archivverzeichnisse mit `0777` und Archivdateien mit `0666` erstellt bzw. repariert, damit paralleler SMB-Zugriff funktioniert. Lokale Zustands- und Cache-Dateien bleiben mit `UMask=0077` geschützt; die systemd-Unit erlaubt gezielt Schreibzugriff auf alle drei Archivpfade.
 
 ## API-Endpunkte
 
@@ -105,3 +104,11 @@ Es ermittelt die von systemd tatsächlich ausgeführte `bluestation-bs`-Binary. 
 weil eine Unit andernfalls unbemerkt eine ältere Kopie weiterstarten kann; diese ältere Version
 weist `[media_library]` mit `Unrecognized top-level fields` ab und fällt auf
 `config.toml.fallback` zurück.
+
+## Zentrale TTS-Zuständigkeit
+
+Piper, Texteingabe und Vorlagen laufen ausschließlich in der Media Library. Den
+bisherigen `[tts]`-Abschnitt auf der Basisstation entfernen. Fertige TTS-Assets
+erscheinen automatisch im Media-Library-Dateibrowser unter `Jahr/Monat/Tag`;
+Vorschau und Aussendung verwenden denselben lokalen Cachepfad wie andere Medien.
+Die vollständige Konfiguration steht in `Docs/MEDIA_LIBRARY_CENTRAL_TTS.md`.

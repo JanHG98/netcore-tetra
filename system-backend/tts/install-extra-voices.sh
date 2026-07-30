@@ -4,9 +4,9 @@
 
 set -euo pipefail
 
-SERVICE_USER="${SERVICE_USER:-bluestation}"
+SERVICE_USER="${SERVICE_USER:-netcore-media-library}"
 VENV="${VENV:-/opt/netcore-piper}"
-VOICE_DIR="${VOICE_DIR:-/var/lib/netcore/piper}"
+VOICE_DIR="${VOICE_DIR:-/var/lib/netcore-media-library/piper}"
 PIPER_PORT="${PIPER_PORT:-5005}"
 VOICE_LIST="${VOICE_LIST:-de_DE-thorsten-high de_DE-karlsson-low de_DE-pavoque-low de_DE-thorsten_emotional-medium}"
 

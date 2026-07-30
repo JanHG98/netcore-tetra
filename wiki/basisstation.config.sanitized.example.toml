@@ -939,14 +939,7 @@ archive_enabled = false
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 archive_directory = "/mnt/nfs-share/Recordings"
 
-# TTS-WAVs remain in the local recording library for selection/playback, but their
-# server copy is routed separately and never placed in the Recordings archive.
-# Was: Setzt die Einstellung `tts_archive_enabled` für recording.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-tts_archive_enabled = false
-# Was: Setzt die Einstellung `tts_archive_directory` für recording.
-# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-tts_archive_directory = "/mnt/nfs-share/TTS-Dateien"
 # Was: Setzt die Einstellung `archive_retry_seconds` für recording.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 archive_retry_seconds = 60
@@ -1013,125 +1006,13 @@ name = "NFS-Server"
 path = "/mnt/nfs-share"
 
 ###############################################################################
-
-# LOCAL PIPER TEXT TO SPEECH (NetCore TTS Phase 1)
-# Piper runs as a separate localhost HTTP service. FlowStation creates the complete
-# WAV locally before handing it to the existing TETRA audio dispatcher.
-# Was: Öffnet den Konfigurationsabschnitt `tts`.
-# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
-[tts]
-# Was: Setzt die Einstellung `enabled` für tts.
-# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-enabled = true
-# Was: Setzt die Einstellung `endpoint` für tts.
-# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-endpoint = "http://127.0.0.1:5005"
-# Was: Setzt die Einstellung `cache_directory` für tts.
-# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-cache_directory = "/var/cache/netcore/tts"
-# Was: Setzt die Einstellung `template_directory` für tts.
-# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-template_directory = "/var/lib/netcore/tts/templates"
-# Was: Setzt die Einstellung `auto_save_generated_templates` für tts.
-# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-auto_save_generated_templates = true
-# Was: Setzt die Einstellung `default_voice` für tts.
-# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-default_voice = "de-thorsten"
-# Was: Setzt die Einstellung `default_speed` für tts.
-# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-default_speed = 0.95
-# Was: Setzt die Einstellung `default_priority` für tts.
-# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-default_priority = 5
-# Was: Setzt die Einstellung `max_text_characters` für tts.
-# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-max_text_characters = 2000
-# Was: Setzt die Einstellung `synthesis_timeout_seconds` für tts.
-# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-synthesis_timeout_seconds = 90
-# Was: Setzt die Einstellung `max_output_file_mb` für tts.
-# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-max_output_file_mb = 25
-# Was: Setzt die Einstellung `cache_retention_minutes` für tts.
-# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-cache_retention_minutes = 1440
-# Was: Setzt die Einstellung `keep_generated_audio` für tts.
-# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-keep_generated_audio = false
-
-# Was: Öffnet den Konfigurationsabschnitt `tts.voices`.
-# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
-[[tts.voices]]
-# Was: Setzt die Einstellung `id` für tts voices.
-# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-id = "de-thorsten"
-# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
-# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
-name = "Deutsch – Thorsten (mittel)"
-# Was: Setzt die Einstellung `provider_voice` für tts voices.
-# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-provider_voice = "de_DE-thorsten-medium"
-
-# Was: Öffnet den Konfigurationsabschnitt `tts.voices`.
-# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
-[[tts.voices]]
-# Was: Setzt die Einstellung `id` für tts voices.
-# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-id = "de-thorsten-high"
-# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
-# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
-name = "Deutsch – Thorsten (hoch)"
-# Was: Setzt die Einstellung `provider_voice` für tts voices.
-# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-provider_voice = "de_DE-thorsten-high"
-
-# Was: Öffnet den Konfigurationsabschnitt `tts.voices`.
-# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
-[[tts.voices]]
-# Was: Setzt die Einstellung `id` für tts voices.
-# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-id = "de-karlsson"
-# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
-# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
-name = "Deutsch – Karlsson"
-# Was: Setzt die Einstellung `provider_voice` für tts voices.
-# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-provider_voice = "de_DE-karlsson-low"
-
-# Was: Öffnet den Konfigurationsabschnitt `tts.voices`.
-# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
-[[tts.voices]]
-# Was: Setzt die Einstellung `id` für tts voices.
-# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-id = "de-pavoque"
-# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
-# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
-name = "Deutsch – Pavoque"
-# Was: Setzt die Einstellung `provider_voice` für tts voices.
-# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-provider_voice = "de_DE-pavoque-low"
-
-# Was: Öffnet den Konfigurationsabschnitt `tts.voices`.
-# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
-[[tts.voices]]
-# Was: Setzt die Einstellung `id` für tts voices.
-# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-id = "de-thorsten-neutral"
-# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
-# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
-name = "Deutsch – Thorsten emotional (neutral)"
-# Was: Setzt die Einstellung `provider_voice` für tts voices.
-# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-provider_voice = "de_DE-thorsten_emotional-medium"
-# Was: Setzt die Einstellung `speaker_id` für tts voices.
-# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-speaker_id = 4
-
+# CENTRAL TTS
+#
+# Piper, Texteingabe und Vorlagen laufen im Media-Library-LXC.
+# Diese Basisstation bezieht fertige TTS-Assets über [media_library].
+# Kein lokaler [tts]-Abschnitt erforderlich.
 ###############################################################################
 
-# Was: Öffnet den Konfigurationsabschnitt `netcore_directory`.
-# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [netcore_directory]
 # Local/LAN NetCore Directory Server for device, base-station, group and status labels.
 # Set base_url to the LXC/host running NetCore Directory.

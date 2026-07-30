@@ -16,6 +16,7 @@ mod model;
 // Was: Bindet das Untermodul Zustand in diesen Bereich ein.
 // Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod state;
+mod tts;
 // Was: Bindet das Untermodul Hintergrundverarbeitung in diesen Bereich ein.
 // Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod worker;
@@ -25,6 +26,7 @@ use std::path::PathBuf;
 use clap::Parser;
 use config::MediaLibraryConfig;
 use state::SharedLibrary;
+use tts::TtsService;
 
 #[derive(Debug, Parser)]
 #[command(name = "netcore-media-library")]
@@ -65,8 +67,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     let library = SharedLibrary::load(config.clone())?;
+    let tts = TtsService::new(config.tts.clone(), config.runtime.auto_approve_tts)
+        .map_err(std::io::Error::other)?;
+    if config.tts.enabled {
+        tracing::info!(
+            "Central Media Library TTS enabled endpoint={} templates={}",
+            config.tts.endpoint,
+            config.tts.template_directory.display()
+        );
+    }
     let _worker = worker::spawn_worker(config.clone(), library.clone());
-    let server = http::spawn_http_server(config, library)?;
+    let server = http::spawn_http_server(config, library, tts)?;
     server.join().map_err(|_| -> Box<dyn std::error::Error> {
         "Media Library HTTP server thread panicked".into()
     })?;
