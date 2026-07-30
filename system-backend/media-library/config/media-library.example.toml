@@ -115,6 +115,25 @@ auto_approve_tts = false
 auto_archive_recordings = true
 auto_archive_tts = true
 
+# End-to-end radio playout. In basisstation mode the Media Library delegates
+# the approved preview WAV to the selected TBS. The TBS downloads the complete
+# asset, encodes it with its native TETRA codec, creates the radio call, sends
+# the audio and releases the call again.
+[playout]
+mode = "basisstation"
+default_station = "srv-m-tbs-01"
+request_timeout_secs = 15
+completion_timeout_secs = 900
+poll_interval_ms = 500
+
+[[playout.stations]]
+id = "srv-m-tbs-01"
+name = "SRV-M-TBS-01"
+base_url = "http://10.0.1.22:8080"
+enabled = true
+# username = "admin"
+# password = "change-me"
+
 # Was: Öffnet den Konfigurationsabschnitt `codec`.
 # Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [codec]

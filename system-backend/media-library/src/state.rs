@@ -13,11 +13,15 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use uuid::Uuid;
 
-use crate::config::{MediaLibraryConfig, OPEN_LAB_MODE, SHADOW_MODE};
+use crate::config::{
+    BASISSTATION_PLAYOUT_MODE, MEDIA_SWITCH_PLAYOUT_MODE, MediaLibraryConfig,
+    OPEN_LAB_MODE, SHADOW_MODE,
+};
 use crate::media;
 use crate::model::{
     ActionInput, ApprovalInput, AssetRecord, AssetUpdateInput, AuditRecord, BackupRecord,
     ConfigView, DispatchClaim, DispatchInput, DispatchJob, EventRecord, ImportClaim,
+    PlayoutStationView,
     ImportUrlInput, ProcessingClaim, ProcessResult, RecorderImportInput, StatusView, UploadInput,
 };
 
@@ -297,6 +301,20 @@ impl SharedLibrary {
                 .is_some_and(|path| Path::new(path).is_file()),
             tetra_encoder_configured: !inner.config.codec.encoder_command.is_empty(),
             tetra_decoder_configured: !inner.config.codec.decoder_command.is_empty(),
+            playout_mode: inner.config.playout.mode.clone(),
+            playout_default_station: inner.config.playout.default_station.clone(),
+            playout_stations: inner
+                .config
+                .playout
+                .stations
+                .iter()
+                .map(|station| PlayoutStationView {
+                    id: station.id.clone(),
+                    name: station.name.clone(),
+                    base_url: station.base_url.clone(),
+                    enabled: station.enabled,
+                })
+                .collect(),
             dependencies: BTreeMap::from([
                 (
                     "media-switch".to_string(),
@@ -884,44 +902,120 @@ impl SharedLibrary {
         if asset.approval != "approved" {
             return Err("asset is not approved".to_string());
         }
-        // In shadow mode the dispatch job is intentionally metadata-only and is
-        // completed as `shadowed` before any media frame is read. Requiring a
-        // packed TETRA cache here would hide every normal WAV/TTS asset even
-        // though no codec output is needed. Authoritative dispatch keeps the
-        // strict playout-cache requirement.
-        let shadow_dispatch = !dispatch_requires_tetra_cache(&inner.config.runtime.operating_mode);
-        if !shadow_dispatch
-            && (!asset.broadcast_ready
-                || asset.tetra_path.as_ref().is_none_or(|path| !path.is_file()))
-        {
-            return Err("asset has no validated packed TETRA playout cache".to_string());
-        }
+
+        let shadow_dispatch = inner.config.runtime.operating_mode == SHADOW_MODE;
+        let playout_mode = inner.config.playout.mode.clone();
         let hint = asset.broadcast_hint.clone().unwrap_or_default();
-        let session_id = input
-            .session_id
-            .or(hint.session_id)
-            .filter(|value| !value.trim().is_empty())
-            .ok_or_else(|| "session_id is required; Media Library does not create CMCE calls".to_string())?;
-        let now = Utc::now();
-        let job = DispatchJob {
-            job_id: Uuid::new_v4().to_string(),
-            asset_id: asset.asset_id.clone(),
-            session_id,
-            target_node: input.target_node,
-            target_logical_ts: input.target_logical_ts,
-            destination_kind: input.destination_kind.or(hint.destination_kind),
-            destination_id: input.destination_id.or(hint.destination_id),
-            priority: input.priority.or(hint.priority).unwrap_or(3).min(15),
-            state: "queued".to_string(),
-            frame_index: 0,
-            frame_count: asset.metadata.tetra_frame_count.unwrap_or_else(|| {
+        let destination_kind = input.destination_kind.or(hint.destination_kind);
+        let destination_id = input.destination_id.or(hint.destination_id);
+        let priority = input.priority.or(hint.priority).unwrap_or(3).min(15);
+
+        let (session_id, target_node, target_logical_ts, frame_count) = if shadow_dispatch {
+            (
+                input
+                    .session_id
+                    .or(hint.session_id)
+                    .unwrap_or_else(|| "shadow".to_string()),
+                input.station_id.or(input.target_node),
+                input.target_logical_ts,
+                asset.metadata.tetra_frame_count.unwrap_or(0),
+            )
+        } else if playout_mode == BASISSTATION_PLAYOUT_MODE {
+            if !asset.preview_ready
+                || asset
+                    .preview_path
+                    .as_ref()
+                    .is_none_or(|path| !path.is_file())
+            {
+                return Err("asset has no playable WAV preview for basis-station playout".to_string());
+            }
+            let kind = destination_kind
+                .as_deref()
+                .ok_or_else(|| "destination_kind is required for basis-station playout".to_string())?;
+            if !matches!(kind, "group" | "individual") {
+                return Err("destination_kind must be group or individual".to_string());
+            }
+            let destination = destination_id
+                .filter(|value| *value > 0 && *value <= 0x00ff_ffff)
+                .ok_or_else(|| "destination_id must be a valid 24-bit ISSI/GSSI".to_string())?;
+            let station_id = input
+                .station_id
+                .or(input.target_node)
+                .or_else(|| inner.config.playout.default_station.clone())
+                .or_else(|| {
+                    inner
+                        .config
+                        .playout
+                        .stations
+                        .iter()
+                        .find(|station| station.enabled)
+                        .map(|station| station.id.clone())
+                })
+                .ok_or_else(|| "no enabled basis-station playout target is configured".to_string())?;
+            if !inner
+                .config
+                .playout
+                .stations
+                .iter()
+                .any(|station| station.id == station_id && station.enabled)
+            {
+                return Err(format!(
+                    "basis-station playout target '{}' is missing or disabled",
+                    station_id
+                ));
+            }
+            let estimated_blocks = asset
+                .metadata
+                .duration_ms
+                .map(|duration| duration.saturating_add(59) / 60)
+                .unwrap_or(0);
+            (
+                format!("basisstation:{station_id}:{kind}:{destination}"),
+                Some(station_id),
+                None,
+                estimated_blocks,
+            )
+        } else if playout_mode == MEDIA_SWITCH_PLAYOUT_MODE {
+            if !asset.broadcast_ready
+                || asset.tetra_path.as_ref().is_none_or(|path| !path.is_file())
+            {
+                return Err("asset has no validated packed TETRA playout cache".to_string());
+            }
+            let session_id = input
+                .session_id
+                .or(hint.session_id)
+                .filter(|value| !value.trim().is_empty())
+                .ok_or_else(|| {
+                    "session_id is required for direct Media Switch playout".to_string()
+                })?;
+            let frame_count = asset.metadata.tetra_frame_count.unwrap_or_else(|| {
                 asset
                     .tetra_path
                     .as_ref()
                     .and_then(|path| fs::metadata(path).ok())
                     .map(|metadata| metadata.len() / 35)
                     .unwrap_or(0)
-            }),
+            });
+            (session_id, input.target_node, input.target_logical_ts, frame_count)
+        } else {
+            return Err(format!("unsupported playout mode '{playout_mode}'"));
+        };
+
+        let now = Utc::now();
+        let job = DispatchJob {
+            job_id: Uuid::new_v4().to_string(),
+            asset_id: asset.asset_id.clone(),
+            session_id,
+            playout_mode,
+            remote_job_id: None,
+            target_node,
+            target_logical_ts,
+            destination_kind,
+            destination_id,
+            priority,
+            state: "queued".to_string(),
+            frame_index: 0,
+            frame_count,
             attempts: 0,
             max_attempts: inner.config.runtime.max_attempts,
             queued_targets: 0,
@@ -933,8 +1027,33 @@ impl SharedLibrary {
             completed_at: None,
         };
         inner.state.jobs.push(job.clone());
-        push_event_locked(&mut inner, "dispatch_queued", Some(&job.asset_id), Some(&job.job_id), json!({"session_id":job.session_id}));
-        audit_locked(&mut inner, actor(input.actor.as_deref()), "dispatch", "job", &job.job_id, "queued", json!({"asset_id":job.asset_id,"session_id":job.session_id}));
+        push_event_locked(
+            &mut inner,
+            "dispatch_queued",
+            Some(&job.asset_id),
+            Some(&job.job_id),
+            json!({
+                "playout_mode": job.playout_mode,
+                "session_id": job.session_id,
+                "station_id": job.target_node,
+                "destination_kind": job.destination_kind,
+                "destination_id": job.destination_id,
+            }),
+        );
+        audit_locked(
+            &mut inner,
+            actor(input.actor.as_deref()),
+            "dispatch",
+            "job",
+            &job.job_id,
+            "queued",
+            json!({
+                "asset_id":job.asset_id,
+                "playout_mode":job.playout_mode,
+                "session_id":job.session_id,
+                "station_id":job.target_node,
+            }),
+        );
         persist_locked(&mut inner)?;
         Ok(job)
     }
@@ -1013,6 +1132,7 @@ impl SharedLibrary {
         job.frame_index = 0;
         job.queued_targets = 0;
         job.cancel_requested = false;
+        job.remote_job_id = None;
         job.last_error = None;
         job.started_at = None;
         job.completed_at = None;
@@ -1403,8 +1523,16 @@ impl SharedLibrary {
         let index = inner.state.jobs.iter().position(|job| job.state == "queued")?;
         let shadow = inner.config.runtime.operating_mode == SHADOW_MODE;
         let asset_id = inner.state.jobs[index].asset_id.clone();
-        let tetra_asset = (!shadow)
-            .then(|| {
+        let job_mode = if inner.state.jobs[index].playout_mode.is_empty() {
+            inner.config.playout.mode.clone()
+        } else {
+            inner.state.jobs[index].playout_mode.clone()
+        };
+        let tetra_asset = dispatch_requires_tetra_cache(
+            &inner.config.runtime.operating_mode,
+            &job_mode,
+        )
+        .then(|| {
                 inner.state.assets.get(&asset_id).and_then(|asset| {
                     asset
                         .tetra_path
@@ -1416,6 +1544,9 @@ impl SharedLibrary {
 
         let now = Utc::now();
         let job = &mut inner.state.jobs[index];
+        if job.playout_mode.is_empty() {
+            job.playout_mode = job_mode.clone();
+        }
         job.updated_at = now;
         if shadow {
             job.state = "shadowed".to_string();
@@ -1432,12 +1563,17 @@ impl SharedLibrary {
             return None;
         }
         job.attempts = job.attempts.saturating_add(1);
-        let Some((tetra_path, expected_tetra_sha256)) = tetra_asset else {
-            job.state = "failed".to_string();
-            job.last_error = Some("asset TETRA cache disappeared".to_string());
-            job.completed_at = Some(now);
-            let _ = persist_locked(&mut inner);
-            return None;
+        let (tetra_path, expected_tetra_sha256) = if job_mode == MEDIA_SWITCH_PLAYOUT_MODE {
+            let Some((tetra_path, expected_tetra_sha256)) = tetra_asset else {
+                job.state = "failed".to_string();
+                job.last_error = Some("asset TETRA cache disappeared".to_string());
+                job.completed_at = Some(now);
+                let _ = persist_locked(&mut inner);
+                return None;
+            };
+            (Some(tetra_path), expected_tetra_sha256)
+        } else {
+            (None, None)
         };
         job.state = "playing".to_string();
         job.started_at = Some(now);
@@ -1449,6 +1585,44 @@ impl SharedLibrary {
         };
         let _ = persist_locked(&mut inner);
         Some(claim)
+    }
+
+    pub fn dispatch_remote_started(
+        &self,
+        job_id: &str,
+        remote_job_id: String,
+        total_blocks: Option<u64>,
+    ) {
+        let mut inner = lock(&self.inner);
+        if let Some(job) = inner.state.jobs.iter_mut().find(|job| job.job_id == job_id) {
+            job.remote_job_id = Some(remote_job_id.clone());
+            if let Some(total_blocks) = total_blocks.filter(|value| *value > 0) {
+                job.frame_count = total_blocks;
+            }
+            job.updated_at = Utc::now();
+            let asset_id = job.asset_id.clone();
+            let local_job_id = job.job_id.clone();
+            push_event_locked(
+                &mut inner,
+                "dispatch_remote_started",
+                Some(&asset_id),
+                Some(&local_job_id),
+                json!({"remote_job_id":remote_job_id}),
+            );
+        }
+        let _ = persist_locked(&mut inner);
+    }
+
+    pub fn dispatch_remote_progress(&self, job_id: &str, sent_blocks: u64, total_blocks: u64) {
+        let mut inner = lock(&self.inner);
+        if let Some(job) = inner.state.jobs.iter_mut().find(|job| job.job_id == job_id) {
+            job.frame_index = sent_blocks;
+            if total_blocks > 0 {
+                job.frame_count = total_blocks;
+            }
+            job.updated_at = Utc::now();
+        }
+        let _ = persist_locked(&mut inner);
     }
 
     // Was: Diese Funktion verteilt cancel requested.
@@ -1562,8 +1736,8 @@ impl SharedLibrary {
     }
 }
 
-fn dispatch_requires_tetra_cache(operating_mode: &str) -> bool {
-    operating_mode != SHADOW_MODE
+fn dispatch_requires_tetra_cache(operating_mode: &str, playout_mode: &str) -> bool {
+    operating_mode != SHADOW_MODE && playout_mode == MEDIA_SWITCH_PLAYOUT_MODE
 }
 
 fn archive_roots_available(config: &MediaLibraryConfig) -> bool {
@@ -1850,14 +2024,29 @@ fn lock(inner: &Arc<Mutex<LibraryInner>>) -> MutexGuard<'_, LibraryInner> {
 #[cfg(test)]
 mod dispatch_mode_tests {
     use super::dispatch_requires_tetra_cache;
+    use crate::config::{BASISSTATION_PLAYOUT_MODE, MEDIA_SWITCH_PLAYOUT_MODE};
 
     #[test]
-    fn shadow_dispatch_is_metadata_only_and_does_not_require_tetra_cache() {
-        assert!(!dispatch_requires_tetra_cache("shadow"));
+    fn shadow_dispatch_never_requires_a_tetra_cache() {
+        assert!(!dispatch_requires_tetra_cache(
+            "shadow",
+            MEDIA_SWITCH_PLAYOUT_MODE,
+        ));
     }
 
     #[test]
-    fn authoritative_dispatch_still_requires_validated_tetra_cache() {
-        assert!(dispatch_requires_tetra_cache("authoritative"));
+    fn basisstation_playout_uses_the_preview_wav_and_native_tbs_codec() {
+        assert!(!dispatch_requires_tetra_cache(
+            "authoritative",
+            BASISSTATION_PLAYOUT_MODE,
+        ));
+    }
+
+    #[test]
+    fn direct_media_switch_playout_requires_a_tetra_cache() {
+        assert!(dispatch_requires_tetra_cache(
+            "authoritative",
+            MEDIA_SWITCH_PLAYOUT_MODE,
+        ));
     }
 }

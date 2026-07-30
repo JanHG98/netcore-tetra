@@ -16,6 +16,10 @@ pub const SHADOW_MODE: &str = "shadow";
 // Was: Legt den festen Wert `AUTHORITATIVE_MODE` für authoritative mode fest.
 // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const AUTHORITATIVE_MODE: &str = "authoritative";
+/// Delegate WAV/TTS playout to a basis station audio player.
+pub const BASISSTATION_PLAYOUT_MODE: &str = "basisstation";
+/// Inject an already packed TACELP cache into an existing Media Switch session.
+pub const MEDIA_SWITCH_PLAYOUT_MODE: &str = "media_switch";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
@@ -27,6 +31,7 @@ pub struct MediaLibraryConfig {
     pub storage: StorageConfig,
     pub runtime: RuntimeConfig,
     pub codec: CodecConfig,
+    pub playout: PlayoutConfig,
     pub tts: TtsConfig,
     pub dependencies: DependencyConfig,
 }
@@ -43,6 +48,7 @@ impl Default for MediaLibraryConfig {
             storage: StorageConfig::default(),
             runtime: RuntimeConfig::default(),
             codec: CodecConfig::default(),
+            playout: PlayoutConfig::default(),
             tts: TtsConfig::default(),
             dependencies: DependencyConfig::default(),
         }
@@ -117,6 +123,68 @@ impl MediaLibraryConfig {
         self.codec.decoder_command = clean_command(&self.codec.decoder_command);
         if self.codec.frame_bytes != 35 {
             return Err("codec.frame_bytes must remain 35 for packed TETRA speech service 0".into());
+        }
+        if !matches!(
+            self.playout.mode.as_str(),
+            BASISSTATION_PLAYOUT_MODE | MEDIA_SWITCH_PLAYOUT_MODE
+        ) {
+            return Err("playout.mode must be basisstation or media_switch".into());
+        }
+        self.playout.request_timeout_secs = self.playout.request_timeout_secs.max(2);
+        self.playout.completion_timeout_secs = self.playout.completion_timeout_secs.max(30);
+        self.playout.poll_interval_ms = self.playout.poll_interval_ms.clamp(200, 10_000);
+        self.playout.default_station = self
+            .playout
+            .default_station
+            .take()
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty());
+        let mut station_ids = std::collections::BTreeSet::new();
+        for station in &mut self.playout.stations {
+            station.id = station.id.trim().to_string();
+            station.name = station.name.trim().to_string();
+            station.base_url = station.base_url.trim().trim_end_matches('/').to_string();
+            if station.id.is_empty() || station.name.is_empty() {
+                return Err("playout station id and name must not be empty".into());
+            }
+            if !station_ids.insert(station.id.clone()) {
+                return Err(format!("duplicate playout station id '{}'", station.id));
+            }
+            if !station.base_url.starts_with("http://")
+                && !station.base_url.starts_with("https://")
+            {
+                return Err(format!(
+                    "playout station URL must use http:// or https://: {}",
+                    station.base_url
+                ));
+            }
+            station.username = station
+                .username
+                .take()
+                .map(|value| value.trim().to_string())
+                .filter(|value| !value.is_empty());
+            station.password = station
+                .password
+                .take()
+                .filter(|value| !value.is_empty());
+            if station.username.is_some() != station.password.is_some() {
+                return Err(format!(
+                    "playout station '{}' must configure both username and password or neither",
+                    station.id
+                ));
+            }
+        }
+        if let Some(default_station) = &self.playout.default_station
+            && !self
+                .playout
+                .stations
+                .iter()
+                .any(|station| station.id == *default_station && station.enabled)
+        {
+            return Err(format!(
+                "playout.default_station '{}' is missing or disabled",
+                default_station
+            ));
         }
         self.tts.endpoint = self.tts.endpoint.trim().trim_end_matches('/').to_string();
         self.tts.default_voice = self.tts.default_voice.trim().to_string();
@@ -365,6 +433,56 @@ impl Default for CodecConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+pub struct PlayoutConfig {
+    /// `basisstation` delegates a preview WAV to the selected TBS audio player.
+    /// `media_switch` keeps the legacy direct TACELP/session injection path.
+    pub mode: String,
+    pub default_station: Option<String>,
+    pub request_timeout_secs: u64,
+    pub completion_timeout_secs: u64,
+    pub poll_interval_ms: u64,
+    pub stations: Vec<PlayoutStationConfig>,
+}
+
+impl Default for PlayoutConfig {
+    fn default() -> Self {
+        Self {
+            mode: BASISSTATION_PLAYOUT_MODE.to_string(),
+            default_station: None,
+            request_timeout_secs: 15,
+            completion_timeout_secs: 900,
+            poll_interval_ms: 500,
+            stations: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct PlayoutStationConfig {
+    pub id: String,
+    pub name: String,
+    pub base_url: String,
+    pub enabled: bool,
+    pub username: Option<String>,
+    pub password: Option<String>,
+}
+
+impl Default for PlayoutStationConfig {
+    fn default() -> Self {
+        Self {
+            id: String::new(),
+            name: String::new(),
+            base_url: String::new(),
+            enabled: true,
+            username: None,
+            password: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct TtsConfig {
     pub enabled: bool,
     pub endpoint: String,
@@ -462,6 +580,35 @@ mod tests {
     fn non_tetra_frame_timing_is_rejected() {
         let mut config = MediaLibraryConfig::default();
         config.runtime.frame_interval_ms = 20;
+        assert!(config.normalise().is_err());
+    }
+
+    #[test]
+    fn default_playout_delegates_to_a_basisstation_without_requiring_one() {
+        let mut config = MediaLibraryConfig::default();
+        config.normalise().expect("default configuration");
+        assert_eq!(config.playout.mode, BASISSTATION_PLAYOUT_MODE);
+        assert!(config.playout.default_station.is_none());
+        assert!(config.playout.stations.is_empty());
+    }
+
+    #[test]
+    fn configured_default_station_must_exist_and_be_enabled() {
+        let mut config = MediaLibraryConfig::default();
+        config.playout.default_station = Some("missing".to_string());
+        assert!(config.normalise().is_err());
+    }
+
+    #[test]
+    fn station_authentication_requires_username_and_password_together() {
+        let mut config = MediaLibraryConfig::default();
+        config.playout.stations.push(PlayoutStationConfig {
+            id: "tbs-1".to_string(),
+            name: "TBS 1".to_string(),
+            base_url: "http://10.0.1.22:8080".to_string(),
+            username: Some("admin".to_string()),
+            ..PlayoutStationConfig::default()
+        });
         assert!(config.normalise().is_err());
     }
 

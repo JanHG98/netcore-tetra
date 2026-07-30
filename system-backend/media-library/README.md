@@ -19,7 +19,8 @@ Der Dienst läuft auf **Port 8230** und besitzt eine eigene WebUI.
 - Freigabezustände `draft`, `approved`, `rejected`
 - optionale externe TETRA-Encoder-/Decoder-Helfer ohne Shell-Ausführung
 - verlustfreier TETRA-Cache mit exakt 35 Byte pro 60-ms-Frame
-- kontrollierte Einspeisung in **bereits bestehende** Media-Switch-Sessions
+- vollständige WAV-/TTS-Aussendung über den nativen Audio Player einer ausgewählten Basisstation
+- optional weiterhin kontrollierte TACELP-Einspeisung in **bereits bestehende** Media-Switch-Sessions
 - Shadow- und Authoritative-Modus
 - Jobfortschritt, Abbruch und bewusster manueller Retry ab Frame 0
 - versionierte NFS-/Archivkopie mit Manifest und Dateihashes, ohne das Archiv als Live-Playout-Quelle zu missbrauchen
@@ -28,28 +29,33 @@ Der Dienst läuft auf **Port 8230** und besitzt eine eigene WebUI.
 
 ## Architekturgrenze
 
+Der empfohlene Modus delegiert die Funkseite an die Basisstation, weil dort CMCE,
+Timeslot, Floor und der native TETRA-Sprachcodec bereits zusammenlaufen:
+
 ```text
-Application Gateway / Upload / Recorder / Piper-TTS
-                 │
-                 ▼
-          Media Library
-  Original → Preview → TACELP-Cache
-                 │
-          Freigabe + Job
-                 ▼
-      bestehende Media Session
-                 │
-                 ▼
-           Media Switch
+Media-Library-WebUI
+        │ Asset-ID + GSSI/ISSI
+        ▼
+Media-Library-Worker
+        │ POST /api/audio/play
+        ▼
+ausgewählte Basisstation
+        │ vollständige WAV laden und lokal zwischenspeichern
+        │ mit nativem TETRA-Codec kodieren
+        │ Gruppen-/Einzelruf aufbauen und Audio senden
+        │ Ruf nach Dateiende geordnet freigeben
+        ▼
+      Funknetz
 ```
 
-Die Media Library:
+Die Media Library erzeugt dabei selbst keinen CMCE-Zustand und übernimmt keinen
+RF-Timeslot. Sie orchestriert einen vorhandenen, sendefähigen TBS-Audio-Player und
+spiegelt dessen Jobfortschritt. Dadurch ist auf dem Media-Library-LXC kein zweiter
+TETRA-Codec erforderlich.
 
-- erstellt **keinen CMCE-Ruf**,
-- besitzt **keinen Floor-Control-State**,
-- ändert **keine Recorder-Retention und keinen Legal Hold**,
-- transkodiert nicht im Media-Switch-Prozess,
-- injiziert nur validierte 35-Byte-TETRA-Frames.
+Der frühere direkte Pfad bleibt als `playout.mode = "media_switch"` erhalten. Er
+benötigt weiterhin einen validierten 35-Byte-TACELP-Cache und eine bereits vorhandene
+Media-Switch-Session.
 
 ## Open Lab
 
@@ -77,21 +83,63 @@ WAV und MP3 werden zu einem kanonischen Vorschauformat normalisiert:
 8 kHz · mono · signed 16-bit PCM · RIFF/WAVE
 ```
 
-Ohne konfigurierten TETRA-Encoder bleiben WAV/MP3 **previewfähig, aber nicht funkbereit**. Das ist Absicht. Eine Dateiendung wird nicht als Codec-Ersatz behandelt.
+Im empfohlenen Modus `playout.mode = "basisstation"` genügt eine freigegebene
+WAV-Vorschau. Die ausgewählte TBS lädt die Datei vollständig in ihren lokalen Cache
+und nutzt anschließend ihren nativen TETRA-Sprachcodec. Deshalb darf
+`encoder_command = []` bleiben und das Asset kann trotz `broadcast_ready = false`
+über Funk ausgesendet werden.
 
-Gepackte `.tacelp`-Dateien sind sofort funkbereit, wenn ihre Größe ein positives Vielfaches von 35 Byte ist. Für deren hörbare Vorschau ist ein konfigurierter Decoder-Helfer erforderlich.
+Gepackte `.tacelp`-Dateien bleiben für die direkte Media-Switch-Einspeisung
+verwendbar, wenn ihre Größe ein positives Vielfaches von 35 Byte ist. Für deren
+hörbare Vorschau ist weiterhin ein Decoder-Helfer erforderlich.
 
 ## Playout
 
-Im Betriebsmodus `shadow` werden Aussendungen als Metadaten-Jobs protokolliert und anschließend als `shadowed` abgeschlossen. Dafür reichen `ready` und `approved`; ein TETRA-Cache ist nicht erforderlich, weil keine Audioframes gelesen oder gesendet werden.
+Im Betriebsmodus `shadow` wird jeder Auftrag nur protokolliert und als `shadowed`
+abgeschlossen. Es findet unabhängig vom gewählten Playout-Pfad keine Funkübertragung
+statt.
 
-Im Betriebsmodus `authoritative` wird weiterhin zwingend ein validierter gepackter TETRA-Cache verlangt. Für einen echten Job wird außerdem eine vorhandene `session_id` benötigt. Vor dem Start prüft der Worker den gespeicherten SHA-256 des TETRA-Caches. Anschließend liest er `audio.tacelp` frameweise und ruft im festen 60-ms-Takt auf:
+Für echte Aussendungen muss gelten:
 
-```text
-POST /api/v1/sessions/{session_id}/inject
+```toml
+[runtime]
+operating_mode = "authoritative"
+
+[playout]
+mode = "basisstation"
+default_station = "srv-m-tbs-01"
+request_timeout_secs = 15
+completion_timeout_secs = 900
+poll_interval_ms = 500
+
+[[playout.stations]]
+id = "srv-m-tbs-01"
+name = "SRV-M-TBS-01"
+base_url = "http://10.0.1.22:8080"
+enabled = true
+# Nur eintragen, wenn das TBS-Dashboard geschützt ist:
+# username = "admin"
+# password = "..."
 ```
 
-Ein Neustart während eines laufenden Jobs markiert ihn als fehlgeschlagen. Er wird nicht automatisch neu gestartet, weil eine teilweise doppelte Durchsage schlimmer ist als ein sichtbarer Fehler.
+Im Basisstationsmodus erzeugt der Worker einen lokalen Job, meldet sich bei Bedarf
+über `/api/login` am TBS-Dashboard an, prüft `/api/audio/status` und startet dann:
+
+```text
+POST /api/audio/play
+```
+
+Die TBS erhält Asset-ID, Zieltyp, 24-Bit-GSSI/ISSI und Priorität. Sie lädt die
+Media-Library-Vorschau über ihre konfigurierte Quelle `media-library`, baut den Ruf
+auf, sendet das Audio und beendet ihn wieder. Der Media-Library-Job verfolgt dabei
+Remote-Job-ID, Audio-Blöcke, Fehler, Abbruch und Abschluss.
+
+Für `playout.mode = "media_switch"` gilt weiterhin der alte Spezialpfad: Ein
+validierter TACELP-Cache und eine vorhandene `session_id` sind Pflicht; Frames werden
+im 60-ms-Takt an `/api/v1/sessions/{session_id}/inject` übergeben.
+
+Ein Neustart während eines laufenden Jobs markiert ihn als fehlgeschlagen. Ein
+manueller Retry beginnt bewusst wieder am Dateianfang.
 
 ## Wichtige Endpunkte
 
@@ -119,9 +167,9 @@ GET  /api/v1/jobs
 Noch nicht enthalten sind:
 
 - produktives RBAC, TLS oder mTLS,
-- eingebettete proprietäre TETRA-Sprachcodec-Algorithmen,
+- ein zentraler proprietärer TETRA-Sprachcodec im Media-Library-LXC,
 - Musik- oder Lautheits-Mastering jenseits der technischen Normalisierung,
-- CMCE-Call-Erzeugung und Floor-Control,
+- eigenständige CMCE-/Floor-Implementierung in der Media Library; diese Aufgabe bleibt bei der TBS,
 - framegenaue verteilte Playout-Synchronisierung über mehrere Regionen,
 - S3-/Object-Storage oder Medien-CDN,
 - rechtssichere WORM-Archivierung.
@@ -130,7 +178,7 @@ Noch nicht enthalten sind:
 
 The base station can register completed WAV recordings by URL. The Media Library pulls the file, processes it, and automatically archives recordings to `storage.recording_archive_root`. The shared archive uses `YYYY/MM/DD` and descriptive filenames derived from recording metadata. Ready draft assets remain visible for preview; radio playout is still blocked until approval. The Audio Centre downloads the preview into its local cache before starting radio playout.
 
-See `Docs/MEDIA_LIBRARY_BASISSTATION_INTEGRATION.md` and `Docs/MEDIA_LIBRARY_ARCHIVE_UI_FIX.md` for configuration, migration and rollout steps.
+See `Docs/MEDIA_LIBRARY_BASISSTATION_INTEGRATION.md`, `Docs/MEDIA_LIBRARY_BASISSTATION_PLAYOUT.md` and `Docs/MEDIA_LIBRARY_ARCHIVE_UI_FIX.md` for configuration, migration and rollout steps.
 
 ## PermissionDenied directly after archive migration
 

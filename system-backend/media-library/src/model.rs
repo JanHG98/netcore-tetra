@@ -99,6 +99,10 @@ pub struct DispatchJob {
     pub job_id: String,
     pub asset_id: String,
     pub session_id: String,
+    #[serde(default)]
+    pub playout_mode: String,
+    #[serde(default)]
+    pub remote_job_id: Option<String>,
     pub target_node: Option<String>,
     pub target_logical_ts: Option<u8>,
     pub destination_kind: Option<String>,
@@ -280,6 +284,8 @@ pub struct ApprovalInput {
 pub struct DispatchInput {
     pub asset_id: String,
     pub session_id: Option<String>,
+    /// Basis-station playout target. `target_node` remains accepted for backwards compatibility.
+    pub station_id: Option<String>,
     pub target_node: Option<String>,
     pub target_logical_ts: Option<u8>,
     pub destination_kind: Option<String>,
@@ -306,7 +312,18 @@ pub struct ConfigView {
     pub ffmpeg_available: bool,
     pub tetra_encoder_configured: bool,
     pub tetra_decoder_configured: bool,
+    pub playout_mode: String,
+    pub playout_default_station: Option<String>,
+    pub playout_stations: Vec<PlayoutStationView>,
     pub dependencies: BTreeMap<String, String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct PlayoutStationView {
+    pub id: String,
+    pub name: String,
+    pub base_url: String,
+    pub enabled: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -333,7 +350,7 @@ pub struct ProcessingClaim {
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DispatchClaim {
     pub job: DispatchJob,
-    pub tetra_path: PathBuf,
+    pub tetra_path: Option<PathBuf>,
     pub expected_tetra_sha256: Option<String>,
 }
 

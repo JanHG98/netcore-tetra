@@ -7,9 +7,13 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use reqwest::blocking::{Client, Response};
+use reqwest::header::{COOKIE, SET_COOKIE};
 use serde_json::{json, Value};
 
-use crate::config::MediaLibraryConfig;
+use crate::config::{
+    BASISSTATION_PLAYOUT_MODE, MEDIA_SWITCH_PLAYOUT_MODE, MediaLibraryConfig,
+    PlayoutStationConfig,
+};
 use crate::media;
 use crate::model::{ActionInput, DispatchClaim, ImportClaim};
 use crate::state::SharedLibrary;
@@ -222,8 +226,305 @@ fn play_dispatch(
     client: &Client,
     claim: &DispatchClaim,
 ) -> Result<(), String> {
-    let mut file = File::open(&claim.tetra_path)
-        .map_err(|error| format!("cannot open TETRA cache {}: {error}", claim.tetra_path.display()))?;
+    match claim.job.playout_mode.as_str() {
+        BASISSTATION_PLAYOUT_MODE => play_via_basisstation(config, library, client, claim),
+        MEDIA_SWITCH_PLAYOUT_MODE => play_via_media_switch(config, library, client, claim),
+        value => Err(format!("unsupported playout mode '{value}'")),
+    }
+}
+
+fn play_via_basisstation(
+    config: &MediaLibraryConfig,
+    library: &SharedLibrary,
+    client: &Client,
+    claim: &DispatchClaim,
+) -> Result<(), String> {
+    let station_id = claim
+        .job
+        .target_node
+        .as_deref()
+        .ok_or_else(|| "basis-station playout job has no station_id".to_string())?;
+    let station = config
+        .playout
+        .stations
+        .iter()
+        .find(|station| station.id == station_id && station.enabled)
+        .ok_or_else(|| format!("basis-station playout target '{station_id}' is missing or disabled"))?;
+    let destination_kind = claim
+        .job
+        .destination_kind
+        .as_deref()
+        .filter(|value| matches!(*value, "group" | "individual"))
+        .ok_or_else(|| "basis-station playout requires destination_kind group or individual".to_string())?;
+    let destination_id = claim
+        .job
+        .destination_id
+        .filter(|value| *value > 0 && *value <= 0x00ff_ffff)
+        .ok_or_else(|| "basis-station playout requires a valid 24-bit destination_id".to_string())?;
+
+    let status_endpoint = format!("{}/api/audio/status", station.base_url);
+    let play_endpoint = format!("{}/api/audio/play", station.base_url);
+    let stop_endpoint = format!("{}/api/audio/stop", station.base_url);
+    let session_cookie = station_session_cookie(
+        client,
+        station,
+        config.playout.request_timeout_secs,
+    )?;
+    let initial_status = station_get_json(
+        client,
+        station,
+        &status_endpoint,
+        config.playout.request_timeout_secs,
+        session_cookie.as_deref(),
+    )?;
+    if !initial_status
+        .get("available")
+        .and_then(Value::as_bool)
+        .unwrap_or(false)
+    {
+        return Err(format!(
+            "basis station '{}' reports that the audio player is unavailable: {}",
+            station.name,
+            initial_status
+                .get("last_error")
+                .and_then(Value::as_str)
+                .unwrap_or("no detail")
+        ));
+    }
+    let initial_state = initial_status
+        .get("state")
+        .and_then(Value::as_str)
+        .unwrap_or("unknown");
+    if !matches!(initial_state, "idle" | "failed") {
+        return Err(format!(
+            "basis station '{}' audio player is busy ({initial_state})",
+            station.name
+        ));
+    }
+
+    let response = station_request(
+        client.post(&play_endpoint),
+        config.playout.request_timeout_secs,
+        session_cookie.as_deref(),
+    )
+    .json(&json!({
+        "source_type":"media",
+        "source_id":"media-library",
+        "path":claim.job.asset_id,
+        "target_type":destination_kind,
+        "target_id":destination_id,
+        "priority":claim.job.priority,
+    }))
+    .send()
+    .map_err(|error| format!("basis station '{}' playout request failed: {error}", station.name))?;
+    if !response.status().is_success() {
+        let status = response.status();
+        let detail = response.text().unwrap_or_default();
+        return Err(format!(
+            "basis station '{}' rejected playout with HTTP {status}: {}",
+            station.name,
+            detail.chars().take(500).collect::<String>()
+        ));
+    }
+    let accepted = response
+        .json::<Value>()
+        .map_err(|error| format!("basis station '{}' returned invalid playout JSON: {error}", station.name))?;
+    let remote_job_id = accepted
+        .get("job_id")
+        .and_then(Value::as_str)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| format!("basis station '{}' response contains no job_id", station.name))?
+        .to_string();
+    library.dispatch_remote_started(&claim.job.job_id, remote_job_id.clone(), None);
+
+    let started = Instant::now();
+    let timeout = Duration::from_secs(config.playout.completion_timeout_secs);
+    let poll_interval = Duration::from_millis(config.playout.poll_interval_ms);
+    let mut observed_remote_job = false;
+    let mut consecutive_idle_polls = 0u8;
+
+    loop {
+        if library.dispatch_cancel_requested(&claim.job.job_id) {
+            let _ = station_request(
+                client.post(&stop_endpoint),
+                config.playout.request_timeout_secs,
+                session_cookie.as_deref(),
+            )
+            .send();
+            library.complete_dispatch(&claim.job.job_id);
+            return Ok(());
+        }
+        if started.elapsed() >= timeout {
+            let _ = station_request(
+                client.post(&stop_endpoint),
+                config.playout.request_timeout_secs,
+                session_cookie.as_deref(),
+            )
+            .send();
+            return Err(format!(
+                "basis station '{}' playout timed out after {} seconds",
+                station.name, config.playout.completion_timeout_secs
+            ));
+        }
+
+        thread::sleep(poll_interval);
+        let status = station_get_json(
+            client,
+            station,
+            &status_endpoint,
+            config.playout.request_timeout_secs,
+            session_cookie.as_deref(),
+        )?;
+        let state = status
+            .get("state")
+            .and_then(Value::as_str)
+            .unwrap_or("unknown");
+        let current_remote_job = status.get("job_id").and_then(Value::as_str);
+        let sent_blocks = status
+            .get("sent_blocks")
+            .and_then(Value::as_u64)
+            .unwrap_or(0);
+        let total_blocks = status
+            .get("total_blocks")
+            .and_then(Value::as_u64)
+            .unwrap_or(0);
+
+        if current_remote_job == Some(remote_job_id.as_str()) {
+            observed_remote_job = true;
+            consecutive_idle_polls = 0;
+            library.dispatch_remote_progress(&claim.job.job_id, sent_blocks, total_blocks);
+            if state == "failed" {
+                return Err(format!(
+                    "basis station '{}' playout failed: {}",
+                    station.name,
+                    status
+                        .get("last_error")
+                        .and_then(Value::as_str)
+                        .unwrap_or("no detail")
+                ));
+            }
+            continue;
+        }
+
+        if state == "idle" && current_remote_job.is_none() {
+            consecutive_idle_polls = consecutive_idle_polls.saturating_add(1);
+            // A very short clip may complete between the POST response and the first poll.
+            // Two idle observations avoid treating a transient status reset as success.
+            if observed_remote_job || consecutive_idle_polls >= 2 {
+                library.complete_dispatch(&claim.job.job_id);
+                return Ok(());
+            }
+            continue;
+        }
+
+        if let Some(other_job) = current_remote_job {
+            return Err(format!(
+                "basis station '{}' switched from remote job {} to unrelated job {}",
+                station.name, remote_job_id, other_job
+            ));
+        }
+        if state == "failed" {
+            return Err(format!(
+                "basis station '{}' audio player failed: {}",
+                station.name,
+                status
+                    .get("last_error")
+                    .and_then(Value::as_str)
+                    .unwrap_or("no detail")
+            ));
+        }
+    }
+}
+
+fn station_session_cookie(
+    client: &Client,
+    station: &PlayoutStationConfig,
+    timeout_secs: u64,
+) -> Result<Option<String>, String> {
+    let (Some(username), Some(password)) = (&station.username, &station.password) else {
+        return Ok(None);
+    };
+    let endpoint = format!("{}/api/login", station.base_url);
+    let response = client
+        .post(endpoint)
+        .timeout(Duration::from_secs(timeout_secs.max(2)))
+        .json(&json!({"user": username, "password": password}))
+        .send()
+        .map_err(|error| format!("basis station '{}' login failed: {error}", station.name))?;
+    if !response.status().is_success() {
+        let status = response.status();
+        let detail = response.text().unwrap_or_default();
+        return Err(format!(
+            "basis station '{}' login returned HTTP {status}: {}",
+            station.name,
+            detail.chars().take(500).collect::<String>()
+        ));
+    }
+    let cookie = response
+        .headers()
+        .get_all(SET_COOKIE)
+        .iter()
+        .filter_map(|value| value.to_str().ok())
+        .filter_map(|value| value.split(';').next())
+        .find(|value| value.starts_with("fs_session="))
+        .map(str::to_string)
+        .ok_or_else(|| {
+            format!(
+                "basis station '{}' login succeeded but returned no fs_session cookie",
+                station.name
+            )
+        })?;
+    Ok(Some(cookie))
+}
+
+fn station_request(
+    request: reqwest::blocking::RequestBuilder,
+    timeout_secs: u64,
+    session_cookie: Option<&str>,
+) -> reqwest::blocking::RequestBuilder {
+    let request = request.timeout(Duration::from_secs(timeout_secs.max(2)));
+    match session_cookie {
+        Some(cookie) => request.header(COOKIE, cookie),
+        None => request,
+    }
+}
+
+fn station_get_json(
+    client: &Client,
+    station: &PlayoutStationConfig,
+    endpoint: &str,
+    timeout_secs: u64,
+    session_cookie: Option<&str>,
+) -> Result<Value, String> {
+    let response = station_request(client.get(endpoint), timeout_secs, session_cookie)
+        .send()
+        .map_err(|error| format!("basis station '{}' request failed: {error}", station.name))?;
+    if !response.status().is_success() {
+        let status = response.status();
+        let detail = response.text().unwrap_or_default();
+        return Err(format!(
+            "basis station '{}' returned HTTP {status}: {}",
+            station.name,
+            detail.chars().take(500).collect::<String>()
+        ));
+    }
+    response
+        .json::<Value>()
+        .map_err(|error| format!("basis station '{}' returned invalid JSON: {error}", station.name))
+}
+
+fn play_via_media_switch(
+    config: &MediaLibraryConfig,
+    library: &SharedLibrary,
+    client: &Client,
+    claim: &DispatchClaim,
+) -> Result<(), String> {
+    let tetra_path = claim
+        .tetra_path
+        .as_ref()
+        .ok_or_else(|| "direct Media Switch playout has no TETRA cache".to_string())?;
+    let mut file = File::open(tetra_path)
+        .map_err(|error| format!("cannot open TETRA cache {}: {error}", tetra_path.display()))?;
     let size = file
         .metadata()
         .map_err(|error| format!("cannot stat TETRA cache: {error}"))?
@@ -232,7 +533,7 @@ fn play_dispatch(
         return Err("TETRA cache is empty or not aligned to 35-byte frames".to_string());
     }
     if let Some(expected) = &claim.expected_tetra_sha256 {
-        let actual = media::sha256_file(&claim.tetra_path)?;
+        let actual = media::sha256_file(tetra_path)?;
         if !expected.eq_ignore_ascii_case(&actual) {
             return Err(format!(
                 "TETRA cache integrity mismatch: expected {expected}, received {actual}"
@@ -261,8 +562,6 @@ fn play_dispatch(
     let frame_interval = Duration::from_millis(config.runtime.frame_interval_ms);
     let mut next_deadline = Instant::now();
 
-    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while frame_index < frame_count {
         if library.dispatch_cancel_requested(&claim.job.job_id) {
             library.complete_dispatch(&claim.job.job_id);
