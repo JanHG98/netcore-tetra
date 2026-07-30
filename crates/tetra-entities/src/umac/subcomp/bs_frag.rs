@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::cmp::min;
 
 use tetra_core::{BitBuffer, TxReporter};
@@ -7,6 +10,8 @@ use tetra_pdus::umac::pdus::{mac_end_dl::MacEndDl, mac_frag_dl::MacFragDl, mac_r
 use crate::umac::subcomp::fillbits;
 
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für Basisstation fragger in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct BsFragger {
     resource: MacResource,
     mac_hdr_is_written: bool,
@@ -16,12 +21,20 @@ pub struct BsFragger {
 }
 
 /// We won't start fragmentation if less than MIN_SLOT_CAP_FOR_FRAG_START bits are free in the slot
+// Was: Legt den festen Wert `MIN_SLOT_CAP_FOR_RES_FRAG_START` für min slot cap for res frag start fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const MIN_SLOT_CAP_FOR_RES_FRAG_START: usize = 32;
 
 /// We won't insert a fragment if less than MIN_SLOT_CAP_FOR_FRAG bits are free in the slot
+// Was: Legt den festen Wert `MIN_SLOT_CAP_FOR_FRAG` für min slot cap for frag fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const MIN_SLOT_CAP_FOR_FRAG: usize = 16;
 
+// Was: Implementiert das zugehörige Verhalten für `BsFragger`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl BsFragger {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(resource: MacResource, sdu: BitBuffer, tx_reporter: Option<TxReporter>) -> Self {
         assert!(sdu.get_pos() == 0, "SDU must be at the start of the buffer");
         // We set the length field now. If we do fragmentation, we'll set it to -1 later.
@@ -39,6 +52,8 @@ impl BsFragger {
     /// Then, writes as many SDU bits as possible.
     /// Returns true if the entire SDU was consumed, false if the PDU is fragmented
     /// and more chunks are needed.
+    // Was: Diese Funktion liest resource chunk.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     fn get_resource_chunk(&mut self, mac_block: &mut BitBuffer) -> bool {
         // Some sanity checks
         assert!(self.sdu.get_pos() == 0, "SDU must be at the start of the buffer");
@@ -126,6 +141,8 @@ impl BsFragger {
     /// MAC-END.
     /// Returns true when MAC-END (DL) was created and no further fragments are needed
     /// TODO FIXME: support adding ChanAlloc element in MAC-END
+    // Was: Diese Funktion liest frag or end chunk.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     fn get_frag_or_end_chunk(&mut self, mac_block: &mut BitBuffer) -> bool {
         // Some sanity checks
         assert!(self.mac_hdr_is_written, "MAC header should be previously written");
@@ -205,6 +222,8 @@ impl BsFragger {
     /// First chunk is the provided resource, possibly changed to indicate fragmentation.
     /// Subsequent chunks are MAC-FRAG or MAC-END.
     /// Returns bool is_fully_transmitted
+    // Was: Diese Funktion liest next chunk.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     pub fn get_next_chunk(&mut self, mac_block: &mut BitBuffer) -> bool {
         assert!(!self.is_fully_transmitted, "all fragments have already been produced");
         assert!(
@@ -231,7 +250,11 @@ impl BsFragger {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Drop for BsFragger`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Drop for BsFragger {
+    // Was: Führt den Arbeitsschritt `drop` für drop aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn drop(&mut self) {
         if !self.is_fully_transmitted
             && let Some(tx_reporter) = &self.tx_reporter
@@ -243,6 +266,8 @@ impl Drop for BsFragger {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use tetra_core::{
         TxState,
@@ -253,6 +278,8 @@ mod tests {
     use crate::umac::subcomp::bs_sched::{SCH_F_CAP, SCH_HD_CAP};
 
     use super::*;
+    // Was: Diese Funktion liest default resource.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     fn get_default_resource() -> MacResource {
         MacResource {
             fill_bits: false,
@@ -273,6 +300,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall single chunk.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_single_chunk() {
         debug::setup_logging_verbose();
         let pdu = get_default_resource();
@@ -288,6 +317,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall four chunks.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_four_chunks() {
         debug::setup_logging_verbose();
         let vec = "01010110010011000010101010010010110101010110010011001011111110101011001010010110111001011111111111100010011000000011010011001110010111110010100100010111010110000010010001101000011000000111101011010001001111001110110100000101010111110100010000100101001100011110010111001010101001110110111010001001101101111100111001000001111100101010000010111";
@@ -345,6 +376,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall four chunks with tx reporter.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_four_chunks_with_tx_reporter() {
         debug::setup_logging_verbose();
         let vec = "01010110010011000010101010010010110101010110010011001011111110101011001010010110111001011111111111100010011000000011010011001110010111110010100100010111010110000010010001101000011000000111101011010001001111001110110100000101010111110100010000100101001100011110010111001010101001110110111010001001101101111100111001000001111100101010000010111";
@@ -407,6 +440,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall drop marks discarded when not fully transmitted.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_drop_marks_discarded_when_not_fully_transmitted() {
         debug::setup_logging_verbose();
         let pdu = get_default_resource();

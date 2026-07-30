@@ -1,8 +1,13 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use tetra_core::{BitBuffer, Layer2Service, Sap, TetraAddress, tetra_entities::TetraEntity};
 use tetra_saps::{SapMsg, SapMsgInner, lmm::LmmMleUnitdataReq};
 
 use tetra_pdus::mm::{enums::mm_pdu_type_ul::MmPduTypeUl, pdus::mm_pdu_function_not_supported::MmPduFunctionNotSupported};
 
+// Was: Führt den Arbeitsschritt `make_ul_mm_pdu_function_not_supported` für make ul Mobilitätsverwaltung Protokollnachricht (PDU) function not supported aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn make_ul_mm_pdu_function_not_supported(
     handle: u32,
     pdu_type: MmPduTypeUl,

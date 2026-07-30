@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 use std::panic;
 
@@ -8,6 +11,8 @@ use crate::umac::{enums::access_assign_ul_usage::AccessAssignUlUsage, pdus::acce
 /// Clause 21.4.7.2 ACCESS-ASSIGN
 /// TODO FIXME technically not part of this SAP, but part of the MAC
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für access assign fr18 in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct AccessAssignFr18 {
     // 2, kept for debugging purposes
     pub _header: u8,
@@ -32,7 +37,11 @@ pub struct AccessAssignFr18 {
     // pub f2_ul_um: Option<AccessAssignUlUsage>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for AccessAssignFr18`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for AccessAssignFr18 {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         AccessAssignFr18 {
             _header: 0,
@@ -47,7 +56,11 @@ impl Default for AccessAssignFr18 {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `AccessAssignFr18`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl AccessAssignFr18 {
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buf: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let mut s = AccessAssignFr18 {
             _header: buf.read_field(2, "_header")? as u8,
@@ -57,6 +70,8 @@ impl AccessAssignFr18 {
         let field1 = buf.read_field(6, "field1")? as u8;
         let field2 = buf.read_field(6, "field2")? as u8;
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match s._header {
             0 => {
                 s.ul_usage = AccessAssignUlUsage::CommonOnly;
@@ -127,6 +142,8 @@ impl AccessAssignFr18 {
         Ok(s)
     }
 
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buf: &mut BitBuffer) {
         if self.ul_usage == AccessAssignUlUsage::CommonOnly {
             let header = 0;
@@ -168,7 +185,11 @@ impl AccessAssignFr18 {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for AccessAssignFr18`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for AccessAssignFr18 {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "access_assign {{ ul_usage: {}", self.ul_usage)?;
         if let Some(af) = &self.f2_af {

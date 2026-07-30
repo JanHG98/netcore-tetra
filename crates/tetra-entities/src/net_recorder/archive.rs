@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::HashMap;
 use std::fs::{self, OpenOptions};
 use std::io::{self, Write};
@@ -12,6 +15,8 @@ use tetra_config::bluestation::CfgRecording;
 use super::service::RecorderShared;
 use super::types::RecordingMetadata;
 
+// Was: Diese Funktion startet archive Hintergrundverarbeitung.
+// Warum: Länger laufende Arbeit blockiert dadurch nicht den aufrufenden Ablauf.
 pub(super) fn spawn_archive_worker(shared: &Arc<RecorderShared>, rx: Receiver<()>) {
     let weak = Arc::downgrade(shared);
     if let Err(error) = std::thread::Builder::new()
@@ -22,8 +27,12 @@ pub(super) fn spawn_archive_worker(shared: &Arc<RecorderShared>, rx: Receiver<()
     }
 }
 
+// Was: Diese Funktion archiviert Hintergrundverarbeitung.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn archive_worker(shared: Weak<RecorderShared>, rx: Receiver<()>) {
     let mut run_immediately = true;
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
     loop {
         let Some(inner) = shared.upgrade() else {
             return;
@@ -32,6 +41,8 @@ fn archive_worker(shared: Weak<RecorderShared>, rx: Receiver<()>) {
         drop(inner);
 
         if !run_immediately {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match rx.recv_timeout(retry) {
                 Ok(()) | Err(RecvTimeoutError::Timeout) => {}
                 Err(RecvTimeoutError::Disconnected) => return,
@@ -47,13 +58,21 @@ fn archive_worker(shared: Weak<RecorderShared>, rx: Receiver<()>) {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für archive kind auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 enum ArchiveKind {
     Recording,
     Tts,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `ArchiveKind`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl ArchiveKind {
+    // Was: Führt den Arbeitsschritt `label` für label aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn label(self) -> &'static str {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self {
             Self::Recording => "recording",
             Self::Tts => "TTS WAV",
@@ -62,11 +81,15 @@ impl ArchiveKind {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für archive target in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct ArchiveTarget {
     kind: ArchiveKind,
     root: PathBuf,
 }
 
+// Was: Diese Funktion archiviert target.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn archive_target(config: &CfgRecording, metadata: &RecordingMetadata) -> Option<ArchiveTarget> {
     if is_tts_recording(metadata) {
         config.tts_archive_enabled.then(|| ArchiveTarget {
@@ -81,6 +104,8 @@ fn archive_target(config: &CfgRecording, metadata: &RecordingMetadata) -> Option
     }
 }
 
+// Was: Prüft, ob tts recording zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
 fn is_tts_recording(metadata: &RecordingMetadata) -> bool {
     metadata
         .origin
@@ -88,10 +113,14 @@ fn is_tts_recording(metadata: &RecordingMetadata) -> bool {
         .is_some_and(|origin| origin.eq_ignore_ascii_case("tts"))
 }
 
+// Was: Führt den Arbeitsschritt `recording_requires_archive` für recording requires archive aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub(super) fn recording_requires_archive(inner: &RecorderShared, metadata: &RecordingMetadata) -> bool {
     archive_target(&inner.config, metadata).is_some()
 }
 
+// Was: Diese Funktion führt archive cycle.
+// Warum: Der Lebenszyklus des Dienstes bleibt so an einer zentralen Stelle steuerbar.
 fn run_archive_cycle(inner: &RecorderShared) {
     if !inner.config.archive_enabled && !inner.config.tts_archive_enabled {
         return;
@@ -119,6 +148,8 @@ fn run_archive_cycle(inner: &RecorderShared) {
             .or_insert_with(|| verify_archive_root(&root));
     }
 
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for error in root_availability.values().filter_map(|result| result.as_ref().err()) {
         tracing::warn!("Recorder archive: {error}");
     }
@@ -129,6 +160,8 @@ fn run_archive_cycle(inner: &RecorderShared) {
     let mut last_success = None;
     let mut last_error = root_availability.values().find_map(|result| result.as_ref().err().cloned());
 
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (metadata, target) in recordings {
         let availability = root_availability
             .entry(target.root.clone())
@@ -136,12 +169,15 @@ fn run_archive_cycle(inner: &RecorderShared) {
         if let Err(error) = availability {
             all_roots_available = false;
             pending += 1;
-            let detail = format!("{} {}: {error}", target.kind.label(), metadata.id);
-            last_error = Some(detail.clone());
-            tracing::warn!("Recorder archive: {detail}");
+            // The root-level warning above is sufficient. Logging one warning for every pending
+            // recording can monopolise the tracing writer exactly while CMCE is sending
+            // D-RELEASE and make the real-time PHY miss TX blocks.
+            last_error = Some(format!("{} archive unavailable: {error}", target.kind.label()));
             continue;
         }
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match archive_one(inner, &target, &metadata) {
             Ok(ArchiveOutcome::AlreadyPresent) => {
                 completed += 1;
@@ -192,12 +228,16 @@ fn run_archive_cycle(inner: &RecorderShared) {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für archive outcome auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 enum ArchiveOutcome {
     AlreadyPresent,
     Copied,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für archive marker in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct ArchiveMarker {
     schema_version: u8,
     recording_id: String,
@@ -207,6 +247,8 @@ struct ArchiveMarker {
     metadata_bytes: u64,
 }
 
+// Was: Führt den Arbeitsschritt `recording_is_archived` für recording is archived aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub(super) fn recording_is_archived(inner: &RecorderShared, metadata: &RecordingMetadata) -> bool {
     let Some(target) = archive_target(&inner.config, metadata) else {
         return true;
@@ -234,6 +276,8 @@ pub(super) fn recording_is_archived(inner: &RecorderShared, metadata: &Recording
         && Some(marker.metadata_bytes) == metadata_bytes
 }
 
+// Was: Diese Funktion schreibt archive marker.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 fn write_archive_marker(
     inner: &RecorderShared,
     metadata: &RecordingMetadata,
@@ -265,6 +309,8 @@ fn write_archive_marker(
     Ok(())
 }
 
+// Was: Diese Funktion archiviert one.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn archive_one(
     inner: &RecorderShared,
     target: &ArchiveTarget,
@@ -327,7 +373,11 @@ fn archive_one(
     Ok(ArchiveOutcome::Copied)
 }
 
+// Was: Diese Funktion archiviert relative audio.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn archive_relative_audio(kind: ArchiveKind, relative_audio: &Path) -> Result<PathBuf, String> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match kind {
         ArchiveKind::Recording => Ok(relative_audio.to_path_buf()),
         ArchiveKind::Tts => relative_audio
@@ -337,6 +387,8 @@ fn archive_relative_audio(kind: ArchiveKind, relative_audio: &Path) -> Result<Pa
     }
 }
 
+// Was: Führt den Arbeitsschritt `verify_archive_root` für verify archive root aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn verify_archive_root(root: &Path) -> Result<(), String> {
     if !root.is_dir() {
         return Err(format!(
@@ -358,6 +410,8 @@ fn verify_archive_root(root: &Path) -> Result<(), String> {
     result.map_err(|error| format!("archive directory is not writable: {}: {error}", root.display()))
 }
 
+// Was: Führt den Arbeitsschritt `files_match` für files match aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn files_match(source: &Path, destination: &Path) -> bool {
     let Ok(source_meta) = source.metadata() else {
         return false;
@@ -368,6 +422,8 @@ fn files_match(source: &Path, destination: &Path) -> bool {
     source_meta.is_file() && destination_meta.is_file() && source_meta.len() == destination_meta.len()
 }
 
+// Was: Führt den Arbeitsschritt `copy_atomic` für copy atomic aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn copy_atomic(source: &Path, destination: &Path, id: &str) -> Result<(), String> {
     let file_name = destination
         .file_name()
@@ -391,9 +447,13 @@ fn copy_atomic(source: &Path, destination: &Path, id: &str) -> Result<(), String
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
+    // Was: Führt den Arbeitsschritt `metadata` für metadata aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn metadata(origin: Option<&str>) -> RecordingMetadata {
         RecordingMetadata {
             schema_version: 1,
@@ -415,6 +475,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `recognizes_tts_origin_case_insensitively` für recognizes tts origin case insensitively aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn recognizes_tts_origin_case_insensitively() {
         assert!(is_tts_recording(&metadata(Some("TTS"))));
         assert!(!is_tts_recording(&metadata(Some("recording"))));
@@ -422,6 +484,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `routes_tts_and_recordings_to_different_roots` für routes tts and recordings to different roots aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn routes_tts_and_recordings_to_different_roots() {
         let mut config = CfgRecording::default();
         config.archive_enabled = true;
@@ -438,6 +502,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `tts_archive_is_flat_while_recordings_keep_date_tree` für tts archive is flat while recordings keep und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn tts_archive_is_flat_while_recordings_keep_date_tree() {
         let path = Path::new("2026/07/20/TTS-Test.wav");
         assert_eq!(

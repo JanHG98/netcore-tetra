@@ -1,0 +1,554 @@
+# NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für inventory open lab corrected example.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+# Was: Legt die Versionsnummer fest.
+# Warum: Änderungsstände und kompatible Abhängigkeiten bleiben dadurch nachvollziehbar.
+version = 1
+# Was: Setzt die Einstellung `contract_version` für diesen abschnitt.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+contract_version = "netcore.v1"
+# Was: Setzt die Einstellung `mode` für diesen abschnitt.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+mode = "open_lab"
+# Was: Setzt die Einstellung `ssh_user` für diesen abschnitt.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+ssh_user = "root"
+# Was: Setzt die Einstellung `ssh_options` für diesen abschnitt.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+ssh_options = ["-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new", "-o", "ConnectTimeout=8"]
+# Was: Setzt die Einstellung `remote_source_root` für diesen abschnitt.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+remote_source_root = "/opt/netcore-tetra-src"
+# Was: Setzt die Einstellung `health_timeout_secs` für diesen abschnitt.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+health_timeout_secs = 8
+
+# One service per LXC is the intended layout. Addresses are examples and must be
+# changed to the isolated management network before apply is used.
+
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "node-gateway"
+# Was: Setzt die Einstellung `host` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+host = "10.0.20.10"
+# Was: Setzt die Einstellung `port` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+port = 8080
+# Was: Setzt die Einstellung `unit` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+unit = "netcore-node-gateway.service"
+# Was: Setzt die Einstellung `user` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+user = "netcore"
+# Was: Setzt die Einstellung `install` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+install = "system-backend/node-gateway/install/install.sh"
+# Was: Setzt die Einstellung `config_template` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+config_template = "system-backend/node-gateway/config/node-gateway.example.toml"
+# Was: Setzt die Einstellung `config_target` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+config_target = "/etc/netcore/node-gateway.toml"
+# Was: Setzt die Einstellung `depends_on` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+depends_on = []
+
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "mobility-core"
+# Was: Setzt die Einstellung `host` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+host = "10.0.20.11"
+# Was: Setzt die Einstellung `port` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+port = 8090
+# Was: Setzt die Einstellung `unit` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+unit = "netcore-mobility-core.service"
+# Was: Setzt die Einstellung `user` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+user = "netcore"
+# Was: Setzt die Einstellung `install` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+install = "system-backend/mobility-core/install/install.sh"
+# Was: Setzt die Einstellung `config_template` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+config_template = "system-backend/mobility-core/config/mobility-core.example.toml"
+# Was: Setzt die Einstellung `config_target` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+config_target = "/etc/netcore/mobility-core.toml"
+# Was: Setzt die Einstellung `depends_on` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+depends_on = ["node-gateway"]
+
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "subscriber-core"
+# Was: Setzt die Einstellung `host` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+host = "10.0.20.12"
+# Was: Setzt die Einstellung `port` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+port = 8100
+# Was: Setzt die Einstellung `unit` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+unit = "netcore-subscriber-core.service"
+# Was: Setzt die Einstellung `user` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+user = "netcore"
+# Was: Setzt die Einstellung `install` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+install = "system-backend/subscriber-core/install/install.sh"
+# Was: Setzt die Einstellung `config_template` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+config_template = "system-backend/subscriber-core/config/subscriber-core.example.toml"
+# Was: Setzt die Einstellung `config_target` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+config_target = "/etc/netcore/subscriber-core.toml"
+# Was: Setzt die Einstellung `depends_on` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+depends_on = ["node-gateway"]
+
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "group-core"
+# Was: Setzt die Einstellung `host` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+host = "10.0.20.13"
+# Was: Setzt die Einstellung `port` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+port = 8110
+# Was: Setzt die Einstellung `unit` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+unit = "netcore-group-core.service"
+# Was: Setzt die Einstellung `user` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+user = "netcore"
+# Was: Setzt die Einstellung `install` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+install = "system-backend/group-core/install/install.sh"
+# Was: Setzt die Einstellung `config_template` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+config_template = "system-backend/group-core/config/group-core.example.toml"
+# Was: Setzt die Einstellung `config_target` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+config_target = "/etc/netcore/group-core.toml"
+# Was: Setzt die Einstellung `depends_on` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+depends_on = ["node-gateway", "subscriber-core"]
+
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "call-control"
+# Was: Setzt die Einstellung `host` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+host = "10.0.20.14"
+# Was: Setzt die Einstellung `port` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+port = 8120
+# Was: Setzt die Einstellung `unit` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+unit = "netcore-call-control.service"
+# Was: Setzt die Einstellung `user` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+user = "netcore"
+# Was: Setzt die Einstellung `install` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+install = "system-backend/call-control/install/install.sh"
+# Was: Setzt die Einstellung `config_template` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+config_template = "system-backend/call-control/config/call-control.example.toml"
+# Was: Setzt die Einstellung `config_target` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+config_target = "/etc/netcore/call-control.toml"
+# Was: Setzt die Einstellung `depends_on` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+depends_on = ["node-gateway", "subscriber-core", "group-core", "mobility-core"]
+
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "media-switch"
+# Was: Setzt die Einstellung `host` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+host = "10.0.20.15"
+# Was: Setzt die Einstellung `port` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+port = 8130
+# Was: Setzt die Einstellung `unit` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+unit = "netcore-media-switch.service"
+# Was: Setzt die Einstellung `user` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+user = "netcore"
+# Was: Setzt die Einstellung `install` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+install = "system-backend/media-switch/install/install.sh"
+# Was: Setzt die Einstellung `config_template` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+config_template = "system-backend/media-switch/config/media-switch.example.toml"
+# Was: Setzt die Einstellung `config_target` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+config_target = "/etc/netcore/media-switch.toml"
+# Was: Setzt die Einstellung `depends_on` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+depends_on = ["node-gateway", "call-control"]
+
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "recorder"
+# Was: Setzt die Einstellung `host` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+host = "10.0.20.16"
+# Was: Setzt die Einstellung `port` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+port = 8140
+# Was: Setzt die Einstellung `unit` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+unit = "netcore-recorder.service"
+# Was: Setzt die Einstellung `user` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+user = "netcore"
+# Was: Setzt die Einstellung `install` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+install = "system-backend/recorder/install/install.sh"
+# Was: Setzt die Einstellung `config_template` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+config_template = "system-backend/recorder/config/recorder.example.toml"
+# Was: Setzt die Einstellung `config_target` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+config_target = "/etc/netcore/recorder.toml"
+# Was: Setzt die Einstellung `depends_on` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+depends_on = ["media-switch"]
+
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "sds-router"
+# Was: Setzt die Einstellung `host` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+host = "10.0.20.17"
+# Was: Setzt die Einstellung `port` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+port = 8150
+# Was: Setzt die Einstellung `unit` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+unit = "netcore-sds-router.service"
+# Was: Setzt die Einstellung `user` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+user = "netcore"
+# Was: Setzt die Einstellung `install` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+install = "system-backend/sds-router/install/install.sh"
+# Was: Setzt die Einstellung `config_template` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+config_template = "system-backend/sds-router/config/sds-router.example.toml"
+# Was: Setzt die Einstellung `config_target` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+config_target = "/etc/netcore/sds-router.toml"
+# Was: Setzt die Einstellung `depends_on` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+depends_on = ["node-gateway", "subscriber-core", "group-core", "mobility-core"]
+
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "packet-core"
+# Was: Setzt die Einstellung `host` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+host = "10.0.20.18"
+# Was: Setzt die Einstellung `port` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+port = 8160
+# Was: Setzt die Einstellung `unit` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+unit = "netcore-packet-core.service"
+# Was: Setzt die Einstellung `user` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+user = "netcore"
+# Was: Setzt die Einstellung `install` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+install = "system-backend/packet-core/install/install.sh"
+# Was: Setzt die Einstellung `config_template` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+config_template = "system-backend/packet-core/config/packet-core.example.toml"
+# Was: Setzt die Einstellung `config_target` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+config_target = "/etc/netcore/packet-core.toml"
+# Was: Setzt die Einstellung `depends_on` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+depends_on = ["node-gateway", "subscriber-core", "mobility-core"]
+
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "ip-gateway"
+# Was: Setzt die Einstellung `host` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+host = "10.0.20.19"
+# Was: Setzt die Einstellung `port` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+port = 8170
+# Was: Setzt die Einstellung `unit` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+unit = "netcore-ip-gateway.service"
+# Was: Setzt die Einstellung `user` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+user = "netcore"
+# Was: Setzt die Einstellung `install` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+install = "system-backend/ip-gateway/install/install.sh"
+# Was: Setzt die Einstellung `config_template` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+config_template = "system-backend/ip-gateway/config/ip-gateway.example.toml"
+# Was: Setzt die Einstellung `config_target` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+config_target = "/etc/netcore/ip-gateway.toml"
+# Was: Setzt die Einstellung `depends_on` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+depends_on = ["packet-core"]
+
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "security-core"
+# Was: Setzt die Einstellung `host` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+host = "10.0.20.20"
+# Was: Setzt die Einstellung `port` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+port = 8180
+# Was: Setzt die Einstellung `unit` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+unit = "netcore-security-core.service"
+# Was: Setzt die Einstellung `user` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+user = "netcore-security"
+# Was: Setzt die Einstellung `install` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+install = "system-backend/security-core/install/install.sh"
+# Was: Setzt die Einstellung `config_template` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+config_template = "system-backend/security-core/config/security-core.example.toml"
+# Was: Setzt die Einstellung `config_target` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+config_target = "/etc/netcore/security-core.toml"
+# Was: Setzt die Einstellung `depends_on` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+depends_on = ["node-gateway", "subscriber-core"]
+
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "kmf"
+# Was: Setzt die Einstellung `host` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+host = "10.0.20.21"
+# Was: Setzt die Einstellung `port` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+port = 8190
+# Was: Setzt die Einstellung `unit` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+unit = "netcore-kmf.service"
+# Was: Setzt die Einstellung `user` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+user = "netcore-kmf"
+# Was: Setzt die Einstellung `install` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+install = "system-backend/kmf/install/install.sh"
+# Was: Setzt die Einstellung `config_template` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+config_template = "system-backend/kmf/config/kmf.example.toml"
+# Was: Setzt die Einstellung `config_target` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+config_target = "/etc/netcore/kmf.toml"
+# Was: Setzt die Einstellung `depends_on` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+depends_on = ["security-core"]
+
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "transit"
+# Was: Setzt die Einstellung `host` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+host = "10.0.20.22"
+# Was: Setzt die Einstellung `port` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+port = 8200
+# Was: Setzt die Einstellung `unit` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+unit = "netcore-transit.service"
+# Was: Setzt die Einstellung `user` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+user = "netcore-transit"
+# Was: Setzt die Einstellung `install` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+install = "system-backend/transit/install/install.sh"
+# Was: Setzt die Einstellung `config_template` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+config_template = "system-backend/transit/config/transit.example.toml"
+# Was: Setzt die Einstellung `config_target` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+config_target = "/etc/netcore/transit.toml"
+# Was: Setzt die Einstellung `depends_on` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+depends_on = ["mobility-core", "call-control", "media-switch", "sds-router"]
+
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "application-gateway"
+# Was: Setzt die Einstellung `host` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+host = "10.0.20.23"
+# Was: Setzt die Einstellung `port` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+port = 8220
+# Was: Setzt die Einstellung `unit` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+unit = "netcore-application-gateway.service"
+# Was: Setzt die Einstellung `user` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+user = "netcore-app-gateway"
+# Was: Setzt die Einstellung `install` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+install = "system-backend/application-gateway/install/install.sh"
+# Was: Setzt die Einstellung `config_template` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+config_template = "system-backend/application-gateway/config/application-gateway.example.toml"
+# Was: Setzt die Einstellung `config_target` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+config_target = "/etc/netcore/application-gateway.toml"
+# Was: Setzt die Einstellung `depends_on` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+depends_on = ["sds-router"]
+
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "media-library"
+# Was: Setzt die Einstellung `host` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+host = "10.0.20.24"
+# Was: Setzt die Einstellung `port` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+port = 8230
+# Was: Setzt die Einstellung `unit` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+unit = "netcore-media-library.service"
+# Was: Setzt die Einstellung `user` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+user = "netcore-media-library"
+# Was: Setzt die Einstellung `install` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+install = "system-backend/media-library/install/install.sh"
+# Was: Setzt die Einstellung `config_template` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+config_template = "system-backend/media-library/config/media-library.example.toml"
+# Was: Setzt die Einstellung `config_target` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+config_target = "/etc/netcore/media-library.toml"
+# Was: Setzt die Einstellung `depends_on` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+depends_on = ["media-switch", "recorder", "application-gateway"]
+
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "control-room"
+# Was: Setzt die Einstellung `host` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+host = "10.0.20.25"
+# Was: Setzt die Einstellung `port` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+port = 9010
+# Was: Setzt die Einstellung `unit` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+unit = "netcore-control-room.service"
+# Was: Setzt die Einstellung `user` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+user = "netcore"
+# Was: Setzt die Einstellung `install` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+install = "system-backend/control-room/install/install.sh"
+# Was: Setzt die Einstellung `config_template` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+config_template = "system-backend/control-room/config/control-room.example.toml"
+# Was: Setzt die Einstellung `config_target` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+config_target = "/etc/netcore-control-room/control-room.toml"
+# Was: Setzt die Einstellung `depends_on` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+depends_on = ["node-gateway", "subscriber-core", "group-core", "mobility-core", "call-control", "media-switch", "recorder", "sds-router", "packet-core", "ip-gateway", "security-core", "kmf", "transit", "application-gateway", "media-library"]
+
+# Was: Öffnet den Konfigurationsabschnitt `services`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[[services]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "observability"
+# Was: Setzt die Einstellung `host` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+host = "10.0.20.26"
+# Was: Setzt die Einstellung `port` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+port = 8210
+# Was: Setzt die Einstellung `unit` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+unit = "netcore-observability.service"
+# Was: Setzt die Einstellung `user` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+user = "netcore-observability"
+# Was: Setzt die Einstellung `install` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+install = "system-backend/observability/install/install.sh"
+# Was: Setzt die Einstellung `config_template` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+config_template = "system-backend/observability/config/observability.example.toml"
+# Was: Setzt die Einstellung `config_target` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+config_target = "/etc/netcore/observability.toml"
+# Was: Setzt die Einstellung `depends_on` für services.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+depends_on = ["node-gateway", "subscriber-core", "group-core", "mobility-core", "call-control", "media-switch", "recorder", "sds-router", "packet-core", "ip-gateway", "security-core", "kmf", "transit", "application-gateway", "media-library", "control-room"]

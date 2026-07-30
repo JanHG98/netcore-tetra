@@ -1,7 +1,12 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für audio target type auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum AudioTargetType {
     Group,
     Individual,
@@ -9,6 +14,8 @@ pub enum AudioTargetType {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für audio source type auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum AudioSourceType {
     Media,
     Recording,
@@ -17,6 +24,8 @@ pub enum AudioSourceType {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für audio player Zustand auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum AudioPlayerState {
     Idle,
     Preparing,
@@ -28,6 +37,8 @@ pub enum AudioPlayerState {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für audio player Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct AudioPlayerStatus {
     pub available: bool,
     pub state: AudioPlayerState,
@@ -52,6 +63,8 @@ pub struct AudioPlayerStatus {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Audio- und Mediendaten source info in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MediaSourceInfo {
     pub id: String,
     pub name: String,
@@ -62,15 +75,23 @@ pub struct MediaSourceInfo {
 }
 
 #[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Audio- und Mediendaten entry in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MediaEntry {
     pub name: String,
     pub path: String,
     pub entry_type: String,
     pub size_bytes: Option<u64>,
     pub extension: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub playable: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<String>,
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für resolved audio source in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub(crate) struct ResolvedAudioSource {
     pub path: std::path::PathBuf,
     pub display_name: String,
@@ -80,6 +101,8 @@ pub(crate) struct ResolvedAudioSource {
 }
 
 #[derive(Debug, Clone)]
+// Was: Listet die möglichen Varianten für audio player command auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub(crate) enum AudioPlayerCommand {
     Play {
         job_id: String,
@@ -92,6 +115,8 @@ pub(crate) enum AudioPlayerCommand {
 }
 
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für prepared audio in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub(crate) struct PreparedAudio {
     pub job_id: String,
     pub target_type: AudioTargetType,
@@ -102,6 +127,8 @@ pub(crate) struct PreparedAudio {
 }
 
 #[derive(Debug)]
+// Was: Listet die möglichen Varianten für prepare Ereignis auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub(crate) enum PrepareEvent {
     Ready(PreparedAudio),
     Failed { job_id: String, error: String },

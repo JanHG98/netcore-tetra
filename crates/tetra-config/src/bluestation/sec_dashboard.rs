@@ -1,9 +1,14 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Einlesen und Prüfen der TETRA-Konfiguration.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use serde::Deserialize;
 use std::collections::HashMap;
 use toml::Value;
 
 /// Dashboard HTTP server configuration
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für cfg dashboard in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgDashboard {
     /// Port to listen on (default: 8080)
     pub port: u16,
@@ -33,7 +38,11 @@ pub struct CfgDashboard {
     pub public_overview: bool,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for CfgDashboard`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for CfgDashboard {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             port: 8080,
@@ -47,6 +56,8 @@ impl Default for CfgDashboard {
 }
 
 #[derive(Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für cfg dashboard dto in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgDashboardDto {
     #[serde(default = "default_port")]
     pub port: u16,
@@ -67,13 +78,19 @@ pub struct CfgDashboardDto {
     pub extra: HashMap<String, Value>,
 }
 
+// Was: Führt den Arbeitsschritt `default_port` für default port aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_port() -> u16 {
     8080
 }
+// Was: Führt den Arbeitsschritt `default_bind` für default bind aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_bind() -> String {
     "0.0.0.0".to_string()
 }
 
+// Was: Diese Funktion wendet dashboard patch.
+// Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
 pub fn apply_dashboard_patch(src: CfgDashboardDto) -> Result<CfgDashboard, String> {
     if src.port == 0 {
         return Err("dashboard: port cannot be 0".to_string());
@@ -92,6 +109,8 @@ pub fn apply_dashboard_patch(src: CfgDashboardDto) -> Result<CfgDashboard, Strin
         }
     }
     // Auth: either both username+password are set, or neither.
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match (&src.username, &src.password) {
         (Some(u), Some(p)) => {
             if u.trim().is_empty() {

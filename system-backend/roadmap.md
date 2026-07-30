@@ -28,7 +28,38 @@ Grundsatz:
 
 > Erst müssen alle notwendigen lokalen Protokollwege funktionieren. Danach werden Zuständigkeiten aus der TBS herausgelöst. Nicht umgekehrt.
 
+## Verbindliche Management-Ebene
+
+Jeder später eigenständig laufende LXC- oder VM-Dienst erhält eine eigene WebUI. Die WebUI wird mit dem jeweiligen Dienst ausgeliefert und bleibt unabhängig vom Control Room erreichbar. Gemeinsame Vorgaben stehen in `Docs/BACKEND_WEBUI_STANDARD.md`.
+
+Die WebUI gehört ab der ersten Implementierung eines Dienstes zu dessen Definition of Done; sie wird nicht als spätere kosmetische Zusatzphase behandelt.
+
+Die bisher umgesetzten LXC-Dienste starten im ausdrücklich markierten `open_lab`-Modus ohne Tokens, Benutzerkonten oder TLS. Diese Zwischenstufe dient nur dem isolierten Testnetz und wird vor einem Produktivbetrieb durch die spätere Security-Phase ersetzt beziehungsweise abgesichert.
+
 ---
+
+## Aktueller LXC-Ausbaustand
+
+- `node-gateway`: umgesetzt, offene TBS-/Backend-Vermittlung mit WebUI
+- `mobility-core`: umgesetzt, Context Transfer und Teilnehmerlage mit WebUI
+- `subscriber-core`: umgesetzt, persistente Teilnehmerprofile und TBS-Zugangsrichtlinie mit WebUI
+- `group-core`: umgesetzt, GSSI, Mitgliedschaften, TBS-Gruppenpolicy und DGNA mit WebUI
+- `call-control`: umgesetzt, logische Gruppen-/Einzelrufe, Floor Control und Call Restore mit WebUI
+- `media-switch`: umgesetzt, netzweites Routing gepackter TETRA-Sprachframes mit WebUI
+- `recorder`: umgesetzt, passiver Vollframe-Tap, Archiv, Integrität, Retention und WebUI
+- `sds-router`: umgesetzt, zentrale SDS-/Statusvermittlung, Store-and-forward, Routing und WebUI
+- `packet-core`: umgesetzt, PDP-/NSAPI-Kontexte, Fragmentierung, Mobility Anchor und WebUI
+- `ip-gateway`: umgesetzt, TUN, Routing, Firewall/NAT, DNS/WAP-Test und WebUI
+- `security-core`: umgesetzt, Security-Class-Policy, Challenge/Response, DCK-Kontexte, Sperren, Alarm/Audit und WebUI
+- `kmf`: umgesetzt, CCK/GCK/SCK-Lifecycle, Key-Versionen, Crypto Periods, Rotation, versiegelte OTAR-Aktionen, Backup und WebUI
+- `transit`: umgesetzt, NetCore-native Regionen-/Peervermittlung, Routing, Failover und WebUI
+- `control-room`: umgesetzt, zentrale Bedien-/Lageebene mit Service-Federation, Incident-Journal, Schichtbuch und Browser-WebUI
+- `observability`: umgesetzt, zentrale Metrik-, Log-, Trace-, Alarm- und Diagnoseebene mit WebUI
+- `application-gateway`: umgesetzt, Connector Registry, Webhooks, Routing, Vorlagen, Retry/Dead Letter, Secret-Redaction und TTS-Orchestrierung mit WebUI
+- `media-library`: umgesetzt, Audio-Assets, Vorschau, Freigabe, TETRA-Cache, Archiv und kontrolliertes Playout mit WebUI
+- `shared`: umgesetzt, gemeinsame `netcore.v1`-Verträge, Service-/Persistenz-/Telemetrie-Bausteine und build-freies WebUI-Kit
+- `deploy/open-lab`: umgesetzt, inventory-gesteuerte LXC-Integration, URL-Rendering, Dependency-Plan, PDF-freies Bundle und SSH-Deployment
+- nächste Gesamtphase: reale LXC-Integrationstests, End-to-End-Vertragstests, On-Air-Validierung und anschließend produktive Management-Absicherung
 
 # 2. Normative Grundlage
 
@@ -127,9 +158,9 @@ Alle bisher implizit in Handlern verteilten Zustände werden explizit beschriebe
 * LLC Link State,
 * Channel Change State.
 
-### 3.4 Keine neuen Dienste
+### 3.4 Noch keine neuen Runtime-Dienste
 
-In dieser Phase werden noch keine LXC-Dienste und keine neue SwMI-Architektur gebaut.
+In dieser Phase werden noch keine LXC-Dienste gestartet. Die verbindliche WebUI-Architektur, Service-Matrix und gemeinsamen Management-Endpunkte werden jedoch bereits festgelegt, damit jeder spätere Dienst von Beginn an verwaltbar entwickelt wird.
 
 ## Abnahmekriterium
 
@@ -1070,6 +1101,8 @@ Media-B
 
 ## LXC 15 – NetCore Transit
 
+> Implementierungsstand: Das NetCore-native Transit-Grundpaket unter `system-backend/transit/` enthält Regionen/Peers, Teilnehmer- und Gruppenauflösung, Routen, Path-Vector/Loop-Prevention, Sessions, Queues, Retry und Regional-Failover. Standardisiertes ETSI ISI bleibt der nachfolgende Interworking-Ausbau.
+
 * Teilnehmerregion bestimmen,
 * Gruppenruf zwischen Regionen,
 * Individualruf zwischen Regionen,
@@ -1162,16 +1195,33 @@ Der unmittelbar nächste Entwicklungsblock lautet:
 
 ## Milestone: `SWMI Foundation 1 – TLMC/TLPD`
 
-### Paket A – Inventur
+### Paket A – Inventur ✅ abgeschlossen am 22.07.2026
 
-* vollständige ETSI-PDU-/Primitive-Matrix,
-* alle `Todo`,
-* alle `unimplemented_log!`,
-* alle nicht erreichbaren SAP-Pfade,
-* alle Panic-Pfade,
-* alle fehlenden Tests.
+Umgesetzt wurden:
 
-### Paket B – Typen
+* vollständige statische PDU-/Primitive-Matrix,
+* Inventur aller `Todo`-Typen und TODO/FIXME-Hinweise,
+* Inventur aller aktiven `unimplemented!`, `unimplemented_log!`, `panic!` und `unreachable!`-Pfade,
+* statische Ermittlung nicht oder nur einseitig erreichbarer SAP-Pfade,
+* Ermittlung fehlender PDU-/Primitive-Testverweise,
+* Zustandsmaschinen-Inventur,
+* maschinenlesbare JSON-/CSV-Exporte,
+* reproduzierbarer Generator und CI-Konsistenzprüfung.
+
+Ergebnisse:
+
+* `Docs/SWMI_FOUNDATION_1_INVENTORY.md`
+* `Docs/ETSI_CONFORMANCE_MATRIX.md`
+* `Docs/SAP_PRIMITIVE_MATRIX.md`
+* `Docs/IMPLEMENTATION_GAPS.md`
+* `Docs/STATE_MACHINE_INVENTORY.md`
+* `Docs/TLMC_TLPD_WORKLIST.md`
+* `Docs/generated/`
+* `tools/protocol_inventory.py`
+
+Hinweis: Paket A ist eine statische und reproduzierbare Bestandsaufnahme. Es behauptet noch keine ETSI-Konformität und ersetzt weder Golden Vectors noch On-Air-Tests.
+
+### Paket B – Typen ✅ abgeschlossen
 
 * TLMC-Enums und Strukturen,
 * TLPD-Primitiven,
@@ -1181,7 +1231,7 @@ Der unmittelbar nächste Entwicklungsblock lautet:
 * Measurement Report,
 * Restore Context.
 
-### Paket C – TLMC Runtime
+### Paket C – TLMC Runtime ✅ abgeschlossen
 
 * Configure,
 * Scan,
@@ -1190,7 +1240,7 @@ Der unmittelbar nächste Entwicklungsblock lautet:
 * Cell Read,
 * Select.
 
-### Paket D – TLPD Runtime
+### Paket D – TLPD Runtime ✅ abgeschlossen
 
 * vollständiger Uplink,
 * vollständiger Downlink,
@@ -1199,7 +1249,7 @@ Der unmittelbar nächste Entwicklungsblock lautet:
 * Reconnect,
 * Context Routing.
 
-### Paket E – Tests
+### Paket E – Tests und Robustheit ✅ abgeschlossen
 
 * Unit Tests,
 * Golden Vectors,
@@ -1222,3 +1272,176 @@ SNDCP bidirektional durch MLE und LLC transportiert werden kann
 ```
 
 Erst danach beginnt Milestone 2 mit D-NEW-CELL, D-PREPARE-FAIL, D-RESTORE und D-CHANNEL-RESPONSE.
+
+# Verbindliche WebUI-Abnahme ab der ersten LXC-Phase
+
+Für jede Phase, in der ein neuer Containerdienst entsteht, gelten zusätzlich:
+
+- eigene WebUI im jeweiligen `system-backend/<dienst>/`-Paket;
+- Übersicht, Fachverwaltung, Health, Abhängigkeiten, Audit, Konfiguration und Wartung;
+- versionierte Verwaltungs-API;
+- RBAC für alle schreibenden Aktionen im späteren gesicherten Betrieb;
+- bei einer ausdrücklich markierten `open_lab`-Stufe: deutliche Warnung und Netzisolation statt vorgetäuschter Authentisierung;
+- unabhängige Erreichbarkeit bei ausgefallenem Control Room;
+- UI- und API-Tests;
+- dokumentierter HTTPS-Zugriff im Managementnetz beziehungsweise dokumentierter HTTP-Laborausnahme.
+
+
+## Funkstack-Voraussetzung: SWMI Foundation 1 – Paket D
+
+Die lokale TLPD-Runtime ist abgeschlossen. Sie bleibt auf der TBS und stellt Diagnose-Snapshots für die spätere TBS-WebUI und den Node Gateway bereit. Es entsteht kein eigener Backend-Container.
+
+## Aktueller Stand: SWMI Mobility 1 und Core 1
+
+Die lokale Funkstack- und Mobility-Grundlage ist abgeschlossen. Darauf aufbauend sind die zentralen Open-Lab-Dienste `node-gateway`, `mobility-core`, `subscriber-core`, `group-core`, `call-control`, `media-switch`, `recorder`, `sds-router`, `packet-core`, `ip-gateway`, `security-core`, `kmf`, `transit`, `control-room`, `observability`, `application-gateway` und `media-library` jeweils mit eigener WebUI umgesetzt.
+
+Der Packet Core hält PDP-/NSAPI-Zustand, Reassembly und Downlink-Queue. Der IP Gateway koppelt dessen vollständige IPv4-N-PDUs über Linux-TUN an Routing, nftables, NAT, DNS sowie lokale WAP-/Testdienste und erzeugt direkt PCAP-Dateien. Security Core und KMF ergänzen Security-Class-Policy, Authentisierungs-/DCK-Orchestrierung sowie CCK/GCK/SCK-Lifecycle, Crypto Periods, Rotation, nodegebundene OTAR-Envelopes und sichere Vault-Backups. Transit und Control Room bilden regionale Vermittlung und Operator Plane. Observability/NMS liefert Prometheus-, Grafana-, Loki- und Alertmanager-Integration. Der Application Gateway kapselt externe Connectoren, Webhooks, Vorlagen, Zustellungsqueues und TTS-Orchestrierung; die Media Library verwaltet Aufnahme-, TTS- und Playout-Artefakte. Shared Platform, Deployment und Cross-LXC-E2E-Paket sind ebenfalls umgesetzt. Als nächster Schritt folgt die reale Laborabnahme gegen alle 17 LXCs.
+
+Bis zur späteren Security-Phase bleiben alle genannten LXC-Dienste ausdrücklich `open_lab`: keine Tokens, keine Benutzerkonten und kein TLS. Das ist nur für das isolierte Testnetz vorgesehen.
+
+
+
+# SWMI Core 1 – Paket H: IP Gateway
+
+## Ergebnis
+
+Paket H ergänzt den eigenständigen LXC-Dienst `system-backend/ip-gateway/` mit WebUI auf Port 8170. Vollständige IPv4-N-PDUs aus dem Packet Core werden ohne künstliche Ethernet-Schicht über ein Linux-TUN-Interface in normale IP-Netze überführt.
+
+## Funktionen
+
+- TUN-Interface und bidirektionale Packet-Core-Kopplung
+- IPv4-zu-ISSI/NSAPI-Zuordnung aus den aktiven PDP-Kontexten
+- Routing, IPv4-Forwarding und Kernel-Reconcile
+- nftables-Firewall, Flow-Block und Default-Policies
+- Masquerading, SNAT und DNAT
+- DNS-Forwarder mit statischen A-Records
+- WAP/WML-, HTTP- und UDP-Testdienste
+- Flow-Zähler und rohe IPv4-PCAPs (`DLT_RAW`)
+- Shadow- und Authoritative-Modus
+- persistente Regeln, API, OpenAPI, Metrics und eigene WebUI
+
+## Architekturgrenze
+
+Der Packet Core bleibt Eigentümer der SNDCP-State-Machine, Fragmentierung, Reassembly, Mobility Anchors und Downlink-Queue. Der IP Gateway kennt keine Air-PDUs und weist keine NSAPI zu. Er transportiert ausschließlich vollständige IP-N-PDUs.
+
+## Sicherheitsstatus
+
+Der Dienst läuft in der aktuellen Teststufe als `open_lab`: keine Anmeldung, keine Token und kein TLS. Im Authoritative-Modus besitzt er bewusst `CAP_NET_ADMIN`, `CAP_NET_RAW` und `CAP_NET_BIND_SERVICE`; deshalb ausschließlich im isolierten Labor betreiben.
+
+
+---
+
+## Package I – Security Core
+
+Der Security Core ist als eigenständiger LXC-Dienst auf Port 8180 umgesetzt. Er verwaltet Sicherheitsprofile, Security-Class-Aushandlung, Challenge/Response-Kontexte, kurzlebige DCK-Installationsaufträge, Teilnehmer-/Gerätesperren, Alarme und Audit. Das Management bleibt in der aktuellen Testphase `open_lab`; Rohgeheimnisse sind aus normalen Managementpfaden ausgeschlossen.
+
+Der mitgelieferte HMAC-Lab-Provider ist nur für Integrationstests vorgesehen. Langzeitschlüssel, normative Authentisierungsprovider, CCK/GCK/SCK und OTAR folgen getrennt im nächsten Baustein `kmf`.
+
+---
+
+## Package J – KMF
+
+Die Key Management Facility ist als eigenständiger LXC-Dienst auf Port 8190 umgesetzt. Sie verwaltet CCK, GCK und SCK mit versionierten Crypto Periods, Rotation, Vorgänger-/Nachfolgerketten, Vier-Augen-Workflow, nodegebundener OTAR-Zustellung, Retry/Timeout, hashverkettetem Audit sowie verschlüsseltem Lab-Vault und verifizierten Backups.
+
+Die normale WebUI und Management-API geben kein Rohschlüsselmaterial aus. Edge-Zustellungen enthalten ausschließlich einen an das Ziel-Node gebundenen versiegelten Envelope. Der aktuelle `lab_file_vault` und das Lab-Envelope sind klar als Integrationsmechanismen markiert; HSM/PKCS#11, TETRA-TA-Algorithmen und D-OTAR-Air-Interface-PDUs bleiben spätere Ausbaustufen.
+
+Der Dienst bleibt in dieser Phase `open_lab`: keine Anmeldung, keine Tokens und kein TLS. Standard ist `shadow`; erst `authoritative` stellt vollständig freigegebene OTAR-Aktionen für die TBS Edge bereit.
+
+
+
+---
+
+## Package K – Transit
+
+Der NetCore-native Transit-Dienst ist als eigenständiger LXC auf Port 8200 umgesetzt. Er verwaltet Regionen, Peers, Teilnehmer-/Gruppenregionen, Routen, Path Vector, Loop Prevention, Sessions, Queues, Retry und Failover. Standardisiertes ETSI ISI bleibt ein späterer Interworking-Ausbau.
+
+---
+
+## Package L – Control Room
+
+Der bestehende Control Room ist als eigenständiger LXC-Dienst mit Browser-WebUI auf Port 9010 ausgebaut. Er pollt Live-/Ready- und Statusdaten aller bisherigen Core-Dienste, zeigt die TBS-/Ruf-/Notfalllage, erzeugt automatische Service-Incidents, führt ein manuelles Incident-Journal und ein persistentes Schichtbuch und verlinkt die eigenständigen Fach-WebUIs.
+
+Der Control Room bleibt Presentation und Operator Plane. Er ist keine zweite Teilnehmer-, Gruppen-, Mobility-, Call-, SDS-, Packet- oder Schlüssel-Datenbank und enthält keinen beliebigen Schreibproxy zu Fachsystemen.
+
+Die aktuelle Stufe bleibt `open_lab`: keine Anmeldung, keine Tokens, kein Node-Token und kein TLS. Observability/NMS, Application Gateway, Media Library, Shared Platform und Cross-LXC-E2E-Paket sind umgesetzt.
+
+---
+
+## Package M – Observability / NMS
+
+Observability ist als eigenständiger LXC-Dienst auf Port 8210 umgesetzt. Der Dienst sammelt Metriken, Logs und NetCore-Trace-Spans, bewertet Alarmregeln, verwaltet Silences und erstellt Diagnosepakete. Prometheus, Grafana, Loki, Promtail und Alertmanager sind als optionaler klassischer Monitoring-Stack vorkonfiguriert.
+
+---
+
+## Package N – Application Gateway
+
+Der Application Gateway ist als eigenständiger LXC-Dienst auf Port 8220 umgesetzt. Er verwaltet externe und interne Connectoren, Inbound-Webhooks, Routingregeln, Text-/JSON-/TTS-Vorlagen sowie persistente Delivery-Queues mit Retry, TTL, Deduplizierung, Rate Limit, Circuit Breaker und Dead Letter.
+
+Connector-Secrets liegen getrennt und werden in WebUI, Management-GETs, Exporten und normalen Backups redaktiert. Piper-TTS erzeugt validierte WAV-Artefakte; die kontrollierte Ablage und Funkwiedergabe bleibt Aufgabe der folgenden Media Library.
+
+---
+
+## Package O – Media Library ✅ abgeschlossen
+
+Die Media Library ist als eigenständiger LXC-Dienst auf Port 8230 umgesetzt. Sie verwaltet Originale, WAV-Vorschauen, Metadaten, Freigabe, TETRA-ACELP-Cache, Recorder-Import, NFS-Archiv und kontrolliertes Playout in bestehende Media-Switch-Sessions.
+
+## Package P – Shared Platform und LXC-Deployment ✅ abgeschlossen
+
+Gemeinsame `netcore.v1`-Verträge, Persistenz-/Telemetry-Helfer, WebUI-Bausteine und das inventory-gesteuerte Deployment für alle 17 Runtime-Dienste sind umgesetzt. `shared/` bleibt Library und ist kein eigener Container.
+
+## Package Q – Cross-LXC E2E-Integration ✅ statisch abgeschlossen
+
+Umgesetzt sind:
+
+- inventory-gesteuerter E2E-Runner ohne externe Python-Abhängigkeiten;
+- Mock TBS für `netcore-control-room-node-v1`;
+- Management-Vertragsprüfung aller 17 Dienste;
+- Subscriber-/Group-, Call-/Media-/Recorder-, SDS-, Packet-Data- und Observability-Szenarien;
+- Control-Room-Federation und metadata-only Prüfungen für Security, KMF, Transit, Application Gateway und Media Library;
+- Restart-/Restore-Prüfung;
+- kontrollierte Dependency-Ausfallmatrix;
+- JSON- und JUnit-Evidenz;
+- separates On-Air-Evidenzschema;
+- CI-Selbsttests und statischer Paketchecker.
+
+Der Code- und Paketbaustein ist damit vorbereitet. Der nächste operative Schritt ist der reale Lauf gegen die 17 installierten LXCs. Danach folgen dokumentierte On-Air-Tests mit mindestens zwei Endgerätefamilien. Erst diese beiden Ebenen dürfen als Systemabnahme gelten; der Mock TBS allein ist kein ETSI-Konformitätsnachweis.
+
+## Nächster Ausbau nach der Laborabnahme
+
+1. reale E2E-Ausführung und Fehlerbereinigung im Multi-LXC-Testnetz;
+2. On-Air-Matrix für Motorola, Sepura und optional Hytera;
+3. TLS/mTLS, Benutzeridentitäten, RBAC und Audit-Härtung;
+4. produktive Secrets-/HSM-Anbindung;
+5. standardisierte ISI-Adapter und Mehrregionstests;
+6. Last-, Soak-, Chaos- und Upgrade-/Rollback-Tests.
+
+---
+
+## Package R – Full-System Audit und TBS Edge Fallback ✅ statisch abgeschlossen
+
+Alle 17 Runtime-Dienste werden nun als gemeinsames System gegengeprüft. Der
+Node Gateway überwacht die `/health/ready`-Endpunkte der übrigen 16 LXCs und
+verteilt eine revisionierte Service-Matrix an jede verbundene TBS. Die TBS
+schaltet nicht pauschal ab, sondern pro Funktion auf den dokumentierten lokalen
+Fallback um.
+
+Enthalten sind:
+
+- Online/Degraded/Isolated/Recovering-State-Machine mit Hysterese;
+- partielle Dienststörung bleibt `degraded`; vollständige Isolation erfolgt nur bei Gateway-/Matrixverlust;
+- 60-Sekunden-Lease für die vollständige Service-Matrix; alte Revisionen verlängern die Lease nicht;
+- last-known Subscriber-/Group-Policy-Cache über TBS-Neustarts hinweg;
+- lokale Registrierung, lokale Rufe und lokale Medienführung bei WAN-Ausfall;
+- lokale SDS-Zustellung und begrenzter, fsync-basierter Store-and-Forward-Spool;
+- replay-sichere Wiederanlieferung ohne doppelte lokale Gruppen-SDS;
+- dynamische SYSINFO-System-Wide-Services-Anzeige;
+- explizite Fallback-Beschreibung für jeden der 17 Runtime-Dienste;
+- WebUI- und REST-Sicht auf die Backend-Health-Matrix im Node Gateway;
+- neuer E2E-Vertragstest für die Zustellung der Service-Matrix an eine Mock-TBS;
+- destruktives Fault-Szenario für Ausfall und Recovery jedes der 16 Remote-LXCs;
+- tolerante Recovery eines durch Stromausfall abgerissenen letzten JSONL-Spool-Eintrags;
+- `tools/check_full_system_integration.py` mit Port-, URL-, Dependency-,
+  API-, WebUI- und Fallback-Abgleich.
+
+Der echte Multi-LXC-, Stromausfall-, VPN-Abbruch- und On-Air-Test bleibt eine
+operative Abnahme und kann nicht durch statische Prüfung ersetzt werden.

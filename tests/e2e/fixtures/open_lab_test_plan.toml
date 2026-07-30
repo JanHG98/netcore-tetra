@@ -1,0 +1,61 @@
+# NETCORE-KOMMENTAR – Was: Enthält automatische Prüfungen für open lab test plan.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+# Was: Legt die Versionsnummer fest.
+# Warum: Änderungsstände und kompatible Abhängigkeiten bleiben dadurch nachvollziehbar.
+version = 1
+# Was: Setzt die Einstellung `contract_version` für diesen abschnitt.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+contract_version = "netcore.v1"
+# Was: Setzt die Einstellung `mode` für diesen abschnitt.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+mode = "open_lab"
+
+# Was: Öffnet den Konfigurationsabschnitt `profiles.smoke`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[profiles.smoke]
+# Was: Setzt die Einstellung `scenarios` für profiles smoke.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+scenarios = ["contracts", "node-gateway", "edge-fallback-contract", "control-room-federation"]
+# Was: Setzt die Einstellung `destructive` für profiles smoke.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+destructive = false
+
+# Was: Öffnet den Konfigurationsabschnitt `profiles.full`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[profiles.full]
+# Was: Setzt die Einstellung `scenarios` für profiles full.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+scenarios = ["contracts", "node-gateway", "edge-fallback-contract", "subscriber-group", "call-media-recorder", "sds", "packet-data", "control-room-federation", "platform-services", "observability"]
+# Was: Setzt die Einstellung `destructive` für profiles full.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+destructive = true
+
+# Was: Öffnet den Konfigurationsabschnitt `profiles.fault`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[profiles.fault]
+# Was: Setzt die Einstellung `scenarios` für profiles fault.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+scenarios = ["contracts", "node-gateway", "edge-fallback-contract", "subscriber-group", "restart-restore", "fault-matrix", "edge-service-outages"]
+# Was: Setzt die Einstellung `destructive` für profiles fault.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+destructive = true
+# Was: Setzt die Einstellung `requires_ssh` für profiles fault.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+requires_ssh = true
+
+# Was: Öffnet den Konfigurationsabschnitt `fixtures`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[fixtures]
+# Was: Setzt die Einstellung `subscriber_range_start` für fixtures.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+subscriber_range_start = 7000000
+# Was: Setzt die Einstellung `group_range_start` für fixtures.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+group_range_start = 2000000
+# Was: Setzt die Einstellung `cleanup_default` für fixtures.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+cleanup_default = true
+# Was: Setzt die Einstellung `mock_node_prefix` für fixtures.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+mock_node_prefix = "tbs-e2e-"

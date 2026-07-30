@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 
 use tetra_core::expect_pdu_type;
@@ -15,6 +18,8 @@ use crate::mm::fields::group_identity_downlink::GroupIdentityDownlink;
 
 // note 1: The MS shall accept the type 3/4 information elements both in the numerical order as described in annex E and in the order shown in this table.
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für dattach detach Gruppe identity in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DAttachDetachGroupIdentity {
     /// Type1, 1 bits, Group identity report
     pub group_identity_report: bool,
@@ -33,8 +38,12 @@ pub struct DAttachDetachGroupIdentity {
 }
 
 #[allow(unreachable_code)] // TODO FIXME review, finalize and remove this
+// Was: Implementiert das zugehörige Verhalten für `DAttachDetachGroupIdentity`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl DAttachDetachGroupIdentity {
     /// Parse from BitBuffer
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buffer: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let pdu_type = buffer.read_field(4, "pdu_type")?;
         expect_pdu_type!(pdu_type, MmPduTypeDl::DAttachDetachGroupIdentity)?;
@@ -85,6 +94,8 @@ impl DAttachDetachGroupIdentity {
     }
 
     /// Serialize this PDU into the given BitBuffer.
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buffer: &mut BitBuffer) -> Result<(), PduParseErr> {
         // PDU Type
         buffer.write_bits(MmPduTypeDl::DAttachDetachGroupIdentity.into_raw(), 4);
@@ -134,7 +145,11 @@ impl DAttachDetachGroupIdentity {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for DAttachDetachGroupIdentity`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for DAttachDetachGroupIdentity {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -151,6 +166,8 @@ impl fmt::Display for DAttachDetachGroupIdentity {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
     use crate::mm::fields::group_identity_attachment::GroupIdentityAttachment;
@@ -159,6 +176,8 @@ mod tests {
     /// amend-mode (attach/detach_mode = false) — is exactly the shape FlowStation's DGNA send path
     /// emits. It must serialize and parse back to an identical PDU.
     #[test]
+    // Was: Führt den Arbeitsschritt `dgna_attach_round_trips` für dgna attach round trips aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn dgna_attach_round_trips() {
         let pdu = DAttachDetachGroupIdentity {
             group_identity_report: false,
@@ -202,6 +221,8 @@ mod tests {
     /// A BS-initiated DGNA *detach* — one GSSI carrying a detachment field instead of an
     /// attachment — must round-trip identically.
     #[test]
+    // Was: Führt den Arbeitsschritt `dgna_detach_round_trips` für dgna detach round trips aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn dgna_detach_round_trips() {
         let pdu = DAttachDetachGroupIdentity {
             group_identity_report: false,

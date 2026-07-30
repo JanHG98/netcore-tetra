@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für Zustand.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, Mutex, mpsc};
 
@@ -14,17 +17,27 @@ use uuid::Uuid;
 
 use crate::persistence::{PersistenceBootstrap, PersistenceHandle};
 
+// Was: Vergibt für Netzknoten command sender einen fachlich verständlichen Typnamen.
+// Warum: Der Alias macht Signaturen lesbarer und hält technische Details aus dem aufrufenden Code heraus.
 pub type NodeCommandSender = mpsc::Sender<ControlRoomToNodeMessage>;
+// Was: Vergibt für ui sender einen fachlich verständlichen Typnamen.
+// Warum: Der Alias macht Signaturen lesbarer und hält technische Details aus dem aufrufenden Code heraus.
 pub type UiSender = mpsc::Sender<UiMessage>;
 
 #[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für shared Steuerung room in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SharedControlRoom {
     inner: Arc<Mutex<ControlRoomState>>,
     node_senders: Arc<Mutex<HashMap<String, NodeCommandSender>>>,
     ui_senders: Arc<Mutex<HashMap<String, UiSender>>>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SharedControlRoom`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SharedControlRoom {
+    // Was: Diese Funktion erstellt with persistence.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new_with_persistence(history_limit: usize, persistence: Option<PersistenceHandle>) -> Self {
         Self {
             inner: Arc::new(Mutex::new(ControlRoomState::new(history_limit, persistence))),
@@ -33,10 +46,14 @@ impl SharedControlRoom {
         }
     }
 
+    // Was: Diese Funktion erzeugt den vorgesehenen Arbeitsschritt.
+    // Warum: Die Oberfläche und andere Dienste erhalten dadurch eine in sich stimmige Momentaufnahme.
     pub fn snapshot(&self) -> ControlRoomSnapshot {
         self.inner.lock().expect("control room state poisoned").snapshot()
     }
 
+    // Was: Führt den Arbeitsschritt `recent_events_filtered` für recent events filtered aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn recent_events_filtered(&self, limit: usize, event_type: Option<&str>, quiet: bool) -> Vec<EventLogEntry> {
         self.inner
             .lock()
@@ -44,22 +61,32 @@ impl SharedControlRoom {
             .recent_events_filtered(limit, event_type, quiet)
     }
 
+    // Was: Führt den Arbeitsschritt `recent_commands` für recent commands aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn recent_commands(&self, limit: usize) -> Vec<CommandAuditEntry> {
         self.inner.lock().expect("control room state poisoned").recent_commands(limit)
     }
 
+    // Was: Führt den Arbeitsschritt `overview` für overview aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn overview(&self) -> ControlRoomOverview {
         self.inner.lock().expect("control room state poisoned").overview()
     }
 
+    // Was: Führt den Arbeitsschritt `rf_snapshot` für Funkstrecke snapshot aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn rf_snapshot(&self) -> ControlRoomRfSnapshot {
         self.inner.lock().expect("control room state poisoned").rf_snapshot()
     }
 
+    // Was: Führt den Arbeitsschritt `health_snapshot` für health snapshot aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn health_snapshot(&self) -> ControlRoomHealthSnapshot {
         self.inner.lock().expect("control room state poisoned").health_snapshot()
     }
 
+    // Was: Führt den Arbeitsschritt `packet_data_snapshot` für Datenpaket data snapshot aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn packet_data_snapshot(&self, node_id: Option<&str>) -> Option<ControlRoomPacketDataSnapshot> {
         self.inner
             .lock()
@@ -67,6 +94,8 @@ impl SharedControlRoom {
             .packet_data_snapshot(node_id)
     }
 
+    // Was: Führt den Arbeitsschritt `subscribers_snapshot` für subscribers snapshot aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn subscribers_snapshot(&self, node_id: Option<&str>, online_only: bool) -> Option<ControlRoomSubscribersSnapshot> {
         self.inner
             .lock()
@@ -74,6 +103,8 @@ impl SharedControlRoom {
             .subscribers_snapshot(node_id, online_only)
     }
 
+    // Was: Führt den Arbeitsschritt `groups_snapshot` für groups snapshot aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn groups_snapshot(&self, node_id: Option<&str>) -> Option<ControlRoomGroupsSnapshot> {
         self.inner
             .lock()
@@ -81,6 +112,8 @@ impl SharedControlRoom {
             .groups_snapshot(node_id)
     }
 
+    // Was: Führt den Arbeitsschritt `calls_snapshot` für calls snapshot aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn calls_snapshot(&self, node_id: Option<&str>) -> Option<ControlRoomCallsSnapshot> {
         self.inner
             .lock()
@@ -88,6 +121,8 @@ impl SharedControlRoom {
             .calls_snapshot(node_id)
     }
 
+    // Was: Führt den Arbeitsschritt `sds_snapshot` für TETRA-Kurznachricht (SDS) snapshot aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn sds_snapshot(&self, node_id: Option<&str>, limit: usize) -> Option<ControlRoomSdsSnapshot> {
         self.inner
             .lock()
@@ -95,6 +130,8 @@ impl SharedControlRoom {
             .sds_snapshot(node_id, limit)
     }
 
+    // Was: Führt den Arbeitsschritt `emergencies_snapshot` für emergencies snapshot aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn emergencies_snapshot(&self, node_id: Option<&str>, active_only: bool) -> Option<ControlRoomEmergenciesSnapshot> {
         self.inner
             .lock()
@@ -102,6 +139,8 @@ impl SharedControlRoom {
             .emergencies_snapshot(node_id, active_only)
     }
 
+    // Was: Führt den Arbeitsschritt `locations_snapshot` für locations snapshot aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn locations_snapshot(&self, node_id: Option<&str>) -> Option<ControlRoomLocationsSnapshot> {
         self.inner
             .lock()
@@ -109,6 +148,8 @@ impl SharedControlRoom {
             .locations_snapshot(node_id)
     }
 
+    // Was: Führt den Arbeitsschritt `node_detail` für Netzknoten detail aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn node_detail(&self, node_id: &str) -> Option<ControlRoomNodeDetail> {
         self.inner
             .lock()
@@ -116,6 +157,8 @@ impl SharedControlRoom {
             .node_detail(node_id)
     }
 
+    // Was: Diese Funktion verarbeitet Netzknoten Nachricht.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     pub fn handle_node_message(&self, message: NodeToControlRoomMessage) -> Option<String> {
         let mut state = self.inner.lock().expect("control room state poisoned");
         let node_id = state.apply_node_message(&message);
@@ -127,6 +170,8 @@ impl SharedControlRoom {
         node_id
     }
 
+    // Was: Diese Funktion registriert Netzknoten sender.
+    // Warum: Die Zuordnung bleibt dadurch eindeutig und kann später sauber wieder entfernt werden.
     pub fn register_node_sender(&self, node_id: String, tx: NodeCommandSender) {
         self.node_senders
             .lock()
@@ -139,6 +184,8 @@ impl SharedControlRoom {
         self.broadcast_state();
     }
 
+    // Was: Diese Funktion meldet Netzknoten sender.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn unregister_node_sender(&self, node_id: &str) {
         self.node_senders
             .lock()
@@ -151,6 +198,8 @@ impl SharedControlRoom {
         self.broadcast_state();
     }
 
+    // Was: Diese Funktion registriert ui.
+    // Warum: Die Zuordnung bleibt dadurch eindeutig und kann später sauber wieder entfernt werden.
     pub fn register_ui(&self) -> (String, mpsc::Receiver<UiMessage>) {
         let (tx, rx) = mpsc::channel();
         let id = Uuid::new_v4().to_string();
@@ -162,6 +211,8 @@ impl SharedControlRoom {
         (id, rx)
     }
 
+    // Was: Diese Funktion meldet ui.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn unregister_ui(&self, ui_id: &str) {
         self.ui_senders
             .lock()
@@ -169,6 +220,8 @@ impl SharedControlRoom {
             .remove(ui_id);
     }
 
+    // Was: Führt den Arbeitsschritt `submit_command` für submit command aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn submit_command(&self, mut envelope: ControlCommandEnvelope) -> Result<QueuedCommand, String> {
         if envelope.command_id.trim().is_empty() {
             envelope.command_id = Uuid::new_v4().to_string();
@@ -203,6 +256,8 @@ impl SharedControlRoom {
         Ok(queued)
     }
 
+    // Was: Führt den Arbeitsschritt `make_envelope` für make envelope aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn make_envelope(&self, target_node_id: String, operator_id: Option<String>, command: ControlCommand) -> ControlCommandEnvelope {
         ControlCommandEnvelope {
             command_id: Uuid::new_v4().to_string(),
@@ -213,14 +268,20 @@ impl SharedControlRoom {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `broadcast_state` für broadcast Zustand aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn broadcast_state(&self) {
         self.broadcast(UiMessage::StateSnapshot { snapshot: self.snapshot() });
     }
 
+    // Was: Führt den Arbeitsschritt `broadcast` für broadcast aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn broadcast(&self, msg: UiMessage) {
         let mut dead = Vec::new();
         {
             let senders = self.ui_senders.lock().expect("ui sender map poisoned");
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for (id, tx) in senders.iter() {
                 if tx.send(msg.clone()).is_err() {
                     dead.push(id.clone());
@@ -229,6 +290,8 @@ impl SharedControlRoom {
         }
         if !dead.is_empty() {
             let mut senders = self.ui_senders.lock().expect("ui sender map poisoned");
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for id in dead {
                 senders.remove(&id);
             }
@@ -238,6 +301,8 @@ impl SharedControlRoom {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für ui Nachricht auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum UiMessage {
     StateSnapshot { snapshot: ControlRoomSnapshot },
     NodeMessage { message: NodeToControlRoomMessage },
@@ -246,6 +311,8 @@ pub enum UiMessage {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für queued command in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct QueuedCommand {
     pub command_id: String,
     pub target_node_id: String,
@@ -254,6 +321,8 @@ pub struct QueuedCommand {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Steuerung room snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ControlRoomSnapshot {
     pub started_at: String,
     pub now: String,
@@ -264,6 +333,8 @@ pub struct ControlRoomSnapshot {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Steuerung room overview in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ControlRoomOverview {
     pub started_at: String,
     pub now: String,
@@ -279,6 +350,8 @@ pub struct ControlRoomOverview {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Netzknoten overview in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct NodeOverview {
     pub node_id: String,
     pub station_name: Option<String>,
@@ -316,6 +389,8 @@ pub struct NodeOverview {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für command summary in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CommandSummary {
     pub command_id: String,
     pub target_node_id: String,
@@ -326,7 +401,11 @@ pub struct CommandSummary {
     pub message: Option<String>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `From<&CommandAuditEntry> for CommandSummary`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl From<&CommandAuditEntry> for CommandSummary {
+    // Was: Wandelt Eingangsdaten in den vorgesehenen Arbeitsschritt um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn from(entry: &CommandAuditEntry) -> Self {
         Self {
             command_id: entry.command_id.clone(),
@@ -341,12 +420,16 @@ impl From<&CommandAuditEntry> for CommandSummary {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Steuerung room Funkstrecke snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ControlRoomRfSnapshot {
     pub now: String,
     pub nodes: Vec<NodeRfSnapshot>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Netzknoten Funkstrecke snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct NodeRfSnapshot {
     pub node_id: String,
     pub station_name: Option<String>,
@@ -357,12 +440,16 @@ pub struct NodeRfSnapshot {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Steuerung room health snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ControlRoomHealthSnapshot {
     pub now: String,
     pub nodes: Vec<NodeHealthSnapshot>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Netzknoten health snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct NodeHealthSnapshot {
     pub node_id: String,
     pub station_name: Option<String>,
@@ -377,6 +464,8 @@ pub struct NodeHealthSnapshot {
 
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Steuerung room Datenpaket data snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ControlRoomPacketDataSnapshot {
     pub now: String,
     pub node_filter: Option<String>,
@@ -384,6 +473,8 @@ pub struct ControlRoomPacketDataSnapshot {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Netzknoten Datenpaket data snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct NodePacketDataSnapshot {
     pub node_id: String,
     pub station_name: Option<String>,
@@ -393,6 +484,8 @@ pub struct NodePacketDataSnapshot {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Steuerung room subscribers snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ControlRoomSubscribersSnapshot {
     pub now: String,
     pub node_filter: Option<String>,
@@ -402,6 +495,8 @@ pub struct ControlRoomSubscribersSnapshot {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Teilnehmer detail in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SubscriberDetail {
     pub node_id: String,
     pub station_name: Option<String>,
@@ -420,6 +515,8 @@ pub struct SubscriberDetail {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Steuerung room groups snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ControlRoomGroupsSnapshot {
     pub now: String,
     pub node_filter: Option<String>,
@@ -428,6 +525,8 @@ pub struct ControlRoomGroupsSnapshot {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Gruppe detail in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GroupDetail {
     pub node_id: String,
     pub station_name: Option<String>,
@@ -439,6 +538,8 @@ pub struct GroupDetail {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Steuerung room calls snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ControlRoomCallsSnapshot {
     pub now: String,
     pub node_filter: Option<String>,
@@ -447,6 +548,8 @@ pub struct ControlRoomCallsSnapshot {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Ruf detail in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CallDetail {
     pub node_id: String,
     pub station_name: Option<String>,
@@ -468,6 +571,8 @@ pub struct CallDetail {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Steuerung room TETRA-Kurznachricht (SDS) snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ControlRoomSdsSnapshot {
     pub now: String,
     pub node_filter: Option<String>,
@@ -476,6 +581,8 @@ pub struct ControlRoomSdsSnapshot {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Kurznachricht (SDS) detail in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SdsDetail {
     pub node_id: String,
     pub station_name: Option<String>,
@@ -489,6 +596,8 @@ pub struct SdsDetail {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Steuerung room emergencies snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ControlRoomEmergenciesSnapshot {
     pub now: String,
     pub node_filter: Option<String>,
@@ -498,6 +607,8 @@ pub struct ControlRoomEmergenciesSnapshot {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für emergency detail in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct EmergencyDetail {
     pub node_id: String,
     pub station_name: Option<String>,
@@ -509,6 +620,8 @@ pub struct EmergencyDetail {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Steuerung room locations snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ControlRoomLocationsSnapshot {
     pub now: String,
     pub node_filter: Option<String>,
@@ -517,6 +630,8 @@ pub struct ControlRoomLocationsSnapshot {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für location detail in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LocationDetail {
     pub node_id: String,
     pub station_name: Option<String>,
@@ -529,6 +644,8 @@ pub struct LocationDetail {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Steuerung room Netzknoten detail in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ControlRoomNodeDetail {
     pub now: String,
     pub node: NodeOverview,
@@ -545,6 +662,8 @@ pub struct ControlRoomNodeDetail {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Netzknoten Zustand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct NodeState {
     pub node_id: String,
     pub station_name: Option<String>,
@@ -583,7 +702,11 @@ pub struct NodeState {
     pub errors: VecDeque<String>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `NodeState`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl NodeState {
+    // Was: Führt den Arbeitsschritt `overview` für overview aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn overview(&self) -> NodeOverview {
         NodeOverview {
             node_id: self.node_id.clone(),
@@ -622,6 +745,8 @@ impl NodeState {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `rf_snapshot` für Funkstrecke snapshot aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rf_snapshot(&self) -> NodeRfSnapshot {
         NodeRfSnapshot {
             node_id: self.node_id.clone(),
@@ -633,6 +758,8 @@ impl NodeState {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `health_snapshot` für health snapshot aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn health_snapshot(&self) -> NodeHealthSnapshot {
         NodeHealthSnapshot {
             node_id: self.node_id.clone(),
@@ -647,6 +774,8 @@ impl NodeState {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `packet_data_snapshot` für Datenpaket data snapshot aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn packet_data_snapshot(&self) -> NodePacketDataSnapshot {
         NodePacketDataSnapshot {
             node_id: self.node_id.clone(),
@@ -657,12 +786,18 @@ impl NodeState {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `active_emergencies_count` für active emergencies count aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn active_emergencies_count(&self) -> usize {
         self.emergencies.values().filter(|e| e.active).count()
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `NodeState`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl NodeState {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     fn new(node_id: String) -> Self {
         Self {
             node_id,
@@ -703,6 +838,8 @@ impl NodeState {
         }
     }
 
+    // Was: Diese Funktion wendet hello.
+    // Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
     fn apply_hello(&mut self, hello: &ControlRoomNodeHello) {
         self.connected = true;
         self.transport_connected = true;
@@ -722,6 +859,8 @@ impl NodeState {
         self.last_seen = Some(now_iso());
     }
 
+    // Was: Diese Funktion wendet heartbeat.
+    // Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
     fn apply_heartbeat(&mut self, heartbeat: &ControlRoomNodeHeartbeat) {
         self.connected = heartbeat.connected;
         self.transport_connected = true;
@@ -730,6 +869,8 @@ impl NodeState {
         self.last_seen = Some(heartbeat.timestamp.clone());
     }
 
+    // Was: Diese Funktion wendet Telemetrie.
+    // Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
     fn apply_telemetry(&mut self, envelope: &NodeTelemetryEnvelope) {
         self.connected = true;
         self.transport_connected = true;
@@ -739,7 +880,11 @@ impl NodeState {
         self.apply_event(&envelope.timestamp, &envelope.event);
     }
 
+    // Was: Diese Funktion wendet Ereignis.
+    // Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
     fn apply_event(&mut self, timestamp: &str, event: &TelemetryEvent) {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match event {
             TelemetryEvent::MsRegistration { issi } => {
                 let ms = self.subscriber_mut(*issi);
@@ -752,6 +897,8 @@ impl NodeState {
                 ms.online = false;
                 ms.last_seen = Some(timestamp.to_string());
                 ms.last_event = Some("deregistration".to_string());
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for group in self.groups.values_mut() {
                     group.members.remove(issi);
                 }
@@ -762,6 +909,8 @@ impl NodeState {
                 ms.timeout_drop_count = ms.timeout_drop_count.wrapping_add(1);
                 ms.last_seen = Some(timestamp.to_string());
                 ms.last_event = Some("timeout_drop".to_string());
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for group in self.groups.values_mut() {
                     group.members.remove(issi);
                 }
@@ -770,6 +919,8 @@ impl NodeState {
                 let snapshot = matches!(event, TelemetryEvent::MsGroupsSnapshot { .. });
                 if snapshot {
                     let existing: Vec<u32> = self.groups.keys().copied().collect();
+                    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                     for gssi in existing {
                         if let Some(group) = self.groups.get_mut(&gssi) {
                             group.members.remove(issi);
@@ -778,6 +929,8 @@ impl NodeState {
                     self.subscriber_mut(*issi).groups.clear();
                 }
 
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for gssi in gssis {
                     self.subscriber_mut(*issi).groups.insert(*gssi);
                     self.group_mut(*gssi).members.insert(*issi);
@@ -788,6 +941,8 @@ impl NodeState {
                 ms.last_event = Some(if snapshot { "groups_snapshot" } else { "group_attach" }.to_string());
             }
             TelemetryEvent::MsGroupDetach { issi, gssis } => {
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for gssi in gssis {
                     self.subscriber_mut(*issi).groups.remove(gssi);
                     if let Some(group) = self.groups.get_mut(gssi) {
@@ -885,6 +1040,8 @@ impl NodeState {
                 // Be defensive: some stacks emit the correct call_id but the group may already
                 // have moved or been normalised differently. A group view must never advertise
                 // an active call that no longer exists in active_calls.
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for group in self.groups.values_mut() {
                     if group.active_call_id == Some(*call_id) {
                         group.active_call_id = None;
@@ -947,6 +1104,22 @@ impl NodeState {
                 };
                 self.apply_position_from_sds(&entry);
                 self.push_sds(entry);
+            }
+            TelemetryEvent::SdsEdgeIngress {
+                source_issi,
+                dest_issi,
+                is_group,
+                ingress,
+                ..
+            } => {
+                self.subscriber_mut(*source_issi).last_seen = Some(timestamp.to_string());
+                if !*is_group {
+                    self.subscriber_mut(*dest_issi).last_seen = Some(timestamp.to_string());
+                }
+                self.timeslot_activity.insert(
+                    format!("sds-edge:{}->{}", source_issi, dest_issi),
+                    format!("{} via {}", timestamp, ingress),
+                );
             }
             TelemetryEvent::TsVoiceActivity { carrier_num, ts } => {
                 self.timeslot_activity
@@ -1043,21 +1216,31 @@ impl NodeState {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `subscriber_mut` für Teilnehmer mut aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn subscriber_mut(&mut self, issi: u32) -> &mut SubscriberState {
         self.subscribers.entry(issi).or_insert_with(|| SubscriberState::new(issi))
     }
 
+    // Was: Führt den Arbeitsschritt `group_mut` für Gruppe mut aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn group_mut(&mut self, gssi: u32) -> &mut GroupState {
         self.groups.entry(gssi).or_insert_with(|| GroupState::new(gssi))
     }
 
+    // Was: Diese Funktion legt TETRA-Kurznachricht (SDS).
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn push_sds(&mut self, entry: SdsLogEntry) {
         self.sds_log.push_back(entry);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while self.sds_log.len() > 200 {
             self.sds_log.pop_front();
         }
     }
 
+    // Was: Diese Funktion wendet position from TETRA-Kurznachricht (SDS).
+    // Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
     fn apply_position_from_sds(&mut self, entry: &SdsLogEntry) {
         if let Some((latitude, longitude)) = parse_lip_position(&entry.text) {
             let subscriber = self.subscriber_mut(entry.source_issi);
@@ -1074,8 +1257,12 @@ impl NodeState {
         }
     }
 
+    // Was: Diese Funktion legt error.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn push_error(&mut self, message: String) {
         self.errors.push_back(message);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while self.errors.len() > 50 {
             self.errors.pop_front();
         }
@@ -1083,6 +1270,8 @@ impl NodeState {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Teilnehmer Zustand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SubscriberState {
     pub issi: u32,
     pub online: bool,
@@ -1097,7 +1286,11 @@ pub struct SubscriberState {
     pub last_location: Option<LocationState>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SubscriberState`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SubscriberState {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     fn new(issi: u32) -> Self {
         Self {
             issi,
@@ -1116,6 +1309,8 @@ impl SubscriberState {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für location Zustand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LocationState {
     pub latitude: f64,
     pub longitude: f64,
@@ -1125,13 +1320,19 @@ pub struct LocationState {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Gruppe Zustand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GroupState {
     pub gssi: u32,
     pub members: HashSet<u32>,
     pub active_call_id: Option<u16>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `GroupState`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl GroupState {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     fn new(gssi: u32) -> Self {
         Self {
             gssi,
@@ -1143,6 +1344,8 @@ impl GroupState {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für Ruf Zustand auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum CallState {
     Group {
         call_id: u16,
@@ -1171,6 +1374,8 @@ pub enum CallState {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für emergency Zustand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct EmergencyState {
     pub source_issi: u32,
     pub dest_ssi: u32,
@@ -1180,6 +1385,8 @@ pub struct EmergencyState {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Kurznachricht (SDS) log entry in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SdsLogEntry {
     pub timestamp: String,
     pub direction: String,
@@ -1191,6 +1398,8 @@ pub struct SdsLogEntry {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Brew-Verbindung Zustand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct BrewState {
     pub connected: bool,
     pub server_version: u8,
@@ -1198,6 +1407,8 @@ pub struct BrewState {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Ereignis log entry in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct EventLogEntry {
     pub timestamp: String,
     pub node_id: String,
@@ -1207,6 +1418,8 @@ pub struct EventLogEntry {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für command audit entry in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CommandAuditEntry {
     pub command_id: String,
     pub target_node_id: String,
@@ -1220,6 +1433,8 @@ pub struct CommandAuditEntry {
     pub responses: Vec<Value>,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für Steuerung room Zustand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct ControlRoomState {
     started_at: String,
     history_limit: usize,
@@ -1229,7 +1444,11 @@ struct ControlRoomState {
     persistence: Option<PersistenceHandle>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `ControlRoomState`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl ControlRoomState {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     fn new(history_limit: usize, persistence: Option<PersistenceHandle>) -> Self {
         let mut state = Self {
             started_at: now_iso(),
@@ -1241,6 +1460,8 @@ impl ControlRoomState {
         };
 
         if let Some(persistence) = &persistence {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match persistence.load_bootstrap(history_limit) {
                 Ok(bootstrap) => {
                     let event_count = bootstrap.events.len();
@@ -1258,13 +1479,21 @@ impl ControlRoomState {
         state
     }
 
+    // Was: Diese Funktion wendet persistence bootstrap.
+    // Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
     fn apply_persistence_bootstrap(&mut self, bootstrap: PersistenceBootstrap) {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for entry in bootstrap.events {
             self.push_event_memory(entry);
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for entry in bootstrap.commands {
             self.push_command_memory(entry);
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for row in bootstrap.sds {
             let node = self.node_mut(&row.node_id);
             if node.station_name.is_none() {
@@ -1273,6 +1502,8 @@ impl ControlRoomState {
             node.apply_position_from_sds(&row.entry);
             node.push_sds(row.entry);
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for row in bootstrap.locations {
             let node = self.node_mut(&row.node_id);
             if node.station_name.is_none() {
@@ -1283,6 +1514,8 @@ impl ControlRoomState {
             ms.last_event = Some("persisted_location".to_string());
             ms.last_location = Some(row.location);
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for row in bootstrap.emergencies {
             let node = self.node_mut(&row.node_id);
             if node.station_name.is_none() {
@@ -1297,6 +1530,8 @@ impl ControlRoomState {
         }
     }
 
+    // Was: Diese Funktion erzeugt den vorgesehenen Arbeitsschritt.
+    // Warum: Die Oberfläche und andere Dienste erhalten dadurch eine in sich stimmige Momentaufnahme.
     fn snapshot(&self) -> ControlRoomSnapshot {
         let nodes: Vec<NodeState> = self.nodes.values().cloned().collect();
         let nodes_connected = nodes.iter().filter(|n| n.connected || n.transport_connected).count();
@@ -1310,6 +1545,8 @@ impl ControlRoomState {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `recent_events_filtered` für recent events filtered aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn recent_events_filtered(&self, limit: usize, event_type: Option<&str>, quiet: bool) -> Vec<EventLogEntry> {
         self.recent_events
             .iter()
@@ -1321,10 +1558,14 @@ impl ControlRoomState {
             .collect()
     }
 
+    // Was: Führt den Arbeitsschritt `recent_commands` für recent commands aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn recent_commands(&self, limit: usize) -> Vec<CommandAuditEntry> {
         self.recent_commands.iter().rev().take(limit).cloned().collect()
     }
 
+    // Was: Führt den Arbeitsschritt `overview` für overview aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn overview(&self) -> ControlRoomOverview {
         let nodes: Vec<NodeOverview> = self.nodes.values().map(NodeState::overview).collect();
         ControlRoomOverview {
@@ -1342,6 +1583,8 @@ impl ControlRoomState {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `rf_snapshot` für Funkstrecke snapshot aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rf_snapshot(&self) -> ControlRoomRfSnapshot {
         ControlRoomRfSnapshot {
             now: now_iso(),
@@ -1349,6 +1592,8 @@ impl ControlRoomState {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `health_snapshot` für health snapshot aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn health_snapshot(&self) -> ControlRoomHealthSnapshot {
         ControlRoomHealthSnapshot {
             now: now_iso(),
@@ -1356,6 +1601,8 @@ impl ControlRoomState {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `packet_data_snapshot` für Datenpaket data snapshot aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn packet_data_snapshot(&self, node_filter: Option<&str>) -> Option<ControlRoomPacketDataSnapshot> {
         let nodes = self.selected_nodes(node_filter)?;
         Some(ControlRoomPacketDataSnapshot {
@@ -1365,10 +1612,16 @@ impl ControlRoomState {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `subscribers_snapshot` für subscribers snapshot aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn subscribers_snapshot(&self, node_filter: Option<&str>, online_only: bool) -> Option<ControlRoomSubscribersSnapshot> {
         let nodes = self.selected_nodes(node_filter)?;
         let mut subscribers = Vec::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for node in nodes {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for subscriber in node.subscribers.values() {
                 if online_only && !subscriber.online {
                     continue;
@@ -1387,10 +1640,16 @@ impl ControlRoomState {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `groups_snapshot` für groups snapshot aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn groups_snapshot(&self, node_filter: Option<&str>) -> Option<ControlRoomGroupsSnapshot> {
         let nodes = self.selected_nodes(node_filter)?;
         let mut groups = Vec::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for node in nodes {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for group in node.groups.values() {
                 groups.push(group_detail(node, group));
             }
@@ -1404,10 +1663,16 @@ impl ControlRoomState {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `calls_snapshot` für calls snapshot aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn calls_snapshot(&self, node_filter: Option<&str>) -> Option<ControlRoomCallsSnapshot> {
         let nodes = self.selected_nodes(node_filter)?;
         let mut calls = Vec::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for node in nodes {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for (key, call) in &node.active_calls {
                 calls.push(call_detail(node, key, call));
             }
@@ -1421,10 +1686,16 @@ impl ControlRoomState {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `sds_snapshot` für TETRA-Kurznachricht (SDS) snapshot aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn sds_snapshot(&self, node_filter: Option<&str>, limit: usize) -> Option<ControlRoomSdsSnapshot> {
         let nodes = self.selected_nodes(node_filter)?;
         let mut sds = Vec::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for node in nodes {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for entry in node.sds_log.iter().rev().take(limit) {
                 sds.push(sds_detail(node, entry));
             }
@@ -1439,10 +1710,16 @@ impl ControlRoomState {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `emergencies_snapshot` für emergencies snapshot aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn emergencies_snapshot(&self, node_filter: Option<&str>, active_only: bool) -> Option<ControlRoomEmergenciesSnapshot> {
         let nodes = self.selected_nodes(node_filter)?;
         let mut emergencies = Vec::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for node in nodes {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for emergency in node.emergencies.values() {
                 if active_only && !emergency.active {
                     continue;
@@ -1467,10 +1744,16 @@ impl ControlRoomState {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `locations_snapshot` für locations snapshot aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn locations_snapshot(&self, node_filter: Option<&str>) -> Option<ControlRoomLocationsSnapshot> {
         let nodes = self.selected_nodes(node_filter)?;
         let mut locations = Vec::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for node in nodes {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for subscriber in node.subscribers.values() {
                 if let Some(location) = &subscriber.last_location {
                     locations.push(location_detail(node, subscriber.issi, location));
@@ -1486,6 +1769,8 @@ impl ControlRoomState {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `node_detail` für Netzknoten detail aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn node_detail(&self, node_id: &str) -> Option<ControlRoomNodeDetail> {
         let node = self.nodes.get(node_id)?;
         let mut subscribers: Vec<_> = node.subscribers.values().map(|s| subscriber_detail(node, s)).collect();
@@ -1526,6 +1811,8 @@ impl ControlRoomState {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `selected_nodes` für selected nodes aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn selected_nodes<'a>(&'a self, node_filter: Option<&str>) -> Option<Vec<&'a NodeState>> {
         if let Some(node_id) = node_filter {
             return self.nodes.get(node_id).map(|node| vec![node]);
@@ -1535,7 +1822,11 @@ impl ControlRoomState {
         Some(nodes)
     }
 
+    // Was: Diese Funktion wendet Netzknoten Nachricht.
+    // Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
     fn apply_node_message(&mut self, message: &NodeToControlRoomMessage) -> Option<String> {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match message {
             NodeToControlRoomMessage::Hello { hello } => {
                 let node_id = hello.node.node_id.clone();
@@ -1601,6 +1892,13 @@ impl ControlRoomState {
                 self.record_control_response(envelope);
                 Some(node_id)
             }
+            NodeToControlRoomMessage::MediaFrame { frame } => {
+                let node_id = frame.node_id.clone();
+                if let Some(node) = self.nodes.get_mut(&node_id) {
+                    node.last_seen = Some(frame.timestamp.clone());
+                }
+                Some(node_id)
+            }
             NodeToControlRoomMessage::Error { node_id, message, timestamp } => {
                 self.node_mut(node_id).push_error(format!("{}: {}", timestamp, message));
                 self.push_event(EventLogEntry {
@@ -1615,6 +1913,8 @@ impl ControlRoomState {
         }
     }
 
+    // Was: Diese Funktion kennzeichnet Netzknoten connected transport.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn mark_node_connected_transport(&mut self, node_id: &str) {
         let node = self.node_mut(node_id);
         node.connected = true;
@@ -1622,6 +1922,8 @@ impl ControlRoomState {
         node.last_seen = Some(now_iso());
     }
 
+    // Was: Diese Funktion kennzeichnet Netzknoten disconnected.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn mark_node_disconnected(&mut self, node_id: &str) {
         let timestamp = now_iso();
         let node = self.node_mut(node_id);
@@ -1633,6 +1935,8 @@ impl ControlRoomState {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `record_command_queued` für Datensatz command queued aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn record_command_queued(&mut self, envelope: &ControlCommandEnvelope) {
         self.push_command(CommandAuditEntry {
             command_id: envelope.command_id.clone(),
@@ -1648,6 +1952,8 @@ impl ControlRoomState {
         });
     }
 
+    // Was: Führt den Arbeitsschritt `record_command_ack` für Datensatz command ack aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn record_command_ack(&mut self, ack: &ControlCommandAck) {
         let idx = self.recent_commands.iter().position(|cmd| cmd.command_id == ack.command_id);
         let status = if ack.accepted { "accepted" } else { "rejected" }.to_string();
@@ -1679,6 +1985,8 @@ impl ControlRoomState {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `record_control_response` für Datensatz Steuerung response aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn record_control_response(&mut self, envelope: &ControlResponseEnvelope) {
         let response_value = serde_json::to_value(&envelope.response).unwrap_or_else(|_| json!({ "error": "response serialisation failed" }));
         if let Some(command_id) = &envelope.command_id {
@@ -1710,6 +2018,8 @@ impl ControlRoomState {
         });
     }
 
+    // Was: Diese Funktion speichert Telemetrie side effects.
+    // Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
     fn persist_telemetry_side_effects(&self, node_id: &str, timestamp: &str, event: &TelemetryEvent) {
         let Some(persistence) = &self.persistence else {
             return;
@@ -1719,6 +2029,8 @@ impl ControlRoomState {
         };
         let station_name = node.station_name.as_deref();
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match event {
             TelemetryEvent::SdsLog {
                 direction,
@@ -1751,12 +2063,16 @@ impl ControlRoomState {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `node_mut` für Netzknoten mut aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn node_mut(&mut self, node_id: &str) -> &mut NodeState {
         self.nodes
             .entry(node_id.to_string())
             .or_insert_with(|| NodeState::new(node_id.to_string()))
     }
 
+    // Was: Diese Funktion legt Ereignis.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn push_event(&mut self, entry: EventLogEntry) {
         if let Some(persistence) = &self.persistence {
             persistence.persist_event(&entry);
@@ -1764,13 +2080,19 @@ impl ControlRoomState {
         self.push_event_memory(entry);
     }
 
+    // Was: Diese Funktion legt Ereignis memory.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn push_event_memory(&mut self, entry: EventLogEntry) {
         self.recent_events.push_back(entry);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while self.recent_events.len() > self.history_limit {
             self.recent_events.pop_front();
         }
     }
 
+    // Was: Diese Funktion legt command.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn push_command(&mut self, entry: CommandAuditEntry) {
         if let Some(persistence) = &self.persistence {
             persistence.persist_command(&entry);
@@ -1778,13 +2100,19 @@ impl ControlRoomState {
         self.push_command_memory(entry);
     }
 
+    // Was: Diese Funktion legt command memory.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn push_command_memory(&mut self, entry: CommandAuditEntry) {
         self.recent_commands.push_back(entry);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while self.recent_commands.len() > self.history_limit {
             self.recent_commands.pop_front();
         }
     }
 
+    // Was: Diese Funktion speichert command entry.
+    // Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
     fn persist_command_entry(&self, entry: &CommandAuditEntry) {
         if let Some(persistence) = &self.persistence {
             persistence.persist_command(entry);
@@ -1792,6 +2120,8 @@ impl ControlRoomState {
     }
 }
 
+// Was: Führt den Arbeitsschritt `subscriber_detail` für Teilnehmer detail aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn subscriber_detail(node: &NodeState, subscriber: &SubscriberState) -> SubscriberDetail {
     let mut groups: Vec<u32> = subscriber.groups.iter().copied().collect();
     groups.sort_unstable();
@@ -1814,6 +2144,8 @@ fn subscriber_detail(node: &NodeState, subscriber: &SubscriberState) -> Subscrib
     }
 }
 
+// Was: Führt den Arbeitsschritt `group_detail` für Gruppe detail aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn group_detail(node: &NodeState, group: &GroupState) -> GroupDetail {
     let mut members: Vec<u32> = group.members.iter().copied().collect();
     members.sort_unstable();
@@ -1847,7 +2179,11 @@ fn group_detail(node: &NodeState, group: &GroupState) -> GroupDetail {
     }
 }
 
+// Was: Führt den Arbeitsschritt `call_detail` für Ruf detail aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn call_detail(node: &NodeState, key: &str, call: &CallState) -> CallDetail {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match call {
         CallState::Group {
             call_id,
@@ -1912,6 +2248,8 @@ fn call_detail(node: &NodeState, key: &str, call: &CallState) -> CallDetail {
     }
 }
 
+// Was: Führt den Arbeitsschritt `sds_detail` für TETRA-Kurznachricht (SDS) detail aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn sds_detail(node: &NodeState, entry: &SdsLogEntry) -> SdsDetail {
     SdsDetail {
         node_id: node.node_id.clone(),
@@ -1926,6 +2264,8 @@ fn sds_detail(node: &NodeState, entry: &SdsLogEntry) -> SdsDetail {
     }
 }
 
+// Was: Führt den Arbeitsschritt `emergency_detail` für emergency detail aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn emergency_detail(node: &NodeState, emergency: &EmergencyState) -> EmergencyDetail {
     EmergencyDetail {
         node_id: node.node_id.clone(),
@@ -1938,6 +2278,8 @@ fn emergency_detail(node: &NodeState, emergency: &EmergencyState) -> EmergencyDe
     }
 }
 
+// Was: Führt den Arbeitsschritt `location_detail` für location detail aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn location_detail(node: &NodeState, issi: u32, location: &LocationState) -> LocationDetail {
     LocationDetail {
         node_id: node.node_id.clone(),
@@ -1951,6 +2293,8 @@ fn location_detail(node: &NodeState, issi: u32, location: &LocationState) -> Loc
     }
 }
 
+// Was: Führt den Arbeitsschritt `subscriber_active_call_keys` für Teilnehmer active Ruf keys aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn subscriber_active_call_keys(node: &NodeState, issi: u32) -> Vec<String> {
     let mut keys: Vec<String> = node
         .active_calls
@@ -1962,13 +2306,19 @@ fn subscriber_active_call_keys(node: &NodeState, issi: u32) -> Vec<String> {
     keys
 }
 
+// Was: Führt den Arbeitsschritt `call_involves_subscriber` für Ruf involves Teilnehmer aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn call_involves_subscriber(call: &CallState, issi: u32) -> bool {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match call {
         CallState::Group { caller_issi, speaker_issi, .. } => *caller_issi == issi || speaker_issi.map(|speaker| speaker == issi).unwrap_or(false),
         CallState::Individual { calling_issi, called_issi, .. } => *calling_issi == issi || *called_issi == issi,
     }
 }
 
+// Was: Diese Funktion liest und prüft lip position.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_lip_position(text: &str) -> Option<(f64, f64)> {
     let trimmed = text.trim();
     let lower = trimmed.to_ascii_lowercase();
@@ -1988,6 +2338,8 @@ fn parse_lip_position(text: &str) -> Option<(f64, f64)> {
     Some((latitude, longitude))
 }
 
+// Was: Diese Funktion liest und prüft coordinate.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_coordinate(raw: &str) -> Option<f64> {
     let cleaned = raw
         .trim()
@@ -1998,11 +2350,17 @@ fn parse_coordinate(raw: &str) -> Option<f64> {
     cleaned.parse::<f64>().ok()
 }
 
+// Was: Führt den Arbeitsschritt `now_iso` für now iso aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn now_iso() -> String {
     chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
 }
 
+// Was: Führt den Arbeitsschritt `telemetry_event_type` für Telemetrie Ereignis type aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn telemetry_event_type(event: &TelemetryEvent) -> &'static str {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match event {
         TelemetryEvent::MsRegistration { .. } => "ms_registration",
         TelemetryEvent::MsDeregistration { .. } => "ms_deregistration",
@@ -2034,9 +2392,12 @@ pub fn telemetry_event_type(event: &TelemetryEvent) -> &'static str {
         TelemetryEvent::BrewSubscriberRegistered { .. } => "brew_subscriber_registered",
         TelemetryEvent::BrewSubscriberDeregistered { .. } => "brew_subscriber_deregistered",
         TelemetryEvent::PacketDataSnapshot { .. } => "packet_data_snapshot",
+        TelemetryEvent::SdsEdgeIngress { .. } => "sds_edge_ingress",
     }
 }
 
+// Was: Prüft, ob noisy Ereignis type zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
 fn is_noisy_event_type(event_type: &str) -> bool {
     matches!(
         event_type,
@@ -2044,6 +2405,8 @@ fn is_noisy_event_type(event_type: &str) -> bool {
     )
 }
 
+// Was: Führt den Arbeitsschritt `extract_health_overall` für extract health overall aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn extract_health_overall(value: &Option<Value>) -> Option<String> {
     let value = value.as_ref()?;
     value
@@ -2053,31 +2416,47 @@ fn extract_health_overall(value: &Option<Value>) -> Option<String> {
         .map(ToString::to_string)
 }
 
+// Was: Führt den Arbeitsschritt `extract_f64_path` für extract f64 path aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn extract_f64_path(value: &Option<Value>, path: &[&str]) -> Option<f64> {
     let mut current = value.as_ref()?;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for key in path {
         current = current.get(*key)?;
     }
     current.as_f64()
 }
 
+// Was: Führt den Arbeitsschritt `extract_u64_path` für extract u64 path aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn extract_u64_path(value: &Option<Value>, path: &[&str]) -> Option<u64> {
     let mut current = value.as_ref()?;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for key in path {
         current = current.get(*key)?;
     }
     current.as_u64()
 }
 
+// Was: Führt den Arbeitsschritt `extract_bool_path` für extract bool path aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn extract_bool_path(value: &Option<Value>, path: &[&str]) -> Option<bool> {
     let mut current = value.as_ref()?;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for key in path {
         current = current.get(*key)?;
     }
     current.as_bool()
 }
 
+// Was: Führt den Arbeitsschritt `event_for_log` für Ereignis for log aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn event_for_log(event: &TelemetryEvent) -> Value {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match event {
         TelemetryEvent::TxVisual {
             sample_rate,

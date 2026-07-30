@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 
 use crate::cmce::enums::{cmce_pdu_type_dl::CmcePduTypeDl, party_type_identifier::PartyTypeIdentifier, type3_elem_id::CmceType3ElemId};
@@ -13,6 +16,8 @@ use tetra_saps::control::enums::sds_user_data::SdsUserData;
 // note 1: Shall be conditional on the value of Calling Party Type Identifier (CPTI): CPTI = 1: Calling Party SSI; CPTI = 2: Calling Party SSI + Calling Party Extension.
 // note 2: Shall be conditional on the value of Short Data Type Identifier (SDTI): SDTI = 0: User Defined Data-1; SDTI = 1: User Defined Data-2; SDTI = 2: User Defined Data-3; SDTI = 3: Length Indicator + User Defined Data-4.
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für dsds data in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DSdsData {
     /// Type1, 2 bits, Calling party type identifier
     pub calling_party_type_identifier: PartyTypeIdentifier,
@@ -28,8 +33,12 @@ pub struct DSdsData {
     pub dm_ms_address: Option<Type3FieldGeneric>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `DSdsData`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl DSdsData {
     /// Parse from BitBuffer
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buffer: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let pdu_type = buffer.read_field(5, "pdu_type")?;
         expect_pdu_type!(pdu_type, CmcePduTypeDl::DSdsData)?;
@@ -56,6 +65,8 @@ impl DSdsData {
 
         // Type1
         let short_data_type_identifier = buffer.read_field(2, "short_data_type_identifier")? as u8;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let user_defined_data = match short_data_type_identifier {
             0 => SdsUserData::Type1(buffer.read_field(16, "user_defined_data_1")? as u16),
             1 => SdsUserData::Type2(buffer.read_field(32, "user_defined_data_2")? as u32),
@@ -100,6 +111,8 @@ impl DSdsData {
     }
 
     /// Serialize this PDU into the given BitBuffer.
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buffer: &mut BitBuffer) -> Result<(), PduParseErr> {
         // PDU Type
         buffer.write_bits(CmcePduTypeDl::DSdsData.into_raw(), 5);
@@ -118,6 +131,8 @@ impl DSdsData {
         let short_data_type_identifier = self.user_defined_data.type_identifier();
         buffer.write_bits(short_data_type_identifier as u64, 2);
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match &self.user_defined_data {
             SdsUserData::Type1(value) => buffer.write_bits(*value as u64, 16),
             SdsUserData::Type2(value) => buffer.write_bits(*value as u64, 32),
@@ -130,6 +145,8 @@ impl DSdsData {
                 buffer.write_bits(*len_bits as u64, 11);
                 let full_bytes = used_bits / 8;
                 let remaining_bits = used_bits % 8;
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for i in 0..full_bytes {
                     buffer.write_bits(data[i] as u64, 8);
                 }
@@ -158,7 +175,11 @@ impl DSdsData {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for DSdsData`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for DSdsData {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -174,10 +195,14 @@ impl fmt::Display for DSdsData {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
     use tetra_core::BitBuffer;
 
+    // Was: Führt den Arbeitsschritt `round_trip` für round trip aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn round_trip(pdu: &DSdsData) -> DSdsData {
         let mut buf = BitBuffer::new_autoexpand(256);
         pdu.to_bitbuf(&mut buf).expect("serialize failed");
@@ -190,6 +215,8 @@ mod tests {
     /// pair that disagrees; the encoder previously indexed `data[i]` out of bounds and
     /// crashed the base station. The clamp caps reads at the available payload.
     #[test]
+    // Was: Führt den Arbeitsschritt `type4_overclaimed_length_does_not_panic` für type4 overclaimed length does not panic aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn type4_overclaimed_length_does_not_panic() {
         let pdu = DSdsData {
             calling_party_type_identifier: PartyTypeIdentifier::Ssi,
@@ -205,6 +232,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall d TETRA-Kurznachricht (SDS) data sdti0 cpti1.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_d_sds_data_sdti0_cpti1() {
         let pdu = DSdsData {
             calling_party_type_identifier: PartyTypeIdentifier::Ssi,
@@ -222,6 +251,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall d TETRA-Kurznachricht (SDS) data sdti3 cpti1.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_d_sds_data_sdti3_cpti1() {
         let payload = vec![0xDE, 0xAD, 0xBE, 0xEF, 0xCA];
         let pdu = DSdsData {
@@ -239,6 +270,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall d TETRA-Kurznachricht (SDS) data cpti2 extension.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_d_sds_data_cpti2_extension() {
         let pdu = DSdsData {
             calling_party_type_identifier: PartyTypeIdentifier::Tsi,
@@ -256,6 +289,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall d TETRA-Kurznachricht (SDS) data cpti0.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_d_sds_data_cpti0() {
         let pdu = DSdsData {
             calling_party_type_identifier: PartyTypeIdentifier::Sna,

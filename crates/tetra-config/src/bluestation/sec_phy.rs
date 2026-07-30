@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Einlesen und Prüfen der TETRA-Konfiguration.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::HashMap;
 
 use serde::Deserialize;
@@ -8,6 +11,8 @@ use crate::bluestation::{CfgSoapySdr, SoapySdrDto};
 /// The PHY layer backend type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "PascalCase")]
+// Was: Listet die möglichen Varianten für phy Hintergrunddienst auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum PhyBackend {
     Undefined,
     None,
@@ -16,6 +21,8 @@ pub enum PhyBackend {
 
 /// PHY layer I/O configuration
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für cfg phy io in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgPhyIo {
     /// Backend type: Soapysdr, File, or None
     pub backend: PhyBackend,
@@ -30,6 +37,8 @@ pub struct CfgPhyIo {
 }
 
 #[derive(Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für phy io dto in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PhyIoDto {
     pub backend: PhyBackend,
 
@@ -44,6 +53,8 @@ pub struct PhyIoDto {
     pub extra: HashMap<String, Value>,
 }
 
+// Was: Führt den Arbeitsschritt `phy_dto_to_cfg` für phy dto to cfg aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn phy_dto_to_cfg(src: PhyIoDto) -> CfgPhyIo {
     let soapysdr = src.soapysdr.map(|soapy_dto| {
         CfgSoapySdr {
@@ -65,6 +76,8 @@ pub fn phy_dto_to_cfg(src: PhyIoDto) -> CfgPhyIo {
                     key.strip_prefix("rx_gain_").map(|gain_name| {
                         (
                             gain_name.to_string().to_lowercase(),
+                            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                             match value {
                                 Value::Integer(v) => *v as f64,
                                 Value::Float(v) => *v,
@@ -82,6 +95,8 @@ pub fn phy_dto_to_cfg(src: PhyIoDto) -> CfgPhyIo {
                     key.strip_prefix("tx_gain_").map(|gain_name| {
                         (
                             gain_name.to_string().to_lowercase(),
+                            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                             match value {
                                 Value::Integer(v) => *v as f64,
                                 Value::Float(v) => *v,

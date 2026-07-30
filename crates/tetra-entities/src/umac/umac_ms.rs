@@ -1,7 +1,15 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use tetra_config::bluestation::SharedConfig;
 use tetra_core::tetra_entities::TetraEntity;
 use tetra_core::{BitBuffer, PhyBlockNum, Sap, TdmaTime, Todo, unimplemented_log};
+use tetra_saps::common::{
+    CellServiceLevel, Layer2Report, LowerLayerResourceAvailability, LowerLayerResourceReason,
+    MeasurementReport, MeasurementValue, QualityIndication, RfChannelNumber, SelectionResult,
+};
 use tetra_saps::tlmb::TlmbSysinfoInd;
+use tetra_saps::tlmc::TlmcReportInd;
 use tetra_saps::tma::TmaUnitdataInd;
 use tetra_saps::tmv::TmvConfigureReq;
 use tetra_saps::tmv::enums::logical_chans::LogicalChannel;
@@ -18,9 +26,12 @@ use tetra_pdus::umac::pdus::mac_sync::MacSync;
 use tetra_pdus::umac::pdus::mac_sysinfo::MacSysinfo;
 
 use crate::umac::subcomp::fillbits;
+use crate::umac::tlmc_runtime::{TlmcRuntime, TlmcRuntimeError, TlmcRuntimeSnapshot};
 use crate::umac::subcomp::ms_defrag::MsDefrag;
 use crate::{MessagePrio, MessageQueue, TetraEntityTrait};
 
+// Was: Bündelt die zusammengehörigen Werte für UMAC-Funkzugriffssteuerung ms in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct UmacMs {
     // config: Option<SharedConfig>,
     dltime: TdmaTime,
@@ -36,9 +47,28 @@ pub struct UmacMs {
     cc: Option<u8>,
     /// Derived from mcc/mnc, and passed to lmac
     scrambling_code: Option<u32>,
+
+    /// Local TLC/TMC management state. TLMC is MS-side in ETSI and remains
+    /// inside the radio stack; it is not a backend service.
+    tlmc: TlmcRuntime,
+    /// Last valid serving/monitored downlink observation, used to emit a
+    /// single edge-triggered resource-loss indication.
+    last_tlmc_rx: Option<TdmaTime>,
+    /// Rate limiter for serving-channel measurement indications.
+    last_tlmc_measurement: Option<TdmaTime>,
+    /// Start times for bounded local TLMC operations. A missing RF response
+    /// must complete with a negative confirmation instead of leaving MLE
+    /// blocked forever.
+    tlmc_scan_started: Option<TdmaTime>,
+    tlmc_cell_read_started: Option<TdmaTime>,
+    tlmc_select_started: Option<TdmaTime>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `UmacMs`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl UmacMs {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(config: SharedConfig) -> Self {
         Self {
             dltime: TdmaTime::default(),
@@ -50,11 +80,28 @@ impl UmacMs {
             mnc: None,
             cc: None,
             scrambling_code: None,
+            tlmc: TlmcRuntime::new(),
+            last_tlmc_rx: None,
+            last_tlmc_measurement: None,
+            tlmc_scan_started: None,
+            tlmc_cell_read_started: None,
+            tlmc_select_started: None,
         }
     }
 
+    /// Read-only TLMC state for diagnostics, tests and the future TBS WebUI.
+    // Was: Führt den Arbeitsschritt `tlmc_snapshot` für tlmc snapshot aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn tlmc_snapshot(&self) -> TlmcRuntimeSnapshot {
+        self.tlmc.snapshot()
+    }
+
+    // Was: Führt den Arbeitsschritt `rx_tmv_prim` für rx tmv prim aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_tmv_prim(&mut self, queue: &mut MessageQueue, message: SapMsg) {
         tracing::trace!("rx_tmv_prim");
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match message.msg {
             SapMsgInner::TmvUnitdataInd(_) => {
                 self.rx_tmv_unitdata_ind(queue, message);
@@ -66,6 +113,8 @@ impl UmacMs {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `rx_tmv_unitdata_ind` für rx tmv unitdata ind aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn rx_tmv_unitdata_ind(&mut self, queue: &mut MessageQueue, mut message: SapMsg) {
         let SapMsgInner::TmvUnitdataInd(prim) = &mut message.msg else {
             tracing::error!("BUG: unexpected message or state -- routing error");
@@ -73,6 +122,8 @@ impl UmacMs {
         };
         tracing::trace!("rx_tmv_unitdata_ind: {:?}", prim.logical_channel);
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match prim.logical_channel {
             LogicalChannel::Aach => {
                 self.rx_tmv_aach(queue, message);
@@ -108,10 +159,14 @@ impl UmacMs {
     }
 
     /// Receive signalling (SCH, or STCH / BNCH)
+    // Was: Führt den Arbeitsschritt `rx_tmv_sch` für rx tmv sch aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn rx_tmv_sch(&mut self, queue: &mut MessageQueue, mut message: SapMsg) {
         tracing::trace!("rx_tmv_sch");
 
         // Iterate until no more messages left in mac block
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             // Extract info from inner block
             let SapMsgInner::TmvUnitdataInd(prim) = &message.msg else {
@@ -129,6 +184,8 @@ impl UmacMs {
             let orig_start = prim.pdu.get_raw_start();
             let lchan = prim.logical_channel;
 
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match pdu_type {
                 MacPduType::MacResourceMacData => {
                     self.rx_mac_resource(queue, &mut message);
@@ -174,7 +231,9 @@ impl UmacMs {
 
     // message pos: start of broadcast frame
     // Will NOT advance pos but pass to underlying function
-    fn rx_broadcast(&self, queue: &mut MessageQueue, message: &mut SapMsg) {
+    // Was: Führt den Arbeitsschritt `rx_broadcast` für rx broadcast aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn rx_broadcast(&mut self, queue: &mut MessageQueue, message: &mut SapMsg) {
         tracing::trace!("rx_broadcast");
 
         let SapMsgInner::TmvUnitdataInd(prim) = &mut message.msg else {
@@ -186,6 +245,8 @@ impl UmacMs {
         let bits = prim.pdu.peek_bits_posoffset(2, 2).unwrap();
         let bcast_type = BroadcastType::try_from(bits).expect("invalid broadcast type");
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match bcast_type {
             BroadcastType::Sysinfo => {
                 self.rx_broadcast_sysinfo(queue, message);
@@ -198,7 +259,9 @@ impl UmacMs {
     }
 
     // Parses the sysinfo pdu
-    fn rx_broadcast_sysinfo(&self, queue: &mut MessageQueue, message: &mut SapMsg) {
+    // Was: Führt den Arbeitsschritt `rx_broadcast_sysinfo` für rx broadcast sysinfo aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn rx_broadcast_sysinfo(&mut self, queue: &mut MessageQueue, message: &mut SapMsg) {
         tracing::trace!("rx_broadcast_sysinfo");
         let SapMsgInner::TmvUnitdataInd(prim) = &mut message.msg else {
             tracing::error!("BUG: unexpected message or state -- routing error");
@@ -206,6 +269,8 @@ impl UmacMs {
         };
 
         // Parse SYSINFO header and optional data
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let pdu = match MacSysinfo::from_bitbuf(&mut prim.pdu) {
             Ok(pdu) => {
                 tracing::debug!("<- {:?}", pdu);
@@ -216,6 +281,8 @@ impl UmacMs {
                 return;
             }
         };
+
+        self.observe_tlmc_sysinfo(queue, prim.carrier_num);
 
         // TODO FIXME adopt sysinfo info into global state
         if pdu.hyperframe_number.is_some() && pdu.hyperframe_number.unwrap() != self.dltime.h {
@@ -256,6 +323,8 @@ impl UmacMs {
         queue.push_back(m);
     }
 
+    // Was: Führt den Arbeitsschritt `rx_mac_resource` für rx MAC-Funkzugriffssteuerung resource aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_mac_resource(&mut self, queue: &mut MessageQueue, message: &mut SapMsg) {
         tracing::trace!("rx_mac_resource");
         let SapMsgInner::TmvUnitdataInd(prim) = &mut message.msg else {
@@ -265,6 +334,8 @@ impl UmacMs {
         assert!(prim.pdu.get_pos() == 0); // We should be at the start of the MAC PDU
 
         // Parse header and optional ChanAlloc
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let pdu = match MacResource::from_bitbuf(&mut prim.pdu) {
             Ok(pdu) => {
                 tracing::debug!("<- {:?}", pdu);
@@ -282,6 +353,8 @@ impl UmacMs {
 
         // Compute len
         let mut pdu_len_bits = {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match pdu.length_ind {
                 0b000001..0b111010 => {
                     // tracing::trace!("rx_mac_resource: length_ind {}", pdu.length_ind);
@@ -411,6 +484,8 @@ impl UmacMs {
         prim.pdu.set_raw_start(prim.pdu.get_raw_pos());
     }
 
+    // Was: Führt den Arbeitsschritt `rx_mac_frag` für rx MAC-Funkzugriffssteuerung frag aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_mac_frag(&mut self, _queue: &mut MessageQueue, message: &mut SapMsg) {
         tracing::trace!("rx_mac_frag");
         let SapMsgInner::TmvUnitdataInd(prim) = &mut message.msg else {
@@ -420,6 +495,8 @@ impl UmacMs {
         assert!(prim.pdu.get_pos() == 0); // We should be at the start of the MAC PDU
 
         // Parse header and optional ChanAlloc
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let pdu = match MacFragDl::from_bitbuf(&mut prim.pdu) {
             Ok(pdu) => {
                 tracing::debug!("<- {:?}", pdu);
@@ -455,6 +532,8 @@ impl UmacMs {
         self.defrag.insert_next(&mut prim.pdu, self.dltime);
     }
 
+    // Was: Führt den Arbeitsschritt `rx_mac_end` für rx MAC-Funkzugriffssteuerung end aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_mac_end(&mut self, queue: &mut MessageQueue, message: &mut SapMsg) {
         tracing::trace!("rx_mac_end");
         let SapMsgInner::TmvUnitdataInd(prim) = &mut message.msg else {
@@ -464,6 +543,8 @@ impl UmacMs {
         assert!(prim.pdu.get_pos() == 0); // We should be at the start of the MAC PDU
 
         // Parse header and optional ChanAlloc
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let pdu = match MacEndDl::from_bitbuf(&mut prim.pdu) {
             Ok(pdu) => {
                 tracing::debug!("<- {:?}", pdu);
@@ -539,6 +620,8 @@ impl UmacMs {
         prim.pdu.set_raw_start(prim.pdu.get_raw_pos());
     }
 
+    // Was: Führt den Arbeitsschritt `rx_usignal` für rx usignal aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_usignal(&self, _queue: &mut MessageQueue, message: &mut SapMsg) {
         tracing::trace!("rx_usignal");
         let SapMsgInner::TmvUnitdataInd(_prim) = &mut message.msg else {
@@ -548,6 +631,8 @@ impl UmacMs {
         unimplemented!("rx_usignal");
     }
 
+    // Was: Führt den Arbeitsschritt `rx_supp` für rx supp aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_supp(&self, _queue: &mut MessageQueue, message: &mut SapMsg) {
         tracing::trace!("rx_supp");
 
@@ -560,6 +645,8 @@ impl UmacMs {
         unimplemented!("rx_supp");
     }
 
+    // Was: Führt den Arbeitsschritt `rx_tmv_aach` für rx tmv aach aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn rx_tmv_aach(&self, queue: &mut MessageQueue, mut message: SapMsg) {
         tracing::trace!("rx_tmv_aach");
 
@@ -572,6 +659,8 @@ impl UmacMs {
         };
 
         let is_traffic = if self.dltime.f != 18 {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let pdu = match AccessAssign::from_bitbuf(&mut prim.pdu) {
                 Ok(pdu) => {
                     tracing::debug!("<- {:?}", pdu);
@@ -585,6 +674,8 @@ impl UmacMs {
 
             pdu.dl_usage.is_traffic()
         } else {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let _pdu = match AccessAssignFr18::from_bitbuf(&mut prim.pdu) {
                 Ok(pdu) => {
                     tracing::debug!("<- {:?}", pdu);
@@ -612,7 +703,9 @@ impl UmacMs {
         queue.push_prio(m, MessagePrio::Immediate);
     }
 
-    pub fn rx_tmv_bsch(&mut self, _queue: &mut MessageQueue, mut message: SapMsg) {
+    // Was: Führt den Arbeitsschritt `rx_tmv_bsch` für rx tmv bsch aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn rx_tmv_bsch(&mut self, queue: &mut MessageQueue, mut message: SapMsg) {
         tracing::trace!("rx_tmv_bsch");
         let SapMsgInner::TmvUnitdataInd(prim) = &mut message.msg else {
             tracing::error!("BUG: unexpected message or state -- routing error");
@@ -620,6 +713,8 @@ impl UmacMs {
         };
 
         // Unpack and validate with expected state
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let _pdu = match MacSync::from_bitbuf(&mut prim.pdu) {
             Ok(pdu) => {
                 tracing::debug!("<- {:?}", pdu);
@@ -631,6 +726,7 @@ impl UmacMs {
             }
         };
 
+        self.observe_tlmc_channel(queue, prim.carrier_num, prim.rssi_dbfs);
         unimplemented_log!("can't update global state");
 
         // let netinfo_changed = {
@@ -714,16 +810,22 @@ impl UmacMs {
         // queue.push_back(m);
     }
 
+    // Was: Führt den Arbeitsschritt `rx_tma_prim` für rx tma prim aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_tma_prim(&mut self, _queue: &mut MessageQueue, _message: SapMsg) {
         tracing::trace!("rx_tma_prim");
         unimplemented!();
     }
 
+    // Was: Führt den Arbeitsschritt `rx_tlmb_prim` für rx tlmb prim aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_tlmb_prim(&mut self, _queue: &mut MessageQueue, _message: SapMsg) {
         tracing::trace!("rx_tlmb_prim");
         unimplemented!();
     }
 
+    // Was: Diese Funktion aktualisiert scrambing and submit to lmac.
+    // Warum: Bestehender Zustand wird dadurch kontrolliert und nach einheitlichen Regeln geändert.
     fn update_scrambing_and_submit_to_lmac(&mut self, queue: &mut MessageQueue) {
         if let (Some(mcc), Some(mnc), Some(cc)) = (self.mcc, self.mnc, self.cc) {
             self.scrambling_code = Some((((cc as u32) | ((mnc as u32) << 6) | ((mcc as u32) << 20)) << 2) | 3);
@@ -749,49 +851,387 @@ impl UmacMs {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `queue_tlmc` für Warteschlange tlmc aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn queue_tlmc(queue: &mut MessageQueue, msg: SapMsgInner) {
+        queue.push_back(SapMsg {
+            sap: Sap::TlmcSap,
+            src: TetraEntity::Umac,
+            dest: TetraEntity::Mle,
+            msg,
+        });
+    }
+
+    // Was: Führt den Arbeitsschritt `report_tlmc_error` für report tlmc error aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn report_tlmc_error(queue: &mut MessageQueue, operation: &str, error: &TlmcRuntimeError) {
+        tracing::warn!("TLMC: {} failed: {}", operation, error);
+        Self::queue_tlmc(
+            queue,
+            SapMsgInner::TlmcReportInd(TlmcReportInd {
+                request_handle: None,
+                report: match error {
+                    TlmcRuntimeError::OperationBusy(_) => Layer2Report::ServiceTemporarilyUnavailable,
+                    TlmcRuntimeError::ChannelNotMonitored(_)
+                    | TlmcRuntimeError::ChannelClassNotRequested(_)
+                    | TlmcRuntimeError::UnknownRequest(_)
+                    | TlmcRuntimeError::RequestMismatch(_)
+                    | TlmcRuntimeError::NoPendingSelection
+                    | TlmcRuntimeError::InvalidConfiguration(_) => Layer2Report::Reject,
+                },
+                endpoint_id: None,
+                nsapi: None,
+            }),
+        );
+    }
+
+    // Was: Führt den Arbeitsschritt `rx_tlmc_configure_req` für rx tlmc configure req aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_tlmc_configure_req(&mut self, queue: &mut MessageQueue, message: SapMsg) {
         tracing::trace!("rx_tlmc_configure_req");
-        let SapMsgInner::TlmcConfigureReq(prim) = &message.msg else {
+        let SapMsgInner::TlmcConfigureReq(prim) = message.msg else {
             tracing::error!("BUG: unexpected message or state -- routing error");
             return;
         };
 
-        if let Some(valid_addresses) = &prim.valid_addresses {
-            tracing::debug!("rx_tlmc_configure_req: valid_addresses: {:?}", valid_addresses);
-
-            self.mcc = Some(valid_addresses.mcc);
-            self.mnc = Some(valid_addresses.mnc);
-
-            // Attempt to update scrambling code (if cc is also known)
-            self.update_scrambing_and_submit_to_lmac(queue);
-        } else {
-            tracing::warn!("rx_tlmc_configure_req: No valid addresses provided");
+        let valid_addresses = prim.valid_addresses;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+        match self.tlmc.apply_configure(prim) {
+            Ok(confirmation) => {
+                if let Some(valid_addresses) = valid_addresses {
+                    tracing::debug!("TLMC-CONFIGURE valid addresses: {:?}", valid_addresses);
+                    self.mcc = Some(valid_addresses.mcc);
+                    self.mnc = Some(valid_addresses.mnc);
+                    self.update_scrambing_and_submit_to_lmac(queue);
+                }
+                Self::queue_tlmc(queue, SapMsgInner::TlmcConfigureConf(confirmation));
+            }
+            Err(error) => Self::report_tlmc_error(queue, "configure", &error),
         }
     }
 
+    // Was: Diese Funktion fordert lower MAC-Funkzugriffssteuerung Kanal.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn request_lower_mac_channel(&self, queue: &mut MessageQueue, channel: RfChannelNumber) {
+        queue.push_back(SapMsg {
+            sap: Sap::TmvSap,
+            src: TetraEntity::Umac,
+            dest: TetraEntity::Lmac,
+            msg: SapMsgInner::TmvConfigureReq(TmvConfigureReq {
+                carrier_num: Some(channel.0),
+                ..Default::default()
+            }),
+        });
+    }
+
+    // Was: Führt den Arbeitsschritt `observe_tlmc_channel` für observe tlmc Kanal aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn observe_tlmc_channel(&mut self, queue: &mut MessageQueue, carrier_num: u16, rssi_dbfs: f32) {
+        self.last_tlmc_rx = Some(self.dltime);
+        let endpoint_id = self.tlmc.configuration().endpoint_id.unwrap_or(0);
+        if let Some(indication) = self.tlmc.resource_transition(
+            endpoint_id,
+            LowerLayerResourceAvailability::Available,
+            LowerLayerResourceReason::RecoveryOfRadioResources,
+        ) {
+            Self::queue_tlmc(queue, SapMsgInner::TlmcConfigureInd(indication));
+        }
+
+        let raw = if rssi_dbfs.is_finite() {
+            rssi_dbfs.round().clamp(i16::MIN as f32, i16::MAX as f32) as i16
+        } else {
+            i16::MIN
+        };
+        let channel = RfChannelNumber(carrier_num);
+        let measurement = MeasurementValue::raw(raw);
+        let quality = Some(QualityIndication { raw });
+
+        let due = self
+            .last_tlmc_measurement
+            .map(|last| last.age(self.dltime) >= 72)
+            .unwrap_or(true);
+        if due {
+            let indication = self.tlmc.record_measurement(MeasurementReport {
+                endpoint_id: Some(endpoint_id),
+                channel_number: Some(channel),
+                path_loss_c1: Some(measurement),
+                path_loss_c2: None,
+                path_loss_c3: None,
+                path_loss_c4: None,
+                path_loss_c5: None,
+                quality,
+            });
+            Self::queue_tlmc(queue, SapMsgInner::TlmcMeasurementInd(indication));
+            self.last_tlmc_measurement = Some(self.dltime);
+        }
+
+        if self.tlmc.is_monitored(channel) {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+            match self.tlmc.record_monitor(channel, measurement, quality, Vec::new()) {
+                Ok(indication) => Self::queue_tlmc(queue, SapMsgInner::TlmcMonitorInd(indication)),
+                Err(error) => Self::report_tlmc_error(queue, "monitor", &error),
+            }
+        }
+
+        let pending_scan = self.tlmc.pending_scan().cloned();
+        if let Some(request) = pending_scan.filter(|request| request.channel_number == channel) {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+            match self.tlmc.complete_scan(
+                request.request_id,
+                channel,
+                measurement,
+                Layer2Report::Success,
+                Vec::new(),
+                None,
+                CellServiceLevel::NormalService,
+            ) {
+                Ok(confirm) => {
+                    self.tlmc_scan_started = None;
+                    Self::queue_tlmc(queue, SapMsgInner::TlmcScanConf(confirm));
+                }
+                Err(error) => Self::report_tlmc_error(queue, "scan completion", &error),
+            }
+        }
+
+        let pending_select = self.tlmc.pending_select().cloned();
+        if let Some(request) = pending_select.filter(|request| request.channel_number == channel) {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+            match self.tlmc.complete_select(
+                channel,
+                Some(measurement),
+                request.main_carrier_number,
+                Some(Layer2Report::Success),
+                SelectionResult::Success,
+                None,
+            ) {
+                Ok(confirm) => {
+                    self.tlmc_select_started = None;
+                    Self::queue_tlmc(queue, SapMsgInner::TlmcSelectConf(confirm));
+                }
+                Err(error) => Self::report_tlmc_error(queue, "selection completion", &error),
+            }
+        }
+    }
+
+    // Was: Führt den Arbeitsschritt `observe_tlmc_sysinfo` für observe tlmc sysinfo aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn observe_tlmc_sysinfo(&mut self, queue: &mut MessageQueue, carrier_num: u16) {
+        let channel = RfChannelNumber(carrier_num);
+        let pending = self.tlmc.pending_cell_read().cloned();
+        if let Some(request) = pending.filter(|request| request.channel_number == channel) {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+            match self
+                .tlmc
+                .complete_cell_read(request.request_id, channel, Layer2Report::Success)
+            {
+                Ok(confirm) => {
+                    self.tlmc_cell_read_started = None;
+                    Self::queue_tlmc(queue, SapMsgInner::TlmcCellReadConf(confirm));
+                }
+                Err(error) => Self::report_tlmc_error(queue, "cell read completion", &error),
+            }
+        }
+    }
+
+    // Was: Führt den Arbeitsschritt `expire_tlmc_operations` für expire tlmc operations aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn expire_tlmc_operations(&mut self, queue: &mut MessageQueue, now: TdmaTime) {
+        // Was: Legt den festen Wert `OPERATION_TIMEOUT_SLOTS` für operation timeout slots fest.
+        // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
+        const OPERATION_TIMEOUT_SLOTS: i32 = 432;
+
+        let scan_expired = self
+            .tlmc_scan_started
+            .map(|started| started.age(now) > OPERATION_TIMEOUT_SLOTS)
+            .unwrap_or(false);
+        if scan_expired {
+            self.tlmc_scan_started = None;
+            if let Some(request) = self.tlmc.pending_scan().cloned() {
+                let threshold = request.threshold_level.unwrap_or(MeasurementValue::raw(i16::MIN));
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+                match self.tlmc.complete_scan(
+                    request.request_id,
+                    request.channel_number,
+                    threshold,
+                    Layer2Report::ServiceTemporarilyUnavailable,
+                    Vec::new(),
+                    None,
+                    CellServiceLevel::NoService,
+                ) {
+                    Ok(confirm) => Self::queue_tlmc(queue, SapMsgInner::TlmcScanConf(confirm)),
+                    Err(error) => Self::report_tlmc_error(queue, "scan timeout", &error),
+                }
+            }
+        }
+
+        let cell_read_expired = self
+            .tlmc_cell_read_started
+            .map(|started| started.age(now) > OPERATION_TIMEOUT_SLOTS)
+            .unwrap_or(false);
+        if cell_read_expired {
+            self.tlmc_cell_read_started = None;
+            if let Some(request) = self.tlmc.pending_cell_read().cloned() {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+                match self.tlmc.complete_cell_read(
+                    request.request_id,
+                    request.channel_number,
+                    Layer2Report::ServiceTemporarilyUnavailable,
+                ) {
+                    Ok(confirm) => Self::queue_tlmc(queue, SapMsgInner::TlmcCellReadConf(confirm)),
+                    Err(error) => Self::report_tlmc_error(queue, "cell read timeout", &error),
+                }
+            }
+        }
+
+        let select_expired = self
+            .tlmc_select_started
+            .map(|started| started.age(now) > OPERATION_TIMEOUT_SLOTS)
+            .unwrap_or(false);
+        if select_expired {
+            self.tlmc_select_started = None;
+            if let Some(request) = self.tlmc.pending_select().cloned() {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+                match self.tlmc.complete_select(
+                    request.channel_number,
+                    request.threshold_level,
+                    request.main_carrier_number,
+                    Some(Layer2Report::ServiceTemporarilyUnavailable),
+                    SelectionResult::Other(1),
+                    None,
+                ) {
+                    Ok(confirm) => Self::queue_tlmc(queue, SapMsgInner::TlmcSelectConf(confirm)),
+                    Err(error) => Self::report_tlmc_error(queue, "selection timeout", &error),
+                }
+            }
+        }
+    }
+
+    // Was: Führt den Arbeitsschritt `rx_tlmc_prim` für rx tlmc prim aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_tlmc_prim(&mut self, queue: &mut MessageQueue, message: SapMsg) {
         tracing::trace!("rx_tlmc_prim");
+        let source = message.src;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match message.msg {
-            SapMsgInner::TlmcConfigureReq(_) => {
-                self.rx_tlmc_configure_req(queue, message);
+            SapMsgInner::TlmcConfigureReq(prim) => {
+                self.rx_tlmc_configure_req(
+                    queue,
+                    SapMsg::new(
+                        Sap::TlmcSap,
+                        TetraEntity::Mle,
+                        TetraEntity::Umac,
+                        SapMsgInner::TlmcConfigureReq(prim),
+                    ),
+                );
             }
-            _ => {
-                tracing::error!("BUG: unexpected message or state -- routing error");
-                return;
+            SapMsgInner::TlmcMonitorListReq(prim) => self.tlmc.set_monitor_list(prim),
+            SapMsgInner::TlmcAssessmentListReq(prim) => self.tlmc.set_assessment_list(prim),
+            SapMsgInner::TlmcScanReq(prim) => {
+                let channel = prim.channel_number;
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+                match self.tlmc.begin_scan(prim) {
+                    Ok(()) => {
+                        self.tlmc_scan_started = Some(self.dltime);
+                        self.request_lower_mac_channel(queue, channel);
+                    }
+                    Err(error) => Self::report_tlmc_error(queue, "scan", &error),
+                }
+            }
+            SapMsgInner::TlmcCellReadReq(prim) => {
+                let channel = prim.channel_number;
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+                match self.tlmc.begin_cell_read(prim) {
+                    Ok(()) => {
+                        self.tlmc_cell_read_started = Some(self.dltime);
+                        self.request_lower_mac_channel(queue, channel);
+                    }
+                    Err(error) => Self::report_tlmc_error(queue, "cell read", &error),
+                }
+            }
+            SapMsgInner::TlmcSelectReq(prim) => {
+                let channel = prim.channel_number;
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+                match self.tlmc.begin_select(prim) {
+                    Ok(()) => {
+                        self.tlmc_select_started = Some(self.dltime);
+                        self.request_lower_mac_channel(queue, channel);
+                    }
+                    Err(error) => Self::report_tlmc_error(queue, "select", &error),
+                }
+            }
+            SapMsgInner::TlmcSelectResp(prim) => {
+                if let Err(error) = self.tlmc.respond_select(prim) {
+                    Self::report_tlmc_error(queue, "select response", &error);
+                }
+            }
+            other => {
+                tracing::warn!("TLMC: UMAC received unexpected primitive from {:?}: {:?}", source, other);
+                Self::queue_tlmc(
+                    queue,
+                    SapMsgInner::TlmcReportInd(TlmcReportInd {
+                        request_handle: None,
+                        report: Layer2Report::ServiceNotSupported,
+                        endpoint_id: None,
+                        nsapi: None,
+                    }),
+                );
             }
         }
     }
+
 }
 
+// Was: Implementiert das zugehörige Verhalten für `TetraEntityTrait for UmacMs`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl TetraEntityTrait for UmacMs {
+    // Was: Führt den Arbeitsschritt `entity` für entity aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn entity(&self) -> TetraEntity {
         TetraEntity::Umac
     }
 
+    // Was: Diese Funktion bearbeitet start.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn tick_start(&mut self, queue: &mut MessageQueue, ts: TdmaTime) {
+        self.dltime = ts;
+        self.expire_tlmc_operations(queue, ts);
+        let lost = self
+            .last_tlmc_rx
+            .map(|last| last.age(ts) > 432)
+            .unwrap_or(false);
+        if lost {
+            self.last_tlmc_rx = None;
+            let endpoint_id = self.tlmc.configuration().endpoint_id.unwrap_or(0);
+            if let Some(indication) = self.tlmc.resource_transition(
+                endpoint_id,
+                LowerLayerResourceAvailability::Unavailable,
+                LowerLayerResourceReason::LossOfRadioResources,
+            ) {
+                Self::queue_tlmc(queue, SapMsgInner::TlmcConfigureInd(indication));
+            }
+        }
+    }
+
+    // Was: Führt den Arbeitsschritt `rx_prim` für rx prim aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_prim(&mut self, queue: &mut MessageQueue, message: SapMsg) {
         tracing::debug!("rx_prim: {:?}", message);
         // tracing::debug!(ts=%message.dltime, "rx_prim: {:?}", message);
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match message.sap {
             Sap::TmvSap => {
                 self.rx_tmv_prim(queue, message);

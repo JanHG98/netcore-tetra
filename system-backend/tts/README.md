@@ -1,12 +1,12 @@
-# NetCore local Piper TTS provider
+# NetCore Media Library Piper TTS provider
 
-FlowStation expects a Piper HTTP server on `127.0.0.1:5005`.
-The provider runs separately from the RF process: Piper first creates a complete WAV file;
-FlowStation then feeds the validated file into the existing audio-player/ACELP path.
+Piper läuft zentral im Media-Library-LXC auf `127.0.0.1:5005`. Die Basisstation
+betreibt keinen eigenen TTS-Provider mehr. Texte, Stimmen, Vorlagen und das Speichern
+als Media-Library-Asset werden in der Media-Library-WebUI auf Port `8230` verwaltet.
 
-## Installed German voices
+## Installierte deutsche Stimmen
 
-The installer downloads these models by default:
+Der Installer lädt standardmäßig:
 
 - `de_DE-thorsten-medium`
 - `de_DE-thorsten-high`
@@ -14,69 +14,58 @@ The installer downloads these models by default:
 - `de_DE-pavoque-low`
 - `de_DE-thorsten_emotional-medium`
 
-Piper lists every `.onnx` model in its data directory through `/voices` and loads a selected
-model on demand. FlowStation marks configured voices that are not actually present as
-`NICHT INSTALLIERT` instead of silently letting Piper fall back to another voice.
+Piper veröffentlicht installierte Modelle über `/voices`. Die Media Library markiert
+fehlende konfigurierte Stimmen sichtbar als nicht installiert.
 
-## Complete installation or update
+## Installation
 
-Adjust the service account when `tetra.service` runs under another user:
+Bei einer Media-Library-Installation oder einem Update wird Piper automatisch geprüft
+und bei Bedarf eingerichtet:
+
+```bash
+sudo ./system-backend/media-library/install/update.sh
+```
+
+Eine manuelle Installation ist ebenfalls möglich:
 
 ```bash
 cd system-backend/tts
-sudo SERVICE_USER=bluestation SERVICE_GROUP=bluestation ./install-piper.sh
-```
-
-For an existing Piper installation, only add the extra voices:
-
-```bash
-cd system-backend/tts
-sudo SERVICE_USER=bluestation ./install-extra-voices.sh
-```
-
-Custom model set:
-
-```bash
 sudo \
-  SERVICE_USER=bluestation \
-  DEFAULT_VOICE=de_DE-thorsten-medium \
-  VOICE_LIST="de_DE-thorsten-medium de_DE-karlsson-low de_DE-pavoque-low" \
+  SERVICE_USER=netcore-media-library \
+  SERVICE_GROUP=netcore-media-library \
+  VOICE_DIR=/var/lib/netcore-media-library/piper \
+  TTS_CACHE=/var/lib/netcore-media-library/tts/cache \
+  TTS_TEMPLATES=/var/lib/netcore-media-library/tts/templates \
   ./install-piper.sh
 ```
 
-## Local template directory
+Zusätzliche Stimmen:
 
-The installer also creates:
-
-```text
-/var/lib/netcore/tts/templates
+```bash
+sudo \
+  SERVICE_USER=netcore-media-library \
+  VOICE_DIR=/var/lib/netcore-media-library/piper \
+  ./install-extra-voices.sh
 ```
 
-It is owned by the FlowStation service account and contains human-readable files named:
+## Ablage
 
 ```text
-<template-id>.tts.toml
+/var/lib/netcore-media-library/piper          Piper-Modelle
+/var/lib/netcore-media-library/tts/cache      Provider-Arbeitsdaten
+/var/lib/netcore-media-library/tts/templates  zentrale TTS-Vorlagen
+/mnt/nfs-share/TTS-Dateien/YYYY/MM/DD         archivierte TTS-Assets
 ```
 
-Generated texts are automatically saved there when
-`auto_save_generated_templates = true` is configured.
-
-## Health checks
+## Gesundheitsprüfung
 
 ```bash
 systemctl status netcore-piper --no-pager
 curl -fsS http://127.0.0.1:5005/voices
+curl -fsS http://127.0.0.1:8230/api/v1/tts/status
 ```
 
-Show only installed model names:
-
-```bash
-curl -fsS http://127.0.0.1:5005/voices \
-  | /opt/netcore-piper/bin/python -c \
-    'import json,sys; print("\n".join(sorted(json.load(sys.stdin).keys())))'
-```
-
-Synthesis test:
+Synthesetest:
 
 ```bash
 curl -fsS \
@@ -87,5 +76,5 @@ curl -fsS \
 file /tmp/netcore-tts-test.wav
 ```
 
-The service binds only to localhost. Keep it that way unless a reverse proxy,
-authentication policy and firewall are deliberately configured.
+Der Provider bleibt auf Loopback gebunden. Der Zugriff erfolgt ausschließlich über
+die Media-Library-API und deren WebUI.

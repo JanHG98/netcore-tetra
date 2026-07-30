@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Einlesen und Prüfen der TETRA-Konfiguration.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::HashMap;
 
 use serde::Deserialize;
@@ -7,6 +10,8 @@ use crate::bluestation::SecretField;
 
 /// Asterisk SIP/RTP bridge configuration.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für cfg asterisk in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgAsterisk {
     pub enabled: bool,
     pub outbound_prefix: String,
@@ -32,12 +37,18 @@ pub struct CfgAsterisk {
     pub inbound_setup_timeout_secs: u32,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for CfgAsterisk`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for CfgAsterisk {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         apply_asterisk_patch(CfgAsteriskDto::default()).expect("default asterisk config must be valid")
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `CfgAsterisk`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl CfgAsterisk {
     /// Route a TETRA dial string to a SIP user according to the Asterisk outbound rules.
     ///
@@ -47,6 +58,8 @@ impl CfgAsterisk {
     /// - `service_numbers = ["*"]` routes every dial behind the configured prefix.
     /// - `service_numbers = ["38*"]` routes every stripped number starting with `38`.
     /// - Exact `service_numbers` entries keep their old allowlist behaviour.
+    // Was: Diese Funktion leitet outbound raw.
+    // Warum: Nachrichten und Daten gelangen dadurch nachvollziehbar an das richtige Ziel.
     pub fn route_outbound_raw(&self, raw: &str) -> Option<String> {
         if !self.enabled {
             return None;
@@ -108,6 +121,8 @@ impl CfgAsterisk {
 }
 
 #[derive(Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für cfg asterisk dto in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgAsteriskDto {
     #[serde(default)]
     pub enabled: bool,
@@ -156,7 +171,11 @@ pub struct CfgAsteriskDto {
     pub extra: HashMap<String, Value>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for CfgAsteriskDto`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for CfgAsteriskDto {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             enabled: false,
@@ -185,78 +204,116 @@ impl Default for CfgAsteriskDto {
     }
 }
 
+// Was: Führt den Arbeitsschritt `default_outbound_prefix` für default outbound prefix aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_outbound_prefix() -> String {
     "91".to_string()
 }
 
+// Was: Führt den Arbeitsschritt `default_strip_outbound_prefix` für default strip outbound prefix aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_strip_outbound_prefix() -> bool {
     true
 }
 
+// Was: Führt den Arbeitsschritt `default_inbound_prefix` für default inbound prefix aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_inbound_prefix() -> String {
     "T".to_string()
 }
 
+// Was: Führt den Arbeitsschritt `default_register` für default register aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_register() -> bool {
     true
 }
 
+// Was: Führt den Arbeitsschritt `default_codec` für default codec aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_codec() -> String {
     "PCMU".to_string()
 }
 
+// Was: Führt den Arbeitsschritt `default_rtp_port_min` für default rtp port min aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_rtp_port_min() -> u16 {
     30000
 }
 
+// Was: Führt den Arbeitsschritt `default_rtp_port_max` für default rtp port max aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_rtp_port_max() -> u16 {
     30100
 }
 
+// Was: Führt den Arbeitsschritt `default_bind_addr` für default bind addr aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_bind_addr() -> String {
     "0.0.0.0".to_string()
 }
 
+// Was: Führt den Arbeitsschritt `default_bind_port` für default bind port aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_bind_port() -> u16 {
     5062
 }
 
+// Was: Führt den Arbeitsschritt `default_remote_host` für default remote host aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_remote_host() -> String {
     "127.0.0.1".to_string()
 }
 
+// Was: Führt den Arbeitsschritt `default_remote_port` für default remote port aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_remote_port() -> u16 {
     5060
 }
 
+// Was: Führt den Arbeitsschritt `default_contact_host` für default contact host aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_contact_host() -> String {
     "127.0.0.1".to_string()
 }
 
+// Was: Führt den Arbeitsschritt `default_from_domain` für default from domain aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_from_domain() -> String {
     "127.0.0.1".to_string()
 }
 
+// Was: Führt den Arbeitsschritt `default_local_user` für default local Benutzer aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_local_user() -> String {
     "flowstation".to_string()
 }
 
+// Was: Führt den Arbeitsschritt `default_auth_user` für default Anmeldung und Berechtigung Benutzer aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_auth_user() -> String {
     "flowstation".to_string()
 }
 
+// Was: Führt den Arbeitsschritt `default_realm` für default realm aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_realm() -> String {
     "asterisk".to_string()
 }
 
+// Was: Führt den Arbeitsschritt `default_options_interval_secs` für default options interval secs aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_options_interval_secs() -> u64 {
     30
 }
 
+// Was: Führt den Arbeitsschritt `default_inbound_setup_timeout_secs` für default inbound setup timeout secs aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_inbound_setup_timeout_secs() -> u32 {
     20
 }
 
+// Was: Diese Funktion wendet asterisk patch.
+// Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
 pub fn apply_asterisk_patch(src: CfgAsteriskDto) -> Result<CfgAsterisk, String> {
     if src.enabled {
         if src.bind_port == 0 {
@@ -320,9 +377,13 @@ pub fn apply_asterisk_patch(src: CfgAsteriskDto) -> Result<CfgAsterisk, String> 
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
+    // Was: Führt den Arbeitsschritt `enabled_cfg` für enabled cfg aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn enabled_cfg(service_numbers: Vec<&str>) -> CfgAsterisk {
         let dto = CfgAsteriskDto {
             enabled: true,
@@ -333,6 +394,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `exact_service_numbers_still_allow_direct_and_prefixed_dials` für exact Dienst numbers still allow direct and und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn exact_service_numbers_still_allow_direct_and_prefixed_dials() {
         let cfg = enabled_cfg(vec!["385"]);
         assert_eq!(cfg.route_outbound_raw("91385"), Some("385".to_string()));
@@ -341,6 +404,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `star_service_number_routes_everything_behind_prefix_only` für star Dienst number routes everything behind prefix und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn star_service_number_routes_everything_behind_prefix_only() {
         let cfg = enabled_cfg(vec!["*"]);
         assert_eq!(cfg.route_outbound_raw("91385"), Some("385".to_string()));
@@ -349,6 +414,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `outbound_prefix_star_routes_everything_behind_prefix` für outbound prefix star routes everything behind prefix aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn outbound_prefix_star_routes_everything_behind_prefix() {
         let dto = CfgAsteriskDto {
             enabled: true,
@@ -363,6 +430,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `service_number_prefix_wildcard_matches_stripped_number` für Dienst number prefix wildcard matches stripped number aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn service_number_prefix_wildcard_matches_stripped_number() {
         let cfg = enabled_cfg(vec!["38*"]);
         assert_eq!(cfg.route_outbound_raw("91385"), Some("385".to_string()));

@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Einlesen und Prüfen der TETRA-Konfiguration.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::{collections::HashMap, time::Duration};
 
 use serde::Deserialize;
@@ -7,6 +10,8 @@ use crate::bluestation::SecretField;
 
 /// Brew protocol (TetraPack/BrandMeister) configuration
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für cfg Brew-Verbindung in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgBrew {
     /// TetraPack server hostname or IP
     pub host: String,
@@ -51,6 +56,8 @@ pub struct CfgBrew {
 }
 
 #[derive(Default, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für cfg Brew-Verbindung dto in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgBrewDto {
     /// TetraPack server hostname or IP
     pub host: String,
@@ -111,11 +118,17 @@ pub struct CfgBrewDto {
     pub extra: HashMap<String, Value>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `CfgBrew`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl CfgBrew {
+    // Was: Prüft, ob local Teilnehmerkennung (ISSI) allowlist zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     pub fn has_local_issi_allowlist(&self) -> bool {
         self.local_issi_allowlist.as_ref().is_some_and(|issis| !issis.is_empty())
     }
 
+    // Was: Führt den Arbeitsschritt `local_issi_allowed` für local Teilnehmerkennung (ISSI) allowed aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn local_issi_allowed(&self, issi: u32) -> bool {
         if self.local_issi_blocklist.contains(&issi) {
             return false;
@@ -126,6 +139,8 @@ impl CfgBrew {
             .map_or(true, |allowlist| allowlist.contains(&issi))
     }
 
+    // Was: Führt den Arbeitsschritt `effective_local_issi_allowlist` für effective local Teilnehmerkennung (ISSI) allowlist aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn effective_local_issi_allowlist(&self) -> Option<Vec<u32>> {
         self.local_issi_allowlist.as_ref().map(|allowlist| {
             allowlist
@@ -137,39 +152,57 @@ impl CfgBrew {
     }
 }
 
+// Was: Führt den Arbeitsschritt `default_brew_port` für default Brew-Verbindung port aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_brew_port() -> u16 {
     443
 }
 
+// Was: Führt den Arbeitsschritt `default_brew_reconnect_delay` für default Brew-Verbindung reconnect delay aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_brew_reconnect_delay() -> u64 {
     15
 }
 
+// Was: Führt den Arbeitsschritt `default_brew_feature_sds_enabled` für default Brew-Verbindung feature TETRA-Kurznachricht (SDS) enabled aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_brew_feature_sds_enabled() -> bool {
     true
 }
 
+// Was: Führt den Arbeitsschritt `default_subscriber_type_deregister` für default Teilnehmer type deregister aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_subscriber_type_deregister() -> u8 {
     0
 }
 
+// Was: Führt den Arbeitsschritt `default_subscriber_type_register` für default Teilnehmer type register aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_subscriber_type_register() -> u8 {
     1
 }
 
+// Was: Führt den Arbeitsschritt `default_subscriber_type_reregister` für default Teilnehmer type reregister aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_subscriber_type_reregister() -> u8 {
     2
 }
 
+// Was: Führt den Arbeitsschritt `default_subscriber_type_affiliate` für default Teilnehmer type affiliate aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_subscriber_type_affiliate() -> u8 {
     8
 }
 
+// Was: Führt den Arbeitsschritt `default_subscriber_type_deaffiliate` für default Teilnehmer type deaffiliate aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_subscriber_type_deaffiliate() -> u8 {
     9
 }
 
 /// Convert a CfgBrewDto (from TOML) into a CfgBrew (used in the stack config)
+// Was: Diese Funktion wendet Brew-Verbindung patch.
+// Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
 pub fn apply_brew_patch(src: CfgBrewDto) -> CfgBrew {
     CfgBrew {
         host: src.host,

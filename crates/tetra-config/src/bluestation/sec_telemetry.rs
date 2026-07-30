@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Einlesen und Prüfen der TETRA-Konfiguration.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::HashMap;
 
 use serde::Deserialize;
@@ -5,6 +8,8 @@ use toml::Value;
 
 /// Telemetry endpoint configuration
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für cfg Telemetrie in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgTelemetry {
     /// Telemetry server hostname or IP
     pub host: String,
@@ -19,6 +24,8 @@ pub struct CfgTelemetry {
 }
 
 #[derive(Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für cfg Telemetrie dto in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgTelemetryDto {
     /// Telemetry server hostname or IP
     pub host: String,
@@ -41,6 +48,8 @@ pub struct CfgTelemetryDto {
 /// Convert a [`CfgTelemetryDto`] (from TOML) into a [`CfgTelemetry`].
 ///
 /// Returns an error string if `ca_cert` is set but `use_tls` is `false`.
+// Was: Diese Funktion wendet Telemetrie patch.
+// Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
 pub fn apply_telemetry_patch(src: CfgTelemetryDto) -> Result<CfgTelemetry, String> {
     if src.ca_cert.is_some() && !src.use_tls {
         return Err("telemetry: ca_cert requires use_tls = true".to_string());

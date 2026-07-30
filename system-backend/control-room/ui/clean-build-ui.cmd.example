@@ -1,9 +1,28 @@
 @echo off
+REM NETCORE-KOMMENTAR - Was: Enthält einen Teil der Logik für Leitstellenfunktionen und Bedienoberflächen.
+REM NETCORE-KOMMENTAR - Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+REM Was: Wechselt in das Wurzelverzeichnis des Projekts.
+REM Warum: Nachfolgende Pfade und Cargo-Befehle funktionieren dadurch unabhängig vom Startordner.
 cd /d "%~dp0\..\..\..\.."
+REM Was: Beendet eine noch laufende alte Programmversion.
+REM Warum: Windows kann die Binärdatei sonst beim Neubau oder Ersetzen sperren.
 taskkill /IM netcore-control-room-ui.exe /F 2>NUL
+REM Was: Baut oder bereinigt die Rust-Anwendung.
+REM Warum: Ein reproduzierbarer Build verhindert, dass alte Binärdateien mit dem neuen Quellstand verwechselt werden.
 cargo clean --manifest-path system-backend\control-room\ui\Cargo.toml
+REM Was: Entfernt ein altes Build-Verzeichnis.
+REM Warum: Zwischenergebnisse können sonst einen wirklich sauberen Neubau verhindern.
 rmdir /S /Q system-backend\control-room\ui\target 2>NUL
+REM Was: Löscht eine alte erzeugte Datei.
+REM Warum: Der nächste Build soll nicht versehentlich eine veraltete Binärdatei verwenden.
 del /F /Q target\release\netcore-control-room-ui.exe 2>NUL
+REM Was: Baut oder bereinigt die Rust-Anwendung.
+REM Warum: Ein reproduzierbarer Build verhindert, dass alte Binärdateien mit dem neuen Quellstand verwechselt werden.
 cargo build --release --manifest-path system-backend\control-room\ui\Cargo.toml
+REM Was: Führt einen ergänzenden PowerShell-Prüfschritt aus.
+REM Warum: Windows-Dateien und Build-Ergebnisse lassen sich damit gezielt finden oder anzeigen.
 powershell -NoProfile -Command "Get-ChildItem -Recurse -Filter netcore-control-room-ui.exe | Sort-Object LastWriteTime -Descending | Select-Object LastWriteTime,FullName"
+REM Was: Hält das Fenster offen, bis eine Taste gedrückt wird.
+REM Warum: Fehler- und Statusmeldungen bleiben dadurch für den Benutzer sichtbar.
 pause

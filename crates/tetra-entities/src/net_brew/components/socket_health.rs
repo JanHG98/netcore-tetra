@@ -1,5 +1,10 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::time::Instant;
 
+// Was: Führt den Arbeitsschritt `health_check` für health check aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn health_check() {
     let now = Instant::now();
     if now.duration_since(last_ping_at) >= heartbeat_interval {

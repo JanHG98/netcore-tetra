@@ -1,9 +1,14 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt::Display;
 
 use tetra_core::{BitBuffer, assert_warn, pdu_parse_error::PduParseErr};
 
 /// Clause 21.5.5 TS_COMMON_FRAMES
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für ts common frames in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TsCommonFrames {
     // 1
     pub f1: bool,
@@ -47,7 +52,11 @@ pub struct TsCommonFrames {
     // pub f20: bool,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `TsCommonFrames`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl TsCommonFrames {
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buf: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let f1 = buf.read_field(1, "f1")? != 0;
         let f2 = buf.read_field(1, "f2")? != 0;
@@ -92,6 +101,8 @@ impl TsCommonFrames {
         })
     }
 
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buf: &mut BitBuffer) {
         buf.write_bits(self.f1 as u8 as u64, 1);
         buf.write_bits(self.f2 as u8 as u64, 1);
@@ -117,7 +128,11 @@ impl TsCommonFrames {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Display for TsCommonFrames`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Display for TsCommonFrames {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,

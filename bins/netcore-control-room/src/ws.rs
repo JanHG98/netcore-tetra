@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für ws.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::net::TcpStream;
 use std::sync::{Arc, Mutex, mpsc};
 use std::time::Duration;
@@ -12,9 +15,15 @@ use tungstenite::http::StatusCode;
 use crate::auth::{AuthRole, AuthState};
 use crate::state::{SharedControlRoom, UiMessage, now_iso};
 
+// Was: Legt den festen Wert `WS_READ_TIMEOUT` für ws read timeout fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const WS_READ_TIMEOUT: Duration = Duration::from_millis(100);
+// Was: Legt den festen Wert `NODE_PING_INTERVAL` für Netzknoten ping interval fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const NODE_PING_INTERVAL: Duration = Duration::from_secs(15);
 
+// Was: Führt den Arbeitsschritt `reject_websocket` für reject websocket aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn reject_websocket(status: StatusCode, message: &str) -> ErrorResponse {
     tungstenite::http::Response::builder()
         .status(status)
@@ -25,6 +34,8 @@ fn reject_websocket(status: StatusCode, message: &str) -> ErrorResponse {
         .expect("valid websocket rejection response")
 }
 
+// Was: Diese Funktion verarbeitet websocket stream.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 pub fn handle_websocket_stream(stream: TcpStream, state: SharedControlRoom, node_path: String, ui_path: String, auth: AuthState) {
     let peer = stream.peer_addr().ok();
     let selected_path = Arc::new(Mutex::new(String::new()));
@@ -79,6 +90,8 @@ pub fn handle_websocket_stream(stream: TcpStream, state: SharedControlRoom, node
         Ok(response)
     };
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let ws = match accept_hdr(stream, callback) {
         Ok(ws) => ws,
         Err(e) => {
@@ -101,6 +114,8 @@ pub fn handle_websocket_stream(stream: TcpStream, state: SharedControlRoom, node
     }
 }
 
+// Was: Diese Funktion verarbeitet Netzknoten websocket.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 fn handle_node_websocket(mut ws: WebSocket<TcpStream>, state: SharedControlRoom) {
     let _ = ws.get_mut().set_read_timeout(Some(WS_READ_TIMEOUT));
     let _ = ws.get_mut().set_nodelay(true);
@@ -110,8 +125,12 @@ fn handle_node_websocket(mut ws: WebSocket<TcpStream>, state: SharedControlRoom)
     let mut node_id: Option<String> = None;
     let mut last_ping = std::time::Instant::now();
 
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
     loop {
         // First drain commands that were queued by the HTTP/API side.
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while let Ok(msg) = rx.try_recv() {
             let payload = codec.encode_downlink(&msg);
             if let Err(e) = ws.send(Message::Binary(payload.into())) {
@@ -135,6 +154,8 @@ fn handle_node_websocket(mut ws: WebSocket<TcpStream>, state: SharedControlRoom)
             last_ping = std::time::Instant::now();
         }
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match ws.read() {
             Ok(Message::Binary(data)) => match codec.decode_uplink(data.as_ref()) {
                 Ok(message) => {
@@ -197,12 +218,16 @@ fn handle_node_websocket(mut ws: WebSocket<TcpStream>, state: SharedControlRoom)
     }
 }
 
+// Was: Diese Funktion räumt Netzknoten.
+// Warum: Zurückgelassene Ressourcen würden sonst spätere Starts oder Verbindungen stören.
 fn cleanup_node(state: &SharedControlRoom, node_id: &Option<String>) {
     if let Some(id) = node_id {
         state.unregister_node_sender(id);
     }
 }
 
+// Was: Diese Funktion verarbeitet ui websocket.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 fn handle_ui_websocket(mut ws: WebSocket<TcpStream>, state: SharedControlRoom) {
     let _ = ws.get_mut().set_read_timeout(Some(WS_READ_TIMEOUT));
     let _ = ws.get_mut().set_nodelay(true);
@@ -210,8 +235,14 @@ fn handle_ui_websocket(mut ws: WebSocket<TcpStream>, state: SharedControlRoom) {
     let (ui_id, rx) = state.register_ui();
     tracing::info!(ui_id = %ui_id, "ui websocket registered");
 
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
     loop {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while let Ok(msg) = rx.try_recv() {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let payload = match serde_json::to_vec(&msg) {
                 Ok(payload) => payload,
                 Err(e) => {
@@ -226,6 +257,8 @@ fn handle_ui_websocket(mut ws: WebSocket<TcpStream>, state: SharedControlRoom) {
             }
         }
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match ws.read() {
             Ok(Message::Ping(payload)) => {
                 let _ = ws.send(Message::Pong(payload));

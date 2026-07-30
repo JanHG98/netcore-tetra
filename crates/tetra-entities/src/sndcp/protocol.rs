@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! ETSI EN 300 392-2 clause 28 SNDCP wire primitives.
 //!
 //! This module deliberately keeps optional Type-2/Type-3 information elements as
@@ -10,51 +13,109 @@ use tetra_core::BitBuffer;
 use super::qos::{QosError, QosProfile};
 use super::resource::{PhaseModulationResourceRequest, ResourceError};
 
+// Was: Legt den festen Wert `SN_ACTIVATE_PDP_CONTEXT` für sn activate PDP-Paketdatenkontext Kontext fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const SN_ACTIVATE_PDP_CONTEXT: u8 = 0;
+// Was: Legt den festen Wert `SN_DEACTIVATE_PDP_CONTEXT_ACCEPT` für sn deactivate PDP-Paketdatenkontext Kontext accept fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const SN_DEACTIVATE_PDP_CONTEXT_ACCEPT: u8 = 1;
+// Was: Legt den festen Wert `SN_DEACTIVATE_PDP_CONTEXT_DEMAND` für sn deactivate PDP-Paketdatenkontext Kontext demand fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const SN_DEACTIVATE_PDP_CONTEXT_DEMAND: u8 = 2;
+// Was: Legt den festen Wert `SN_ACTIVATE_PDP_CONTEXT_REJECT` für sn activate PDP-Paketdatenkontext Kontext reject fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const SN_ACTIVATE_PDP_CONTEXT_REJECT: u8 = 3;
+// Was: Legt den festen Wert `SN_UNITDATA` für sn unitdata fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const SN_UNITDATA: u8 = 4;
+// Was: Legt den festen Wert `SN_DATA` für sn data fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const SN_DATA: u8 = 5;
+// Was: Legt den festen Wert `SN_DATA_TRANSMIT_REQUEST` für sn data transmit request fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const SN_DATA_TRANSMIT_REQUEST: u8 = 6;
+// Was: Legt den festen Wert `SN_DATA_TRANSMIT_RESPONSE` für sn data transmit response fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const SN_DATA_TRANSMIT_RESPONSE: u8 = 7;
+// Was: Legt den festen Wert `SN_END_OF_DATA` für sn end of data fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const SN_END_OF_DATA: u8 = 8;
+// Was: Legt den festen Wert `SN_RECONNECT` für sn reconnect fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const SN_RECONNECT: u8 = 9;
+// Was: Legt den festen Wert `SN_PAGE` für sn page fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const SN_PAGE: u8 = 10;
+// Was: Legt den festen Wert `SN_NOT_SUPPORTED` für sn not supported fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const SN_NOT_SUPPORTED: u8 = 11;
+// Was: Legt den festen Wert `SN_DATA_PRIORITY` für sn data Priorität fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const SN_DATA_PRIORITY: u8 = 12;
+// Was: Legt den festen Wert `SN_MODIFY` für sn modify fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const SN_MODIFY: u8 = 13;
 
+// Was: Legt den festen Wert `DATA_PRIORITY_ACKNOWLEDGEMENT` für data Priorität acknowledgement fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const DATA_PRIORITY_ACKNOWLEDGEMENT: u8 = 0;
+// Was: Legt den festen Wert `DATA_PRIORITY_INFORMATION` für data Priorität information fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const DATA_PRIORITY_INFORMATION: u8 = 1;
+// Was: Legt den festen Wert `DATA_PRIORITY_REQUEST` für data Priorität request fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const DATA_PRIORITY_REQUEST: u8 = 2;
 
+// Was: Legt den festen Wert `MODIFY_REQUEST` für modify request fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const MODIFY_REQUEST: u8 = 0;
+// Was: Legt den festen Wert `MODIFY_RESPONSE` für modify response fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const MODIFY_RESPONSE: u8 = 1;
+// Was: Legt den festen Wert `MODIFY_AVAILABILITY` für modify availability fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const MODIFY_AVAILABILITY: u8 = 3;
+// Was: Legt den festen Wert `MODIFY_USAGE` für modify usage fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const MODIFY_USAGE: u8 = 4;
 
+// Was: Legt den festen Wert `SNDCP_VERSION_1` für SNDCP-Paketdaten version 1 fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const SNDCP_VERSION_1: u8 = 1;
+// Was: Legt den festen Wert `PCOMP_NONE` für pcomp none fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const PCOMP_NONE: u8 = 0;
+// Was: Legt den festen Wert `DCOMP_NONE` für dcomp none fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const DCOMP_NONE: u8 = 0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für sn direction auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum SnDirection {
     Uplink,
     Downlink,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
+// Was: Bündelt die zusammengehörigen Werte für raw bits in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct RawBits {
     pub bytes: Vec<u8>,
     pub bit_len: usize,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `RawBits`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl RawBits {
+    // Was: Führt den Arbeitsschritt `empty` für empty aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn empty() -> Self {
         Self::default()
     }
 
+    // Was: Wandelt Eingangsdaten in remaining um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_remaining(reader: &BitBuffer) -> Self {
         let mut copy = BitBuffer::from_bitbuffer_pos(reader);
         let bit_len = copy.get_len_remaining();
@@ -65,7 +126,11 @@ impl RawBits {
         Self { bytes, bit_len }
     }
 
+    // Was: Diese Funktion schreibt to.
+    // Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
     pub fn write_to(&self, out: &mut BitBuffer) {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for bit_index in 0..self.bit_len {
             let byte = self.bytes.get(bit_index / 8).copied().unwrap_or(0);
             let bit = (byte >> (7 - (bit_index % 8))) & 1;
@@ -73,8 +138,12 @@ impl RawBits {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `bit_string` für bit string aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn bit_string(&self) -> String {
         let mut out = String::with_capacity(self.bit_len);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for i in 0..self.bit_len {
             let b = self.bytes.get(i / 8).copied().unwrap_or(0);
             out.push(if ((b >> (7 - (i % 8))) & 1) != 0 { '1' } else { '0' });
@@ -82,6 +151,8 @@ impl RawBits {
         out
     }
 
+    // Was: Wandelt Eingangsdaten in reader exact um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(crate) fn from_reader_exact(reader: &mut BitBuffer, bit_len: usize) -> Result<Self, ProtocolError> {
         if reader.get_len_remaining() < bit_len {
             return Err(ProtocolError::TooShort("raw_bits"));
@@ -93,6 +164,8 @@ impl RawBits {
         Ok(Self { bytes, bit_len })
     }
 
+    // Was: Führt den Arbeitsschritt `reader` für reader aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(crate) fn reader(&self) -> BitBuffer {
         let mut source = BitBuffer::from_bytes(&self.bytes);
         source.seek(0);
@@ -106,23 +179,33 @@ impl RawBits {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für type34 element in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct Type34Element {
     pub identifier: u8,
     pub payload: RawBits,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für optional elements in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct OptionalElements {
     pub type2: Vec<Option<RawBits>>,
     pub type34: Vec<Type34Element>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `OptionalElements`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl OptionalElements {
+    // Was: Diese Funktion sucht type34.
+    // Warum: Die Suchlogik bleibt damit wiederverwendbar und muss nicht an mehreren Stellen kopiert werden.
     pub fn find_type34(&self, identifier: u8) -> Option<&RawBits> {
         self.type34.iter().find(|element| element.identifier == identifier).map(|element| &element.payload)
     }
 }
 
+// Was: Diese Funktion liest und prüft optional elements.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 pub fn parse_optional_elements(raw: &RawBits, type2_lengths: &[usize]) -> Result<OptionalElements, ProtocolError> {
     if raw.bit_len == 0 {
         return Ok(OptionalElements { type2: vec![None; type2_lengths.len()], type34: Vec::new() });
@@ -136,12 +219,16 @@ pub fn parse_optional_elements(raw: &RawBits, type2_lengths: &[usize]) -> Result
         return Ok(OptionalElements { type2: vec![None; type2_lengths.len()], type34: Vec::new() });
     }
     let mut type2 = Vec::with_capacity(type2_lengths.len());
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for length in type2_lengths.iter().copied() {
         let present = read(&mut reader, 1, "optional.p_bit")? != 0;
         type2.push(if present { Some(RawBits::from_reader_exact(&mut reader, length)?) } else { None });
     }
     let mut type34 = Vec::new();
     let mut more = read(&mut reader, 1, "optional.m_bit")? != 0;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while more {
         let identifier = read_u8(&mut reader, 4, "optional.type34_identifier")?;
         let length = read(&mut reader, 11, "optional.type34_length")? as usize;
@@ -155,18 +242,24 @@ pub fn parse_optional_elements(raw: &RawBits, type2_lengths: &[usize]) -> Result
     Ok(OptionalElements { type2, type34 })
 }
 
+// Was: Diese Funktion kodiert optional elements.
+// Warum: Alle Gegenstellen erhalten dadurch dasselbe erwartete Protokollformat.
 pub fn encode_optional_elements(type2: &[Option<RawBits>], type34: &[Type34Element]) -> RawBits {
     if type2.iter().all(Option::is_none) && type34.is_empty() {
         return RawBits { bytes: vec![0], bit_len: 1 };
     }
     let mut out = BitBuffer::new_autoexpand(128);
     out.write_bits(1, 1);
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for element in type2 {
         out.write_bits(element.is_some() as u64, 1);
         if let Some(element) = element {
             element.write_to(&mut out);
         }
     }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (index, element) in type34.iter().enumerate() {
         assert!(element.identifier <= 0x0f, "Type-3/4 identifier exceeds four bits");
         assert!(element.payload.bit_len <= 0x07ff, "Type-3/4 payload exceeds 2047 bits");
@@ -187,6 +280,8 @@ pub fn encode_optional_elements(type2: &[Option<RawBits>], type34: &[Type34Eleme
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für activate address demand auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum ActivateAddressDemand {
     Ipv4Static([u8; 4]),
     Ipv4Dynamic,
@@ -198,6 +293,8 @@ pub enum ActivateAddressDemand {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für activate address accept auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum ActivateAddressAccept {
     None,
     Ipv4Static([u8; 4]),
@@ -206,6 +303,8 @@ pub enum ActivateAddressAccept {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für activate demand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ActivateDemand {
     pub version: u8,
     pub nsapi: u8,
@@ -217,11 +316,17 @@ pub struct ActivateDemand {
     pub optional: RawBits,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `ActivateDemand`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl ActivateDemand {
+    // Was: Führt den Arbeitsschritt `optional_elements` für optional elements aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn optional_elements(&self) -> Result<OptionalElements, ProtocolError> {
         parse_optional_elements(&self.optional, &[16])
     }
 
+    // Was: Führt den Arbeitsschritt `qos` für Dienstgüte (QoS) aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn qos(&self) -> Result<Option<QosProfile>, ProtocolError> {
         let elements = self.optional_elements()?;
         elements.find_type34(3).map(QosProfile::decode).transpose().map_err(Into::into)
@@ -229,6 +334,8 @@ impl ActivateDemand {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für rfc2507 negotiation in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct Rfc2507Negotiation {
     pub tcp_slots: u8,
     pub non_tcp_slots: u16,
@@ -238,6 +345,8 @@ pub struct Rfc2507Negotiation {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für activate accept in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ActivateAccept {
     pub nsapi: u8,
     pub pdu_priority_max: u8,
@@ -252,11 +361,17 @@ pub struct ActivateAccept {
     pub optional: RawBits,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `ActivateAccept`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl ActivateAccept {
+    // Was: Führt den Arbeitsschritt `optional_elements` für optional elements aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn optional_elements(&self) -> Result<OptionalElements, ProtocolError> {
         parse_optional_elements(&self.optional, &[16, 98, 71])
     }
 
+    // Was: Führt den Arbeitsschritt `qos` für Dienstgüte (QoS) aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn qos(&self) -> Result<Option<QosProfile>, ProtocolError> {
         let elements = self.optional_elements()?;
         elements.find_type34(3).map(QosProfile::decode).transpose().map_err(Into::into)
@@ -264,6 +379,8 @@ impl ActivateAccept {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für activate reject in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ActivateReject {
     pub nsapi: u8,
     pub cause: u8,
@@ -271,6 +388,8 @@ pub struct ActivateReject {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für Benutzer data in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct UserData {
     pub acknowledged: bool,
     pub nsapi: u8,
@@ -280,6 +399,8 @@ pub struct UserData {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für data transmit request in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DataTransmitRequest {
     pub nsapis: Vec<u8>,
     pub logical_link_status: bool,
@@ -288,13 +409,19 @@ pub struct DataTransmitRequest {
     pub optional: RawBits,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `DataTransmitRequest`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl DataTransmitRequest {
+    // Was: Führt den Arbeitsschritt `network_endpoint_id` für network endpoint Kennung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn network_endpoint_id(&self) -> Option<u16> {
         parse_optional_type2_u16(&self.optional, &[16, 20], 0)
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für data transmit response in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DataTransmitResponse {
     pub nsapis: Vec<u8>,
     pub accepted: bool,
@@ -302,38 +429,54 @@ pub struct DataTransmitResponse {
     pub optional: RawBits,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `DataTransmitResponse`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl DataTransmitResponse {
+    // Was: Führt den Arbeitsschritt `network_endpoint_id` für network endpoint Kennung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn network_endpoint_id(&self) -> Option<u16> {
         parse_optional_type2_u16(&self.optional, &[16], 0)
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für deactivate in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct Deactivate {
     pub deactivation_type: u8,
     pub nsapi: Option<u8>,
     pub optional: RawBits,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Deactivate`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Deactivate {
+    // Was: Führt den Arbeitsschritt `network_endpoint_id` für network endpoint Kennung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn network_endpoint_id(&self) -> Option<u16> {
         parse_optional_type2_u16(&self.optional, &[16, 11], 0)
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für end of data in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct EndOfData {
     pub immediate_service_change: bool,
     pub optional: RawBits,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für reconnect SNDCP-Kontextkennung (NSAPI) in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ReconnectNsapi {
     pub nsapi: u8,
     pub data_to_send: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für reconnect in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct Reconnect {
     /// Ordered by the priority sent by the MS. Duplicate NSAPIs are removed,
     /// preserving the first occurrence as required by EN 300 392-2.
@@ -343,34 +486,50 @@ pub struct Reconnect {
     pub optional: RawBits,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Reconnect`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Reconnect {
+    // Was: Führt den Arbeitsschritt `network_endpoint_id` für network endpoint Kennung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn network_endpoint_id(&self) -> Option<u16> {
         parse_optional_type2_u16(&self.optional, &[16, 19], 0)
     }
 
+    // Was: Führt den Arbeitsschritt `any_data_to_send` für any data to send aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn any_data_to_send(&self) -> bool {
         self.nsapis.iter().any(|entry| entry.data_to_send)
     }
 
+    // Was: Führt den Arbeitsschritt `nsapi_values` für SNDCP-Kontextkennung (NSAPI) values aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn nsapi_values(&self) -> Vec<u8> {
         self.nsapis.iter().map(|entry| entry.nsapi).collect()
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für page request in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PageRequest {
     pub nsapi: u8,
     pub reply_requested: bool,
     pub optional: RawBits,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `PageRequest`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl PageRequest {
+    // Was: Führt den Arbeitsschritt `network_endpoint_id` für network endpoint Kennung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn network_endpoint_id(&self) -> Option<u16> {
         parse_optional_type2_u16(&self.optional, &[16], 0)
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für page response in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PageResponse {
     pub nsapi: u8,
     pub pd_service_available: bool,
@@ -380,13 +539,19 @@ pub struct PageResponse {
     pub optional: RawBits,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `PageResponse`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl PageResponse {
+    // Was: Führt den Arbeitsschritt `network_endpoint_id` für network endpoint Kennung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn network_endpoint_id(&self) -> Option<u16> {
         parse_optional_type2_u16(&self.optional, &[16, 18], 0)
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für data Priorität details in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DataPriorityDetails {
     pub network_default: u8,
     pub lifetime: u8,
@@ -394,7 +559,11 @@ pub struct DataPriorityDetails {
     pub random_access_delay: u8,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `DataPriorityDetails`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl DataPriorityDetails {
+    // Was: Führt den Arbeitsschritt `default_for_network` für default for network aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn default_for_network(network_default: u8) -> Self {
         Self {
             network_default: network_default.min(7),
@@ -406,6 +575,8 @@ impl DataPriorityDetails {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für data Priorität auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum DataPriority {
     Acknowledgement {
         accepted: bool,
@@ -426,6 +597,8 @@ pub enum DataPriority {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für modify auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum Modify {
     Request {
         nsapi: u8,
@@ -458,6 +631,8 @@ pub enum Modify {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für sn Protokollnachricht (PDU) auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum SnPdu {
     ActivateDemand(ActivateDemand),
     ActivateAccept(ActivateAccept),
@@ -479,6 +654,8 @@ pub enum SnPdu {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für protocol error auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum ProtocolError {
     TooShort(&'static str),
     InvalidNsapi(u8),
@@ -490,22 +667,36 @@ pub enum ProtocolError {
     MalformedOptional(&'static str),
 }
 
+// Was: Implementiert das zugehörige Verhalten für `From<QosError> for ProtocolError`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl From<QosError> for ProtocolError {
+    // Was: Wandelt Eingangsdaten in den vorgesehenen Arbeitsschritt um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn from(value: QosError) -> Self { Self::Qos(value) }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `From<ResourceError> for ProtocolError`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl From<ResourceError> for ProtocolError {
+    // Was: Wandelt Eingangsdaten in den vorgesehenen Arbeitsschritt um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn from(value: ResourceError) -> Self { Self::Resource(value) }
 }
 
+// Was: Diese Funktion liest den vorgesehenen Arbeitsschritt.
+// Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
 fn read(reader: &mut BitBuffer, bits: usize, name: &'static str) -> Result<u64, ProtocolError> {
     reader.read_bits(bits).ok_or(ProtocolError::TooShort(name))
 }
 
+// Was: Diese Funktion liest u8.
+// Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
 fn read_u8(reader: &mut BitBuffer, bits: usize, name: &'static str) -> Result<u8, ProtocolError> {
     Ok(read(reader, bits, name)? as u8)
 }
 
+// Was: Diese Funktion liest ipv4.
+// Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
 fn read_ipv4(reader: &mut BitBuffer) -> Result<[u8; 4], ProtocolError> {
     Ok([
         read_u8(reader, 8, "ipv4[0]")?,
@@ -515,6 +706,8 @@ fn read_ipv4(reader: &mut BitBuffer) -> Result<[u8; 4], ProtocolError> {
     ])
 }
 
+// Was: Diese Funktion prüft SNDCP-Kontextkennung (NSAPI).
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_nsapi(nsapi: u8) -> Result<u8, ProtocolError> {
     if (1..=14).contains(&nsapi) {
         Ok(nsapi)
@@ -524,11 +717,15 @@ fn validate_nsapi(nsapi: u8) -> Result<u8, ProtocolError> {
 }
 
 
+// Was: Diese Funktion liest und prüft optional type2 u16.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_optional_type2_u16(raw: &RawBits, type2_lengths: &[usize], target_index: usize) -> Option<u16> {
     let mut reader = raw.reader();
     if raw.bit_len == 0 || reader.read_bits(1)? != 1 {
         return None;
     }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (index, length) in type2_lengths.iter().copied().enumerate() {
         let present = reader.read_bits(1)? != 0;
         if !present {
@@ -542,6 +739,8 @@ fn parse_optional_type2_u16(raw: &RawBits, type2_lengths: &[usize], target_index
     None
 }
 
+// Was: Diese Funktion liest und prüft optional type4 nsapis.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_optional_type4_nsapis(raw: &RawBits, type2_lengths: &[usize], type4_identifier: u8, entry_bits: usize) -> Vec<u8> {
     let mut reader = raw.reader();
     if raw.bit_len == 0 || reader.read_bits(1) != Some(1) {
@@ -549,6 +748,8 @@ fn parse_optional_type4_nsapis(raw: &RawBits, type2_lengths: &[usize], type4_ide
     }
     // Type-2 P-bits appear in the same order as the PDU table. Their contents are
     // irrelevant to the NSAPI list but must be skipped before the M-bit.
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for length in type2_lengths {
         let Some(present) = reader.read_bits(1) else {
             return Vec::new();
@@ -557,11 +758,15 @@ fn parse_optional_type4_nsapis(raw: &RawBits, type2_lengths: &[usize], type4_ide
             return Vec::new();
         }
     }
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let mut more = match reader.read_bits(1) {
         Some(value) => value != 0,
         None => return Vec::new(),
     };
     let mut result = Vec::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while more {
         let Some(identifier) = reader.read_bits(4).map(|value| value as u8) else {
             break;
@@ -575,6 +780,8 @@ fn parse_optional_type4_nsapis(raw: &RawBits, type2_lengths: &[usize], type4_ide
         let payload_start = reader.get_pos();
         if identifier == type4_identifier && length >= 6 {
             let count = reader.read_bits(6).unwrap_or(0) as usize;
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for _ in 0..count {
                 if reader.get_pos().saturating_sub(payload_start) + entry_bits > length {
                     break;
@@ -598,12 +805,16 @@ fn parse_optional_type4_nsapis(raw: &RawBits, type2_lengths: &[usize], type4_ide
     result
 }
 
+// Was: Diese Funktion liest und prüft optional reconnect nsapis.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_optional_reconnect_nsapis(raw: &RawBits) -> Vec<ReconnectNsapi> {
     let mut reader = raw.reader();
     if raw.bit_len == 0 || reader.read_bits(1) != Some(1) {
         return Vec::new();
     }
     // Optional Type-2 fields in table 28.42: SNEI (16) and reserved (19).
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for length in [16usize, 19] {
         let Some(present) = reader.read_bits(1) else {
             return Vec::new();
@@ -614,6 +825,8 @@ fn parse_optional_reconnect_nsapis(raw: &RawBits) -> Vec<ReconnectNsapi> {
     }
     let mut more = reader.read_bits(1).unwrap_or(0) != 0;
     let mut result = Vec::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while more {
         let Some(identifier) = reader.read_bits(4).map(|value| value as u8) else {
             break;
@@ -627,6 +840,8 @@ fn parse_optional_reconnect_nsapis(raw: &RawBits) -> Vec<ReconnectNsapi> {
         let payload_start = reader.get_pos();
         if identifier == 5 && length >= 6 {
             let count = reader.read_bits(6).unwrap_or(0) as usize;
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for _ in 0..count {
                 if reader.get_pos().saturating_sub(payload_start) + 5 > length {
                     break;
@@ -647,6 +862,8 @@ fn parse_optional_reconnect_nsapis(raw: &RawBits) -> Vec<ReconnectNsapi> {
     result
 }
 
+// Was: Diese Funktion schreibt optional type4 nsapis.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 fn write_optional_type4_nsapis(
     out: &mut BitBuffer,
     type2_count: usize,
@@ -656,6 +873,8 @@ fn write_optional_type4_nsapis(
     entry_tail_value: u64,
 ) {
     let mut values = Vec::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for nsapi in nsapis.iter().copied() {
         if (1..=14).contains(&nsapi) && !values.contains(&nsapi) {
             values.push(nsapi);
@@ -666,6 +885,8 @@ fn write_optional_type4_nsapis(
         return;
     }
     out.write_bits(1, 1); // optional elements follow
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for _ in 0..type2_count {
         out.write_bits(0, 1); // optional Type-2 element absent
     }
@@ -675,6 +896,8 @@ fn write_optional_type4_nsapis(
     let length = 6 + values.len() * entry_bits;
     out.write_bits(length as u64, 11);
     out.write_bits(values.len().min(63) as u64, 6);
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for nsapi in values.into_iter().take(63) {
         out.write_bits(u64::from(nsapi), 4);
         if entry_tail_bits != 0 {
@@ -684,8 +907,12 @@ fn write_optional_type4_nsapis(
     out.write_bits(0, 1); // no more Type-3/4 elements
 }
 
+// Was: Diese Funktion schreibt optional reconnect nsapis.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 fn write_optional_reconnect_nsapis(out: &mut BitBuffer, entries: &[ReconnectNsapi]) {
     let mut entries_unique = Vec::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for entry in entries.iter().copied() {
         if (1..=14).contains(&entry.nsapi)
             && !entries_unique.iter().any(|existing: &ReconnectNsapi| existing.nsapi == entry.nsapi)
@@ -708,6 +935,8 @@ fn write_optional_reconnect_nsapis(out: &mut BitBuffer, entries: &[ReconnectNsap
     out.write_bits(5, 4); // NSAPI for reconnection
     out.write_bits((6 + entries.len() * 5) as u64, 11);
     out.write_bits(entries.len() as u64, 6);
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for entry in entries {
         out.write_bits(u64::from(entry.nsapi), 4);
         out.write_bits(entry.data_to_send as u64, 1);
@@ -715,6 +944,8 @@ fn write_optional_reconnect_nsapis(out: &mut BitBuffer, entries: &[ReconnectNsap
     out.write_bits(0, 1);
 }
 
+// Was: Diese Funktion liest Priorität details.
+// Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
 fn read_priority_details(reader: &mut BitBuffer) -> Result<DataPriorityDetails, ProtocolError> {
     let network_default = read_u8(reader, 3, "network_default_data_priority")?;
     let lifetime = read_u8(reader, 6, "priority_lifetime")?;
@@ -724,6 +955,8 @@ fn read_priority_details(reader: &mut BitBuffer) -> Result<DataPriorityDetails, 
     Ok(DataPriorityDetails { network_default, lifetime, signalling_delay, random_access_delay })
 }
 
+// Was: Diese Funktion schreibt Priorität details.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 fn write_priority_details(out: &mut BitBuffer, details: DataPriorityDetails) {
     out.write_bits(u64::from(details.network_default.min(7)), 3);
     out.write_bits(u64::from(details.lifetime.min(63)), 6);
@@ -732,9 +965,13 @@ fn write_priority_details(out: &mut BitBuffer, details: DataPriorityDetails) {
     out.write_bits(0, 9);
 }
 
+// Was: Diese Funktion dekodiert den vorgesehenen Arbeitsschritt.
+// Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
 pub fn decode(pdu: &BitBuffer, direction: SnDirection) -> Result<SnPdu, ProtocolError> {
     let mut reader = BitBuffer::from_bitbuffer(pdu);
     let pdu_type = read_u8(&mut reader, 4, "sn_pdu_type")?;
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match pdu_type {
         SN_ACTIVATE_PDP_CONTEXT => match direction {
             SnDirection::Uplink => decode_activate_demand(&mut reader).map(SnPdu::ActivateDemand),
@@ -766,10 +1003,14 @@ pub fn decode(pdu: &BitBuffer, direction: SnDirection) -> Result<SnPdu, Protocol
     }
 }
 
+// Was: Diese Funktion dekodiert activate demand.
+// Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
 fn decode_activate_demand(reader: &mut BitBuffer) -> Result<ActivateDemand, ProtocolError> {
     let version = read_u8(reader, 4, "sndcp_version")?;
     let nsapi = validate_nsapi(read_u8(reader, 4, "nsapi")?)?;
     let atid = read_u8(reader, 3, "atid")?;
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let address = match atid {
         0 => ActivateAddressDemand::Ipv4Static(read_ipv4(reader)?),
         1 => ActivateAddressDemand::Ipv4Dynamic,
@@ -805,6 +1046,8 @@ fn decode_activate_demand(reader: &mut BitBuffer) -> Result<ActivateDemand, Prot
     })
 }
 
+// Was: Diese Funktion dekodiert activate accept.
+// Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
 fn decode_activate_accept(reader: &mut BitBuffer) -> Result<ActivateAccept, ProtocolError> {
     let nsapi = validate_nsapi(read_u8(reader, 4, "nsapi")?)?;
     let pdu_priority_max = read_u8(reader, 3, "pdu_priority_max")?;
@@ -812,6 +1055,8 @@ fn decode_activate_accept(reader: &mut BitBuffer) -> Result<ActivateAccept, Prot
     let standby_timer = read_u8(reader, 4, "standby_timer")?;
     let response_wait_timer = read_u8(reader, 4, "response_wait_timer")?;
     let tia = read_u8(reader, 3, "type_identifier_accept")?;
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let address = match tia {
         0 => ActivateAddressAccept::None,
         1 => ActivateAddressAccept::Ipv4Static(read_ipv4(reader)?),
@@ -847,6 +1092,8 @@ fn decode_activate_accept(reader: &mut BitBuffer) -> Result<ActivateAccept, Prot
     })
 }
 
+// Was: Diese Funktion dekodiert activate reject.
+// Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
 fn decode_activate_reject(reader: &mut BitBuffer) -> Result<ActivateReject, ProtocolError> {
     Ok(ActivateReject {
         nsapi: validate_nsapi(read_u8(reader, 4, "nsapi")?)?,
@@ -855,6 +1102,8 @@ fn decode_activate_reject(reader: &mut BitBuffer) -> Result<ActivateReject, Prot
     })
 }
 
+// Was: Diese Funktion dekodiert Benutzer data.
+// Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
 fn decode_user_data(reader: &mut BitBuffer, acknowledged: bool) -> Result<UserData, ProtocolError> {
     let nsapi = validate_nsapi(read_u8(reader, 4, "nsapi")?)?;
     let pcomp = read_u8(reader, 4, "pcomp")?;
@@ -866,6 +1115,8 @@ fn decode_user_data(reader: &mut BitBuffer, acknowledged: bool) -> Result<UserDa
     Ok(UserData { acknowledged, nsapi, pcomp, dcomp, n_pdu })
 }
 
+// Was: Diese Funktion dekodiert data transmit request.
+// Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
 fn decode_data_transmit_request(reader: &mut BitBuffer) -> Result<DataTransmitRequest, ProtocolError> {
     let primary = validate_nsapi(read_u8(reader, 4, "nsapi")?)?;
     let logical_link_status = read(reader, 1, "logical_link_status")? != 0;
@@ -878,6 +1129,8 @@ fn decode_data_transmit_request(reader: &mut BitBuffer) -> Result<DataTransmitRe
         (None, raw)
     };
     let mut nsapis = vec![primary];
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for nsapi in parse_optional_type4_nsapis(&optional, &[16, 20], 4, 6) {
         if !nsapis.contains(&nsapi) {
             nsapis.push(nsapi);
@@ -886,12 +1139,16 @@ fn decode_data_transmit_request(reader: &mut BitBuffer) -> Result<DataTransmitRe
     Ok(DataTransmitRequest { nsapis, logical_link_status, enhanced_service, resource_request, optional })
 }
 
+// Was: Diese Funktion dekodiert data transmit response.
+// Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
 fn decode_data_transmit_response(reader: &mut BitBuffer) -> Result<DataTransmitResponse, ProtocolError> {
     let primary = validate_nsapi(read_u8(reader, 4, "nsapi")?)?;
     let accepted = read(reader, 1, "accept_reject")? != 0;
     let reject_cause = if accepted { None } else { Some(read_u8(reader, 8, "reject_cause")?) };
     let raw = RawBits::from_remaining(reader);
     let mut nsapis = vec![primary];
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for nsapi in parse_optional_type4_nsapis(&raw, &[16], 4, 6) {
         if !nsapis.contains(&nsapi) {
             nsapis.push(nsapi);
@@ -900,8 +1157,12 @@ fn decode_data_transmit_response(reader: &mut BitBuffer) -> Result<DataTransmitR
     Ok(DataTransmitResponse { nsapis, accepted, reject_cause, optional: raw })
 }
 
+// Was: Diese Funktion dekodiert deactivate.
+// Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
 fn decode_deactivate(reader: &mut BitBuffer) -> Result<Deactivate, ProtocolError> {
     let deactivation_type = read_u8(reader, 8, "deactivation_type")?;
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let nsapi = match deactivation_type {
         0 => None,
         _ => Some(validate_nsapi(read_u8(reader, 4, "nsapi")?)?),
@@ -909,6 +1170,8 @@ fn decode_deactivate(reader: &mut BitBuffer) -> Result<Deactivate, ProtocolError
     Ok(Deactivate { deactivation_type, nsapi, optional: RawBits::from_remaining(reader) })
 }
 
+// Was: Diese Funktion dekodiert reconnect.
+// Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
 fn decode_reconnect(reader: &mut BitBuffer) -> Result<Reconnect, ProtocolError> {
     let data_to_send = read(reader, 1, "data_to_send")? != 0;
     let primary = if data_to_send {
@@ -928,6 +1191,8 @@ fn decode_reconnect(reader: &mut BitBuffer) -> Result<Reconnect, ProtocolError> 
         (None, raw)
     };
     let mut nsapis = primary.into_iter().collect::<Vec<_>>();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for entry in parse_optional_reconnect_nsapis(&optional) {
         if !nsapis.iter().any(|existing| existing.nsapi == entry.nsapi) {
             nsapis.push(entry);
@@ -936,6 +1201,8 @@ fn decode_reconnect(reader: &mut BitBuffer) -> Result<Reconnect, ProtocolError> 
     Ok(Reconnect { nsapis, enhanced_service, resource_request, optional })
 }
 
+// Was: Diese Funktion dekodiert page request.
+// Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
 fn decode_page_request(reader: &mut BitBuffer) -> Result<PageRequest, ProtocolError> {
     Ok(PageRequest {
         nsapi: validate_nsapi(read_u8(reader, 4, "nsapi")?)?,
@@ -944,6 +1211,8 @@ fn decode_page_request(reader: &mut BitBuffer) -> Result<PageRequest, ProtocolEr
     })
 }
 
+// Was: Diese Funktion dekodiert page response.
+// Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
 fn decode_page_response(reader: &mut BitBuffer) -> Result<PageResponse, ProtocolError> {
     let nsapi = validate_nsapi(read_u8(reader, 4, "nsapi")?)?;
     let pd_service_available = read(reader, 1, "pd_service_status")? != 0;
@@ -959,8 +1228,12 @@ fn decode_page_response(reader: &mut BitBuffer) -> Result<PageResponse, Protocol
     Ok(PageResponse { nsapi, pd_service_available, logical_link_status, enhanced_service, resource_request, optional })
 }
 
+// Was: Diese Funktion dekodiert data Priorität.
+// Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
 fn decode_data_priority(reader: &mut BitBuffer) -> Result<DataPriority, ProtocolError> {
     let subtype = read_u8(reader, 4, "data_priority_subtype")?;
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match subtype {
         DATA_PRIORITY_ACKNOWLEDGEMENT => {
             let accepted = read(reader, 1, "request_result")? == 0;
@@ -979,8 +1252,12 @@ fn decode_data_priority(reader: &mut BitBuffer) -> Result<DataPriority, Protocol
     }
 }
 
+// Was: Diese Funktion dekodiert modify.
+// Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
 fn decode_modify(reader: &mut BitBuffer) -> Result<Modify, ProtocolError> {
     let subtype = read_u8(reader, 4, "modify_subtype")?;
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match subtype {
         MODIFY_REQUEST => Ok(Modify::Request {
             nsapi: validate_nsapi(read_u8(reader, 4, "nsapi")?)?,
@@ -1017,6 +1294,8 @@ fn decode_modify(reader: &mut BitBuffer) -> Result<Modify, ProtocolError> {
     }
 }
 
+// Was: Diese Funktion schreibt optional or absent.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 fn write_optional_or_absent(out: &mut BitBuffer, optional: &RawBits) {
     if optional.bit_len == 0 {
         out.write_bits(0, 1);
@@ -1025,8 +1304,12 @@ fn write_optional_or_absent(out: &mut BitBuffer, optional: &RawBits) {
     }
 }
 
+// Was: Diese Funktion kodiert den vorgesehenen Arbeitsschritt.
+// Warum: Alle Gegenstellen erhalten dadurch dasselbe erwartete Protokollformat.
 pub fn encode(pdu: &SnPdu) -> BitBuffer {
     let mut out = BitBuffer::new_autoexpand(128);
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match pdu {
         SnPdu::ActivateDemand(v) => encode_activate_demand(&mut out, v),
         SnPdu::ActivateAccept(v) => encode_activate_accept(&mut out, v),
@@ -1079,16 +1362,24 @@ pub fn encode(pdu: &SnPdu) -> BitBuffer {
     out
 }
 
+// Was: Diese Funktion schreibt ipv4.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 fn write_ipv4(out: &mut BitBuffer, address: [u8; 4]) {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for octet in address {
         out.write_bits(u64::from(octet), 8);
     }
 }
 
+// Was: Diese Funktion kodiert activate demand.
+// Warum: Alle Gegenstellen erhalten dadurch dasselbe erwartete Protokollformat.
 fn encode_activate_demand(out: &mut BitBuffer, v: &ActivateDemand) {
     out.write_bits(u64::from(SN_ACTIVATE_PDP_CONTEXT), 4);
     out.write_bits(u64::from(v.version), 4);
     out.write_bits(u64::from(v.nsapi), 4);
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match v.address {
         ActivateAddressDemand::Ipv4Static(address) => {
             out.write_bits(0, 3);
@@ -1126,6 +1417,8 @@ fn encode_activate_demand(out: &mut BitBuffer, v: &ActivateDemand) {
     write_optional_or_absent(out, &v.optional);
 }
 
+// Was: Diese Funktion kodiert activate accept.
+// Warum: Alle Gegenstellen erhalten dadurch dasselbe erwartete Protokollformat.
 fn encode_activate_accept(out: &mut BitBuffer, v: &ActivateAccept) {
     out.write_bits(u64::from(SN_ACTIVATE_PDP_CONTEXT), 4);
     out.write_bits(u64::from(v.nsapi), 4);
@@ -1133,6 +1426,8 @@ fn encode_activate_accept(out: &mut BitBuffer, v: &ActivateAccept) {
     out.write_bits(u64::from(v.ready_timer & 0x0f), 4);
     out.write_bits(u64::from(v.standby_timer & 0x0f), 4);
     out.write_bits(u64::from(v.response_wait_timer & 0x0f), 4);
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match v.address {
         ActivateAddressAccept::None => out.write_bits(0, 3),
         ActivateAddressAccept::Ipv4Static(address) => {
@@ -1167,6 +1462,8 @@ fn encode_activate_accept(out: &mut BitBuffer, v: &ActivateAccept) {
     write_optional_or_absent(out, &v.optional);
 }
 
+// Was: Diese Funktion kodiert Benutzer data.
+// Warum: Alle Gegenstellen erhalten dadurch dasselbe erwartete Protokollformat.
 fn encode_user_data(out: &mut BitBuffer, v: &UserData) {
     out.write_bits(u64::from(if v.acknowledged { SN_DATA } else { SN_UNITDATA }), 4);
     out.write_bits(u64::from(v.nsapi), 4);
@@ -1175,6 +1472,8 @@ fn encode_user_data(out: &mut BitBuffer, v: &UserData) {
     v.n_pdu.write_to(out);
 }
 
+// Was: Diese Funktion kodiert data transmit request.
+// Warum: Alle Gegenstellen erhalten dadurch dasselbe erwartete Protokollformat.
 fn encode_data_transmit_request(out: &mut BitBuffer, v: &DataTransmitRequest) {
     out.write_bits(u64::from(SN_DATA_TRANSMIT_REQUEST), 4);
     out.write_bits(u64::from(v.nsapis.first().copied().unwrap_or(1)), 4);
@@ -1192,6 +1491,8 @@ fn encode_data_transmit_request(out: &mut BitBuffer, v: &DataTransmitRequest) {
     }
 }
 
+// Was: Diese Funktion kodiert data transmit response.
+// Warum: Alle Gegenstellen erhalten dadurch dasselbe erwartete Protokollformat.
 fn encode_data_transmit_response(out: &mut BitBuffer, v: &DataTransmitResponse) {
     out.write_bits(u64::from(SN_DATA_TRANSMIT_RESPONSE), 4);
     out.write_bits(u64::from(v.nsapis.first().copied().unwrap_or(1)), 4);
@@ -1208,6 +1509,8 @@ fn encode_data_transmit_response(out: &mut BitBuffer, v: &DataTransmitResponse) 
     }
 }
 
+// Was: Diese Funktion kodiert deactivate.
+// Warum: Alle Gegenstellen erhalten dadurch dasselbe erwartete Protokollformat.
 fn encode_deactivate(out: &mut BitBuffer, pdu_type: u8, v: &Deactivate) {
     out.write_bits(u64::from(pdu_type), 4);
     out.write_bits(u64::from(v.deactivation_type), 8);
@@ -1217,6 +1520,8 @@ fn encode_deactivate(out: &mut BitBuffer, pdu_type: u8, v: &Deactivate) {
     write_optional_or_absent(out, &v.optional);
 }
 
+// Was: Diese Funktion kodiert reconnect.
+// Warum: Alle Gegenstellen erhalten dadurch dasselbe erwartete Protokollformat.
 fn encode_reconnect(out: &mut BitBuffer, v: &Reconnect) {
     out.write_bits(u64::from(SN_RECONNECT), 4);
     let primary_index = v.nsapis.iter().position(|entry| entry.data_to_send);
@@ -1241,8 +1546,12 @@ fn encode_reconnect(out: &mut BitBuffer, v: &Reconnect) {
     }
 }
 
+// Was: Diese Funktion kodiert data Priorität.
+// Warum: Alle Gegenstellen erhalten dadurch dasselbe erwartete Protokollformat.
 fn encode_data_priority(out: &mut BitBuffer, v: &DataPriority) {
     out.write_bits(u64::from(SN_DATA_PRIORITY), 4);
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match v {
         DataPriority::Acknowledgement { accepted, details, ms_default } => {
             out.write_bits(u64::from(DATA_PRIORITY_ACKNOWLEDGEMENT), 4);
@@ -1271,8 +1580,12 @@ fn encode_data_priority(out: &mut BitBuffer, v: &DataPriority) {
     }
 }
 
+// Was: Diese Funktion kodiert modify.
+// Warum: Alle Gegenstellen erhalten dadurch dasselbe erwartete Protokollformat.
 fn encode_modify(out: &mut BitBuffer, v: &Modify) {
     out.write_bits(u64::from(SN_MODIFY), 4);
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match v {
         Modify::Request { nsapi, qos } => {
             out.write_bits(u64::from(MODIFY_REQUEST), 4);
@@ -1312,19 +1625,27 @@ fn encode_modify(out: &mut BitBuffer, v: &Modify) {
     }
 }
 
+// Was: Führt den Arbeitsschritt `raw_octets` für raw octets aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn raw_octets(bytes: Vec<u8>) -> RawBits {
     RawBits { bit_len: bytes.len() * 8, bytes }
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
+    // Was: Führt den Arbeitsschritt `bits` für bits aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn bits(hex: &[u8]) -> BitBuffer {
         BitBuffer::from_bytes(hex)
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `all_top_level_types_are_directionally_decodable` für all top level types are directionally decodable aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn all_top_level_types_are_directionally_decodable() {
         let activate = SnPdu::ActivateDemand(ActivateDemand {
             version: 1,
@@ -1341,6 +1662,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `every_standard_pdu_family_and_subtype_round_trips` für every standard Protokollnachricht (PDU) family and subtype round und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn every_standard_pdu_family_and_subtype_round_trips() {
         let zero = RawBits { bytes: vec![0], bit_len: 1 };
         let qos = QosProfile::Background.encode();
@@ -1433,6 +1756,8 @@ mod tests {
             (SnPdu::Modify(Modify::Usage { nsapi: 2, usage: 1, optional: zero }), SnDirection::Uplink),
         ];
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (expected, direction) in cases {
             let encoded = encode(&expected);
             assert_eq!(decode(&encoded, direction), Ok(expected));
@@ -1440,6 +1765,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `unitdata_roundtrip_preserves_npdu` für unitdata roundtrip preserves npdu aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn unitdata_roundtrip_preserves_npdu() {
         let pdu = SnPdu::Unitdata(UserData {
             acknowledged: false,
@@ -1454,6 +1781,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `data_priority_request_roundtrip` für data Priorität request roundtrip aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn data_priority_request_roundtrip() {
         let pdu = SnPdu::DataPriority(DataPriority::Request { request_type: 9 });
         let encoded = encode(&pdu);
@@ -1461,6 +1790,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Diese Funktion ändert usage roundtrip.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn modify_usage_roundtrip() {
         let pdu = SnPdu::Modify(Modify::Usage {
             nsapi: 2,
@@ -1472,6 +1803,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `data_transmit_type4_additional_nsapis_roundtrip` für data transmit type4 additional nsapis roundtrip aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn data_transmit_type4_additional_nsapis_roundtrip() {
         let pdu = SnPdu::DataTransmitRequest(DataTransmitRequest {
             nsapis: vec![2, 3, 4],
@@ -1489,6 +1822,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Diese Funktion verbindet type4 nsapis roundtrip.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn reconnect_type4_nsapis_roundtrip() {
         let pdu = SnPdu::Reconnect(Reconnect {
             nsapis: vec![
@@ -1512,6 +1847,8 @@ mod tests {
         assert!(!decoded.enhanced_service);
     }
     #[test]
+    // Was: Führt den Arbeitsschritt `activation_qos_type3_roundtrip` für activation Dienstgüte (QoS) type3 roundtrip aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn activation_qos_type3_roundtrip() {
         let qos = QosProfile::Negotiated {
             context_ready_timer: 8,
@@ -1548,6 +1885,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `enhanced_resource_request_roundtrip` für enhanced resource request roundtrip aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn enhanced_resource_request_roundtrip() {
         let pdu = SnPdu::DataTransmitRequest(DataTransmitRequest {
             nsapis: vec![2],

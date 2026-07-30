@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! Dashboard "Dual-Carrier ON/OFF" support.
 //!
 //! Toggling dual carrier is a config-file operation applied via a controlled restart: the secondary
@@ -12,6 +15,8 @@
 
 /// Current dual-carrier configuration as read straight from the TOML file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für dual carrier Zustand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DualCarrierState {
     /// The `dual_carrier_enabled` switch (absent = true for backward compatibility).
     pub enabled: bool,
@@ -19,8 +24,12 @@ pub struct DualCarrierState {
     pub secondary_carrier: Option<u16>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `DualCarrierState`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl DualCarrierState {
     /// Dual carrier is operationally active only when switched on AND a carrier is configured.
+    // Was: Führt den Arbeitsschritt `active` für active aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn active(&self) -> bool {
         self.enabled && self.secondary_carrier.is_some()
     }
@@ -29,12 +38,16 @@ impl DualCarrierState {
 /// Read the dual-carrier switch + configured secondary carrier from the TOML file.
 /// Tolerant of a missing/garbled file: defaults to enabled=true, no secondary carrier. Uses a
 /// line scan of the active `[cell_info]` keys (no extra TOML dependency, mirrors `compute_toml`).
+// Was: Diese Funktion liest dual carrier.
+// Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
 pub fn read_dual_carrier(config_path: &str) -> DualCarrierState {
     let txt = std::fs::read_to_string(config_path).unwrap_or_default();
     let mut in_cell = false;
     let mut enabled = true;
     let mut secondary_carrier = None;
 
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for line in txt.lines() {
         let trimmed = line.trim_start();
         if let Some(name) = table_name(trimmed) {
@@ -54,6 +67,8 @@ pub fn read_dual_carrier(config_path: &str) -> DualCarrierState {
 }
 
 /// For an active (uncommented) `key = <value>` line, return the trimmed value part; else None.
+// Was: Führt den Arbeitsschritt `active_value` für active value aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn active_value<'a>(trimmed: &'a str, key: &str) -> Option<&'a str> {
     if !trimmed.starts_with(key) {
         return None;
@@ -62,6 +77,8 @@ fn active_value<'a>(trimmed: &'a str, key: &str) -> Option<&'a str> {
 }
 
 /// Strip a trailing `# inline comment` and surrounding whitespace from a TOML scalar value.
+// Was: Führt den Arbeitsschritt `value_token` für value Zugriffsschlüssel aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn value_token(v: &str) -> &str {
     v.split('#').next().unwrap_or(v).trim()
 }
@@ -74,6 +91,8 @@ fn value_token(v: &str) -> &str {
 /// headers corrupts the array by inserting keys inside it. We therefore accept
 /// only bare dotted TOML table names made from identifier characters used in this
 /// config, not comma-separated array literals.
+// Was: Führt den Arbeitsschritt `table_name` für table name aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn table_name(trimmed: &str) -> Option<&str> {
     let head = value_token(trimmed);
     let inner = if let Some(rest) = head.strip_prefix("[[") {
@@ -99,6 +118,8 @@ fn table_name(trimmed: &str) -> Option<&str> {
     }
 }
 
+// Was: Prüft, ob cell info table zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
 fn is_cell_info_table(name: &str) -> bool {
     name == "cell_info"
 }
@@ -107,6 +128,8 @@ fn is_cell_info_table(name: &str) -> bool {
 /// the active `secondary_carrier` key) set inside `[cell_info]`, preserving everything else
 /// including comments. When `secondary_carrier` is `None`, any existing `secondary_carrier` line is
 /// left untouched (so the configured number is remembered while the switch is off).
+// Was: Führt den Arbeitsschritt `compute_toml` für compute toml aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn compute_toml(original: &str, enabled: bool, secondary_carrier: Option<u16>) -> String {
     let enabled_line = format!("dual_carrier_enabled = {enabled}");
     let secondary_line = secondary_carrier.map(|c| format!("secondary_carrier = {c}"));
@@ -138,6 +161,8 @@ pub fn compute_toml(original: &str, enabled: bool, secondary_carrier: Option<u16
         }
     };
 
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for line in original.lines() {
         let trimmed = line.trim_start();
 
@@ -199,6 +224,8 @@ pub fn compute_toml(original: &str, enabled: bool, secondary_carrier: Option<u16
 }
 
 /// Apply the toggle to the config file (backup, then write). Pair with `compute_toml`'s rules.
+// Was: Diese Funktion schreibt dual carrier.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 pub fn write_dual_carrier(config_path: &str, enabled: bool, secondary_carrier: Option<u16>) -> std::io::Result<()> {
     let original = std::fs::read_to_string(config_path)?;
     let new_content = compute_toml(&original, enabled, secondary_carrier);
@@ -208,9 +235,13 @@ pub fn write_dual_carrier(config_path: &str, enabled: bool, secondary_carrier: O
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
+    // Was: Legt den festen Wert `SAMPLE` für sample fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const SAMPLE: &str = "\
 [net]
 mcc = 1
@@ -225,6 +256,8 @@ issi_whitelist = []
 ";
 
     #[test]
+    // Was: Diese Funktion aktiviert inserts both keys and keeps comments.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn enable_inserts_both_keys_and_keeps_comments() {
         let out = compute_toml(SAMPLE, true, Some(1522));
         assert!(out.contains("dual_carrier_enabled = true"));
@@ -242,6 +275,8 @@ issi_whitelist = []
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `local_ssi_ranges_array_is_not_treated_as_section_header` für local TETRA-Teilnehmerkennung (SSI) ranges array is not treated und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn local_ssi_ranges_array_is_not_treated_as_section_header() {
         let sample = "\
 [cell_info]
@@ -267,6 +302,8 @@ authorized_issis = [2010001]
     }
 
     #[test]
+    // Was: Diese Funktion deaktiviert sets flag and keeps existing secondary.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn disable_sets_flag_and_keeps_existing_secondary() {
         // First enable to get an active secondary_carrier line.
         let enabled = compute_toml(SAMPLE, true, Some(1522));
@@ -278,6 +315,8 @@ authorized_issis = [2010001]
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `toggling_is_idempotent_no_duplicate_keys` für toggling is idempotent no duplicate keys aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn toggling_is_idempotent_no_duplicate_keys() {
         let once = compute_toml(SAMPLE, true, Some(1522));
         let twice = compute_toml(&once, true, Some(1530));
@@ -291,6 +330,8 @@ authorized_issis = [2010001]
     }
 
     #[test]
+    // Was: Diese Funktion liest back round trips.
+    // Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
     fn read_back_round_trips() {
         let dir = std::env::temp_dir();
         let path = dir.join("dc_test_roundtrip.toml");
@@ -303,6 +344,8 @@ authorized_issis = [2010001]
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `missing_cell_section_is_appended` für missing cell section is appended aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn missing_cell_section_is_appended() {
         let out = compute_toml("[net]\nmcc = 1\n", true, Some(1522));
         assert!(out.contains("[cell_info]"));

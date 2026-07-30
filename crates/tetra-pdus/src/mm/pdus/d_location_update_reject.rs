@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 
 use tetra_core::expect_pdu_type;
@@ -15,7 +18,9 @@ use crate::mm::enums::type34_elem_id_dl::MmType34ElemIdDl;
 
 // note 1: Information element "Ciphering parameters" is not present if "Cipher control" is set to "0", "ciphering off".
 // note 2: Information element "Ciphering parameters" is present if "Cipher control" is set to "1", "ciphering on".
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für dlocation update reject in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DLocationUpdateReject {
     /// Type1, 3 bits, Location update type
     pub location_update_type: LocationUpdateType,
@@ -33,24 +38,34 @@ pub struct DLocationUpdateReject {
     pub proprietary: Option<Type3FieldGeneric>,
 }
 
-#[allow(unreachable_code)] // TODO FIXME review, finalize and remove this
-#[allow(unused_variables)]
+// Was: Implementiert das zugehörige Verhalten für `DLocationUpdateReject`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl DLocationUpdateReject {
     /// Parse from BitBuffer
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buffer: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let pdu_type = buffer.read_field(4, "pdu_type")?;
         expect_pdu_type!(pdu_type, MmPduTypeDl::DLocationUpdateReject)?;
 
         // Type1
-        let location_update_type = buffer.read_field(3, "location_update_type")?;
-        let location_update_type = LocationUpdateType::try_from(location_update_type).unwrap(); // never fails
+        let raw_location_update_type = buffer.read_field(3, "location_update_type")?;
+        let location_update_type = LocationUpdateType::try_from(raw_location_update_type).map_err(|_| {
+            PduParseErr::InvalidValue {
+                field: "location_update_type",
+                value: raw_location_update_type,
+            }
+        })?;
         // Type1
         let reject_cause = buffer.read_field(5, "reject_cause")? as u8;
         // Type1
         let cipher_control = buffer.read_field(1, "cipher_control")? != 0;
-        // Conditional
-        unimplemented!();
-        let ciphering_parameters = if true { Some(0) } else { None };
+        // Conditional, present only when cipher control is set.
+        let ciphering_parameters = if cipher_control {
+            Some(buffer.read_field(10, "ciphering_parameters")?)
+        } else {
+            None
+        };
 
         // obit designates presence of any further type2, type3 or type4 fields
         let mut obit = delimiters::read_obit(buffer)?;
@@ -81,6 +96,8 @@ impl DLocationUpdateReject {
     }
 
     /// Serialize this PDU into the given BitBuffer.
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buffer: &mut BitBuffer) -> Result<(), PduParseErr> {
         // PDU Type
         buffer.write_bits(MmPduTypeDl::DLocationUpdateReject.into_raw(), 4);
@@ -117,7 +134,11 @@ impl DLocationUpdateReject {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for DLocationUpdateReject`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for DLocationUpdateReject {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,

@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 // ---------------------------------------------------------------------------
 // TelemetryEvent — concrete enum sent through the channel
 //
@@ -9,7 +12,11 @@ use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use tetra_core::tetra_entities::TetraEntity;
 
+// Was: Führt den Arbeitsschritt `telemetry_source_for_entity` für Telemetrie source for entity aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn telemetry_source_for_entity(entity: TetraEntity) -> &'static str {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match entity {
         TetraEntity::Brew => "brew",
         TetraEntity::Brew2 => "brew2",
@@ -23,6 +30,8 @@ pub fn telemetry_source_for_entity(entity: TetraEntity) -> &'static str {
 /// then, serializable by any codec for transmission over the network,
 /// using any Transport.
 #[derive(Debug, Clone, Encode, Decode, Serialize, Deserialize)]
+// Was: Listet die möglichen Varianten für Telemetrie Ereignis auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum TelemetryEvent {
     /// MS registered on BS
     MsRegistration { issi: u32 },
@@ -250,9 +259,26 @@ pub enum TelemetryEvent {
         contexts: Vec<PacketDataContextTelemetry>,
         bearers: Vec<PdchBearerTelemetry>,
     },
+    /// Lossless SDS/STATUS ingress handed from the local Air-Interface edge to
+    /// the central SDS Router. Appended last for bitcode wire stability.
+    SdsEdgeIngress {
+        message_id: String,
+        ingress: String,
+        source_issi: u32,
+        dest_issi: u32,
+        is_group: bool,
+        /// 0 = pre-coded status, 1..=4 = SDS data type.
+        sds_type: u8,
+        protocol_id: u8,
+        len_bits: u16,
+        payload: Vec<u8>,
+        priority: u8,
+    },
 }
 
 #[derive(Debug, Clone, Encode, Decode, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Datenpaket data Gateway Telemetrie in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PacketDataGatewayTelemetry {
     pub enabled: bool,
     pub running: bool,
@@ -276,6 +302,8 @@ pub struct PacketDataGatewayTelemetry {
 }
 
 #[derive(Debug, Clone, Encode, Decode, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Datenpaket data Kontext Telemetrie in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PacketDataContextTelemetry {
     pub issi: u32,
     pub nsapi: u8,
@@ -295,6 +323,8 @@ pub struct PacketDataContextTelemetry {
 }
 
 #[derive(Debug, Clone, Encode, Decode, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Paketdatenkanal (PDCH) Übertragungskanal Telemetrie in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PdchBearerTelemetry {
     pub issi: u32,
     pub carrier_num: u16,
@@ -308,6 +338,8 @@ pub struct PdchBearerTelemetry {
 /// A single host-system sensor reading. Kept flat for easy JSON serialisation
 /// and rendering in tables.
 #[derive(Debug, Clone, Encode, Decode, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für sys sensor in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SysSensor {
     /// Human label, e.g. "CPU package", "VDD_CORE", "Battery", "NVMe".
     pub name: String,
@@ -319,6 +351,8 @@ pub struct SysSensor {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Encode, Decode, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+// Was: Listet die möglichen Varianten für sys sensor kind auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum SysSensorKind {
     /// Degrees Celsius
     Temperature,

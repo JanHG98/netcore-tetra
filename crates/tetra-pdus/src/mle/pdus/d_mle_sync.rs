@@ -1,9 +1,14 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 
 use tetra_core::{BitBuffer, pdu_parse_error::PduParseErr};
 
 /// Clause 18.4.2.1
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für dmle sync in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DMleSync {
     // 10 Country code
     pub mcc: u16,
@@ -17,7 +22,11 @@ pub struct DMleSync {
     pub late_entry_supported: bool,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `DMleSync`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl DMleSync {
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buf: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let mcc = buf.read_field(10, "mcc")? as u16;
         let mnc = buf.read_field(14, "mnc")? as u16;
@@ -34,6 +43,8 @@ impl DMleSync {
         })
     }
 
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buf: &mut BitBuffer) {
         buf.write_bits(self.mcc as u64, 10);
         buf.write_bits(self.mnc as u64, 14);
@@ -43,7 +54,11 @@ impl DMleSync {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for DMleSync`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for DMleSync {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,

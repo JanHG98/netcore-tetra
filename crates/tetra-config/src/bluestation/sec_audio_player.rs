@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Einlesen und Prüfen der TETRA-Konfiguration.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
@@ -6,6 +9,8 @@ use toml::Value;
 
 /// Read-only external media source mounted by the operating system.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für cfg audio share in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgAudioShare {
     /// Stable identifier used by the dashboard/API.
     pub id: String,
@@ -17,6 +22,8 @@ pub struct CfgAudioShare {
 
 /// Local audio dispatch configuration.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für cfg audio player in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgAudioPlayer {
     /// Instantiate the audio-player entity and dashboard API.
     pub enabled: bool,
@@ -52,13 +59,19 @@ pub struct CfgAudioPlayer {
     pub ffmpeg_path: String,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for CfgAudioPlayer`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for CfgAudioPlayer {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         apply_audio_player_patch(CfgAudioPlayerDto::default()).expect("default audio-player config must be valid")
     }
 }
 
 #[derive(Debug, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für cfg audio share dto in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgAudioShareDto {
     #[serde(default)]
     pub id: String,
@@ -71,6 +84,8 @@ pub struct CfgAudioShareDto {
 }
 
 #[derive(Debug, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für cfg audio player dto in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgAudioPlayerDto {
     #[serde(default)]
     pub enabled: bool,
@@ -102,7 +117,11 @@ pub struct CfgAudioPlayerDto {
     pub extra: HashMap<String, Value>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for CfgAudioPlayerDto`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for CfgAudioPlayerDto {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             enabled: false,
@@ -123,40 +142,64 @@ impl Default for CfgAudioPlayerDto {
     }
 }
 
+// Was: Führt den Arbeitsschritt `default_directory` für default directory aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_directory() -> String {
     "/var/lib/netcore/audio".to_string()
 }
+// Was: Führt den Arbeitsschritt `default_cache_directory` für default Zwischenspeicher directory aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_cache_directory() -> String {
     "/var/cache/netcore/audio".to_string()
 }
+// Was: Führt den Arbeitsschritt `default_source_issi` für default source Teilnehmerkennung (ISSI) aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_source_issi() -> u32 {
     4_010_099
 }
+// Was: Führt den Arbeitsschritt `default_priority` für default Priorität aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_priority() -> u8 {
     5
 }
+// Was: Führt den Arbeitsschritt `default_max_file_size_mb` für default max file size mb aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_max_file_size_mb() -> u64 {
     100
 }
+// Was: Führt den Arbeitsschritt `default_max_duration_seconds` für default max duration seconds aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_max_duration_seconds() -> u32 {
     1_800
 }
+// Was: Führt den Arbeitsschritt `default_lead_in_silence_blocks` für default lead in silence blocks aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_lead_in_silence_blocks() -> u8 {
     12
 }
+// Was: Führt den Arbeitsschritt `default_tail_silence_blocks` für default tail silence blocks aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_tail_silence_blocks() -> u8 {
     3
 }
+// Was: Führt den Arbeitsschritt `default_group_release_guard_seconds` für default Gruppe release guard seconds aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_group_release_guard_seconds() -> u32 {
     6
 }
+// Was: Führt den Arbeitsschritt `default_individual_answer_timeout_seconds` für default individual answer timeout seconds aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_individual_answer_timeout_seconds() -> u32 {
     30
 }
+// Was: Führt den Arbeitsschritt `default_ffmpeg_path` für default ffmpeg path aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_ffmpeg_path() -> String {
     "ffmpeg".to_string()
 }
 
+// Was: Diese Funktion prüft absolute directory.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_absolute_directory(value: &str, field: &str) -> Result<(), String> {
     if value.is_empty() {
         return Err(format!("audio_player: {field} cannot be empty"));
@@ -167,6 +210,8 @@ fn validate_absolute_directory(value: &str, field: &str) -> Result<(), String> {
     Ok(())
 }
 
+// Was: Führt den Arbeitsschritt `valid_source_id` für valid source Kennung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn valid_source_id(value: &str) -> bool {
     !value.is_empty()
         && value.len() <= 48
@@ -175,6 +220,8 @@ fn valid_source_id(value: &str) -> bool {
             .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.'))
 }
 
+// Was: Diese Funktion wendet audio player patch.
+// Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
 pub fn apply_audio_player_patch(mut src: CfgAudioPlayerDto) -> Result<CfgAudioPlayer, String> {
     src.directory = src.directory.trim().to_string();
     src.cache_directory = src.cache_directory.trim().to_string();
@@ -212,6 +259,8 @@ pub fn apply_audio_player_patch(mut src: CfgAudioPlayerDto) -> Result<CfgAudioPl
     let mut ids = HashSet::new();
     ids.insert("local".to_string());
     let mut shares = Vec::with_capacity(src.shares.len());
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for (index, mut share) in src.shares.into_iter().enumerate() {
         share.id = share.id.trim().to_ascii_lowercase();
         share.name = share.name.trim().to_string();
@@ -260,10 +309,14 @@ pub fn apply_audio_player_patch(mut src: CfgAudioPlayerDto) -> Result<CfgAudioPl
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
     #[test]
+    // Was: Führt den Arbeitsschritt `defaults_are_safe_and_disabled` für defaults are safe and disabled aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn defaults_are_safe_and_disabled() {
         let cfg = CfgAudioPlayer::default();
         assert!(!cfg.enabled);
@@ -275,6 +328,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `rejects_invalid_identity_and_priority` für rejects invalid identity and Priorität aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rejects_invalid_identity_and_priority() {
         let dto = CfgAudioPlayerDto {
             source_issi: 0,
@@ -285,6 +340,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `rejects_unsafe_rf_guard_values` für rejects unsafe Funkstrecke guard values aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rejects_unsafe_rf_guard_values() {
         let dto = CfgAudioPlayerDto {
             lead_in_silence_blocks: 41,
@@ -300,6 +357,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `accepts_read_only_mounted_share` für accepts read only mounted share aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn accepts_read_only_mounted_share() {
         let dto = CfgAudioPlayerDto {
             shares: vec![CfgAudioShareDto {
@@ -315,6 +374,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `rejects_duplicate_or_relative_share` für rejects duplicate or relative share aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rejects_duplicate_or_relative_share() {
         let dto = CfgAudioPlayerDto {
             shares: vec![CfgAudioShareDto {

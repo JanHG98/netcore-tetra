@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use tetra_core::{
     BitBuffer, Direction, LinkId, PhyBlockNum, PhysicalChannel, SsiType, TdmaTime, TetraAddress, Todo, TxReporter, unimplemented_log,
 };
@@ -31,18 +34,32 @@ use crate::{
 };
 
 /// We submit this many TX timeslots ahead of the current time
+// Was: Legt den festen Wert `MACSCHED_TX_AHEAD` für macsched tx ahead fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const MACSCHED_TX_AHEAD: usize = 1;
 
 // We schedule up to this many frames ahead
+// Was: Legt den festen Wert `MACSCHED_NUM_FRAMES` für macsched num frames fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const MACSCHED_NUM_FRAMES: usize = 18;
 
+// Was: Legt den festen Wert `NULL_PDU_LEN_BITS` für null Protokollnachricht (PDU) len bits fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const NULL_PDU_LEN_BITS: usize = 16;
 
+// Was: Legt den festen Wert `SCH_HD_CAP` für sch hd cap fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const SCH_HD_CAP: usize = 124;
+// Was: Legt den festen Wert `SCH_F_CAP` für sch f cap fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const SCH_F_CAP: usize = 268;
+// Was: Legt den festen Wert `TCH_S_CAP` für tch s cap fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const TCH_S_CAP: usize = 274;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für carrier Downlink (Netz zum Funkgerät) mode auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum CarrierDownlinkMode {
     PrimaryMcch,
     SecondaryBcchNoMcch,
@@ -51,9 +68,13 @@ pub enum CarrierDownlinkMode {
 
 
 /// Number of timeslots the scheduler operates on. May become larger when secondary carriers are supported.
+// Was: Legt den festen Wert `NUM_TIMESLOTS` für num timeslots fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const NUM_TIMESLOTS: usize = 4;
 
 #[derive(Clone, Debug)]
+// Was: Bündelt die zusammengehörigen Werte für precomputed UMAC-Funkzugriffssteuerung pdus in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PrecomputedUmacPdus {
     pub mac_sysinfo1: MacSysinfo,
     pub mac_sysinfo2: MacSysinfo,
@@ -63,6 +84,8 @@ pub struct PrecomputedUmacPdus {
 }
 
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für timeslot schedule in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TimeslotSchedule {
     pub ul1: Option<u32>,
     pub ul2: Option<u32>,
@@ -79,6 +102,8 @@ pub struct TimeslotSchedule {
 }
 
 // #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für Basisstation Kanal Zeit- und Kanalplanung in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct BsChannelScheduler {
     pub cur_dltime: TdmaTime,
     carrier_num: u16,
@@ -128,6 +153,8 @@ pub struct BsChannelScheduler {
 }
 
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für frame18 common scch entry in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct Frame18CommonScchEntry {
     call_id: u16,
     gssi: u32,
@@ -135,6 +162,8 @@ struct Frame18CommonScchEntry {
 }
 
 #[derive(Debug)]
+// Was: Listet die möglichen Varianten für dl sched elem auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum DlSchedElem {
     /// A SYSINFO or neighboring cells info block. The integer determines which of the precomputed blocks to use (SYSINFO1, SYSINFO2, NEIGHBORING_CELLS
     Broadcast(Todo),
@@ -160,16 +189,26 @@ pub enum DlSchedElem {
     Stealing(BitBuffer, Option<TxReporter>),
 }
 
+// Was: Legt den festen Wert `EMPTY_SCHED_ELEM` für empty sched elem fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const EMPTY_SCHED_ELEM: TimeslotSchedule = TimeslotSchedule {
     ul1: None,
     ul2: None,
     usage_marker: None,
     // dl: None,
 };
+// Was: Legt den festen Wert `EMPTY_SCHED_CHANNEL` für empty sched Kanal fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const EMPTY_SCHED_CHANNEL: [TimeslotSchedule; MACSCHED_NUM_FRAMES] = [EMPTY_SCHED_ELEM; MACSCHED_NUM_FRAMES];
+// Was: Legt den festen Wert `EMPTY_SCHED` für empty sched fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const EMPTY_SCHED: [[TimeslotSchedule; MACSCHED_NUM_FRAMES]; 4] = [EMPTY_SCHED_CHANNEL; 4];
 
+// Was: Implementiert das zugehörige Verhalten für `BsChannelScheduler`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl BsChannelScheduler {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(scrambling_code: u32, precomps: PrecomputedUmacPdus) -> Self {
         let carrier_num = precomps.mac_sysinfo1.main_carrier;
         BsChannelScheduler {
@@ -192,6 +231,8 @@ impl BsChannelScheduler {
     }
 
     /// Enter/leave hangtime for a traffic timeslot (2..=4).
+    // Was: Diese Funktion setzt hangtime.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_hangtime(&mut self, ts: u8, active: bool) {
         if !(1..=4).contains(&ts) {
             tracing::warn!("BsChannelScheduler::set_hangtime: invalid ts {}", ts);
@@ -215,6 +256,8 @@ impl BsChannelScheduler {
         );
     }
 
+    // Was: Prüft, ob hangtime zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     pub fn is_hangtime(&self, ts: u8) -> bool {
         // Defensive bounds check: ts must be 1..=4. Without this, a caller
         // accidentally passing ts=0 would underflow `ts as usize - 1` to
@@ -228,6 +271,8 @@ impl BsChannelScheduler {
         self.hangtime[ts as usize - 1]
     }
 
+    // Was: Prüft, ob hangtime effective zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     fn is_hangtime_effective(&self, ts: u8) -> bool {
         if !(1..=4).contains(&ts) {
             tracing::warn!("BsChannelScheduler::is_hangtime_effective: invalid ts {}", ts);
@@ -242,6 +287,8 @@ impl BsChannelScheduler {
         !self.has_pending_stealing(ts)
     }
 
+    // Was: Prüft, ob pending stealing zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     pub fn has_pending_stealing(&self, ts: u8) -> bool {
         let slot = ts as usize - 1;
         self.dltx_queues
@@ -250,11 +297,15 @@ impl BsChannelScheduler {
             .unwrap_or(false)
     }
 
+    // Was: Prüft, ob deliver stealing zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     pub fn can_deliver_stealing(&self, ts: u8) -> bool {
         let traffic_slot = (2..=4).contains(&ts) || (self.downlink_mode == CarrierDownlinkMode::TrafficOnly && ts == 1);
         traffic_slot && self.circuits.is_active(Direction::Dl, ts)
     }
 
+    // Was: Diese Funktion erzeugt hangtime idle schf.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn generate_hangtime_idle_schf(&self) -> BitBuffer {
         // Full-slot SCH/F carrying a Null PDU (idle).
         let mut buf = BitBuffer::new(SCH_F_CAP);
@@ -274,18 +325,26 @@ impl BsChannelScheduler {
     // }
 
     /// Update the System Wide Services flag in the broadcast SYSINFO.
+    // Was: Diese Funktion setzt carrier num.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_carrier_num(&mut self, carrier_num: u16) {
         self.carrier_num = carrier_num;
     }
 
+    // Was: Diese Funktion setzt Downlink (Netz zum Funkgerät) mode.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_downlink_mode(&mut self, downlink_mode: CarrierDownlinkMode) {
         self.downlink_mode = downlink_mode;
     }
 
+    // Was: Führt den Arbeitsschritt `carrier_num` für carrier num aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn carrier_num(&self) -> u16 {
         self.carrier_num
     }
 
+    // Was: Diese Funktion setzt system wide services Zustand.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_system_wide_services_state(&mut self, enabled: bool) {
         if self.precomps.mle_sysinfo.bs_service_details.system_wide_services != enabled {
             self.precomps.mle_sysinfo.bs_service_details.system_wide_services = enabled;
@@ -298,6 +357,8 @@ impl BsChannelScheduler {
     }
 
     /// Fully wipe the schedule
+    // Was: Führt den Arbeitsschritt `purge_schedule` für purge schedule aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn purge_schedule(&mut self) {
         self.dltx_queues = [Vec::new(), Vec::new(), Vec::new(), Vec::new()];
         self.ulsched = EMPTY_SCHED;
@@ -305,11 +366,15 @@ impl BsChannelScheduler {
 
     /// Sets the current downlink time to the given TdmaTime
     /// Wipes the schedule, as it can no longer be guaranteed to be valid
+    // Was: Diese Funktion setzt dl time.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_dl_time(&mut self, new_ts: TdmaTime) {
         self.cur_dltime = new_ts;
         self.purge_schedule();
     }
 
+    // Was: Führt den Arbeitsschritt `ul_ts_to_sched_index` für ul ts to sched index aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn ul_ts_to_sched_index(&self, ts: &TdmaTime) -> usize {
         let to_index = (ts.f as usize - 1) + ((ts.m as usize - 1) * 18) + (ts.h as usize * 18 * 60);
         to_index % MACSCHED_NUM_FRAMES
@@ -321,6 +386,8 @@ impl BsChannelScheduler {
     /// If num_slots is 1, is_halfslot may specifiy whether only a half slot is needed
     /// Returns (opportunities_to_skip, Vec<timestamps_of_granted_slots>)
     /// Returns None if no suitable opportunity is found in the schedule
+    // Was: Führt den Arbeitsschritt `ul_find_grant_opportunity` für ul find grant opportunity aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn ul_find_grant_opportunity(&self, t: u8, num_slots: usize, is_halfslot: bool) -> Option<(usize, Vec<TdmaTime>)> {
         let first_opportunity = self.cur_dltime.forward_to_timeslot(t);
         let mut grant_timeslots = Vec::with_capacity(num_slots);
@@ -328,6 +395,8 @@ impl BsChannelScheduler {
 
         assert!(!is_halfslot || num_slots == 1, "is_halfslot set for num_slots > 1");
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for dist in 0..MACSCHED_NUM_FRAMES - 1 {
             // let candidate_t = self.cur_ts.add_timeslots(dist as i32 * 4);
             // Base off of internal perception of time, convert to UL time
@@ -382,10 +451,14 @@ impl BsChannelScheduler {
 
     /// Reserves all slots designated in a grant option
     /// If only one halfslot is needed, returns 1 or 2 designating which slot was reserved
+    // Was: Führt den Arbeitsschritt `ul_reserve_grant` für ul reserve grant aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn ul_reserve_grant(&mut self, ssi: u32, grant_timestamps: Vec<TdmaTime>, is_halfslot: bool, usage_marker: Option<u8>) -> u8 {
         assert!(!grant_timestamps.is_empty());
         assert!(!is_halfslot || grant_timestamps.len() == 1);
         // let ts = grant_timestamps[0].t as usize;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for ts in grant_timestamps {
             let index = self.ul_ts_to_sched_index(&ts);
 
@@ -422,6 +495,8 @@ impl BsChannelScheduler {
     /// `Some(m)` only when the grant covers more than one slot — single-slot grants don't need
     /// one. The marker is stored on each reserved `TimeslotSchedule` entry so AACH generation
     /// for those slots emits `Traffic(m)` and the MS can identify its reservation.
+    // Was: Führt den Arbeitsschritt `ul_process_cap_req` für ul process cap req aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn ul_process_cap_req(
         &mut self,
         timeslot: u8,
@@ -464,6 +539,8 @@ impl BsChannelScheduler {
 
             // Build BasicSlotgrant response element
             let cap_alloc = if res_req == &ReservationRequirement::Req1Subslot {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match subslot {
                     1 => BasicSlotgrantCapAlloc::FirstSubslotGranted,
                     2 => BasicSlotgrantCapAlloc::SecondSubslotGranted,
@@ -497,8 +574,12 @@ impl BsChannelScheduler {
     /// Returns schedule info for the given uplink timeslot and full-or-subslot
     /// If Both is requested, schedule is assumed to have matching allocation for two subslots
     /// If not, a warning is issued and None is returned.
+    // Was: Führt den Arbeitsschritt `ul_get_slot_owner` für ul get slot owner aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn ul_get_slot_owner(&self, ts: TdmaTime, slot: PhyBlockNum) -> Option<u32> {
         let sched = &self.ulsched[ts.t as usize - 1][self.ul_ts_to_sched_index(&ts)];
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match slot {
             PhyBlockNum::Block1 => sched.ul1,
             PhyBlockNum::Block2 => sched.ul2,
@@ -513,8 +594,12 @@ impl BsChannelScheduler {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `ul_get_usage` für ul get usage aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn ul_get_usage(&self, ts: TdmaTime) -> AccessAssignUlUsage {
         let ul_sched = &self.ulsched[ts.t as usize - 1][self.ul_ts_to_sched_index(&ts)];
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match (ul_sched.ul1, ul_sched.ul2) {
             // A reserved slot with a usage_marker gets `Traffic(marker)` so the
             // MS that holds the reservation can identify its slot from AACH and
@@ -550,6 +635,8 @@ impl BsChannelScheduler {
     /// valid markers to choose from, accidental reuse is improbable, and even
     /// if it happens the consequence is benign (the other MS would see its
     /// marker re-issued in a different slot and re-attempt).
+    // Was: Führt den Arbeitsschritt `alloc_usage_marker` für alloc usage marker aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn alloc_usage_marker(&mut self, timeslot: u8) -> u8 {
         let idx = (timeslot as usize - 1).min(3);
         let marker = self.next_usage_marker[idx];
@@ -563,6 +650,8 @@ impl BsChannelScheduler {
 
     /// Total queued downlink scheduling elements across all timeslots plus the next-slot carry-over.
     /// A cheap backlog gauge for the health monitor's Congestion domain (read once per tick).
+    // Was: Führt den Arbeitsschritt `dl_queue_depth` für dl Warteschlange depth aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn dl_queue_depth(&self) -> usize {
         self.dltx_queues.iter().map(|q| q.len()).sum::<usize>()
             + self.dltx_next_slot_queue.len()
@@ -572,6 +661,8 @@ impl BsChannelScheduler {
     /// Registers that we should transmit a MAC-RESOURCE or similar with a grant, somewhere this tick.
     /// `usage_marker` is set when the grant covers >1 slot — the MS uses it to identify the reservation
     /// when continuing the burst on the second slot (per ETSI §21.4.3.2). Single-slot grants pass None.
+    // Was: Führt den Arbeitsschritt `dl_enqueue_grant` für dl enqueue grant aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn dl_enqueue_grant(&mut self, ts: u8, addr: TetraAddress, grant: BasicSlotgrant, usage_marker: Option<u8>) {
         tracing::debug!(
             "dl_enqueue_grant: ts {} enqueueing PDU {:?} for addr {} marker {:?}",
@@ -584,6 +675,8 @@ impl BsChannelScheduler {
         self.dltx_queues[ts as usize - 1].push(elem);
     }
 
+    // Was: Führt den Arbeitsschritt `dl_enqueue_random_access_ack` für dl enqueue random access ack aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn dl_enqueue_random_access_ack(&mut self, ts: u8, addr: TetraAddress) {
         tracing::debug!(
             "dl_enqueue_random_access_ack: ts {} enqueueing random access acknowledgementfor addr {}",
@@ -594,6 +687,8 @@ impl BsChannelScheduler {
         self.dltx_queues[ts as usize - 1].push(elem);
     }
 
+    // Was: Führt den Arbeitsschritt `identify_timeslots_for_ssi` für identify timeslots for TETRA-Teilnehmerkennung (SSI) aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn identify_timeslots_for_ssi(&self, addr: Option<TetraAddress>, link_id: LinkId) -> [u8; NUM_TIMESLOTS] {
         let Some(addr) = addr else {
             tracing::warn!("identify_timeslots_for_ssi: MAC-RESOURCE has no address, defaulting to ts1");
@@ -634,6 +729,8 @@ impl BsChannelScheduler {
         [link_ts, 0, 0, 0]
     }
 
+    // Was: Führt den Arbeitsschritt `dl_enqueue_tma_on_timeslots` für dl enqueue tma on timeslots aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn dl_enqueue_tma_on_timeslots(
         &mut self,
         timeslots: [u8; NUM_TIMESLOTS],
@@ -643,6 +740,8 @@ impl BsChannelScheduler {
     ) {
         // Queue the message for all timeslots on which we should transmit this message.
         // The loop basically prevents cloning the last element.
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for i in 0..NUM_TIMESLOTS {
             let ts = timeslots[i];
             let next_ts = if i < NUM_TIMESLOTS - 1 { timeslots[i + 1] } else { 0 };
@@ -696,6 +795,8 @@ impl BsChannelScheduler {
     /// Only one pending page per call/GSSI is retained. A newer call to the same
     /// GSSI supersedes queued pages from the old call, preventing a later frame-18
     /// opportunity from announcing an already released call or an obsolete usage marker.
+    // Was: Führt den Arbeitsschritt `dl_enqueue_frame18_common_scch` für dl enqueue frame18 common scch aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn dl_enqueue_frame18_common_scch(
         &mut self,
         call_id: u16,
@@ -764,6 +865,8 @@ impl BsChannelScheduler {
     /// Remove all pinned common-SCCH pages and continuation fragments belonging
     /// to a released call. CMCE sends CallEnded with the call identifier, allowing
     /// UMAC to retire the queue entry before a later call can inherit it.
+    // Was: Führt den Arbeitsschritt `drop_frame18_common_scch_call` für drop frame18 common scch Ruf aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn drop_frame18_common_scch_call(&mut self, call_id: u16) {
         let before = self.frame18_common_scch_queue.len();
         self.frame18_common_scch_queue
@@ -778,11 +881,15 @@ impl BsChannelScheduler {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `dl_enqueue_tma` für dl enqueue tma aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn dl_enqueue_tma(&mut self, pdu: MacResource, sdu: BitBuffer, tx_reporter: Option<TxReporter>) {
         let timeslots = self.identify_timeslots_for_ssi(pdu.addr, 0);
         self.dl_enqueue_tma_on_timeslots(timeslots, pdu, sdu, tx_reporter);
     }
 
+    // Was: Führt den Arbeitsschritt `dl_enqueue_tma_for_link` für dl enqueue tma for link aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn dl_enqueue_tma_for_link(&mut self, link_id: LinkId, pdu: MacResource, sdu: BitBuffer, tx_reporter: Option<TxReporter>) {
         let timeslots = self.identify_timeslots_for_ssi(pdu.addr, link_id);
         self.dl_enqueue_tma_on_timeslots(timeslots, pdu, sdu, tx_reporter);
@@ -791,6 +898,8 @@ impl BsChannelScheduler {
     /// Consumes and returns true if a pending random access ack exists for the given SSI on
     /// this timeslot. Used when building STCH blocks so the MAC-RESOURCE can carry
     /// random_access_flag=true per ETSI 21.4.3.1.
+    // Was: Führt den Arbeitsschritt `take_pending_ra_ack` für take pending ra ack aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn take_pending_ra_ack(&mut self, ts: u8, ssi: u32) -> bool {
         let pending = &mut self.pending_ra_acks[ts as usize - 1];
         if let Some(pos) = pending.iter().position(|&s| s == ssi) {
@@ -803,11 +912,15 @@ impl BsChannelScheduler {
 
     /// Enqueue a pre-built STCH block for FACCH/stealing on a traffic timeslot.
     /// The block must be 124 type1 bits containing MAC-U-SIGNAL header + TM-SDU.
+    // Was: Führt den Arbeitsschritt `dl_enqueue_stealing` für dl enqueue stealing aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn dl_enqueue_stealing(&mut self, ts: u8, block: BitBuffer, tx_reporter: Option<TxReporter>) {
         tracing::info!("dl_enqueue_stealing: ts {} enqueueing STCH block ({} bits)", ts, block.get_len());
         self.dltx_queues[ts as usize - 1].push(DlSchedElem::Stealing(block, tx_reporter));
     }
 
+    // Was: Führt den Arbeitsschritt `dl_enqueue_tma_frag_next_frame` für dl enqueue tma frag next Funkrahmen aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn dl_enqueue_tma_frag_next_frame(&mut self, fragger: BsFragger) {
         tracing::debug!("dl_enqueue_tma_frag_next_frame: enqueueing {:?}", fragger);
         let elem = DlSchedElem::FragBuf(fragger);
@@ -817,6 +930,8 @@ impl BsChannelScheduler {
     /// Enqueue a TMA PDU to be transmitted on the NEXT frame (ts1, frame N+1).
     /// Use this to deliberately separate two MCCH messages that would overflow the slot
     /// if sent together (e.g. DConnect MCCH + DConnectAck MCCH = 223 bits > 216-bit slot).
+    // Was: Führt den Arbeitsschritt `dl_enqueue_tma_next_frame` für dl enqueue tma next Funkrahmen aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn dl_enqueue_tma_next_frame(&mut self, pdu: MacResource, sdu: BitBuffer, tx_reporter: Option<TxReporter>) {
         tracing::debug!(
             "dl_enqueue_tma_next_frame: deferring PDU {:?} SDU {} to next frame",
@@ -827,6 +942,8 @@ impl BsChannelScheduler {
         self.dltx_next_slot_queue.push(elem);
     }
 
+    // Was: Führt den Arbeitsschritt `dl_schedule_tmb` für dl schedule tmb aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn dl_schedule_tmb(&mut self, _traffic: BitBuffer, _ts: &TdmaTime) {
         unimplemented!("Broadcast scheduling not implemented yet");
     }
@@ -835,10 +952,14 @@ impl BsChannelScheduler {
     //     unimplemented!("Traffic scheduling not implemented yet");
     // }
 
+    // Was: Führt den Arbeitsschritt `dl_schedule_tmd` für dl schedule tmd aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn dl_schedule_tmd(&mut self, ts: u8, block: Vec<u8>) {
         self.circuits.put_block(ts, block);
     }
 
+    // Was: Führt den Arbeitsschritt `circuit_is_active` für circuit is active aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn circuit_is_active(&self, dir: Direction, ts: u8) -> bool {
         self.circuits.is_active(dir, ts)
     }
@@ -847,6 +968,8 @@ impl BsChannelScheduler {
     /// Used for full-duplex P2P cross-routing: UL voice on `ts` must be played out
     /// on the peer MS's DL timeslot. Returns `None` for simplex/group calls
     /// (where UL→DL stays on the same timeslot, classic loopback).
+    // Was: Führt den Arbeitsschritt `ul_circuit_peer_ts` für ul circuit peer ts aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn ul_circuit_peer_ts(&self, ts: u8) -> Option<u8> {
         if !(1..=4).contains(&ts) {
             return None;
@@ -857,6 +980,8 @@ impl BsChannelScheduler {
     /// Return the DL media source policy for the UL circuit on `ts`.
     /// `LocalLoopback` = reflect UL back to DL (group/simplex calls).
     /// `SwMI` = DL audio comes from Brew/TetraPack; suppress local loopback.
+    // Was: Führt den Arbeitsschritt `ul_circuit_dl_media_source` für ul circuit dl Audio- und Mediendaten source aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn ul_circuit_dl_media_source(&self, ts: u8) -> CircuitDlMediaSource {
         if !(1..=4).contains(&ts) {
             return CircuitDlMediaSource::LocalLoopback;
@@ -867,6 +992,8 @@ impl BsChannelScheduler {
             .unwrap_or(CircuitDlMediaSource::LocalLoopback)
     }
 
+    // Was: Diese Funktion schließt circuit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn close_circuit(&mut self, dir: Direction, ts: u8) -> Option<Circuit> {
         // Clearing hangtime here is safe: if the circuit is gone, this timeslot is no longer in use.
         if (1..=4).contains(&ts) {
@@ -875,6 +1002,8 @@ impl BsChannelScheduler {
         self.circuits.close_circuit(dir, ts)
     }
 
+    // Was: Diese Funktion erstellt circuit.
+    // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
     pub fn create_circuit(&mut self, dir: Direction, circuit: Circuit) {
         // New/updated circuit implies traffic mode.
         if (1..=4).contains(&circuit.ts) {
@@ -888,6 +1017,8 @@ impl BsChannelScheduler {
     /// adds a trailing Null PDU.
     /// If blk is None, returns None.
     /// Otherwise, returns blk unchanged (eg. for SYNC, broadcast, etc).
+    // Was: Diese Funktion fügt null pdus.
+    // Warum: Das Einfügen wird so einheitlich geprüft und verwaltet.
     pub fn try_add_null_pdus(&mut self, blk: Option<TmvUnitdataReq>) -> Option<TmvUnitdataReq> {
         // A null pdu in a slot:
         // 0000000000010000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -924,9 +1055,13 @@ impl BsChannelScheduler {
     }
 
     /// Returns a mutable reference to the first scheduled resource for the given timeslot and address
+    // Was: Führt den Arbeitsschritt `dl_get_scheduled_resource_for_ssi` für dl get scheduled resource for TETRA-Teilnehmerkennung (SSI) aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn dl_get_scheduled_resource_for_ssi(&mut self, ts: TdmaTime, addr: &TetraAddress) -> Option<&mut DlSchedElem> {
         let queue = &mut self.dltx_queues[ts.t as usize - 1];
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for index in 0..queue.len() {
             let elem = &mut queue[index];
             if let DlSchedElem::Resource(pdu, _sdu, _repeat) = elem {
@@ -943,6 +1078,8 @@ impl BsChannelScheduler {
     }
 
     /// Make a minimal resource to contain a grant or a random access acknowledgement
+    // Was: Führt den Arbeitsschritt `dl_make_minimal_resource` für dl make minimal resource aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn dl_make_minimal_resource(addr: &TetraAddress, grant: Option<BasicSlotgrant>, random_access_ack: bool) -> MacResource {
         let mut pdu = MacResource {
             fill_bits: false, // updated later
@@ -962,11 +1099,15 @@ impl BsChannelScheduler {
     }
 
     /// Takes and removes all grants and random access acknowledgements from the given timeslot's queue, returning them as a vec.
+    // Was: Führt den Arbeitsschritt `dl_take_all_grants_and_acks` für dl take all grants and acks aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn dl_take_all_grants_and_acks(&mut self, timeslot: u8) -> Vec<DlSchedElem> {
         let queue = &mut self.dltx_queues[timeslot as usize - 1];
         let mut taken = Vec::new();
 
         let mut i = 0;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while i < queue.len() {
             if matches!(queue[i], DlSchedElem::Grant(..) | DlSchedElem::RandomAccessAck(_)) {
                 let elem = queue.remove(i);
@@ -982,10 +1123,14 @@ impl BsChannelScheduler {
     /// when leaving hangtime to clear out any stale grants, resources, etc that can only be processed in signaling mode,
     /// while keeping stealing blocks that may still need to be transmitted via FACCH.
     /// Discarded elements are reported as such via tx_reporter if available. Returns true if elements were discarded.
+    // Was: Führt den Arbeitsschritt `dl_drop_all_except_stolen` für dl drop all except stolen aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn dl_drop_all_except_stolen(&mut self, timeslot: u8) -> bool {
         let queue = &mut self.dltx_queues[timeslot as usize - 1];
         let mut i = 0;
         let mut item_was_discarded = false;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while i < queue.len() {
             if matches!(queue[i], DlSchedElem::Stealing(..)) {
                 i += 1;
@@ -999,6 +1144,8 @@ impl BsChannelScheduler {
                 item_was_discarded = true;
                 tracing::debug!("dl_drop_all_except_stolen: discarding scheduled {:?} on ts {}", elem, timeslot);
 
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match elem {
                     DlSchedElem::Resource(_, _, tx_reporter) => {
                         // Report as discarded manually
@@ -1028,22 +1175,32 @@ impl BsChannelScheduler {
         item_was_discarded
     }
 
+    // Was: Führt den Arbeitsschritt `dl_integrate_sched_elems_for_timeslot` für dl integrate sched elems for timeslot aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn dl_integrate_sched_elems_for_timeslot(&mut self, ts: TdmaTime) {
         // Remove all grants and acks from queue and collect them into a vec
         let grants_and_acks = self.dl_take_all_grants_and_acks(ts.t);
 
         // Process grants and acks
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for elem in grants_and_acks {
             // Try to find existing resource for this address
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let addr = match &elem {
                 DlSchedElem::Grant(addr, _, _) => addr,
                 DlSchedElem::RandomAccessAck(addr) => addr,
                 _ => unreachable!("BUG: unhandled match variant -- should never be reached"),
             };
             let mac_resource = self.dl_get_scheduled_resource_for_ssi(ts, addr);
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match mac_resource {
                 Some(DlSchedElem::Resource(pdu, _sdu, _repeat)) => {
                     // Integrate grant into the resource
+                    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                     match &elem {
                         DlSchedElem::Grant(_, grant, usage_marker) => {
                             tracing::debug!(
@@ -1075,6 +1232,8 @@ impl BsChannelScheduler {
                 None => {
                     // No resource for this address was found, create a new one
 
+                    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                     let pdu = match &elem {
                         DlSchedElem::Grant(_, grant, usage_marker) => {
                             tracing::debug!(
@@ -1106,6 +1265,8 @@ impl BsChannelScheduler {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `dl_build_block_from_signalling_schedule` für dl build block from signalling schedule aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn dl_build_block_from_signalling_schedule(&mut self, ts: TdmaTime) -> Option<BitBuffer> {
         if ts.f == 18 {
             return self.dl_build_frame18_common_scch_block(ts);
@@ -1113,11 +1274,17 @@ impl BsChannelScheduler {
 
         let mut buf_opt = None;
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while !self.dltx_queues[ts.t as usize - 1].is_empty() {
             let opt = self.dl_take_prioritized_sched_item(ts);
 
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match opt {
                 Some(sched_elem) => {
+                    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                     match sched_elem {
                         DlSchedElem::Broadcast(_) => {
                             unimplemented_log!("finalize_ts_for_tick: Broadcast scheduling not implemented");
@@ -1190,6 +1357,8 @@ impl BsChannelScheduler {
     /// - tch_block: speech/silence (274 bits)
     /// - stch_block: STCH signaling (124 bits) for FACCH stealing (EN 300 392-2, clause 23.5)
     /// Also reports transmission, if a TxReporter was attached to the DlSchedElem::Stealing element
+    // Was: Führt den Arbeitsschritt `dl_build_traffic_block` für dl build Nutzdatenverkehr block aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn dl_build_traffic_block(&mut self, ts: TdmaTime) -> (BitBuffer, Option<BitBuffer>) {
         // Get speech data or silence
         let tch_buf = if let Some(block) = self.circuits.take_block(ts.t) {
@@ -1220,6 +1389,8 @@ impl BsChannelScheduler {
         let (stch_opt, tx_reporter_opt) = {
             let q = &mut self.dltx_queues[ts.t as usize - 1];
             if let Some(i) = q.iter().position(|e| matches!(e, DlSchedElem::Stealing(..))) {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match q.remove(i) {
                     DlSchedElem::Stealing(buf, tx_reporter) => (Some(buf), tx_reporter),
                     _ => unreachable!(),
@@ -1247,6 +1418,8 @@ impl BsChannelScheduler {
     /// If none; return first to-be-transmitted resource.
     /// If none, return None.
     #[inline]
+    // Was: Führt den Arbeitsschritt `frame18_common_scch_available` für frame18 common scch available aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn frame18_common_scch_available(&self, ts: TdmaTime) -> bool {
         self.downlink_mode == CarrierDownlinkMode::PrimaryMcch
             && ts.f == 18
@@ -1260,6 +1433,8 @@ impl BsChannelScheduler {
     /// the ordinary TS1 queue for the immediately following frame, as required by
     /// the MAC fragmentation sequence. Crucially, no second pinned D-SETUP is
     /// started in the same frame-18 slot.
+    // Was: Führt den Arbeitsschritt `dl_build_frame18_common_scch_block` für dl build frame18 common scch block aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn dl_build_frame18_common_scch_block(&mut self, ts: TdmaTime) -> Option<BitBuffer> {
         if !self.frame18_common_scch_available(ts) {
             return None;
@@ -1281,6 +1456,8 @@ impl BsChannelScheduler {
         );
 
         let mut buf = BitBuffer::new(SCH_F_CAP);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match entry.elem {
             DlSchedElem::Resource(pdu, sdu, tx_reporter) => {
                 let mut fragger = BsFragger::new(pdu, sdu, tx_reporter);
@@ -1306,6 +1483,8 @@ impl BsChannelScheduler {
         Some(buf)
     }
 
+    // Was: Führt den Arbeitsschritt `dl_take_prioritized_sched_item` für dl take prioritized sched item aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn dl_take_prioritized_sched_item(&mut self, ts: TdmaTime) -> Option<DlSchedElem> {
         // Frame-18 common-SCCH traffic is handled by
         // dl_build_frame18_common_scch_block(), never by the ordinary queues.
@@ -1351,6 +1530,8 @@ impl BsChannelScheduler {
         None
     }
 
+    // Was: Diese Funktion bearbeitet start.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn tick_start(&mut self, ts: TdmaTime) {
         // Increment current time
         self.cur_dltime = self.cur_dltime.add_timeslots(1);
@@ -1367,6 +1548,8 @@ impl BsChannelScheduler {
     /// If the timeslot is not full, generates SYNC SB1/SB2 blocks.
     /// Increments cur_ts by one timeslot.
     /// Caller should check timestamp of returned DlTxElem to prevent desync
+    // Was: Führt den Arbeitsschritt `finalize_ts_for_tick` für finalize ts for tick aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn finalize_ts_for_tick(&mut self) -> TmvUnitdataReqSlot {
         // Reset the per-frame chan_alloc flag when we start processing ts1 (MCCH slot).
         // This allows the next DConnect MCCH to go normally while the subsequent DConnectAck
@@ -1609,6 +1792,8 @@ impl BsChannelScheduler {
         elem
     }
 
+    // Was: Diese Funktion erzeugt bbk block.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn generate_bbk_block(&self, ts: TdmaTime) -> TmvUnitdataReq {
         let (ul_traffic_usage, dl_traffic_usage) = if ts.f == 18 {
             (None, None)
@@ -1624,6 +1809,8 @@ impl BsChannelScheduler {
         if ts.f != 18 {
             let mut aach = AccessAssign::default();
 
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match ts.t {
                 1 if self.downlink_mode == CarrierDownlinkMode::TrafficOnly => {
                     // On a secondary traffic-only carrier, air TS1 is available as a
@@ -1670,6 +1857,8 @@ impl BsChannelScheduler {
                     // infinite random-access loop (the symptom we observed
                     // when an MS re-entered coverage and couldn't TX/RX).
                     let ul_usage_for_slot = self.ul_get_usage(ts);
+                    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                     match ul_usage_for_slot {
                         AccessAssignUlUsage::Traffic(_) => {
                             // Reservation in flight: hand the marker through
@@ -1763,11 +1952,17 @@ impl BsChannelScheduler {
         }
     }
 
+    // Was: Diese Funktion erzeugt default blks.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn generate_default_blks(&self, ts: TdmaTime) -> TmvUnitdataReq {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match (ts.f, ts.t) {
             (1..=17, 1) => {
                 // Two options: [Blk1: SCH/HD Null | Blk2: BNCH SYSINFO] or [Both: SCH/F Null]
                 // Alternate every frame
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match ts.f % 2 {
                     0 => {
                         // Half-slot Null PDU on SCH/HD, SYSINFO gets added later as BNCH blk2
@@ -1809,9 +2004,13 @@ impl BsChannelScheduler {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `dump_ul_schedule` für dump ul schedule aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn dump_ul_schedule(&self, skip_empty: bool) {
         let ts = self.cur_dltime;
         tracing::info!("Dumping uplink schedule for {}:", ts);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for dist in 0..MACSCHED_NUM_FRAMES - 1 {
             let ts = ts.add_timeslots(dist as i32 * 4);
             let index = self.ul_ts_to_sched_index(&ts);
@@ -1823,9 +2022,13 @@ impl BsChannelScheduler {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `dump_ul_schedule_full` für dump ul schedule full aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn dump_ul_schedule_full(&self, skip_empty: bool) {
         tracing::info!("Dumping uplink schedule for {}:", self.cur_dltime);
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for dist in 0..MACSCHED_NUM_FRAMES - 1 {
             let ts = self.cur_dltime.add_timeslots(dist as i32 * 4);
             let index = self.ul_ts_to_sched_index(&ts);
@@ -1856,9 +2059,15 @@ impl BsChannelScheduler {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `dump_dl_queue` für dump dl Warteschlange aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn dump_dl_queue(&self) {
         tracing::info!("Dumping downlink queue:");
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (index, elem) in self.dltx_queues.iter().enumerate() {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for e in elem {
                 tracing::trace!("  ts[{}] {:?}", index, e);
             }
@@ -1867,6 +2076,8 @@ impl BsChannelScheduler {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
 
     use tetra_core::{
@@ -1890,6 +2101,8 @@ mod tests {
 
     use super::*;
 
+    // Was: Diese Funktion liest testing slotter.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     pub fn get_testing_slotter() -> BsChannelScheduler {
         let _guard = setup_logging_default(None);
         let ext_services = SysinfoExtendedServices {
@@ -2004,6 +2217,8 @@ mod tests {
         sched
     }
 
+    // Was: Prüft automatisch den Fall circuit.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_circuit(direction: Direction, ts: u8) -> Circuit {
         Circuit {
             direction,
@@ -2018,6 +2233,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall halfslot grants.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_halfslot_grants() {
         let mut sched = get_testing_slotter();
         let resreq = ReservationRequirement::Req1Subslot;
@@ -2065,6 +2282,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall halfslot and fullslot grant.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_halfslot_and_fullslot_grant() {
         let mut sched = get_testing_slotter();
         let resreq1 = ReservationRequirement::Req1Subslot;
@@ -2105,6 +2324,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall dl tma Gruppenkennung (GSSI) routes to mcch.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_dl_tma_gssi_routes_to_mcch() {
         let mut sched = get_testing_slotter();
         let addr = TetraAddress {
@@ -2121,6 +2342,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall dl tma linkless Teilnehmerkennung (ISSI) routes to mcch.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_dl_tma_linkless_issi_routes_to_mcch() {
         let mut sched = get_testing_slotter();
         let addr = TetraAddress {
@@ -2137,6 +2360,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall dl tma Teilnehmerkennung (ISSI) routes by link timeslot.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_dl_tma_issi_routes_by_link_timeslot() {
         let mut sched = get_testing_slotter();
         let addr = TetraAddress {
@@ -2153,6 +2378,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall dl tma Teilnehmerkennung (ISSI) avoids active dl Nutzdatenverkehr und weitere Angaben.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_dl_tma_issi_avoids_active_dl_traffic_slot() {
         let mut sched = get_testing_slotter();
         let addr = TetraAddress {
@@ -2170,6 +2397,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall stealing requires active dl Nutzdatenverkehr slot.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_stealing_requires_active_dl_traffic_slot() {
         let mut sched = get_testing_slotter();
 
@@ -2183,6 +2412,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall non Nutzdatenverkehr stealing is discarded.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_non_traffic_stealing_is_discarded() {
         let mut sched = get_testing_slotter();
 
@@ -2198,6 +2429,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall Funkrahmen 18 keeps stealing queued.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_frame_18_keeps_stealing_queued() {
         let mut sched = get_testing_slotter();
 
@@ -2213,6 +2446,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall Funkrahmen 18 defers signaling on same timeslot und weitere Angaben.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_frame_18_defers_signaling_on_same_timeslot_queue() {
         let mut sched = get_testing_slotter();
         let addr_ts2 = TetraAddress {
@@ -2260,6 +2495,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall Funkrahmen 18 primary ts1 common scch delivers und weitere Angaben.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_frame_18_primary_ts1_common_scch_delivers_when_broadcast_free() {
         let mut sched = get_testing_slotter();
         let addr = TetraAddress {
@@ -2277,6 +2514,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall Funkrahmen 18 common scch does not consume und weitere Angaben.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_frame_18_common_scch_does_not_consume_normal_mcch_queue() {
         let mut sched = get_testing_slotter();
         let addr = TetraAddress {
@@ -2292,6 +2531,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall Funkrahmen 18 primary ts1 defers when mandatory und weitere Angaben.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_frame_18_primary_ts1_defers_when_mandatory_broadcast_occupies_slot() {
         let mut sched = get_testing_slotter();
         let addr = TetraAddress {
@@ -2309,6 +2550,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall Funkrahmen 18 common scch deduplicates same Ruf.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_frame_18_common_scch_deduplicates_same_call() {
         let mut sched = get_testing_slotter();
         let addr = TetraAddress {
@@ -2325,6 +2568,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall Funkrahmen 18 common scch new Ruf replaces und weitere Angaben.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_frame_18_common_scch_new_call_replaces_stale_same_group() {
         let mut sched = get_testing_slotter();
         let addr = TetraAddress {
@@ -2343,6 +2588,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall Funkrahmen 18 common scch Ruf end retires und weitere Angaben.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_frame_18_common_scch_call_end_retires_only_matching_call() {
         let mut sched = get_testing_slotter();
         let addr_a = TetraAddress {
@@ -2365,6 +2612,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall Funkrahmen 18 common scch sends at most und weitere Angaben.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_frame_18_common_scch_sends_at_most_one_entry_per_opportunity() {
         let mut sched = get_testing_slotter();
         let addr_a = TetraAddress {
@@ -2389,6 +2638,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall Funkrahmen 18 common scch fragment continues on und weitere Angaben.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_frame_18_common_scch_fragment_continues_on_next_ts1_only() {
         let mut sched = get_testing_slotter();
         let addr = TetraAddress {
@@ -2408,6 +2659,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall dl grant and ack integration.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_dl_grant_and_ack_integration() {
         let mut sched = get_testing_slotter();
         let ts = TdmaTime::default();

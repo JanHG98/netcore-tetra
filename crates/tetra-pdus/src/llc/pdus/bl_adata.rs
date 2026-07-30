@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 
 use tetra_core::BitBuffer;
@@ -6,6 +9,8 @@ use tetra_core::{expect_value, let_field};
 
 /// Clause 21.2.2.2 BL-ADATA
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für bl adata in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct BlAdata {
     // 1
     pub has_fcs: bool,
@@ -15,7 +20,11 @@ pub struct BlAdata {
     pub ns: u8,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `BlAdata`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl BlAdata {
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buf: &mut BitBuffer) -> Result<Self, PduParseErr> {
         // Parse 4-bit type, perform sanity checks
         let_field!(buf, llc_link_type, 1);
@@ -35,6 +44,8 @@ impl BlAdata {
         })
     }
 
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buf: &mut BitBuffer) {
         // write required constant llc_link_type
         buf.write_bits(0, 1);
@@ -46,7 +57,11 @@ impl BlAdata {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for BlAdata`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for BlAdata {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "bl_adata {{")?;
         write!(f, "  has_fcs: {}", self.has_fcs)?;

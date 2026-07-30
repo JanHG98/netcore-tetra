@@ -1,11 +1,20 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Nachrichten an den Schnittstellen zwischen TETRA-Protokollschichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use tetra_core::{BitBuffer, EndpointId, Layer2Service, LinkId, MleHandle, TetraAddress, Todo, TxReporter};
 
 use crate::{control::enums::circuit_mode_type::CircuitModeType, lcmc::fields::chan_alloc_req::CmceChanAllocReq};
 
+// Was: Bindet das Untermodul enums in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 pub mod enums;
+// Was: Bindet das Untermodul fields in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 pub mod fields;
 
 /// Call ID as allocated by CMCE
+// Was: Vergibt für Ruf Kennung einen fachlich verständlichen Typnamen.
+// Warum: Der Alias macht Signaturen lesbarer und hält technische Details aus dem aufrufenden Code heraus.
 pub type CallId = u16;
 
 // Clause 17.3.3 Service state diagram for the LCMC-SAP (MLE-CMCE)
@@ -13,6 +22,8 @@ pub type CallId = u16;
 /// MLE-ACTIVITY request: this primitive shall be used by the CMCE to inform the MLE of the state of any circuit
 /// mode call(s).
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für lcmc MLE-Verbindungssteuerung activity req in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LcmcMleActivityReq {
     pub call_state: Todo,
 }
@@ -21,6 +32,8 @@ pub struct LcmcMleActivityReq {
 /// communication resources is temporarily unavailable and that the data transfer service cannot be used. In the graceful
 /// service degradation mode this primitive indicates which services can access communication resources.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für lcmc MLE-Verbindungssteuerung break ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LcmcMleBreakInd {
     pub permitted_services_in_ms_graceful_service_degradation_mode: Todo,
 }
@@ -28,12 +41,16 @@ pub struct LcmcMleBreakInd {
 /// MLE-BUSY indication: this shall be used by the MLE to inform the CMCE that a MM protocol exchange is in
 /// progress.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für lcmc MLE-Verbindungssteuerung busy ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LcmcMleBusyInd {}
 
 /// MLE-CANCEL request: this primitive shall be used by the CMCE to delete a previous request issued but not yet
 /// transmitted. The ability to cancel is removed when an MLE-REPORT indication is received indicating transmission
 /// of the CMCE PDU.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für lcmc MLE-Verbindungssteuerung cancel req in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LcmcMleCancelReq {
     pub handle: Todo,
 }
@@ -41,12 +58,16 @@ pub struct LcmcMleCancelReq {
 /// MLE-CLOSE indication: this primitive shall be used by the MLE to indicate to the CMCE that access to the
 /// communications resources has been removed and that data transfer service cannot be used.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für lcmc MLE-Verbindungssteuerung close ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LcmcMleCloseInd {}
 
 /// MLE-CONFIGURE request: this primitive shall be used to pass inter layer management information relating to
 /// circuit mode calls, e.g. whether Tx grant has been given, type of traffic, etc.
 /// Contents not fully standardized.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für lcmc MLE-Verbindungssteuerung configure req in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LcmcMleConfigureReq {
     pub endpoint_id: EndpointId,
     pub chan_change_accepted: Option<bool>,
@@ -73,6 +94,8 @@ pub struct LcmcMleConfigureReq {
 /// MLE-CONFIGURE indication: this primitive shall be used to pass inter layer management information relating to
 /// circuit mode calls and packet data conflicts.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für lcmc MLE-Verbindungssteuerung configure ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LcmcMleConfigureInd {
     pub endpoint_id: EndpointId,
     pub chan_change_responce_required: bool,
@@ -84,6 +107,8 @@ pub struct LcmcMleConfigureInd {
 /// MLE-DISABLE indication: this primitive shall be used by the MLE entity to instruct the CMCE entity to enter the
 /// temporarily disabled state.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für lcmc MLE-Verbindungssteuerung disable ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LcmcMleDisableInd {
     pub permitted_services_in_temp_disabled_mode: Todo,
 }
@@ -91,11 +116,15 @@ pub struct LcmcMleDisableInd {
 /// MLE-ENABLE indication: this primitive shall be used by the MLE entity to instruct the CMCE entity to recover from
 /// the tamporarily [sic] disabled state.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für lcmc MLE-Verbindungssteuerung enable ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LcmcMleEnableInd {}
 
 /// MLE-IDENTITIES request: this primitive shall be used by the CMCE to inform the MLE and layer 2 of a change to
 /// the list of group identities.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für lcmc MLE-Verbindungssteuerung identities req in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LcmcMleIdentitiesReq {
     pub gssi_list: Vec<Todo>,
 }
@@ -103,12 +132,16 @@ pub struct LcmcMleIdentitiesReq {
 /// MLE-IDLE indication: this shall be used by the MLE to inform the CMCE that a MM protocol exchange has
 /// completed.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für lcmc MLE-Verbindungssteuerung idle ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LcmcMleIdleInd {}
 
 /// MLE-INFO indication: this primitive shall be used by MLE to inform the CMCE of a change in system broadcast
 /// parameters, to indicate whether there is any match between the subscriber class being broadcast by the SwMI and the
 /// subscriber class of the MS, and to indicate if the present cell is a permitted cell.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für lcmc MLE-Verbindungssteuerung info ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LcmcMleInfoInd {
     pub broadcast_params: Todo,
     pub subscriber_class_match: Todo,
@@ -118,6 +151,8 @@ pub struct LcmcMleInfoInd {
 /// MLE-OPEN indication: this primitive shall be used by the MLE to inform the CMCE that it has access to the
 /// communication resources and that the data transfer service can be used.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für lcmc MLE-Verbindungssteuerung open ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LcmcMleOpenInd {
     pub mcc: Todo, // current network
     pub mnc: Todo, // current network
@@ -128,11 +163,15 @@ pub struct LcmcMleOpenInd {
 /// restoration to CMCE but does not prevent CMCE from restoring other circuit-mode calls. The data transfer service can
 /// now be used.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für lcmc MLE-Verbindungssteuerung reopen ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LcmcMleReopenInd {}
 
 /// MLE-REPORT indication: this shall be used by the MLE to report on the completion of an MLE-UNITDATA
 /// request procedure. The result of the transfer attempt shall be passed as a parameter.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für lcmc MLE-Verbindungssteuerung report ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LcmcMleReportInd {
     pub handle: Todo,
     pub transfer_result: Todo,
@@ -140,8 +179,25 @@ pub struct LcmcMleReportInd {
     pub channel_change_handle: Todo,
 }
 
+/// MLE-RESTORE indication: the infrastructure MLE received U-RESTORE after a cell
+/// change and passes the embedded CMCE U-CALL RESTORE PDU to Call Control.
+#[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für lcmc MLE-Verbindungssteuerung Wiederherstellung ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct LcmcMleRestoreInd {
+    pub sdu: BitBuffer,
+    pub subscriber: TetraAddress,
+    pub endpoint_id: EndpointId,
+    pub link_id: LinkId,
+    pub previous_mcc: Option<u16>,
+    pub previous_mnc: Option<u16>,
+    pub previous_location_area: Option<u16>,
+}
+
 /// MLE-RESTORE request: this primitive shall be used by the CMCE to restore a call after a successful cell reselection
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für lcmc MLE-Verbindungssteuerung Wiederherstellung req in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LcmcMleRestoreReq {
     pub sdu: Todo,
     pub handle: Todo,
@@ -154,6 +210,8 @@ pub struct LcmcMleRestoreReq {
 /// MLE-RESTORE confirm: this primitive indicates the success or failure of call restoration to the CMCE as a result of
 /// a previously issued MLE-RESTORE request.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für lcmc MLE-Verbindungssteuerung Wiederherstellung conf in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LcmcMleRestoreConf {
     pub sdu: Todo,
     pub handle: Todo,
@@ -163,6 +221,8 @@ pub struct LcmcMleRestoreConf {
 /// communication resources is once again available. The data transfer service can now be used and the CMCE may
 /// attempt to restore any circuit mode calls.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für lcmc MLE-Verbindungssteuerung resume ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LcmcMleResumeInd {
     pub mcc: Todo, // current network
     pub mnc: Todo, // current network
@@ -171,6 +231,8 @@ pub struct LcmcMleResumeInd {
 /// MLE-UNITDATA request: this primitive shall be used by the CMCE to send unconfirmed data to a peer entity on the
 /// TETRA infrastructure side. Parameter indicates which layer 2 service is required.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für lcmc MLE-Verbindungssteuerung unitdata req in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LcmcMleUnitdataReq {
     pub sdu: BitBuffer,
     pub handle: MleHandle,
@@ -196,6 +258,8 @@ pub struct LcmcMleUnitdataReq {
 /// MLE-UNITDATA indication: this primitive shall be used by the MLE to pass to the CMCE entity data which has
 /// been received from a peer entity on the TETRA infrastructure side.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für lcmc MLE-Verbindungssteuerung unitdata ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LcmcMleUnitdataInd {
     pub sdu: BitBuffer,
     pub handle: MleHandle,

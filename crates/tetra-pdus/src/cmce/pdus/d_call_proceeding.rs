@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 
 use crate::cmce::enums::call_status::CallStatus;
@@ -14,6 +17,8 @@ use tetra_core::{BitBuffer, expect_pdu_type, pdu_parse_error::PduParseErr};
 
 // note 1: If different from requested.
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für dcall proceeding in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DCallProceeding {
     /// Type1, 14 bits, Call identifier
     pub call_identifier: u16,
@@ -36,8 +41,12 @@ pub struct DCallProceeding {
 }
 
 #[allow(unreachable_code)] // TODO FIXME review, finalize and remove this
+// Was: Implementiert das zugehörige Verhalten für `DCallProceeding`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl DCallProceeding {
     /// Parse from BitBuffer
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buffer: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let pdu_type = buffer.read_field(5, "pdu_type")?;
         expect_pdu_type!(pdu_type, CmcePduTypeDl::DCallProceeding)?;
@@ -60,6 +69,8 @@ impl DCallProceeding {
         let basic_service_information = typed::parse_type2_struct(obit, buffer, BasicServiceInformation::from_bitbuf)?;
         // Type2
         let val = typed::parse_type2_generic(obit, buffer, 3, "call_status")?;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let call_status = match val {
             None => None,
             Some(val) => Some(CallStatus::try_from(val).map_err(|_| PduParseErr::InvalidValue {
@@ -97,6 +108,8 @@ impl DCallProceeding {
     }
 
     /// Serialize this PDU into the given BitBuffer.
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buffer: &mut BitBuffer) -> Result<(), PduParseErr> {
         // PDU Type
         buffer.write_bits(CmcePduTypeDl::DCallProceeding.into_raw(), 5);
@@ -141,7 +154,11 @@ impl DCallProceeding {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for DCallProceeding`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for DCallProceeding {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -160,12 +177,16 @@ impl fmt::Display for DCallProceeding {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use tetra_core::debug;
 
     use super::*;
 
     #[test]
+    // Was: Prüft automatisch den Fall parse d Ruf proceeding.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_parse_d_call_proceeding() {
         debug::setup_logging_verbose();
         let test_vec = "0000100000000000100110000";
@@ -187,6 +208,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall parse d Ruf proceeding with Dienst information.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_parse_d_call_proceeding_with_service_information() {
         debug::setup_logging_verbose();
         let test_vec = "0000100000000000100110001100000100000"; // 0000000

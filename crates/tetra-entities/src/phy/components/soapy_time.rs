@@ -1,11 +1,20 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 // At some point, these functions might be exposed through the rust-soapysdr crate.
 // For now, we re-implement them here.
 
+// Was: Legt den festen Wert `NS_PER_SEC_I64` für ns per sec i64 fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const NS_PER_SEC_I64: i64 = 1_000_000_000;
+// Was: Legt den festen Wert `NS_PER_SEC_F64` für ns per sec f64 fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const NS_PER_SEC_F64: f64 = 1_000_000_000.0;
 
 /// Port of SoapySDR_ticksToTimeNs(ticks, rate).
 /// `rate` is in ticks/second (e.g., samples/sec).
+// Was: Führt den Arbeitsschritt `ticks_to_time_ns` für ticks to time ns aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn ticks_to_time_ns(ticks: i64, rate: f64) -> i64 {
     assert!(rate.is_finite() && rate != 0.0, "rate must be finite and non-zero");
 
@@ -29,6 +38,8 @@ pub fn ticks_to_time_ns(ticks: i64, rate: f64) -> i64 {
 
 /// Port of SoapySDR_timeNsToTicks(timeNs, rate).
 /// `rate` is in ticks/second (e.g., samples/sec).
+// Was: Führt den Arbeitsschritt `time_ns_to_ticks` für time ns to ticks aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn time_ns_to_ticks(time_ns: i64, rate: f64) -> i64 {
     assert!(rate.is_finite() && rate != 0.0, "rate must be finite and non-zero");
 

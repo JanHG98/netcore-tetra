@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! Host system health collector — temperatures, voltages, currents, power.
 //!
 //! Walks several Linux interfaces and collects whatever is available:
@@ -34,11 +37,15 @@ use crate::net_telemetry::events::{SysSensor, SysSensorKind, TelemetryEvent};
 /// Sampling cadence. 2 s is the sweet spot — fast enough to feel live in the
 /// topbar badge, slow enough that the `vcgencmd` exec (~10-30 ms) and a couple
 /// of dozen sysfs reads don't add measurable system load.
+// Was: Legt den festen Wert `POLL_INTERVAL` für poll interval fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const POLL_INTERVAL: Duration = Duration::from_millis(2000);
 
 /// Spawn the background sampler. Returns immediately. The worker probes
 /// each source on every tick and emits a TelemetryEvent::SysHealth with
 /// whatever it managed to collect.
+// Was: Diese Funktion startet sys health.
+// Warum: Länger laufende Arbeit blockiert dadurch nicht den aufrufenden Ablauf.
 pub fn spawn_sys_health(sink: TelemetrySink) {
     thread::spawn(move || {
         // Probe vcgencmd once up-front. If it works we'll use it on every tick;
@@ -55,6 +62,8 @@ pub fn spawn_sys_health(sink: TelemetrySink) {
         // tick onward.
         let mut last_rapl: Option<(u64, Instant)> = read_rapl_uj().map(|uj| (uj, Instant::now()));
 
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             thread::sleep(POLL_INTERVAL);
 
@@ -98,6 +107,8 @@ pub fn spawn_sys_health(sink: TelemetrySink) {
             }
 
             // ── 4. Battery discharge rate (laptops, UPS HATs) ─────────────
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for battery_path in scan_power_supplies() {
                 if let Some(uw) = read_int_file(&battery_path.join("power_now")) {
                     let watts = (uw.unsigned_abs() as f32) / 1_000_000.0;
@@ -136,6 +147,8 @@ pub fn spawn_sys_health(sink: TelemetrySink) {
 // ─────────────────────────────────────────────────────────────────────────
 
 /// Returns true if `vcgencmd pmic_read_adc` exits cleanly with non-empty output.
+// Was: Führt den Arbeitsschritt `probe_vcgencmd` für probe vcgencmd aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn probe_vcgencmd() -> bool {
     Command::new("vcgencmd")
         .arg("pmic_read_adc")
@@ -158,6 +171,8 @@ fn probe_vcgencmd() -> bool {
 /// Names ending in `_A` are currents, `_V` are voltages. The stripped prefix
 /// (e.g. "3V7_WL_SW") is the rail key. We emit V, A, and W (= V × I) for each
 /// rail and return the sum of W as the system total.
+// Was: Diese Funktion liest pmic.
+// Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
 fn read_pmic(out: &mut Vec<SysSensor>) -> Option<f32> {
     let result = Command::new("vcgencmd").arg("pmic_read_adc").output().ok()?;
     if !result.status.success() {
@@ -171,6 +186,8 @@ fn read_pmic(out: &mut Vec<SysSensor>) -> Option<f32> {
 
     // Parser is forgiving: any line matching "<NAME>_<A|V> <something>=<value><unit>"
     // contributes. Anything else is ignored.
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for line in text.lines() {
         let Some((name, value)) = parse_pmic_line(line) else {
             continue;
@@ -184,6 +201,8 @@ fn read_pmic(out: &mut Vec<SysSensor>) -> Option<f32> {
 
     // Stable presentation order: most-interesting rails first so the badge
     // and tab both show the SoC power before peripheral rails.
+    // Was: Legt den festen Wert `RAIL_ORDER` für rail order fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const RAIL_ORDER: &[&str] = &[
         "VDD_CORE", // ARM cores — biggest single consumer
         "EXT5V",    // external 5V — voltage-only (no current measured)
@@ -219,6 +238,8 @@ fn read_pmic(out: &mut Vec<SysSensor>) -> Option<f32> {
     ordered.extend(extras);
 
     let mut total_w: f32 = 0.0;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for rail in &ordered {
         let v = voltages.get(rail).copied();
         let a = currents.get(rail).copied();
@@ -255,6 +276,8 @@ fn read_pmic(out: &mut Vec<SysSensor>) -> Option<f32> {
 
 /// Parse one line of `vcgencmd pmic_read_adc` output.
 /// Returns (rail_name_with_suffix, value) e.g. ("3V3_SYS_A", 0.06050766).
+// Was: Diese Funktion liest und prüft pmic line.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_pmic_line(line: &str) -> Option<(String, f32)> {
     // Format: "<NAME> <kind>(<N>)=<value><unit>"
     // Split on '=' to grab the value; first whitespace-separated token is the
@@ -283,10 +306,14 @@ fn parse_pmic_line(line: &str) -> Option<(String, f32)> {
 ///   currN_input    → milliamperes
 ///   powerN_input   → microwatts
 ///   <prefix>N_label → human-readable label for that channel
+// Was: Führt den Arbeitsschritt `scan_hwmon` für scan hwmon aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn scan_hwmon(out: &mut Vec<SysSensor>) {
     let Ok(dir) = fs::read_dir("/sys/class/hwmon") else {
         return;
     };
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for entry in dir.flatten() {
         let path = entry.path();
         let chip_name = read_string_file(&path.join("name")).unwrap_or_else(|| "hwmon".into());
@@ -294,18 +321,24 @@ fn scan_hwmon(out: &mut Vec<SysSensor>) {
     }
 }
 
+// Was: Führt den Arbeitsschritt `scan_hwmon_chip` für scan hwmon chip aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn scan_hwmon_chip(path: &Path, chip_name: &str, out: &mut Vec<SysSensor>) {
     let Ok(entries) = fs::read_dir(path) else {
         return;
     };
     let names: Vec<String> = entries.flatten().filter_map(|e| e.file_name().to_str().map(String::from)).collect();
 
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for name in &names {
         let Some(stripped) = name.strip_suffix("_input") else {
             continue;
         };
         let (prefix, channel) = split_prefix_channel(stripped);
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let (kind, scale) = match prefix {
             "temp" => (SysSensorKind::Temperature, 1.0 / 1000.0),
             "in" => (SysSensorKind::Voltage, 1.0 / 1000.0),
@@ -314,6 +347,8 @@ fn scan_hwmon_chip(path: &Path, chip_name: &str, out: &mut Vec<SysSensor>) {
             _ => continue,
         };
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let value = match read_int_file(&path.join(name)) {
             Some(v) => v as f32 * scale,
             None => continue,
@@ -331,6 +366,8 @@ fn scan_hwmon_chip(path: &Path, chip_name: &str, out: &mut Vec<SysSensor>) {
     }
 }
 
+// Was: Führt den Arbeitsschritt `split_prefix_channel` für split prefix Kanal aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn split_prefix_channel(s: &str) -> (&str, &str) {
     let split_at = s.find(|c: char| c.is_ascii_digit()).unwrap_or(s.len());
     s.split_at(split_at)
@@ -340,6 +377,8 @@ fn split_prefix_channel(s: &str) -> (&str, &str) {
 // RAPL (Intel/AMD x86)
 // ─────────────────────────────────────────────────────────────────────────
 
+// Was: Diese Funktion liest rapl uj.
+// Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
 fn read_rapl_uj() -> Option<u64> {
     let s = fs::read_to_string("/sys/class/powercap/intel-rapl:0/energy_uj").ok()?;
     s.trim().parse().ok()
@@ -349,11 +388,15 @@ fn read_rapl_uj() -> Option<u64> {
 // power_supply / batteries
 // ─────────────────────────────────────────────────────────────────────────
 
+// Was: Führt den Arbeitsschritt `scan_power_supplies` für scan power supplies aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn scan_power_supplies() -> Vec<PathBuf> {
     let mut out = Vec::new();
     let Ok(dir) = fs::read_dir("/sys/class/power_supply") else {
         return out;
     };
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for entry in dir.flatten() {
         let path = entry.path();
         if let Some(t) = read_string_file(&path.join("type")) {
@@ -369,10 +412,14 @@ fn scan_power_supplies() -> Vec<PathBuf> {
 // NVMe disk temperatures
 // ─────────────────────────────────────────────────────────────────────────
 
+// Was: Führt den Arbeitsschritt `scan_nvme_temps` für scan nvme temps aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn scan_nvme_temps(out: &mut Vec<SysSensor>) {
     let Ok(dir) = fs::read_dir("/sys/class/nvme") else {
         return;
     };
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for entry in dir.flatten() {
         let nvme_name = entry.file_name().to_string_lossy().into_owned();
         let candidates = [
@@ -380,6 +427,8 @@ fn scan_nvme_temps(out: &mut Vec<SysSensor>) {
             entry.path().join("hwmon1/temp1_input"),
             entry.path().join("device/hwmon0/temp1_input"),
         ];
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for c in &candidates {
             if let Some(v) = read_int_file(c) {
                 out.push(SysSensor {
@@ -400,9 +449,13 @@ fn scan_nvme_temps(out: &mut Vec<SysSensor>) {
 /// Best-effort primary host temperature in °C, for the U-STATUS info responder. Scans the kernel
 /// thermal zones and prefers a CPU/SoC/package zone, falling back to the hottest reading. Returns
 /// `None` where no thermal zones exist (e.g. a macOS dev host).
+// Was: Führt den Arbeitsschritt `cpu_temp_c` für cpu temp c aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn cpu_temp_c() -> Option<f32> {
     let dir = fs::read_dir("/sys/class/thermal").ok()?;
     let mut readings: Vec<(String, f32)> = Vec::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for entry in dir.flatten() {
         let name = entry.file_name();
         if !name.to_string_lossy().starts_with("thermal_zone") {
@@ -430,6 +483,8 @@ pub fn cpu_temp_c() -> Option<f32> {
 /// connect-a-UDP-socket trick: no packet is sent, the kernel just resolves which local interface
 /// would route to a public address — which is the hotspot/LAN address the operator wants. Returns
 /// `None` when there is no usable route.
+// Was: Führt den Arbeitsschritt `primary_ip` für primary IP-Daten aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn primary_ip() -> Option<String> {
     let sock = std::net::UdpSocket::bind("0.0.0.0:0").ok()?;
     sock.connect("8.8.8.8:80").ok()?;
@@ -440,10 +495,14 @@ pub fn primary_ip() -> Option<String> {
     Some(ip.to_string())
 }
 
+// Was: Führt den Arbeitsschritt `scan_thermal_zones` für scan thermal zones aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn scan_thermal_zones(out: &mut Vec<SysSensor>) {
     let Ok(dir) = fs::read_dir("/sys/class/thermal") else {
         return;
     };
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for entry in dir.flatten() {
         let name = entry.file_name();
         let name_str = name.to_string_lossy();
@@ -466,10 +525,14 @@ fn scan_thermal_zones(out: &mut Vec<SysSensor>) {
 // File-reading helpers
 // ─────────────────────────────────────────────────────────────────────────
 
+// Was: Diese Funktion liest string file.
+// Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
 fn read_string_file(path: &Path) -> Option<String> {
     fs::read_to_string(path).ok().map(|s| s.trim().to_string())
 }
 
+// Was: Diese Funktion liest int file.
+// Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
 fn read_int_file(path: &Path) -> Option<i64> {
     read_string_file(path)?.parse().ok()
 }

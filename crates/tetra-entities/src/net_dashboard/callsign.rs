@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! Country flag for an amateur-radio callsign ("indicativ").
 //!
 //! RadioID resolves an ISSI to a callsign such as `YO6RZV`; the leading characters are an ITU
@@ -20,6 +23,8 @@
 /// linear scan returning the first containing range is unambiguous. Comparison is plain ASCII
 /// lexicographic on the two-character code (digits `0`-`9` sort before letters `A`-`Z`).
 #[rustfmt::skip]
+// Was: Legt den festen Wert `PREFIX_RANGES` für prefix ranges fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const PREFIX_RANGES: &[(&str, &str, &str)] = &[
     // ── A ──
     ("AA","AL","US"), ("AM","AO","ES"), ("AP","AS","PK"), ("AT","AW","IN"), ("AX","AX","AU"),
@@ -126,6 +131,8 @@ const PREFIX_RANGES: &[(&str, &str, &str)] = &[
 ];
 
 /// Look up the ISO 3166-1 alpha-2 country code for a callsign's two-character prefix.
+// Was: Führt den Arbeitsschritt `iso_country` für iso country aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn iso_country(callsign: &str) -> Option<&'static str> {
     // The country is decided by the first two characters of the call sign. RadioID returns the bare
     // call sign (no portable `/P` or `DL/` decorations), so the leading two characters are the
@@ -143,11 +150,15 @@ fn iso_country(callsign: &str) -> Option<&'static str> {
 
 /// Turn an ISO 3166-1 alpha-2 code into a flag emoji built from Unicode regional indicators
 /// (`"RO"` → `"🇷🇴"`). Returns `None` for anything that is not two ASCII uppercase letters.
+// Was: Führt den Arbeitsschritt `iso_to_flag` für iso to flag aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn iso_to_flag(iso: &str) -> Option<String> {
     if iso.len() != 2 {
         return None;
     }
     let mut out = String::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for c in iso.chars() {
         if !c.is_ascii_uppercase() {
             return None;
@@ -160,15 +171,21 @@ fn iso_to_flag(iso: &str) -> Option<String> {
 
 /// Flag emoji for a callsign, e.g. `"YO6RZV"` → `Some("🇷🇴")`. Returns `None` when the prefix is not
 /// allocated or maps to a non-country (so callers can simply show no flag).
+// Was: Führt den Arbeitsschritt `callsign_flag` für callsign flag aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn callsign_flag(callsign: &str) -> Option<String> {
     iso_to_flag(iso_country(callsign)?)
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
     #[test]
+    // Was: Führt den Arbeitsschritt `known_prefixes_map_to_expected_country` für known prefixes map to expected country aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn known_prefixes_map_to_expected_country() {
         assert_eq!(iso_country("YO6RZV"), Some("RO"));
         assert_eq!(iso_country("yo6rzv"), Some("RO")); // case-insensitive
@@ -183,6 +200,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `flag_is_regional_indicator_pair` für flag is regional indicator pair aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn flag_is_regional_indicator_pair() {
         // 🇷🇴 = U+1F1F7 U+1F1F4
         assert_eq!(callsign_flag("YO6RZV").as_deref(), Some("\u{1F1F7}\u{1F1F4}"));
@@ -190,6 +209,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `unknown_or_too_short_yields_none` für unknown or too short yields none aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn unknown_or_too_short_yields_none() {
         assert_eq!(callsign_flag(""), None);
         assert_eq!(callsign_flag("Q"), None);
@@ -197,7 +218,11 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `ranges_are_well_formed_and_non_overlapping` für ranges are well formed and non overlapping aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn ranges_are_well_formed_and_non_overlapping() {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (start, end, iso) in PREFIX_RANGES {
             assert!(start <= end, "range {start}..{end} is inverted");
             assert_eq!(start.len(), 2, "prefix {start} must be two chars");
@@ -205,7 +230,11 @@ mod tests {
             assert_eq!(iso.len(), 2, "ISO code {iso} must be two chars");
         }
         // Quadratic but tiny; guards against accidental overlap when editing the table.
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (i, (s1, e1, _)) in PREFIX_RANGES.iter().enumerate() {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for (s2, e2, _) in &PREFIX_RANGES[i + 1..] {
                 let overlap = s1 <= e2 && s2 <= e1;
                 assert!(!overlap, "ranges {s1}..{e1} and {s2}..{e2} overlap");

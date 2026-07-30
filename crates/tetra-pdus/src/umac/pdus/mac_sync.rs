@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 
 use tetra_core::pdu_parse_error::PduParseErr;
@@ -5,6 +8,8 @@ use tetra_core::{BitBuffer, TdmaTime, assert_warn};
 
 /// Clause 21.4.4.2
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für MAC-Funkzugriffssteuerung sync in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MacSync {
     // 4
     pub system_code: u8,
@@ -29,7 +34,11 @@ pub struct MacSync {
     // pub reserved: bool,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `MacSync`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl MacSync {
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buf: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let mut s = MacSync {
             system_code: 0,
@@ -60,6 +69,8 @@ impl MacSync {
         Ok(s)
     }
 
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buf: &mut BitBuffer) {
         buf.write_bits(self.system_code as u64, 4);
         buf.write_bits(self.colour_code as u64, 6);
@@ -74,7 +85,11 @@ impl MacSync {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for MacSync`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for MacSync {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "MacSync {{ system_code: {}", self.system_code)?;
         write!(f, "  colour_code: {}", self.colour_code)?;

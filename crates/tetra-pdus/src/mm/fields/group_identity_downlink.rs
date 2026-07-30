@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 
 use tetra_core::{BitBuffer, pdu_parse_error::PduParseErr};
@@ -6,6 +9,8 @@ use crate::mm::fields::group_identity_attachment::GroupIdentityAttachment;
 
 /// 16.10.22 Group identity downlink
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für Gruppe identity Downlink (Netz zum Funkgerät) in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GroupIdentityDownlink {
     // 1
     // pub attach_detach_type_identifier: u8,
@@ -23,7 +28,11 @@ pub struct GroupIdentityDownlink {
     pub vgssi: Option<u32>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `GroupIdentityDownlink`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl GroupIdentityDownlink {
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buf: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let mut s = GroupIdentityDownlink {
             // attach_detach_type_identifier: 0,
@@ -57,6 +66,8 @@ impl GroupIdentityDownlink {
         Ok(s)
     }
 
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buf: &mut BitBuffer) -> Result<(), PduParseErr> {
         assert!(
             self.group_identity_attachment.is_some() ^ self.group_identity_detachment_uplink.is_some(),
@@ -114,7 +125,11 @@ impl GroupIdentityDownlink {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for GroupIdentityDownlink`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for GroupIdentityDownlink {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,

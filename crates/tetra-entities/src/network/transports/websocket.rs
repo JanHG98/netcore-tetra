@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! WebSocket transport implementation with HTTP Digest Auth, TLS, and heartbeat management
 //!
 //! Implements the [`NetworkTransport`] trait over WebSocket (RFC 6455), with optional
@@ -17,14 +20,30 @@ use tungstenite::{Connector, Message, WebSocket, stream::MaybeTlsStream};
 
 use super::{NetworkAddress, NetworkError, NetworkMessage, NetworkTransport};
 
+// Was: Legt den festen Wert `DEFAULT_CONNECT_TIMEOUT` für default connect timeout fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const DEFAULT_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
+// Was: Legt den festen Wert `DEFAULT_READ_TIMEOUT` für default read timeout fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const DEFAULT_READ_TIMEOUT: Duration = Duration::from_secs(10);
+// Was: Legt den festen Wert `CONTROL_ROOM_MARKER_HEADER` für Steuerung room marker header fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const CONTROL_ROOM_MARKER_HEADER: &str = "x-netcore-control-room";
+// Was: Legt den festen Wert `CONTROL_ROOM_MARKER_VALUE` für Steuerung room marker value fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const CONTROL_ROOM_MARKER_VALUE: &str = "1";
+// Was: Legt den festen Wert `CONTROL_ROOM_READY_TIMEOUT` für Steuerung room ready timeout fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const CONTROL_ROOM_READY_TIMEOUT: Duration = Duration::from_secs(2);
+// Was: Legt den festen Wert `CONTROL_ROOM_READY_PROBE` für Steuerung room ready probe fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const CONTROL_ROOM_READY_PROBE: &[u8] = b"netcore-control-room-ready-v1";
 
+// Was: Führt den Arbeitsschritt `websocket_connect_error` für websocket connect error aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn websocket_connect_error(error: tungstenite::Error) -> NetworkError {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match error {
         tungstenite::Error::Http(response) => {
             let status = response.status();
@@ -42,7 +61,11 @@ fn websocket_connect_error(error: tungstenite::Error) -> NetworkError {
     }
 }
 
+// Was: Führt den Arbeitsschritt `configure_websocket_stream` für configure websocket stream aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn configure_websocket_stream(ws: &WebSocket<MaybeTlsStream<TcpStream>>, read_timeout: Duration) {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match ws.get_ref() {
         MaybeTlsStream::Plain(stream) => {
             let _ = stream.set_read_timeout(Some(read_timeout));
@@ -57,6 +80,8 @@ fn configure_websocket_stream(ws: &WebSocket<MaybeTlsStream<TcpStream>>, read_ti
     }
 }
 
+// Was: Führt den Arbeitsschritt `verify_control_room_ready` für verify Steuerung room ready aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn verify_control_room_ready(ws: &mut WebSocket<MaybeTlsStream<TcpStream>>) -> Result<(), NetworkError> {
     configure_websocket_stream(ws, Duration::from_millis(100));
 
@@ -67,7 +92,11 @@ fn verify_control_room_ready(ws: &mut WebSocket<MaybeTlsStream<TcpStream>>) -> R
         )))?;
 
     let deadline = Instant::now() + CONTROL_ROOM_READY_TIMEOUT;
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
     loop {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match ws.read() {
             Ok(Message::Pong(payload)) if payload.as_slice() == CONTROL_ROOM_READY_PROBE => return Ok(()),
             Ok(Message::Ping(payload)) => {
@@ -106,6 +135,8 @@ fn verify_control_room_ready(ws: &mut WebSocket<MaybeTlsStream<TcpStream>>) -> R
 
 /// Configuration for the WebSocket transport
 #[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für Weboberfläche socket transport Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct WebSocketTransportConfig {
     /// Server hostname or IP
     pub host: String,
@@ -142,13 +173,21 @@ pub struct WebSocketTransportConfig {
 // ─── TLS and stream helpers ───────────────────────────────────────
 
 /// A stream that is either plain TCP or TLS-wrapped TCP (used for authentication requests)
+// Was: Listet die möglichen Varianten für Anmeldung und Berechtigung stream auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 enum AuthStream {
     Plain(TcpStream),
     Tls(rustls::StreamOwned<rustls::ClientConnection, TcpStream>),
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Read for AuthStream`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Read for AuthStream {
+    // Was: Diese Funktion liest den vorgesehenen Arbeitsschritt.
+    // Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self {
             AuthStream::Plain(s) => s.read(buf),
             AuthStream::Tls(s) => s.read(buf),
@@ -156,14 +195,24 @@ impl Read for AuthStream {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Write for AuthStream`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Write for AuthStream {
+    // Was: Diese Funktion schreibt den vorgesehenen Arbeitsschritt.
+    // Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self {
             AuthStream::Plain(s) => s.write(buf),
             AuthStream::Tls(s) => s.write(buf),
         }
     }
+    // Was: Diese Funktion schreibt den vorgesehenen Arbeitsschritt.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn flush(&mut self) -> std::io::Result<()> {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self {
             AuthStream::Plain(s) => s.flush(),
             AuthStream::Tls(s) => s.flush(),
@@ -176,17 +225,25 @@ impl Write for AuthStream {
 /// When `custom_root_certs` is `Some`, the provided DER-encoded certificates are
 /// used as root trust anchors (replacing the system store). Otherwise the
 /// platform's native certificate store is loaded.
+// Was: Diese Funktion erstellt tls Konfiguration.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
 fn build_tls_config(
     custom_root_certs: &Option<Vec<rustls::pki_types::CertificateDer<'static>>>,
 ) -> Result<Arc<rustls::ClientConfig>, String> {
     let mut root_store = rustls::RootCertStore::empty();
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match custom_root_certs {
         Some(certs) => {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for cert in certs {
                 root_store.add(cert.clone()).map_err(|e| format!("add custom cert: {}", e))?;
             }
         }
         None => {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for cert in rustls_native_certs::load_native_certs().map_err(|e| format!("load certs: {}", e))? {
                 let _ = root_store.add(cert);
             }
@@ -199,6 +256,8 @@ fn build_tls_config(
 }
 
 /// Connect a TCP stream, optionally wrapping with TLS (used for HTTP auth requests)
+// Was: Diese Funktion verbindet Anmeldung und Berechtigung stream.
+// Warum: Der Verbindungsaufbau wird dadurch zentral überwacht und kann sauber fehlschlagen.
 fn connect_auth_stream(
     host: &str,
     port: u16,
@@ -239,15 +298,21 @@ fn connect_auth_stream(
 // ─── HTTP Digest Auth helpers ─────────────────────────────────────
 
 /// Compute MD5 hex digest of a string
+// Was: Führt den Arbeitsschritt `md5_hex` für md5 hex aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn md5_hex(input: &str) -> String {
     let digest = md5::compute(input.as_bytes());
     format!("{:x}", digest)
 }
 
 /// Parse a "Digest realm=..., nonce=..., ..." challenge into key-value pairs
+// Was: Diese Funktion liest und prüft digest challenge.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_digest_challenge(header: &str) -> HashMap<String, String> {
     let mut params = HashMap::new();
     let s = header.strip_prefix("Digest ").unwrap_or(header);
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for part in s.split(',') {
         let part = part.trim();
         if let Some(eq) = part.find('=') {
@@ -261,6 +326,8 @@ fn parse_digest_challenge(header: &str) -> HashMap<String, String> {
 
 /// Build an Authorization header for HTTP Digest Auth
 /// Find the first occurrence of `needle` in `hay`.
+// Was: Diese Funktion sucht subslice.
+// Warum: Die Suchlogik bleibt damit wiederverwendbar und muss nicht an mehreren Stellen kopiert werden.
 fn find_subslice(hay: &[u8], needle: &[u8]) -> Option<usize> {
     if needle.is_empty() || hay.len() < needle.len() {
         return None;
@@ -269,6 +336,8 @@ fn find_subslice(hay: &[u8], needle: &[u8]) -> Option<usize> {
 }
 
 /// Parse a `Content-Length` value (case-insensitive) out of a header block.
+// Was: Diese Funktion liest und prüft content length.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_content_length(headers: &str) -> Option<usize> {
     headers
         .lines()
@@ -289,10 +358,14 @@ fn parse_content_length(headers: &str) -> Option<usize> {
 ///   * a 200 needs its body — bounded by `Content-Length` when present, otherwise
 ///     until the body line is terminated.
 /// The socket read timeout bounds the whole loop, so it can never hang.
+// Was: Diese Funktion liest HTTP response.
+// Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
 fn read_http_response(stream: &mut AuthStream) -> Result<String, NetworkError> {
     let mut buf: Vec<u8> = Vec::with_capacity(4096);
     let mut chunk = [0u8; 4096];
 
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
     loop {
         if let Some(hdr_end) = find_subslice(&buf, b"\r\n\r\n") {
             let header_len = hdr_end + 4;
@@ -316,6 +389,8 @@ fn read_http_response(stream: &mut AuthStream) -> Result<String, NetworkError> {
             // otherwise: 200 headers but body still incomplete -> read more
         }
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match stream.read(&mut chunk) {
             Ok(0) => break, // peer closed the connection
             Ok(n) => buf.extend_from_slice(&chunk[..n]),
@@ -337,6 +412,8 @@ fn read_http_response(stream: &mut AuthStream) -> Result<String, NetworkError> {
     Ok(String::from_utf8_lossy(&buf).to_string())
 }
 
+// Was: Diese Funktion erstellt digest response.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
 fn build_digest_response(
     username: &str,
     password: &str,
@@ -380,6 +457,8 @@ fn build_digest_response(
 
 // ─── WebSocket Transport ──────────────────────────────────────────
 
+// Was: Bündelt die zusammengehörigen Werte für Weboberfläche socket transport in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct WebSocketTransport {
     config: WebSocketTransportConfig,
     ws: Option<WebSocket<MaybeTlsStream<TcpStream>>>,
@@ -392,7 +471,11 @@ pub struct WebSocketTransport {
     server_brew_version: u8,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `WebSocketTransport`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl WebSocketTransport {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(config: WebSocketTransportConfig) -> Self {
         let now = Instant::now();
         Self {
@@ -408,6 +491,8 @@ impl WebSocketTransport {
     }
 
     /// Perform HTTP GET with optional Digest Auth to discover the WebSocket endpoint path
+    // Was: Führt den Arbeitsschritt `authenticate` für authenticate aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn authenticate(&self) -> Result<String, NetworkError> {
         let host = &self.config.host;
         let port = self.config.port;
@@ -464,6 +549,8 @@ impl WebSocketTransport {
                 return Err(NetworkError::ConnectionFailed(format!("unsupported auth scheme: {}", challenge)));
             }
 
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let (username, password) = match &self.config.digest_auth_credentials {
                 Some((u, p)) => (u.as_str(), p.as_ref()),
                 None => {
@@ -518,6 +605,8 @@ impl WebSocketTransport {
     }
 
     /// Extract the endpoint path from a 200 OK response body
+    // Was: Führt den Arbeitsschritt `extract_endpoint` für extract endpoint aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn extract_endpoint(&self, response: &str) -> Result<String, NetworkError> {
         let body_start = response.find("\r\n\r\n");
         if let Some(pos) = body_start {
@@ -532,7 +621,11 @@ impl WebSocketTransport {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `NetworkTransport for WebSocketTransport`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl NetworkTransport for WebSocketTransport {
+    // Was: Diese Funktion verbindet den vorgesehenen Arbeitsschritt.
+    // Warum: Der Verbindungsaufbau wird dadurch zentral überwacht und kann sauber fehlschlagen.
     fn connect(&mut self) -> Result<(), NetworkError> {
         // Drop any existing connection
         self.ws = None;
@@ -662,6 +755,8 @@ impl NetworkTransport for WebSocketTransport {
                 .and_then(|v| v.to_str().ok())
                 .and_then(|s| s.trim().parse::<u8>().ok());
             self.server_brew_version = self.server_brew_version.max(handshake_version.unwrap_or(0));
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match handshake_version {
                 Some(v) => tracing::info!(
                     "WebSocketTransport: connected, server advertised Brew v{v} in handshake (now v{})",
@@ -699,6 +794,8 @@ impl NetworkTransport for WebSocketTransport {
         Ok(())
     }
 
+    // Was: Diese Funktion sendet reliable.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_reliable(&mut self, payload: &[u8]) -> Result<(), NetworkError> {
         let ws = self
             .ws
@@ -708,12 +805,18 @@ impl NetworkTransport for WebSocketTransport {
             .map_err(|e| NetworkError::SendFailed(format!("WebSocket send failed: {}", e)))
     }
 
+    // Was: Diese Funktion sendet unreliable.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_unreliable(&mut self, payload: &[u8]) -> Result<(), NetworkError> {
         // WebSocket is reliable by nature; delegate to send_reliable
         self.send_reliable(payload)
     }
 
+    // Was: Diese Funktion empfängt reliable.
+    // Warum: Eingehende Daten werden so geordnet geprüft, bevor sie weiterverteilt werden.
     fn receive_reliable(&mut self) -> Vec<NetworkMessage> {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let ws = match self.ws.as_mut() {
             Some(ws) => ws,
             None => return vec![],
@@ -748,7 +851,11 @@ impl NetworkTransport for WebSocketTransport {
             address: format!("{}:{}", self.config.host, self.config.port),
         };
 
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match ws.read() {
                 Ok(Message::Binary(data)) => {
                     self.last_activity_at = Instant::now();
@@ -812,14 +919,20 @@ impl NetworkTransport for WebSocketTransport {
         messages
     }
 
+    // Was: Diese Funktion empfängt unreliable.
+    // Warum: Eingehende Daten werden so geordnet geprüft, bevor sie weiterverteilt werden.
     fn receive_unreliable(&mut self) -> Vec<NetworkMessage> {
         // WebSocket has no unreliable channel; delegate to reliable
         self.receive_reliable()
     }
 
+    // Was: Diese Funktion wartet for response reliable.
+    // Warum: Nachfolgende Schritte laufen dadurch erst weiter, wenn ihre Voraussetzung wirklich erfüllt ist.
     fn wait_for_response_reliable(&mut self) -> Result<NetworkMessage, NetworkError> {
         let timeout = Duration::from_secs(10);
         let start = Instant::now();
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             let msgs = self.receive_reliable();
             if let Some(msg) = msgs.into_iter().next() {
@@ -837,6 +950,8 @@ impl NetworkTransport for WebSocketTransport {
         }
     }
 
+    // Was: Diese Funktion trennt den vorgesehenen Arbeitsschritt.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn disconnect(&mut self) {
         if let Some(ref mut ws) = self.ws {
             let _ = ws.close(None);
@@ -844,10 +959,14 @@ impl NetworkTransport for WebSocketTransport {
         self.ws = None;
     }
 
+    // Was: Prüft, ob connected zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     fn is_connected(&self) -> bool {
         self.ws.is_some()
     }
 
+    // Was: Führt den Arbeitsschritt `server_brew_version` für server Brew-Verbindung version aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn server_brew_version(&self) -> u8 {
         self.server_brew_version
     }

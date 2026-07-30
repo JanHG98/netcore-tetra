@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Einlesen und Prüfen der TETRA-Konfiguration.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -7,6 +10,8 @@ use toml::Value;
 /// Selects which locally-originated speech calls are written to disk.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für recording mode auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum RecordingMode {
     /// Record every call for which CMCE exposes a local speech floor.
     All,
@@ -14,7 +19,11 @@ pub enum RecordingMode {
     SelectedGroups,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for RecordingMode`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for RecordingMode {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self::All
     }
@@ -22,6 +31,8 @@ impl Default for RecordingMode {
 
 /// Local TETRA speech recording configuration.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für cfg recording in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgRecording {
     /// Instantiate the recorder entity and expose its dashboard API.
     pub enabled: bool,
@@ -55,13 +66,19 @@ pub struct CfgRecording {
     pub archive_retry_seconds: u64,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for CfgRecording`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for CfgRecording {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         apply_recording_patch(CfgRecordingDto::default()).expect("default recording config must be valid")
     }
 }
 
 #[derive(Debug, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für cfg recording dto in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgRecordingDto {
     #[serde(default)]
     pub enabled: bool,
@@ -97,7 +114,11 @@ pub struct CfgRecordingDto {
     pub extra: HashMap<String, Value>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for CfgRecordingDto`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for CfgRecordingDto {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             enabled: false,
@@ -120,42 +141,62 @@ impl Default for CfgRecordingDto {
     }
 }
 
+// Was: Führt den Arbeitsschritt `default_directory` für default directory aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_directory() -> String {
     "/var/lib/netcore/recordings".to_string()
 }
 
+// Was: Führt den Arbeitsschritt `default_minimum_free_space_mb` für default minimum free space mb aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_minimum_free_space_mb() -> u64 {
     2_048
 }
 
+// Was: Führt den Arbeitsschritt `default_retention_days` für default retention days aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_retention_days() -> u32 {
     30
 }
 
+// Was: Führt den Arbeitsschritt `default_max_recording_minutes` für default max recording minutes aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_max_recording_minutes() -> u32 {
     120
 }
 
+// Was: Führt den Arbeitsschritt `default_idle_finalize_secs` für default idle finalize secs aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_idle_finalize_secs() -> u32 {
     15
 }
 
+// Was: Führt den Arbeitsschritt `default_max_list_entries` für default max list entries aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_max_list_entries() -> usize {
     2_000
 }
 
+// Was: Führt den Arbeitsschritt `default_archive_directory` für default archive directory aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_archive_directory() -> String {
     "/mnt/nfs-share/Recordings".to_string()
 }
 
+// Was: Führt den Arbeitsschritt `default_tts_archive_directory` für default tts archive directory aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_tts_archive_directory() -> String {
     "/mnt/nfs-share/TTS-Dateien".to_string()
 }
 
+// Was: Führt den Arbeitsschritt `default_archive_retry_seconds` für default archive retry seconds aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_archive_retry_seconds() -> u64 {
     60
 }
 
+// Was: Diese Funktion wendet recording patch.
+// Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
 pub fn apply_recording_patch(mut src: CfgRecordingDto) -> Result<CfgRecording, String> {
     src.directory = src.directory.trim().to_string();
     if src.directory.is_empty() {
@@ -220,6 +261,8 @@ pub fn apply_recording_patch(mut src: CfgRecordingDto) -> Result<CfgRecording, S
     })
 }
 
+// Was: Diese Funktion prüft archive directory.
+// Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
 fn validate_archive_directory(
     field: &str,
     enabled: bool,
@@ -246,10 +289,14 @@ fn validate_archive_directory(
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
     #[test]
+    // Was: Führt den Arbeitsschritt `defaults_are_safe_and_disabled` für defaults are safe and disabled aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn defaults_are_safe_and_disabled() {
         let cfg = CfgRecording::default();
         assert!(!cfg.enabled);
@@ -259,6 +306,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `rejects_invalid_group_ids` für rejects invalid Gruppe ids aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rejects_invalid_group_ids() {
         let dto = CfgRecordingDto {
             selected_groups: vec![0, 0x0100_0000],
@@ -268,6 +317,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `rejects_relative_archive_directory` für rejects relative archive directory aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rejects_relative_archive_directory() {
         let dto = CfgRecordingDto {
             archive_enabled: true,
@@ -278,6 +329,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `rejects_relative_tts_archive_directory` für rejects relative tts archive directory aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rejects_relative_tts_archive_directory() {
         let dto = CfgRecordingDto {
             tts_archive_enabled: true,
@@ -288,6 +341,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `keeps_recording_and_tts_archive_separate` für keeps recording and tts archive separate aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn keeps_recording_and_tts_archive_separate() {
         let dto = CfgRecordingDto {
             archive_enabled: true,

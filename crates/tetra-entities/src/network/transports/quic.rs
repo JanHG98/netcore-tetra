@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -9,6 +12,8 @@ use super::{NetworkAddress, NetworkError, NetworkMessage, NetworkTransport};
 
 /// Channel type for QUIC streams
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für quic Kanal type auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum QuicChannelType {
     /// Reliable ordered channel for signalling
     Reliable,
@@ -18,6 +23,8 @@ pub enum QuicChannelType {
 
 /// Configuration for creating a QUIC transport
 #[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für quic transport Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct QuicTransportConfig {
     /// Server address to connect to
     pub server_addr: NetworkAddress,
@@ -29,8 +36,12 @@ pub struct QuicTransportConfig {
     pub runtime: tokio::runtime::Handle,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `QuicTransportConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl QuicTransportConfig {
     /// Create a new QUIC transport configuration
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(server_addr: NetworkAddress, runtime: tokio::runtime::Handle) -> Self {
         Self {
             server_addr,
@@ -41,6 +52,8 @@ impl QuicTransportConfig {
     }
 
     /// Create an insecure QUIC transport configuration (for testing)
+    // Was: Führt den Arbeitsschritt `insecure` für insecure aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn insecure(server_addr: NetworkAddress, runtime: tokio::runtime::Handle) -> Self {
         Self {
             server_addr,
@@ -51,6 +64,8 @@ impl QuicTransportConfig {
     }
 
     /// Set connection timeout
+    // Was: Führt den Arbeitsschritt `with_connect_timeout` für with connect timeout aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn with_connect_timeout(mut self, timeout: Duration) -> Self {
         self.connect_timeout = timeout;
         self
@@ -59,6 +74,8 @@ impl QuicTransportConfig {
 
 /// QUIC-based network transport
 /// Provides both reliable signalling and unreliable voice channels
+// Was: Bündelt die zusammengehörigen Werte für quic transport in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct QuicTransport {
     endpoint: Option<Endpoint>,
     connection: Option<Connection>,
@@ -72,6 +89,8 @@ pub struct QuicTransport {
     runtime: tokio::runtime::Runtime,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `QuicTransport`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl QuicTransport {
     /// Create a new QUIC transport
     ///
@@ -80,6 +99,8 @@ impl QuicTransport {
     /// * `connect_timeout` - Connection timeout duration
     /// * `skip_cert_verification` - Skip certificate verification (useful for testing)
     /// * `runtime` - Tokio runtimefor async operations
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(
         server_addr: NetworkAddress,
         connect_timeout: Duration,
@@ -132,7 +153,11 @@ impl QuicTransport {
     }
 
     /// Parse NetworkAddress to SocketAddr
+    // Was: Diese Funktion liest und prüft socket addr.
+    // Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     fn parse_socket_addr(addr: &NetworkAddress) -> Result<SocketAddr, NetworkError> {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match addr {
             NetworkAddress::Tcp { host, port } | NetworkAddress::Udp { host, port } => format!("{}:{}", host, port)
                 .parse()
@@ -144,10 +169,14 @@ impl QuicTransport {
     }
 
     /// Configure client with certificate verification (production)
+    // Was: Führt den Arbeitsschritt `configure_client` für configure client aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn configure_client() -> Result<quinn::crypto::rustls::QuicClientConfig, NetworkError> {
         let mut roots = rustls::RootCertStore::empty();
 
         // Add system certificates
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for cert in rustls_native_certs::load_native_certs()
             .map_err(|e| NetworkError::ConnectionFailed(format!("Failed to load native certs: {}", e)))?
         {
@@ -166,6 +195,8 @@ impl QuicTransport {
     }
 
     /// Configure insecure client (skip certificate verification - testing only)
+    // Was: Führt den Arbeitsschritt `configure_insecure_client` für configure insecure client aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn configure_insecure_client() -> Result<quinn::crypto::rustls::QuicClientConfig, NetworkError> {
         let mut crypto = rustls::ClientConfig::builder()
             .dangerous()
@@ -180,12 +211,16 @@ impl QuicTransport {
     }
 
     /// Send data on a specific channel type
+    // Was: Diese Funktion sendet on Kanal.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     pub async fn send_on_channel(&mut self, payload: &[u8], channel: QuicChannelType) -> Result<(), NetworkError> {
         let conn = self
             .connection
             .as_ref()
             .ok_or_else(|| NetworkError::SendFailed("No active connection".to_string()))?;
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match channel {
             QuicChannelType::Reliable => {
                 // Use cached bidirectional stream for signalling
@@ -220,18 +255,24 @@ impl QuicTransport {
     }
 
     /// Receive data from a specific channel type (non-blocking)
+    // Was: Diese Funktion empfängt from Kanal.
+    // Warum: Eingehende Daten werden so geordnet geprüft, bevor sie weiterverteilt werden.
     pub async fn receive_from_channel(&mut self, channel: QuicChannelType) -> Result<Option<Vec<u8>>, NetworkError> {
         let conn = self
             .connection
             .as_ref()
             .ok_or_else(|| NetworkError::ReceiveFailed("No active connection".to_string()))?;
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match channel {
             QuicChannelType::Reliable => {
                 if let Some(ref mut recv) = self.reliable_recv {
                     // Try to read length prefix with a short timeout so this
                     // stays non-blocking when no data is available.
                     let mut len_buf = [0u8; 4];
+                    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                     match tokio::time::timeout(Duration::from_millis(10), recv.read_exact(&mut len_buf)).await {
                         Ok(Ok(())) => {
                             let len = u32::from_be_bytes(len_buf) as usize;
@@ -241,6 +282,8 @@ impl QuicTransport {
                             }
 
                             let mut payload = vec![0u8; len];
+                            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                             match recv.read_exact(&mut payload).await {
                                 Ok(()) => Ok(Some(payload)),
                                 Err(_) => Ok(None), // Stream finished
@@ -255,6 +298,8 @@ impl QuicTransport {
             }
             QuicChannelType::Unreliable => {
                 // Receive datagram
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match conn.read_datagram().await {
                     Ok(data) => Ok(Some(data.to_vec())),
                     Err(quinn::ConnectionError::ApplicationClosed(_)) => Ok(None),
@@ -265,6 +310,8 @@ impl QuicTransport {
     }
 
     /// Close reliable stream
+    // Was: Diese Funktion schließt reliable stream.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn close_reliable_stream(&mut self) {
         if let Some(mut send) = self.reliable_send.take() {
             let _ = send.finish();
@@ -273,7 +320,11 @@ impl QuicTransport {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `NetworkTransport for QuicTransport`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl NetworkTransport for QuicTransport {
+    // Was: Diese Funktion verbindet den vorgesehenen Arbeitsschritt.
+    // Warum: Der Verbindungsaufbau wird dadurch zentral überwacht und kann sauber fehlschlagen.
     fn connect(&mut self) -> Result<(), NetworkError> {
         tracing::debug!("QuicTransport connecting to {:?}", self.server_addr);
 
@@ -289,6 +340,8 @@ impl NetworkTransport for QuicTransport {
             .ok_or_else(|| NetworkError::ConnectionFailed("No endpoint".to_string()))?;
 
         // Extract server name for SNI
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let server_name = match &self.server_addr {
             NetworkAddress::Tcp { host, .. } | NetworkAddress::Udp { host, .. } => host.clone(),
             _ => return Err(NetworkError::ConnectionFailed("Invalid address type".to_string())),
@@ -312,18 +365,24 @@ impl NetworkTransport for QuicTransport {
         Ok(())
     }
 
+    // Was: Diese Funktion sendet reliable.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_reliable(&mut self, payload: &[u8]) -> Result<(), NetworkError> {
         // Synchronous wrapper around async send_on_channel
         let runtime = self.runtime.handle().clone();
         runtime.block_on(async { self.send_on_channel(payload, QuicChannelType::Reliable).await })
     }
 
+    // Was: Diese Funktion sendet unreliable.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_unreliable(&mut self, payload: &[u8]) -> Result<(), NetworkError> {
         // Synchronous wrapper around async send_on_channel
         let runtime = self.runtime.handle().clone();
         runtime.block_on(async { self.send_on_channel(payload, QuicChannelType::Unreliable).await })
     }
 
+    // Was: Diese Funktion empfängt reliable.
+    // Warum: Eingehende Daten werden so geordnet geprüft, bevor sie weiterverteilt werden.
     fn receive_reliable(&mut self) -> Vec<NetworkMessage> {
         // Non-blocking receive from reliable channel
         let mut messages = Vec::new();
@@ -340,6 +399,8 @@ impl NetworkTransport for QuicTransport {
         messages
     }
 
+    // Was: Diese Funktion empfängt unreliable.
+    // Warum: Eingehende Daten werden so geordnet geprüft, bevor sie weiterverteilt werden.
     fn receive_unreliable(&mut self) -> Vec<NetworkMessage> {
         // Non-blocking receive from unreliable channel (datagrams)
         let mut messages = Vec::new();
@@ -356,10 +417,14 @@ impl NetworkTransport for QuicTransport {
         messages
     }
 
+    // Was: Diese Funktion wartet for response reliable.
+    // Warum: Nachfolgende Schritte laufen dadurch erst weiter, wenn ihre Voraussetzung wirklich erfüllt ist.
     fn wait_for_response_reliable(&mut self) -> Result<NetworkMessage, NetworkError> {
         // Blocking receive from reliable channel
         let runtime = self.runtime.handle().clone();
         runtime.block_on(async {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match self.receive_from_channel(QuicChannelType::Reliable).await? {
                 Some(payload) => Ok(NetworkMessage {
                     source: self.server_addr.clone(),
@@ -372,7 +437,11 @@ impl NetworkTransport for QuicTransport {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Drop for QuicTransport`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Drop for QuicTransport {
+    // Was: Führt den Arbeitsschritt `drop` für drop aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn drop(&mut self) {
         if let Some(conn) = self.connection.take() {
             conn.close(VarInt::from_u32(0), b"shutdown");
@@ -385,9 +454,15 @@ impl Drop for QuicTransport {
 
 /// Certificate verifier that accepts any certificate (INSECURE - testing only)
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für skip server verification in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct SkipServerVerification;
 
+// Was: Implementiert das zugehörige Verhalten für `rustls::client::danger::ServerCertVerifier for SkipServerVerification`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl rustls::client::danger::ServerCertVerifier for SkipServerVerification {
+    // Was: Führt den Arbeitsschritt `verify_server_cert` für verify server cert aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn verify_server_cert(
         &self,
         _end_entity: &CertificateDer<'_>,
@@ -399,6 +474,8 @@ impl rustls::client::danger::ServerCertVerifier for SkipServerVerification {
         Ok(rustls::client::danger::ServerCertVerified::assertion())
     }
 
+    // Was: Führt den Arbeitsschritt `verify_tls12_signature` für verify tls12 signature aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn verify_tls12_signature(
         &self,
         _message: &[u8],
@@ -408,6 +485,8 @@ impl rustls::client::danger::ServerCertVerifier for SkipServerVerification {
         Ok(rustls::client::danger::HandshakeSignatureValid::assertion())
     }
 
+    // Was: Führt den Arbeitsschritt `verify_tls13_signature` für verify tls13 signature aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn verify_tls13_signature(
         &self,
         _message: &[u8],
@@ -417,6 +496,8 @@ impl rustls::client::danger::ServerCertVerifier for SkipServerVerification {
         Ok(rustls::client::danger::HandshakeSignatureValid::assertion())
     }
 
+    // Was: Führt den Arbeitsschritt `supported_verify_schemes` für supported verify schemes aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn supported_verify_schemes(&self) -> Vec<rustls::SignatureScheme> {
         vec![
             rustls::SignatureScheme::RSA_PKCS1_SHA256,

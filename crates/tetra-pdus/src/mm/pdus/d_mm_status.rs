@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 
 use tetra_core::expect_pdu_type;
@@ -16,6 +19,8 @@ use crate::mm::fields::energy_saving_information::EnergySavingInformation;
 // note 2: This information element or set of information elements shall be as defined by the status downlink information element, refer to clauses 16.9.2.5.1 to 16.9.2.5.7.
 // note 3: This Status downlink element indicates which sub-PDU this D-MM STATUS PDU contains. If the receiving party does not support the indicated function but recognizes the PDU structure, it should set the value to Not-supported sub-PDU type element.
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für dmm Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DMmStatus {
     /// Type1, 6 bits, See notes 1 and 3,
     pub status_downlink: StatusDownlink,
@@ -23,8 +28,12 @@ pub struct DMmStatus {
     pub energy_saving_information: Option<EnergySavingInformation>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `DMmStatus`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl DMmStatus {
     /// Parse from BitBuffer
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buffer: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let pdu_type = buffer.read_field(4, "pdu_type")?;
         expect_pdu_type!(pdu_type, MmPduTypeDl::DMmStatus)?;
@@ -36,6 +45,8 @@ impl DMmStatus {
             value: val,
         })?;
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let energy_saving_information = match status_downlink {
             StatusDownlink::ChangeOfEnergySavingModeRequest | StatusDownlink::ChangeOfEnergySavingModeResponse => {
                 Some(EnergySavingInformation::from_bitbuf(buffer)?)
@@ -52,12 +63,16 @@ impl DMmStatus {
     }
 
     /// Serialize this PDU into the given BitBuffer.
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buffer: &mut BitBuffer) -> Result<(), PduParseErr> {
         // PDU Type
         buffer.write_bits(MmPduTypeDl::DMmStatus.into_raw(), 4);
         // Type1
         buffer.write_bits(self.status_downlink.into_raw(), 6);
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.status_downlink {
             StatusDownlink::ChangeOfEnergySavingModeRequest | StatusDownlink::ChangeOfEnergySavingModeResponse => {
                 if let Some(ref esi) = self.energy_saving_information {
@@ -77,7 +92,11 @@ impl DMmStatus {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for DMmStatus`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for DMmStatus {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,

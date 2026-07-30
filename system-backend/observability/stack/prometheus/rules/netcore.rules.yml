@@ -1,0 +1,63 @@
+# NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Metriken, Protokolle und Betriebsüberwachung.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+# Was: Legt den YAML-Bereich oder Wert `groups` fest.
+# Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+groups:
+  # Was: Vergibt einen verständlichen Namen für diesen Workflow oder Arbeitsschritt.
+  # Warum: Der Ablauf ist dadurch in GitHub und in Protokollen schnell wiederzuerkennen.
+  - name: netcore-service-health
+    # Was: Legt den YAML-Bereich oder Wert `rules` fest.
+    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+    rules:
+      # Was: Legt den YAML-Bereich oder Wert `alert` fest.
+      # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+      - alert: NetCoreTargetDown
+        # Was: Legt den YAML-Bereich oder Wert `expr` fest.
+        # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+        expr: up{job=~"netcore-.*"} == 0
+        # Was: Legt den YAML-Bereich oder Wert `for` fest.
+        # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+        for: 30s
+        # Was: Legt den YAML-Bereich oder Wert `labels` fest.
+        # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+        labels:
+          # Was: Legt den YAML-Bereich oder Wert `severity` fest.
+          # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+          severity: critical
+          # Was: Legt den YAML-Bereich oder Wert `system` fest.
+          # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+          system: netcore-tetra
+        # Was: Legt den YAML-Bereich oder Wert `annotations` fest.
+        # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+        annotations:
+          # Was: Legt den YAML-Bereich oder Wert `summary` fest.
+          # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+          summary: "NetCore target {{ $labels.instance }} is down"
+          # Was: Legt den YAML-Bereich oder Wert `description` fest.
+          # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+          description: "Prometheus cannot scrape {{ $labels.job }} / {{ $labels.instance }}."
+      # Was: Legt den YAML-Bereich oder Wert `alert` fest.
+      # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+      - alert: NetCoreObservabilityHasUnacknowledgedAlerts
+        # Was: Legt den YAML-Bereich oder Wert `expr` fest.
+        # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+        expr: netcore_observability_alerts_unacknowledged > 0
+        # Was: Legt den YAML-Bereich oder Wert `for` fest.
+        # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+        for: 1m
+        # Was: Legt den YAML-Bereich oder Wert `labels` fest.
+        # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+        labels:
+          # Was: Legt den YAML-Bereich oder Wert `severity` fest.
+          # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+          severity: warning
+          # Was: Legt den YAML-Bereich oder Wert `system` fest.
+          # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+          system: netcore-tetra
+        # Was: Legt den YAML-Bereich oder Wert `annotations` fest.
+        # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+        annotations:
+          # Was: Legt den YAML-Bereich oder Wert `summary` fest.
+          # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+          summary: "The NetCore NMS has unacknowledged alarms"

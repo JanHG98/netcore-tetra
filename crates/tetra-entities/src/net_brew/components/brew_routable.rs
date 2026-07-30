@@ -1,16 +1,27 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use tetra_config::bluestation::{CfgBrew, SharedConfig};
 use tetra_core::tetra_entities::TetraEntity;
 
+// Was: Legt den festen Wert `BREW_ENTITIES` für Brew-Verbindung entities fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const BREW_ENTITIES: [TetraEntity; 2] = [TetraEntity::Brew, TetraEntity::Brew2];
 
 #[inline]
+// Was: Prüft, ob Brew-Verbindung entity zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
 pub fn is_brew_entity(entity: TetraEntity) -> bool {
     matches!(entity, TetraEntity::Brew | TetraEntity::Brew2)
 }
 
 #[inline]
+// Was: Führt den Arbeitsschritt `brew_config_for_entity` für Brew-Verbindung Konfiguration for entity aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn brew_config_for_entity(config: &SharedConfig, entity: TetraEntity) -> Option<CfgBrew> {
     let cfg = config.config();
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match entity {
         TetraEntity::Brew => cfg.brew.clone(),
         TetraEntity::Brew2 => cfg.brew2.clone(),
@@ -20,17 +31,23 @@ pub fn brew_config_for_entity(config: &SharedConfig, entity: TetraEntity) -> Opt
 
 /// Returns true if the Brew component is active
 #[inline]
+// Was: Prüft, ob active zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
 pub fn is_active(config: &SharedConfig) -> bool {
     config.config().brew.is_some() || config.config().brew2.is_some()
 }
 
 #[inline]
+// Was: Prüft, ob active for entity zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
 pub fn is_active_for_entity(config: &SharedConfig, entity: TetraEntity) -> bool {
     brew_config_for_entity(config, entity).is_some()
 }
 
 /// Returns true if the SDS over Brew feature is enabled
 #[inline]
+// Was: Führt den Arbeitsschritt `feature_sds_enabled` für feature TETRA-Kurznachricht (SDS) enabled aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn feature_sds_enabled(config: &SharedConfig) -> bool {
     BREW_ENTITIES
         .iter()
@@ -39,15 +56,21 @@ pub fn feature_sds_enabled(config: &SharedConfig) -> bool {
 }
 
 #[inline]
+// Was: Führt den Arbeitsschritt `feature_sds_enabled_for_entity` für feature TETRA-Kurznachricht (SDS) enabled for entity aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn feature_sds_enabled_for_entity(config: &SharedConfig, entity: TetraEntity) -> bool {
     brew_config_for_entity(config, entity).is_some_and(|brew| brew.feature_sds_enabled)
 }
 
 /// Returns true if the configured Brew server is TetraPack (core.tetrapack.online)
+// Was: Prüft, ob tetrapack server zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
 fn is_tetrapack_server(brew_config: &CfgBrew) -> bool {
     brew_config.host == "core.tetrapack.online"
 }
 
+// Was: Prüft, ob pbx Gateway Teilnehmerkennung (ISSI) zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
 fn is_pbx_gateway_issi(brew_config: &CfgBrew, issi: u32) -> bool {
     brew_config
         .pbx_gateway_issis
@@ -56,6 +79,8 @@ fn is_pbx_gateway_issi(brew_config: &CfgBrew, issi: u32) -> bool {
 }
 
 #[inline]
+// Was: Prüft, ob Brew-Verbindung local Teilnehmerkennung (ISSI) allowed for entity zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
 pub fn is_brew_local_issi_allowed_for_entity(config: &SharedConfig, entity: TetraEntity, issi: u32) -> bool {
     brew_config_for_entity(config, entity).is_some_and(|brew| brew.local_issi_allowed(issi))
 }
@@ -64,8 +89,12 @@ pub fn is_brew_local_issi_allowed_for_entity(config: &SharedConfig, entity: Tetr
 ///
 /// Returning `None` on ambiguity is deliberate: a local terminal must never be registered or
 /// forwarded through two Brew backhauls at the same time.
+// Was: Diese Funktion leitet entity for local Teilnehmerkennung (ISSI).
+// Warum: Nachrichten und Daten gelangen dadurch nachvollziehbar an das richtige Ziel.
 pub fn route_entity_for_local_issi(config: &SharedConfig, issi: u32) -> Option<TetraEntity> {
     let mut routed = None;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for entity in BREW_ENTITIES {
         if is_brew_local_issi_allowed_for_entity(config, entity, issi) {
             if routed.is_some() {
@@ -78,6 +107,8 @@ pub fn route_entity_for_local_issi(config: &SharedConfig, issi: u32) -> Option<T
 }
 
 /// Determine if a given GSSI should be routed over Brew, or is restricted to local handling
+// Was: Prüft, ob Brew-Verbindung Gruppenkennung (GSSI) routable zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
 pub fn is_brew_gssi_routable(config: &SharedConfig, ssi: u32) -> bool {
     BREW_ENTITIES
         .iter()
@@ -85,6 +116,8 @@ pub fn is_brew_gssi_routable(config: &SharedConfig, ssi: u32) -> bool {
         .any(|entity| is_brew_gssi_routable_for_entity(config, entity, ssi))
 }
 
+// Was: Prüft, ob Brew-Verbindung Gruppenkennung (GSSI) routable for entity zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
 pub fn is_brew_gssi_routable_for_entity(config: &SharedConfig, entity: TetraEntity, ssi: u32) -> bool {
     let Some(brew_config) = brew_config_for_entity(config, entity) else {
         return false;
@@ -122,11 +155,15 @@ pub fn is_brew_gssi_routable_for_entity(config: &SharedConfig, entity: TetraEnti
 /// ("Incoming brew traffic on these ranges will also be rejected"), so inbound traffic to them stays
 /// rejected.
 #[inline]
+// Was: Prüft, ob Brew-Verbindung inbound allowed zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
 pub fn is_brew_inbound_allowed(config: &SharedConfig, ssi: u32) -> bool {
     is_active(config) && !config.config().cell.local_ssi_ranges.contains(ssi)
 }
 
 #[inline]
+// Was: Prüft, ob Brew-Verbindung inbound allowed for entity zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
 pub fn is_brew_inbound_allowed_for_entity(config: &SharedConfig, entity: TetraEntity, ssi: u32) -> bool {
     is_active_for_entity(config, entity) && !config.config().cell.local_ssi_ranges.contains(ssi)
 }
@@ -135,6 +172,8 @@ pub fn is_brew_inbound_allowed_for_entity(config: &SharedConfig, entity: TetraEn
 /// On TetraPack, subscriber ISSIs must be 7 digits (1_000_000..=9_999_999).
 /// Special service ISSIs (e.g. 600 echo, short numbers) are always forwarded to Brew —
 /// TetraPack Core handles them internally; blocking them here causes "Service Denied".
+// Was: Prüft, ob Brew-Verbindung Teilnehmerkennung (ISSI) routable zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
 pub fn is_brew_issi_routable(config: &SharedConfig, issi: u32) -> bool {
     BREW_ENTITIES
         .iter()
@@ -142,6 +181,8 @@ pub fn is_brew_issi_routable(config: &SharedConfig, issi: u32) -> bool {
         .any(|entity| is_brew_issi_routable_for_entity(config, entity, issi))
 }
 
+// Was: Prüft, ob Brew-Verbindung Teilnehmerkennung (ISSI) routable for entity zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
 pub fn is_brew_issi_routable_for_entity(config: &SharedConfig, entity: TetraEntity, issi: u32) -> bool {
     let Some(brew_config) = brew_config_for_entity(config, entity) else {
         return false;

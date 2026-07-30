@@ -1,24 +1,45 @@
+# NETCORE-KOMMENTAR – Was: Legt die einheitliche Formatierung des Rust-Quellcodes fest.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 # rustfmt configuration
 # https://rust-lang.github.io/rustfmt/
 
+# Was: Wählt die verwendete Rust-Sprachversion.
+# Warum: Compiler und Entwickler verwenden dadurch dieselben Sprachregeln.
 edition = "2024"
 
 # Line width before wrapping
+# Was: Setzt die Einstellung `max_width` für diesen abschnitt.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_width = 140
 
 # Indentation width
+# Was: Setzt die Einstellung `tab_spaces` für diesen abschnitt.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 tab_spaces = 4
+# Was: Setzt die Einstellung `hard_tabs` für diesen abschnitt.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 hard_tabs = false
 
 # Reorder mod declarations and use statements
+# Was: Setzt die Einstellung `reorder_modules` für diesen abschnitt.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 reorder_modules = true
+# Was: Setzt die Einstellung `reorder_imports` für diesen abschnitt.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 reorder_imports = true
 
 # Wrap function parameters when they don't fit on one line
+# Was: Setzt die Einstellung `fn_params_layout` für diesen abschnitt.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 fn_params_layout = "Tall"
 
 # Use field init shorthand  { x }  instead of  { x: x }
+# Was: Setzt die Einstellung `use_field_init_shorthand` für diesen abschnitt.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 use_field_init_shorthand = true
 
 # Use try-operator  ?  instead of  try!()
+# Was: Setzt die Einstellung `use_try_shorthand` für diesen abschnitt.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 use_try_shorthand = true

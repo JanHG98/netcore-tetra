@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use crate::{MessagePrio, MessageQueue, TetraEntityTrait};
 use tetra_config::bluestation::SharedConfig;
 use tetra_core::tetra_entities::TetraEntity;
@@ -10,13 +13,19 @@ use tetra_saps::{SapMsg, SapMsgInner};
 use crate::lmac::components::{errorcontrol, scrambler};
 
 #[derive(Debug, Clone, Copy)]
+// Was: Bündelt die zusammengehörigen Werte für lmac Nutzdatenverkehr chan in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LmacTrafficChan {
     pub is_active: bool,
     pub logical_channel: LogicalChannel,
     // TODO FIXME: extend with all required fields
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for LmacTrafficChan`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for LmacTrafficChan {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             is_active: false,
@@ -26,6 +35,8 @@ impl Default for LmacTrafficChan {
 }
 
 #[derive(Default)]
+// Was: Bündelt die zusammengehörigen Werte für cur burst in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CurBurst {
     pub is_traffic: bool,
     pub usage: Option<u8>,
@@ -33,6 +44,8 @@ pub struct CurBurst {
     pub blk2_stolen: bool,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für lmac ms in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct LmacMs {
     config: SharedConfig,
 
@@ -51,7 +64,11 @@ pub struct LmacMs {
     cur_burst: CurBurst,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `LmacMs`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl LmacMs {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(config: SharedConfig) -> Self {
         Self {
             config,
@@ -63,6 +80,8 @@ impl LmacMs {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `rx_bbk` für rx bbk aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_bbk(&mut self, queue: &mut MessageQueue, bbk: TpUnitdataInd) {
         // tracing::trace!("rx_bbk: {:?}", bbk.block.dump_bin());
 
@@ -98,6 +117,8 @@ impl LmacMs {
         queue.push_prio(m, MessagePrio::Immediate);
     }
 
+    // Was: Führt den Arbeitsschritt `determine_logical_channel_dl` für determine logical Kanal dl aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn determine_logical_channel_dl(&self, blk: &TpUnitdataInd, t: &TdmaTime) -> LogicalChannel {
         if blk.block_type == PhyBlockType::BBK {
             // BBK is always AACH
@@ -144,10 +165,14 @@ impl LmacMs {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `rx_blk_traffic` für rx blk Nutzdatenverkehr aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_blk_traffic(&mut self, _queue: &mut MessageQueue, _blk: TpUnitdataInd, _lchan: LogicalChannel) {
         unimplemented_log!("rx_blk_traffic: Traffic channel reception not implemented yet");
     }
 
+    // Was: Führt den Arbeitsschritt `rx_blk_cp` für rx blk cp aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_blk_cp(&mut self, queue: &mut MessageQueue, blk: TpUnitdataInd, lchan: LogicalChannel) {
         let block_num = blk.block_num;
         let (type1bits, crc_pass) = errorcontrol::decode_cp(lchan, blk, self.scrambling_code);
@@ -197,6 +222,8 @@ impl LmacMs {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `rx_tp_prim` für rx tp prim aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_tp_prim(&mut self, queue: &mut MessageQueue, message: SapMsg) {
         tracing::debug!("rx_tp_prim: time: {:?} msg {:?}", self.ts, message);
 
@@ -206,6 +233,8 @@ impl LmacMs {
         };
         let lchan = self.determine_logical_channel_dl(&prim, self.ts.as_ref().unwrap_or(&TdmaTime::default()));
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match lchan {
             LogicalChannel::Aach => {
                 self.rx_bbk(queue, prim);
@@ -219,6 +248,8 @@ impl LmacMs {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `rx_tmv_configure_req` für rx tmv configure req aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_tmv_configure_req(&mut self, _queue: &mut MessageQueue, mut message: SapMsg) {
         tracing::trace!("rx_tmv_configure_req");
         let SapMsgInner::TmvConfigureReq(prim) = &mut message.msg else {
@@ -242,9 +273,13 @@ impl LmacMs {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `rx_tmv_prim` für rx tmv prim aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_tmv_prim(&mut self, queue: &mut MessageQueue, message: SapMsg) {
         tracing::trace!("rx_tmv_prim");
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match message.msg {
             SapMsgInner::TmvConfigureReq(_) => {
                 self.rx_tmv_configure_req(queue, message);
@@ -260,15 +295,23 @@ impl LmacMs {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `TetraEntityTrait for LmacMs`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl TetraEntityTrait for LmacMs {
+    // Was: Führt den Arbeitsschritt `entity` für entity aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn entity(&self) -> TetraEntity {
         TetraEntity::Lmac
     }
 
+    // Was: Führt den Arbeitsschritt `rx_prim` für rx prim aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_prim(&mut self, queue: &mut MessageQueue, message: SapMsg) {
         tracing::debug!("rx_prim: {:?}", message);
         // tracing::debug!(ts=%message.dltime, "rx_prim: {:?}", message);
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match message.sap {
             Sap::TpSap => {
                 self.rx_tp_prim(queue, message);
@@ -283,6 +326,8 @@ impl TetraEntityTrait for LmacMs {
         }
     }
 
+    // Was: Diese Funktion bearbeitet start.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn tick_start(&mut self, _queue: &mut MessageQueue, ts: TdmaTime) {
         // Reset current burst state
         self.cur_burst = CurBurst::default();

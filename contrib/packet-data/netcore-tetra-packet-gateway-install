@@ -1,42 +1,161 @@
 #!/bin/sh
+# NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für netcore TETRA Datenpaket Gateway install.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 set -eu
 
-SERVICE=${1:-tetra.service}
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-DROPIN_SOURCE="$SCRIPT_DIR/../systemd/tetra.service.d/20-packet-data-gateway.conf"
-CLEANUP_SOURCE="$SCRIPT_DIR/netcore-tetra-packet-gateway-cleanup"
-DROPIN_DIR="/etc/systemd/system/${SERVICE}.d"
+SOURCE_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/../.." && pwd)
+DROPIN_SOURCE="$SOURCE_ROOT/contrib/systemd/tetra.service.d/20-packet-data-gateway.conf"
+CLEANUP_SOURCE="$SOURCE_ROOT/contrib/packet-data/netcore-tetra-packet-gateway-cleanup"
 
+# Was: Prüft die folgende Voraussetzung und führt den passenden Zweig aus.
+# Warum: Fehlende Rechte, Dateien oder Einstellungen sollen früh und verständlich behandelt werden.
 if [ "$(id -u)" -ne 0 ]; then
     echo "Run as root: sudo $0 [service-name]" >&2
     exit 1
 fi
 
+# Was: Diese Funktion sucht Dienst.
+# Warum: Die Suchlogik bleibt damit wiederverwendbar und muss nicht an mehreren Stellen kopiert werden.
+find_service() {
+    # Was: Prüft die folgende Voraussetzung und führt den passenden Zweig aus.
+    # Warum: Fehlende Rechte, Dateien oder Einstellungen sollen früh und verständlich behandelt werden.
+    if [ "$#" -gt 0 ] && [ -n "$1" ]; then
+        printf '%s\n' "$1"
+        return
+    fi
+
+    # Prefer the unit that is actually active. NetCore installations have used
+    # all three names over time.
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung gilt.
+    # Warum: Gleichartige Installations- oder Prüfaufgaben werden dadurch vollständig abgearbeitet.
+    for candidate in bluestation.service bluestation-bs.service tetra.service; do
+        # Was: Prüft die folgende Voraussetzung und führt den passenden Zweig aus.
+        # Warum: Fehlende Rechte, Dateien oder Einstellungen sollen früh und verständlich behandelt werden.
+        if systemctl is-active --quiet "$candidate" 2>/dev/null; then
+            printf '%s\n' "$candidate"
+            return
+        fi
+    done
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung gilt.
+    # Warum: Gleichartige Installations- oder Prüfaufgaben werden dadurch vollständig abgearbeitet.
+    for candidate in bluestation.service bluestation-bs.service tetra.service; do
+        # Was: Prüft die folgende Voraussetzung und führt den passenden Zweig aus.
+        # Warum: Fehlende Rechte, Dateien oder Einstellungen sollen früh und verständlich behandelt werden.
+        if systemctl cat "$candidate" >/dev/null 2>&1; then
+            printf '%s\n' "$candidate"
+            return
+        fi
+    done
+
+    echo "No basis-station systemd unit found (tried bluestation.service, bluestation-bs.service, tetra.service)." >&2
+    echo "Pass it explicitly: $0 your-unit.service" >&2
+    exit 1
+}
+
+SERVICE=$(find_service "${1:-}")
+DROPIN_DIR="/etc/systemd/system/${SERVICE}.d"
+
+# Was: Steuert den zugehörigen systemd-Dienst.
+# Warum: Systemd soll Start, Stopp, Neustart und automatischen Boot des Dienstes zuverlässig verwalten.
+systemctl cat "$SERVICE" >/dev/null 2>&1 || {
+    echo "Systemd unit '$SERVICE' does not exist." >&2
+    exit 1
+}
+
 command -v ip >/dev/null 2>&1 || {
     echo "Missing iproute2 ('ip' command)." >&2
     exit 1
 }
+# Was: Prüft die folgende Voraussetzung und führt den passenden Zweig aus.
+# Warum: Fehlende Rechte, Dateien oder Einstellungen sollen früh und verständlich behandelt werden.
 if ! command -v nft >/dev/null 2>&1 && ! command -v iptables >/dev/null 2>&1; then
     echo "Install nftables or iptables before enabling managed forwarding/NAT." >&2
     exit 1
+fi
+
+# Was: Prüft die folgende Voraussetzung und führt den passenden Zweig aus.
+# Warum: Fehlende Rechte, Dateien oder Einstellungen sollen früh und verständlich behandelt werden.
+if [ ! -c /dev/net/tun ]; then
+    modprobe tun 2>/dev/null || true
 fi
 [ -c /dev/net/tun ] || {
     echo "/dev/net/tun is missing; load the tun module or enable TUN support." >&2
     exit 1
 }
-[ -r "$DROPIN_SOURCE" ] && [ -x "$CLEANUP_SOURCE" ] || {
-    echo "Run this helper from the NetCore-Tetra source tree." >&2
+# Was: Prüft die folgende Voraussetzung und führt den passenden Zweig aus.
+# Warum: Fehlende Rechte, Dateien oder Einstellungen sollen früh und verständlich behandelt werden.
+if [ ! -r "$DROPIN_SOURCE" ]; then
+    echo "Packet-data systemd drop-in not found or not readable:" >&2
+    echo "  $DROPIN_SOURCE" >&2
+    echo "Expected a complete NetCore-Tetra source tree below: $SOURCE_ROOT" >&2
     exit 1
-}
+fi
+# Was: Prüft die folgende Voraussetzung und führt den passenden Zweig aus.
+# Warum: Fehlende Rechte, Dateien oder Einstellungen sollen früh und verständlich behandelt werden.
+if [ ! -r "$CLEANUP_SOURCE" ]; then
+    echo "Packet-data cleanup helper not found or not readable:" >&2
+    echo "  $CLEANUP_SOURCE" >&2
+    echo "Expected a complete NetCore-Tetra source tree below: $SOURCE_ROOT" >&2
+    exit 1
+fi
 
+# Was: Kopiert eine Datei mit festgelegten Rechten und Eigentümern.
+# Warum: Korrekte Dateirechte sind für einen sicheren und reproduzierbaren Dienststart notwendig.
 install -d -m 0755 /usr/local/libexec
+# Was: Kopiert eine Datei mit festgelegten Rechten und Eigentümern.
+# Warum: Korrekte Dateirechte sind für einen sicheren und reproduzierbaren Dienststart notwendig.
 install -m 0755 "$CLEANUP_SOURCE" /usr/local/libexec/netcore-tetra-packet-gateway-cleanup
+# Was: Kopiert eine Datei mit festgelegten Rechten und Eigentümern.
+# Warum: Korrekte Dateirechte sind für einen sicheren und reproduzierbaren Dienststart notwendig.
 install -d -m 0755 "$DROPIN_DIR"
+# Was: Kopiert eine Datei mit festgelegten Rechten und Eigentümern.
+# Warum: Korrekte Dateirechte sind für einen sicheren und reproduzierbaren Dienststart notwendig.
 install -m 0644 "$DROPIN_SOURCE" "$DROPIN_DIR/20-packet-data-gateway.conf"
 
+# Was: Steuert den zugehörigen systemd-Dienst.
+# Warum: Systemd soll Start, Stopp, Neustart und automatischen Boot des Dienstes zuverlässig verwalten.
 systemctl daemon-reload
+# Was: Steuert den zugehörigen systemd-Dienst.
+# Warum: Systemd soll Start, Stopp, Neustart und automatischen Boot des Dienstes zuverlässig verwalten.
 systemctl reset-failed "$SERVICE" >/dev/null 2>&1 || true
 
 echo "Installed packet-data systemd integration for $SERVICE."
-echo "Review with: systemctl cat $SERVICE"
-echo "Then restart with: systemctl restart $SERVICE"
+echo "TUN device: $(ls -l /dev/net/tun)"
+echo "Effective capability/device settings:"
+# Was: Steuert den zugehörigen systemd-Dienst.
+# Warum: Systemd soll Start, Stopp, Neustart und automatischen Boot des Dienstes zuverlässig verwalten.
+systemctl show "$SERVICE" \
+    -p AmbientCapabilities \
+    -p CapabilityBoundingSet \
+    -p PrivateDevices \
+    -p DevicePolicy \
+    -p DeviceAllow \
+    -p ProtectKernelTunables --no-pager
+
+# Was: Prüft die folgende Voraussetzung und führt den passenden Zweig aus.
+# Warum: Fehlende Rechte, Dateien oder Einstellungen sollen früh und verständlich behandelt werden.
+if systemctl is-active --quiet "$SERVICE"; then
+    echo "Restarting active basis-station service..."
+    # Was: Prüft die folgende Voraussetzung und führt den passenden Zweig aus.
+    # Warum: Fehlende Rechte, Dateien oder Einstellungen sollen früh und verständlich behandelt werden.
+    if ! systemctl restart "$SERVICE"; then
+        echo "Restart failed. Recent log:" >&2
+        journalctl -u "$SERVICE" -n 80 --no-pager >&2 || true
+        exit 1
+    fi
+    sleep 2
+    # Was: Prüft die folgende Voraussetzung und führt den passenden Zweig aus.
+    # Warum: Fehlende Rechte, Dateien oder Einstellungen sollen früh und verständlich behandelt werden.
+    if ! systemctl is-active --quiet "$SERVICE"; then
+        echo "$SERVICE is not active after restart. Recent log:" >&2
+        journalctl -u "$SERVICE" -n 80 --no-pager >&2 || true
+        exit 1
+    fi
+    echo "$SERVICE restarted successfully."
+else
+    echo "$SERVICE is not active; start it with: systemctl start $SERVICE"
+fi
+
+echo "Check SNDCP with: journalctl -u $SERVICE -n 100 --no-pager | grep -E 'SNDCP|packet gateway'"

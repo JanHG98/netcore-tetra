@@ -1,8 +1,13 @@
+// NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für main.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use clap::Parser;
 
 use tetra_core::BitBuffer;
 use tetra_saps::tmv::enums::logical_chans::LogicalChannel;
 
+// Was: Bindet das Untermodul entities in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod entities;
 use entities::umac::UmacParser;
 
@@ -13,6 +18,8 @@ use entities::umac::UmacParser;
     about = "TETRA Raw PDU Decoder",
     long_about = "Decodes a raw bitstring as a PDU for the specified SAP and destination component"
 )]
+// Was: Bündelt die zusammengehörigen Werte für args in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct Args {
     /// Direction: uplink or downlink
     #[arg(help = "Direction: [ ul | dl ]")]
@@ -39,6 +46,8 @@ struct Args {
     channel: String,
 }
 
+// Was: Startet das Programm, lädt die benötigten Einstellungen und übergibt an den eigentlichen Dienstablauf.
+// Warum: Ein klarer Einstiegspunkt hält Startreihenfolge, Fehlerausgabe und geordnetes Beenden zusammen.
 fn main() {
     eprintln!("[+] TETRA PDU Decoding tool");
     eprintln!("    Razvan Zeces / FlowStation.network");
@@ -47,6 +56,8 @@ fn main() {
 
     let args = Args::parse();
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let logical_channel = match args.channel.to_lowercase().as_str() {
         "schf" | "sch_f" | "sch/f" => LogicalChannel::SchF,
         "schhu" | "sch_hu" | "sch/hu" => LogicalChannel::SchHu,
@@ -64,6 +75,8 @@ fn main() {
         }
     };
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let is_downlink = match args.direction.to_lowercase().as_str() {
         "ul" | "uplink" => false,
         "dl" | "downlink" => true,
@@ -73,6 +86,8 @@ fn main() {
         }
     };
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match (args.sap.to_lowercase().as_str(), args.destination.to_lowercase().as_str()) {
         ("tmv", "umac") => {
             let pdu = BitBuffer::from_bitstr(args.bitstring.as_str());

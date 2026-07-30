@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Einlesen und Prüfen der TETRA-Konfiguration.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use serde::Deserialize;
 use std::collections::{BTreeSet, HashMap};
 
@@ -14,6 +17,8 @@ use crate::bluestation::SecretField;
 /// (see `effective_telegram` / `TelegramRuntimeOverride`); the new values are also written
 /// back to the TOML so they persist.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für cfg telegram in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgTelegram {
     /// Master on/off for Telegram alerts.
     pub enabled: bool,
@@ -47,7 +52,11 @@ pub struct CfgTelegram {
     pub brew_register_issi_blacklist: BTreeSet<u32>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for CfgTelegram`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for CfgTelegram {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         CfgTelegram {
             enabled: false,
@@ -68,15 +77,21 @@ impl Default for CfgTelegram {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `CfgTelegram`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl CfgTelegram {
     /// True when alerts can actually be delivered: enabled, a token is set, and at least one
     /// recipient exists. The alerter short-circuits when this is false.
+    // Was: Prüft, ob deliverable zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     pub fn is_deliverable(&self) -> bool {
         self.enabled && !self.bot_token.as_ref().trim().is_empty() && !self.chat_ids.is_empty()
     }
 }
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für cfg telegram dto in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgTelegramDto {
     #[serde(default)]
     pub enabled: bool,
@@ -112,14 +127,20 @@ pub struct CfgTelegramDto {
     pub extra: HashMap<String, toml::Value>,
 }
 
+// Was: Führt den Arbeitsschritt `default_true` für default true aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_true() -> bool {
     true
 }
 
+// Was: Führt den Arbeitsschritt `default_brew_register_prefix` für default Brew-Verbindung register prefix aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_brew_register_prefix() -> String {
     "Brew REGISTER".to_string()
 }
 
+// Was: Diese Funktion wendet telegram patch.
+// Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
 pub fn apply_telegram_patch(dto: CfgTelegramDto) -> CfgTelegram {
     let mut brew_register_prefix = dto.brew_register_prefix.trim().to_string();
     if brew_register_prefix.is_empty() {

@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use tetra_core::{BitBuffer, PhyBlockType};
 use tetra_saps::tmv::TmvUnitdataReq;
 use tetra_saps::tmv::enums::logical_chans::LogicalChannel;
@@ -8,14 +11,24 @@ use crate::lmac::components::scrambler;
 use crate::lmac::components::tch_reorder;
 use crate::lmac::components::{crc16, errorcontrol_params, interleaver, rm3014, viterbi};
 
+// Was: Legt den festen Wert `MAX_TYPE1_BITS` für max type1 bits fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const MAX_TYPE1_BITS: usize = 274; // TCH/S has the largest type-1 block
+// Was: Legt den festen Wert `MAX_TYPE2_BITS` für max type2 bits fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const MAX_TYPE2_BITS: usize = 288;
 
+// Was: Legt den festen Wert `MAX_TYPE345_BITS` für max type345 bits fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const MAX_TYPE345_BITS: usize = 432;
+// Was: Legt den festen Wert `MAX_TYPE345_HALFSLOT_BITS` für max type345 halfslot bits fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const MAX_TYPE345_HALFSLOT_BITS: usize = 216;
 
 /// Encodes control plane message from type1 to type5 bits
 /// Handles CP channels except AACH
+// Was: Diese Funktion kodiert cp.
+// Warum: Alle Gegenstellen erhalten dadurch dasselbe erwartete Protokollformat.
 pub fn encode_cp(mut prim: TmvUnitdataReq) -> BitBuffer {
     let lchan = prim.logical_channel;
     assert!(lchan.is_control_channel() && lchan != LogicalChannel::Aach);
@@ -39,6 +52,8 @@ pub fn encode_cp(mut prim: TmvUnitdataReq) -> BitBuffer {
     // CRC addition, type1 -> type2
     assert!(params.have_crc16);
     let crc = !crc16::crc16_ccitt_bits(&type2_arr[0..params.type1_bits], params.type1_bits);
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for i in 0..16 {
         type2_arr[params.type1_bits + i] = ((crc >> (15 - i)) & 1) as u8;
     }
@@ -82,6 +97,8 @@ pub fn encode_cp(mut prim: TmvUnitdataReq) -> BitBuffer {
 /// Returns (buf, bool) tuple
 /// buf is BitBuffer with type1 bits if decoding successful
 /// bool is true if CRC check was successful
+// Was: Diese Funktion dekodiert cp.
+// Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
 pub fn decode_cp(lchan: LogicalChannel, prim: TpUnitdataInd, default_scramb_code: Option<u32>) -> (Option<BitBuffer>, bool) {
     assert!(lchan.is_control_channel() && lchan != LogicalChannel::Aach);
 
@@ -152,16 +169,22 @@ pub fn decode_cp(lchan: LogicalChannel, prim: TpUnitdataInd, default_scramb_code
 
 /// Compute 8 CRC parity bits for 60 Class 2 bits using G(X) = 1 + X³ + X⁷ (EN 300 395-2, §5.5.1).
 /// Returns [b1..b7, b8] where b8 is overall parity (XOR of all 60 data bits + 7 CRC bits).
+// Was: Führt den Arbeitsschritt `speech_crc` für speech crc aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn speech_crc(class2_bits: &[u8]) -> [u8; 8] {
     debug_assert_eq!(class2_bits.len(), 60);
 
     // Polynomial division: compute X⁷ · I(X) mod (X⁷ + X³ + 1)
     // Build dividend in w[7..67], reduce from degree 66 down to 7, remainder in w[0..7].
     let mut w = [0u8; 67]; // degrees 0 .. 66
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for k in 0..60 {
         w[k + 7] = class2_bits[k] & 1;
     }
 
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for d in (7..67).rev() {
         if w[d] == 1 {
             // XOR with G(X) · X^(d-7) = X^d + X^(d-4) + X^(d-7)
@@ -173,15 +196,21 @@ fn speech_crc(class2_bits: &[u8]) -> [u8; 8] {
 
     // w[0..7] = f(0), f(1), …, f(6)
     let mut result = [0u8; 8];
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for i in 0..7 {
         result[i] = w[i]; // b(i+1) = f(i)
     }
 
     // b8 = overall parity = XOR of all 60 data bits + 7 CRC bits
     let mut parity = 0u8;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for &bit in class2_bits.iter() {
         parity ^= bit & 1;
     }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for i in 0..7 {
         parity ^= result[i];
     }
@@ -193,6 +222,8 @@ fn speech_crc(class2_bits: &[u8]) -> [u8; 8] {
 /// Encode traffic plane from type1 to type5 bits (EN 300 395-2): 274 ACELP bits → UEP encoding
 /// (class0 uncoded, class1/2 convenc+punct) → 432 bits → interleave → scramble.
 /// `blk_num`: 1 = full-slot (432 bits), 2 = half-slot stolen by STCH (returns second 216 bits, triggers BFI).
+// Was: Diese Funktion kodiert tp.
+// Warum: Alle Gegenstellen erhalten dadurch dasselbe erwartete Protokollformat.
 pub fn encode_tp(mut prim: TmvUnitdataReq, blk_num: u8) -> BitBuffer {
     let lchan = prim.logical_channel;
     let params = errorcontrol_params::get_params(lchan);
@@ -213,9 +244,17 @@ pub fn encode_tp(mut prim: TmvUnitdataReq, blk_num: u8) -> BitBuffer {
         type1_arr[0..274].copy_from_slice(&channel_bits);
     }
 
+    // Was: Legt den festen Wert `CLASS0_BITS` für class0 bits fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const CLASS0_BITS: usize = 102; // 2 × 51
+    // Was: Legt den festen Wert `CLASS1_BITS` für class1 bits fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const CLASS1_BITS: usize = 112; // 2 × 56
+    // Was: Legt den festen Wert `CLASS2_BITS` für class2 bits fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const CLASS2_BITS: usize = 60; // 2 × 30
+    // Was: Legt den festen Wert `CLASS2_TYPE2` für class2 type2 fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const CLASS2_TYPE2: usize = 72; // 60 data + 8 CRC + 4 tail
 
     let mut type3_idx: usize = 0;
@@ -289,6 +328,8 @@ pub fn encode_tp(mut prim: TmvUnitdataReq, blk_num: u8) -> BitBuffer {
 /// Decode traffic plane from type5 to type1 bits (ACELP codec order). Reverse of `encode_tp()`:
 /// descramble → deinterleave → split UEP → Class0 copy, Class1+2 depuncture+Viterbi → CRC → reassemble → reorder.
 /// Returns (Option<BitBuffer>, bool): 274 ACELP bits if successful, CRC check result for Class 2.
+// Was: Diese Funktion dekodiert tp.
+// Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
 pub fn decode_tp(lchan: LogicalChannel, type5_block: BitBuffer, scrambling_code: u32) -> (Option<BitBuffer>, bool) {
     assert_eq!(lchan, LogicalChannel::TchS);
 
@@ -307,11 +348,23 @@ pub fn decode_tp(lchan: LogicalChannel, type5_block: BitBuffer, scrambling_code:
     interleaver::matrix_deinterleave(24, 18, &type4_arr, &mut type3_arr);
 
     // ── Split type3 into UEP classes and decode ────────────────────
+    // Was: Legt den festen Wert `CLASS0_BITS` für class0 bits fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const CLASS0_BITS: usize = 102;
+    // Was: Legt den festen Wert `CLASS1_BITS` für class1 bits fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const CLASS1_BITS: usize = 112;
+    // Was: Legt den festen Wert `CLASS2_BITS` für class2 bits fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const CLASS2_BITS: usize = 60;
+    // Was: Legt den festen Wert `CLASS2_TYPE2` für class2 type2 fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const CLASS2_TYPE2: usize = 72; // 60 data + 8 CRC + 4 tail
+    // Was: Legt den festen Wert `CLASS1_TYPE3` für class1 type3 fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const CLASS1_TYPE3: usize = 168; // punctured output size
+    // Was: Legt den festen Wert `CLASS2_TYPE3` für class2 type3 fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     const CLASS2_TYPE3: usize = 162; // punctured output size
 
     let mut type1_arr = [0u8; MAX_TYPE1_BITS];
@@ -378,6 +431,8 @@ pub fn decode_tp(lchan: LogicalChannel, type5_block: BitBuffer, scrambling_code:
 }
 
 /// Encodes AACH message from type1 to type5 bits
+// Was: Diese Funktion kodiert aach.
+// Warum: Alle Gegenstellen erhalten dadurch dasselbe erwartete Protokollformat.
 pub fn encode_aach(buf: BitBuffer, scrambling_code: u32) -> BitBuffer {
     let mut type1 = buf;
     tracing::trace!("encode_aach type1: {:?}", type1.dump_bin());
@@ -404,6 +459,8 @@ pub fn encode_aach(buf: BitBuffer, scrambling_code: u32) -> BitBuffer {
 }
 
 /// Decodes
+// Was: Diese Funktion dekodiert aach.
+// Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
 pub fn decode_aach(buf: BitBuffer, scrambling_code: u32) -> BitBuffer {
     let mut type5 = buf;
     tracing::trace!("decode_aach type5: {:?}", type5.dump_bin());
@@ -436,6 +493,8 @@ pub fn decode_aach(buf: BitBuffer, scrambling_code: u32) -> BitBuffer {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use tetra_core::{BurstType, PhyBlockNum, TrainingSequence, debug::setup_logging_verbose};
 
@@ -443,6 +502,8 @@ mod tests {
 
     /// Tests SCH/HD, STCH, BNCH encoding and decoding
     #[test]
+    // Was: Prüft automatisch den Fall encdec bnch.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_encdec_bnch() {
         // setup_logging_verbose();
         let type1vec =
@@ -480,6 +541,8 @@ mod tests {
 
     /// Tests BSCH encoding and decoding
     #[test]
+    // Was: Prüft automatisch den Fall encdec bsch.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_encdec_bsch() {
         // setup_logging_verbose();
         let type1_vec = "000100000111000010000010000000000110011000001010011100110001";
@@ -510,6 +573,8 @@ mod tests {
 
     /// Tests AACH encoding and decoding
     #[test]
+    // Was: Prüft automatisch den Fall encdec aach.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_encdec_aach() {
         // setup_logging_verbose();
         let scramb_code = scrambler::tetra_scramb_get_init(204, 1337, 1);
@@ -528,6 +593,8 @@ mod tests {
 
     /// Tests speech CRC-7 computation (EN 300 395-2 Section 5.5.1)
     #[test]
+    // Was: Prüft automatisch den Fall speech crc.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_speech_crc() {
         // All-zero input → CRC should be all zeros
         let zeros = [0u8; 60];
@@ -555,6 +622,8 @@ mod tests {
 
     /// Tests SCH/F encoding and decoding
     #[test]
+    // Was: Prüft automatisch den Fall encdec sch f.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_encdec_sch_f() {
         setup_logging_verbose();
         let type1_vec = "0000000000110001000000000010011100010001000001110010000010000001000000000010011100010001010000000000001000110110011011100000100110000001011100000000110101000110011100000100000000000000000100001000000000000000000000000000000000000000000000000000000000000000000000000000";
@@ -585,6 +654,8 @@ mod tests {
 
     /// Tests TCH/S speech encoding and decoding round-trip
     #[test]
+    // Was: Prüft automatisch den Fall encdec tch s.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_encdec_tch_s() {
         // Generate a random 274-bit ACELP frame (in codec order)
         let codec_bits: Vec<u8> = (0..274).map(|_| rand::random_range(0..2) as u8).collect();

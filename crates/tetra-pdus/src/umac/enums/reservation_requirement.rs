@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 /// Clause 21.5.4 Reservation requirement
 /// Bits: 4
 ///
@@ -9,6 +12,8 @@
 /// requirement" element shall be included in the last (non-null) PDU in the MAC block.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
+// Was: Listet die möglichen Varianten für reservation requirement auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum ReservationRequirement {
     Req1Subslot = 0,
     Req1Slot = 1,
@@ -31,9 +36,17 @@ pub enum ReservationRequirement {
     // ReqNone,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `std::convert::TryFrom<u64> for ReservationRequirement`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl std::convert::TryFrom<u64> for ReservationRequirement {
+    // Was: Vergibt für error einen fachlich verständlichen Typnamen.
+    // Warum: Der Alias macht Signaturen lesbarer und hält technische Details aus dem aufrufenden Code heraus.
     type Error = ();
+    // Was: Wandelt Eingangsdaten in den vorgesehenen Arbeitsschritt um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn try_from(x: u64) -> Result<Self, Self::Error> {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match x {
             0 => Ok(ReservationRequirement::Req1Subslot),
             1 => Ok(ReservationRequirement::Req1Slot),
@@ -56,9 +69,15 @@ impl std::convert::TryFrom<u64> for ReservationRequirement {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `ReservationRequirement`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl ReservationRequirement {
     /// Convert this enum back into the raw integer value
+    // Was: Wandelt den vorhandenen Wert in raw um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn into_raw(self) -> u64 {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self {
             ReservationRequirement::Req1Subslot => 0,
             ReservationRequirement::Req1Slot => 1,
@@ -80,7 +99,11 @@ impl ReservationRequirement {
     }
 
     /// Pass 0 when just a single subslot is required
+    // Was: Wandelt Eingangsdaten in req slotcount um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_req_slotcount(req: usize) -> Self {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match req {
             0 => ReservationRequirement::Req1Subslot,
             1 => ReservationRequirement::Req1Slot,
@@ -103,7 +126,11 @@ impl ReservationRequirement {
 
     /// Returns 0 when just a single subslot is required
     /// Returns 99 when over 69 subslots are required
+    // Was: Wandelt den vorhandenen Wert in req slotcount um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_req_slotcount(&self) -> usize {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self {
             // Req1Subslot is the half-slot reservation; callers should branch on this
             // before calling to_req_slotcount(). Return 0 as a documented fallback
@@ -139,14 +166,24 @@ impl ReservationRequirement {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `From<ReservationRequirement> for u64`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl From<ReservationRequirement> for u64 {
+    // Was: Wandelt Eingangsdaten in den vorgesehenen Arbeitsschritt um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn from(e: ReservationRequirement) -> Self {
         e.into_raw()
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `core::fmt::Display for ReservationRequirement`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl core::fmt::Display for ReservationRequirement {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self {
             ReservationRequirement::Req1Subslot => write!(f, "Req1Subslot"),
             ReservationRequirement::Req1Slot => write!(f, "Req1Slot"),

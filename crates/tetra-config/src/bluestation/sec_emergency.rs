@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Einlesen und Prüfen der TETRA-Konfiguration.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::HashMap;
 
 use serde::Deserialize;
@@ -15,6 +18,8 @@ use toml::Value;
 /// Because the radio is silent on exit, a session auto-clears `clear_timeout_secs` after the last
 /// emergency status (or when the ISSI sends a non-Emergency status, or an operator clears it).
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für cfg emergency in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgEmergency {
     /// Also forward the emergency U-STATUS to Brew. Default false (LOCAL-only).
     pub forward_to_brew: bool,
@@ -30,7 +35,11 @@ pub struct CfgEmergency {
     pub clear_timeout_secs: u64,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for CfgEmergency`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for CfgEmergency {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         CfgEmergency {
             forward_to_brew: false,
@@ -41,6 +50,8 @@ impl Default for CfgEmergency {
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für cfg emergency dto in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgEmergencyDto {
     #[serde(default)]
     pub forward_to_brew: bool,
@@ -55,13 +66,19 @@ pub struct CfgEmergencyDto {
     pub extra: HashMap<String, Value>,
 }
 
+// Was: Führt den Arbeitsschritt `default_telegram_alert` für default telegram alert aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_telegram_alert() -> bool {
     true
 }
+// Was: Führt den Arbeitsschritt `default_clear_timeout_secs` für default clear timeout secs aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_clear_timeout_secs() -> u64 {
     30
 }
 
+// Was: Diese Funktion wendet emergency patch.
+// Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
 pub fn apply_emergency_patch(dto: CfgEmergencyDto) -> CfgEmergency {
     CfgEmergency {
         forward_to_brew: dto.forward_to_brew,
@@ -73,10 +90,14 @@ pub fn apply_emergency_patch(dto: CfgEmergencyDto) -> CfgEmergency {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
     #[test]
+    // Was: Führt den Arbeitsschritt `serde_defaults_apply_when_only_one_set` für serde defaults apply when only one set aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn serde_defaults_apply_when_only_one_set() {
         // A minimal `[emergency]` table with just `forward_to_brew = true` must pick up the serde
         // field defaults (applied during deserialization, NOT via derive(Default)).
@@ -88,6 +109,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `defaults_are_local_only` für defaults are local only aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn defaults_are_local_only() {
         let c = CfgEmergency::default();
         assert!(!c.forward_to_brew);
@@ -96,6 +119,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `clamps_clear_timeout` für clamps clear timeout aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn clamps_clear_timeout() {
         let dto = CfgEmergencyDto {
             clear_timeout_secs: 0,

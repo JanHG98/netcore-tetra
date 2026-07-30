@@ -1,37 +1,94 @@
+# NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für den Betrieb der TETRA-Basisstation.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+# Was: Öffnet den Konfigurationsabschnitt `package`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [package]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "bluestation-bs"
+# Was: Setzt die Einstellung `version.workspace` für package.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 version.workspace = true
+# Was: Setzt die Einstellung `edition.workspace` für package.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 edition.workspace = true
+# Was: Setzt die Einstellung `license.workspace` für package.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 license.workspace = true
 
+# Was: Öffnet den Konfigurationsabschnitt `bin`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [[bin]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "bluestation-bs"
+# Was: Verweist auf den lokalen Pfad der Komponente.
+# Warum: Cargo findet dadurch den Quellcode innerhalb dieses gemeinsamen Arbeitsbereichs.
 path = "src/main.rs"
 
+# Was: Öffnet den Konfigurationsabschnitt `features`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [features]
 # Compile the Asterisk SIP/RTP bridge (and link the native TETRA codec) into the
 # Flow35 device binary. Enabled by default so `cargo build --release` preserves
 # the existing Asterisk integration; use `--no-default-features` to omit it.
+# Was: Legt die standardmäßig aktivierten Funktionen fest.
+# Warum: Ein normaler Build erhält dadurch eine bewusst gewählte und reproduzierbare Ausstattung.
 default = ["asterisk", "recording", "audio-player"]
+# Was: Setzt die Einstellung `asterisk` für features.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 asterisk = ["tetra-entities/asterisk"]
+# Was: Setzt die Einstellung `recording` für features.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 recording = ["tetra-entities/recording"]
+# Was: Setzt die Einstellung `audio-player` für features.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 audio-player = ["tetra-entities/audio-player", "recording"]
 
+# Was: Öffnet den Konfigurationsabschnitt `dependencies`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [dependencies]
+# Was: Bindet die Abhängigkeit `tetra-core` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 tetra-core = { workspace = true }
+# Was: Bindet die Abhängigkeit `tetra-config` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 tetra-config = { workspace = true }
+# Was: Bindet die Abhängigkeit `tetra-saps` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 tetra-saps = { workspace = true }
+# Was: Bindet die Abhängigkeit `tetra-entities` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 tetra-entities = { workspace = true }
 
+# Was: Bindet die Abhängigkeit `clap` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 clap = { workspace = true }
+# Was: Bindet die Abhängigkeit `crossbeam-channel` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 crossbeam-channel = { workspace = true }
+# Was: Bindet die Abhängigkeit `ctrlc` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 ctrlc = { workspace = true }
+# Was: Bindet die Abhängigkeit `rustls` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 rustls = { version = "0.23", default-features = false }
+# Was: Bindet die Abhängigkeit `tracing` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 tracing = { workspace = true }
+# Was: Bindet die Abhängigkeit `tracing-subscriber` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 tracing-subscriber = { workspace = true }
+# Was: Bindet die Abhängigkeit `tracing-appender` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 tracing-appender = { workspace = true }
 
+# Was: Öffnet den Konfigurationsabschnitt `lints`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [lints]
+# Was: Setzt die Einstellung `workspace` für lints.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 workspace = true
 
 # ── Debian package (.deb) — built in CI by cargo-deb ───────────────────────────
@@ -40,28 +97,60 @@ workspace = true
 # Asterisk SIP voice is NOT in this package (default features; no native codec).
 # Runtime requirement: SoapySDR >= 0.8 and the SXceiver SoapySDR module must be
 # present on the device (provided by the image / your SDR setup).
+# Was: Öffnet den Konfigurationsabschnitt `package.metadata.deb`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [package.metadata.deb]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
 name = "flowstation"
+# Was: Setzt die Einstellung `maintainer` für package metadata deb.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 maintainer = "Razvan Zeces <razvan@zeces.ro>"
+# Was: Setzt die Einstellung `copyright` für package metadata deb.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 copyright = "2026, Razvan Zeces / FlowStation.Dev"
+# Was: Setzt die Einstellung `section` für package metadata deb.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 section = "comm"
+# Was: Setzt die Einstellung `priority` für package metadata deb.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 priority = "optional"
+# Was: Setzt die Einstellung `depends` für package metadata deb.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 depends = "libc6"
+# Was: Setzt die Einstellung `extended-description` für package metadata deb.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 extended-description = """\
 FlowStation TETRA base station (bluestation-bs) — prebuilt aarch64 binary with a \
 systemd service and a default configuration. Configure it from the web dashboard \
 (http://flowstation.local once running). Requires a SoapySDR-supported SDR \
 (SXceiver) on the device. Asterisk SIP/PSTN voice is not included in this package."""
+# Was: Setzt die Einstellung `conf-files` für package metadata deb.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 conf-files = ["/etc/flowstation/config.toml"]
+# Was: Setzt die Einstellung `assets` für package metadata deb.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 assets = [
     ["target/release/bluestation-bs", "usr/bin/bluestation-bs", "755"],
     ["../../example_config/config.toml", "etc/flowstation/config.toml", "644"],
     ["../../README.md", "usr/share/doc/flowstation/README.md", "644"],
 ]
 
+# Was: Öffnet den Konfigurationsabschnitt `package.metadata.deb.systemd-units`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [package.metadata.deb.systemd-units]
+# Was: Setzt die Einstellung `unit-scripts` für package metadata deb systemd units.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 unit-scripts = "../../contrib/packaging"
+# Was: Setzt die Einstellung `unit-name` für package metadata deb systemd units.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 unit-name = "bluestation-bs"
+# Was: Setzt die Einstellung `enable` für package metadata deb systemd units.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 enable = true
+# Was: Setzt die Einstellung `start` für package metadata deb systemd units.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 start = false
+# Was: Setzt die Einstellung `restart-after-upgrade` für package metadata deb systemd units.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 restart-after-upgrade = false

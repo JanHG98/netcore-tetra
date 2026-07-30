@@ -1,6 +1,11 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Nachrichten an den Schnittstellen zwischen TETRA-Protokollschichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use tetra_core::{BitBuffer, BurstType, PhyBlockNum, PhyBlockType, TrainingSequence};
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tp unitdata ind in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TpUnitdataInd {
     pub carrier_num: u16,
     pub train_type: TrainingSequence,
@@ -14,6 +19,8 @@ pub struct TpUnitdataInd {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tp unitdata req slot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TpUnitdataReqSlot {
     pub carrier_num: u16,
     pub train_type: TrainingSequence,
@@ -24,6 +31,8 @@ pub struct TpUnitdataReqSlot {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für tp unitdata req slots in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TpUnitdataReqSlots {
     pub slots: Vec<TpUnitdataReqSlot>,
 }

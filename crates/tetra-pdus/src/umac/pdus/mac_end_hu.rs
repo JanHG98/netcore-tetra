@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 
 use tetra_core::BitBuffer;
@@ -7,6 +10,8 @@ use crate::umac::enums::reservation_requirement::ReservationRequirement;
 
 /// Clause 21.4.2.2 MAC-END-HU
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für MAC-Funkzugriffssteuerung end hu in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MacEndHu {
     // 1
     pub fill_bits: bool,
@@ -18,7 +23,11 @@ pub struct MacEndHu {
     pub reservation_req: Option<ReservationRequirement>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `MacEndHu`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl MacEndHu {
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buf: &mut BitBuffer) -> Result<Self, PduParseErr> {
         // required constant mac_pdu_type
         let mac_pdu_type = buf.read_field(1, "mac_pdu_type")?;
@@ -45,6 +54,8 @@ impl MacEndHu {
         })
     }
 
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buf: &mut BitBuffer) {
         assert!(self.length_ind.is_some() || self.reservation_req.is_some());
         assert!(!(self.length_ind.is_some() && self.reservation_req.is_some()));
@@ -63,7 +74,11 @@ impl MacEndHu {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for MacEndHu`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for MacEndHu {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "MacEndHu {{ fill_bits: {}", self.fill_bits)?;
         if let Some(v) = self.length_ind {

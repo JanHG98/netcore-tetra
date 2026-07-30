@@ -1,22 +1,33 @@
 #!/bin/sh
+# NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für netcore TETRA Datenpaket Gateway Status.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 set -u
 
 IFACE=${1:-ntetra0}
 
 echo "== TUN interface =="
+# Was: Richtet eine Netzwerkschnittstelle oder Route ein.
+# Warum: Paketdaten benötigen einen eindeutigen Weg zwischen TETRA-Seite und IP-Netz.
 ip -details address show dev "$IFACE" 2>/dev/null || echo "$IFACE is not present"
 
 echo
 echo "== Routes =="
+# Was: Richtet eine Netzwerkschnittstelle oder Route ein.
+# Warum: Paketdaten benötigen einen eindeutigen Weg zwischen TETRA-Seite und IP-Netz.
 ip -4 route show dev "$IFACE" 2>/dev/null || true
 
 echo
 echo "== Forwarding =="
 printf 'net.ipv4.ip_forward='; cat /proc/sys/net/ipv4/ip_forward 2>/dev/null || echo unknown
 
+# Was: Prüft die folgende Voraussetzung und führt den passenden Zweig aus.
+# Warum: Fehlende Rechte, Dateien oder Einstellungen sollen früh und verständlich behandelt werden.
 if command -v nft >/dev/null 2>&1 && nft list table ip netcore_tetra >/dev/null 2>&1; then
     echo
 echo "== nftables =="
+    # Was: Ändert die nftables-Regeln für Paketweiterleitung oder NAT.
+    # Warum: IP-Pakete müssen gezielt erlaubt und an das richtige Netz weitergegeben werden.
     nft list table ip netcore_tetra
 elif command -v iptables >/dev/null 2>&1; then
     echo
@@ -31,8 +42,36 @@ fi
 
 echo
 echo "== Crash-recovery state =="
+# Was: Prüft die folgende Voraussetzung und führt den passenden Zweig aus.
+# Warum: Fehlende Rechte, Dateien oder Einstellungen sollen früh und verständlich behandelt werden.
 if [ -r /run/netcore-tetra/packet-gateway-sysctls ]; then
     cat /run/netcore-tetra/packet-gateway-sysctls
 else
     echo "No persisted sysctl state (gateway stopped or no values changed)."
+fi
+
+
+echo
+echo "== Basis-station service privileges =="
+SERVICE=${2:-}
+# Was: Prüft die folgende Voraussetzung und führt den passenden Zweig aus.
+# Warum: Fehlende Rechte, Dateien oder Einstellungen sollen früh und verständlich behandelt werden.
+if [ -z "$SERVICE" ]; then
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung gilt.
+    # Warum: Gleichartige Installations- oder Prüfaufgaben werden dadurch vollständig abgearbeitet.
+    for candidate in bluestation.service bluestation-bs.service tetra.service; do
+        # Was: Prüft die folgende Voraussetzung und führt den passenden Zweig aus.
+        # Warum: Fehlende Rechte, Dateien oder Einstellungen sollen früh und verständlich behandelt werden.
+        if systemctl is-active --quiet "$candidate" 2>/dev/null; then SERVICE=$candidate; break; fi
+    done
+fi
+# Was: Prüft die folgende Voraussetzung und führt den passenden Zweig aus.
+# Warum: Fehlende Rechte, Dateien oder Einstellungen sollen früh und verständlich behandelt werden.
+if [ -n "$SERVICE" ]; then
+    echo "Service: $SERVICE"
+    # Was: Steuert den zugehörigen systemd-Dienst.
+    # Warum: Systemd soll Start, Stopp, Neustart und automatischen Boot des Dienstes zuverlässig verwalten.
+    systemctl show "$SERVICE" -p AmbientCapabilities -p CapabilityBoundingSet -p PrivateDevices -p DevicePolicy -p DeviceAllow -p ProtectKernelTunables --no-pager
+else
+    echo "No active basis-station service detected."
 fi

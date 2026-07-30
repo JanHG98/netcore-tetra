@@ -1,7 +1,12 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use tetra_core::BitBuffer;
 
 /// Compute FCS checksum for a range of bits in a BitBuffer
 /// Offsets are relative to the bitbuffer window start.
+// Was: Führt den Arbeitsschritt `compute_fcs` für compute fcs aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn compute_fcs(bitbuf: &BitBuffer, start: usize, end: usize) -> u32 {
     assert!(start <= end);
     assert!(end <= bitbuf.get_len());
@@ -17,6 +22,8 @@ pub fn compute_fcs(bitbuf: &BitBuffer, start: usize, end: usize) -> u32 {
     }
 
     // TODO optimize by fetching up to 64 bits per iteration
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for i in 0..len {
         let bit_pos = start + i;
         let bit = bitbuf.peek_bits_startoffset(bit_pos, 1).unwrap() as u8;
@@ -32,6 +39,8 @@ pub fn compute_fcs(bitbuf: &BitBuffer, start: usize, end: usize) -> u32 {
 
 /// Computes and checks the FCS checksum
 /// Computes over bitbuffer range [pos, end-32]. Checks with FCS at [end - 32, end]
+// Was: Diese Funktion prüft fcs.
+// Warum: Fehler oder unzulässige Zustände werden dadurch früh erkannt.
 pub fn check_fcs(bitbuf: &BitBuffer) -> bool {
     if bitbuf.get_len_remaining() < 32 {
         tracing::warn!(
@@ -46,12 +55,16 @@ pub fn check_fcs(bitbuf: &BitBuffer) -> bool {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use tetra_pdus::llc::pdus::bl_data::BlData;
 
     use super::*;
 
     #[test]
+    // Was: Führt den Arbeitsschritt `fcs_test` für fcs test aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fcs_test() {
         let testvec = "010100100111101011010111110000100110000110001011000011000000000000000011000100000001001100110011000000110010001011000011001000110000001100100011000100110001001100010011000100110101001100100011000000110010001100000011000000110001011001111010000010101011000110101";
         let mut bitbuf = BitBuffer::from_bitstr(testvec);
@@ -62,6 +75,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `bldata_with_fcs` für bldata with fcs aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn bldata_with_fcs() {
         let testvec = "010100100111101011010111110000100110000110001011000011000000000000000011000100000001001100110011000000110010001011000011001000110000001100100011000100110001001100010011000100110101001100100011000000110010001100000011000000110001011001111010000010101011000110101";
         let mut bitbuf = BitBuffer::from_bitstr(testvec);

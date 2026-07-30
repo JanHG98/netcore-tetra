@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! Dashboard-editable ISSI whitelist.
 //!
 //! The whitelist lives in two places at runtime:
@@ -13,6 +16,8 @@
 /// Parse a whitelist POST body. Accepts either a bare JSON array `[1,2,3]` or an object
 /// `{"issi_whitelist":[1,2,3]}`. Returns the parsed ISSIs (deduplicated, sorted) or an
 /// error string suitable for an HTTP 400 body.
+// Was: Diese Funktion liest und prüft whitelist body.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 pub fn parse_whitelist_body(body: &str) -> Result<Vec<u32>, String> {
     let trimmed = body.trim();
     if trimmed.is_empty() {
@@ -34,6 +39,8 @@ pub fn parse_whitelist_body(body: &str) -> Result<Vec<u32>, String> {
         .ok_or_else(|| "'issi_whitelist' must be an array".to_string())?;
 
     let mut out: Vec<u32> = Vec::with_capacity(arr.len());
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for item in arr {
         // Accept numbers and numeric strings ("2260571").
         let n = if let Some(u) = item.as_u64() {
@@ -59,6 +66,8 @@ pub fn parse_whitelist_body(body: &str) -> Result<Vec<u32>, String> {
 /// The entries are sorted and deduplicated so the written config is deterministic regardless
 /// of the caller's ordering, matching the "deduplicated, sorted" contract of
 /// [`parse_whitelist_body`].
+// Was: Führt den Arbeitsschritt `format_array` für format array aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn format_array(list: &[u32]) -> String {
     let mut sorted: Vec<u32> = list.to_vec();
     sorted.sort_unstable();
@@ -74,6 +83,8 @@ fn format_array(list: &[u32]) -> String {
 ///   - If a `[security]` section exists, replace its `issi_whitelist = ...` line (or add
 ///     one right after the header if absent).
 ///   - If no `[security]` section exists, append one at the end of the file.
+// Was: Diese Funktion schreibt whitelist to toml.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 pub fn write_whitelist_to_toml(config_path: &str, list: &[u32]) -> std::io::Result<()> {
     let original = std::fs::read_to_string(config_path)?;
     let array_lit = format_array(list);
@@ -86,6 +97,8 @@ pub fn write_whitelist_to_toml(config_path: &str, list: &[u32]) -> std::io::Resu
     let mut wrote_line = false;
     let mut security_seen = false;
 
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for &line in &lines {
         let trimmed = line.trim_start();
 
@@ -149,15 +162,21 @@ pub fn write_whitelist_to_toml(config_path: &str, list: &[u32]) -> std::io::Resu
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
     #[test]
+    // Was: Diese Funktion liest und prüft array form.
+    // Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     fn parse_array_form() {
         assert_eq!(parse_whitelist_body("[3, 1, 2]").unwrap(), vec![1, 2, 3]);
     }
 
     #[test]
+    // Was: Diese Funktion liest und prüft object form.
+    // Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     fn parse_object_form() {
         assert_eq!(
             parse_whitelist_body("{\"issi_whitelist\":[2260571, 2260570]}").unwrap(),
@@ -166,28 +185,38 @@ mod tests {
     }
 
     #[test]
+    // Was: Diese Funktion liest und prüft string entries.
+    // Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     fn parse_string_entries() {
         assert_eq!(parse_whitelist_body("[\"1001\", \"1002\"]").unwrap(), vec![1001, 1002]);
     }
 
     #[test]
+    // Was: Diese Funktion liest und prüft empty is open.
+    // Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     fn parse_empty_is_open() {
         assert_eq!(parse_whitelist_body("[]").unwrap(), Vec::<u32>::new());
         assert_eq!(parse_whitelist_body("").unwrap(), Vec::<u32>::new());
     }
 
     #[test]
+    // Was: Diese Funktion liest und prüft dedup.
+    // Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     fn parse_dedup() {
         assert_eq!(parse_whitelist_body("[5, 5, 1, 5]").unwrap(), vec![1, 5]);
     }
 
     #[test]
+    // Was: Diese Funktion liest und prüft rejects out of range.
+    // Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     fn parse_rejects_out_of_range() {
         assert!(parse_whitelist_body("[0]").is_err());
         assert!(parse_whitelist_body("[16777216]").is_err());
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `replace_existing_line` für replace existing line aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn replace_existing_line() {
         let cfg = "[cell]\nfoo = 1\n\n[security]\nissi_whitelist = [1, 2]\n";
         let dir = std::env::temp_dir();
@@ -202,6 +231,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `append_section_when_missing` für append section when missing aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn append_section_when_missing() {
         let cfg = "[cell]\nfoo = 1\n";
         let dir = std::env::temp_dir();
@@ -215,6 +246,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `preserves_commented_example` für preserves commented example aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn preserves_commented_example() {
         let cfg = "[security]\n# issi_whitelist = [2260571, 2260572]\n";
         let dir = std::env::temp_dir();

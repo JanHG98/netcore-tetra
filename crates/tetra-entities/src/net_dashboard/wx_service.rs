@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! Built-in WX/METAR fetch + decode.
 //!
 //! Fetches a station's raw METAR from aviationweather.gov and decodes it into a compact,
@@ -9,11 +12,17 @@
 
 use std::time::Duration;
 
+// Was: Legt den festen Wert `METAR_API` für metar API-Schnittstelle fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const METAR_API: &str = "https://aviationweather.gov/api/data/metar";
+// Was: Legt den festen Wert `USER_AGENT` für Benutzer agent fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const USER_AGENT: &str = "FlowStation-WX";
 
 /// Fetch the raw METAR string for an ICAO code (e.g. "LROP" -> "LROP 301600Z ...").
 /// Returns Err(message) on network failure or when no data is returned.
+// Was: Diese Funktion lädt metar raw.
+// Warum: Externe oder entfernte Daten werden dadurch an einer Stelle geladen und geprüft.
 pub fn fetch_metar_raw(icao: &str) -> Result<String, String> {
     let icao = sanitize_icao(icao);
     if icao.is_empty() {
@@ -40,12 +49,16 @@ pub fn fetch_metar_raw(icao: &str) -> Result<String, String> {
 }
 
 /// Fetch and decode in one step. Output is ASCII-only and SDS-safe.
+// Was: Diese Funktion lädt metar decoded.
+// Warum: Externe oder entfernte Daten werden dadurch an einer Stelle geladen und geprüft.
 pub fn fetch_metar_decoded(icao: &str) -> Result<String, String> {
     let raw = fetch_metar_raw(icao)?;
     Ok(ascii_only(&decode_metar(&raw)))
 }
 
 /// Keep only the leading letters/digits of an ICAO token, uppercased, max 4 chars.
+// Was: Führt den Arbeitsschritt `sanitize_icao` für sanitize icao aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn sanitize_icao(icao: &str) -> String {
     icao.trim()
         .chars()
@@ -56,12 +69,16 @@ fn sanitize_icao(icao: &str) -> String {
 }
 
 /// Strip non-ASCII so the result fits an ISO-8859-1 SDS text payload.
+// Was: Führt den Arbeitsschritt `ascii_only` für ascii only aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn ascii_only(s: &str) -> String {
     s.chars().filter(|c| c.is_ascii()).collect()
 }
 
 /// Decode a raw METAR into a compact human-readable summary, fields separated by " | ".
 /// Best-effort: unrecognised tokens are skipped. Ported from tetraflow-sds-bot.
+// Was: Diese Funktion dekodiert metar.
+// Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
 pub fn decode_metar(raw: &str) -> String {
     let tokens: Vec<&str> = raw.split_whitespace().collect();
     if tokens.is_empty() {
@@ -149,11 +166,15 @@ pub fn decode_metar(raw: &str) -> String {
     }
 
     // Remaining tokens
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while i < tokens.len() {
         let t = tokens[i];
 
         // Cloud layers
         if t.len() >= 6 && matches!(&t[..3], "FEW" | "SCT" | "BKN" | "OVC") {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let cov = match &t[..3] {
                 "FEW" => "Few",
                 "SCT" => "SCT",
@@ -221,6 +242,8 @@ pub fn decode_metar(raw: &str) -> String {
         }
 
         // Weather phenomena
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let wx = match t {
             "BR" => Some("Mist"),
             "FG" => Some("Fog"),
@@ -252,6 +275,8 @@ pub fn decode_metar(raw: &str) -> String {
 
 /// A recognised weather request. Only two commands exist: METAR (aviationweather, by ICAO)
 /// and WX (wttr.in, by free-text location). Anything else is not a command and gets no reply.
+// Was: Listet die möglichen Varianten für wx request auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum WxRequest {
     /// `METAR <ICAO>` — decoded aviationweather METAR for the station.
     Metar(String),
@@ -262,6 +287,8 @@ pub enum WxRequest {
 /// Parse an SDS text payload into a weather request. Recognises exactly two commands,
 /// case-insensitive: `METAR <ICAO>` and `WX <location>`. Returns `None` for anything else —
 /// no PING/HELP/parrot/usage replies, matching the "only these two functions" service scope.
+// Was: Diese Funktion liest und prüft wx request.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 pub fn parse_wx_request(text: &str) -> Option<WxRequest> {
     let trimmed = text.trim();
 
@@ -286,6 +313,8 @@ pub fn parse_wx_request(text: &str) -> Option<WxRequest> {
 /// Fetch current conditions for a free-text location from wttr.in and format them as a
 /// compact, ASCII-only, SDS-safe line. Output is byte-identical to tetraflow-sds-bot's
 /// `fetch_wx`. Blocking HTTP; always call from a worker thread.
+// Was: Diese Funktion lädt wx.
+// Warum: Externe oder entfernte Daten werden dadurch an einer Stelle geladen und geprüft.
 pub fn fetch_wx(location: &str) -> Result<String, String> {
     let client = reqwest::blocking::Client::builder()
         .timeout(Duration::from_secs(10))
@@ -334,12 +363,16 @@ pub fn fetch_wx(location: &str) -> Result<String, String> {
 }
 
 /// Keep only digits and sign from a temperature string, e.g. "+18°C" -> "+18".
+// Was: Führt den Arbeitsschritt `clean_temp` für clean temp aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn clean_temp(s: &str) -> String {
     s.chars().filter(|c| c.is_ascii_digit() || *c == '+' || *c == '-').collect()
 }
 
 /// Replace wttr.in arrow glyphs with compass text and strip any remaining non-ASCII,
 /// e.g. "↗ 14km/h" -> "NE 14km/h".
+// Was: Führt den Arbeitsschritt `clean_wind` für clean wind aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn clean_wind(s: &str) -> String {
     let s = s
         .replace('↑', "N")
@@ -354,6 +387,8 @@ fn clean_wind(s: &str) -> String {
 }
 
 /// Case-insensitive prefix strip.
+// Was: Führt den Arbeitsschritt `strip_prefix_ci` für strip prefix ci aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn strip_prefix_ci<'a>(s: &'a str, prefix: &str) -> Option<&'a str> {
     if s.len() >= prefix.len() && s[..prefix.len()].eq_ignore_ascii_case(prefix) {
         Some(&s[prefix.len()..])
@@ -365,6 +400,8 @@ fn strip_prefix_ci<'a>(s: &'a str, prefix: &str) -> Option<&'a str> {
 /// Rewrite (or insert) the `[wx_service]` section in the TOML file, preserving everything
 /// else. The whole section is regenerated from the override values; an existing
 /// `[wx_service]` block (from its header until the next section header or EOF) is replaced.
+// Was: Diese Funktion schreibt wx to toml.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 pub fn write_wx_to_toml(config_path: &str, ov: &tetra_config::bluestation::WxRuntimeOverride) -> std::io::Result<()> {
     let original = std::fs::read_to_string(config_path)?;
 
@@ -386,6 +423,8 @@ pub fn write_wx_to_toml(config_path: &str, ov: &tetra_config::bluestation::WxRun
     let mut i = 0;
     let mut replaced = false;
 
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while i < lines.len() {
         let trimmed = lines[i].trim_start();
         if trimmed.starts_with("[wx_service]") {
@@ -394,6 +433,8 @@ pub fn write_wx_to_toml(config_path: &str, ov: &tetra_config::bluestation::WxRun
             out.push(section.clone());
             replaced = true;
             i += 1;
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             while i < lines.len() {
                 let t = lines[i].trim_start();
                 if t.starts_with('[') && t.contains(']') {
@@ -425,10 +466,14 @@ pub fn write_wx_to_toml(config_path: &str, ov: &tetra_config::bluestation::WxRun
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
     #[test]
+    // Was: Führt den Arbeitsschritt `sanitize` für sanitize aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn sanitize() {
         assert_eq!(sanitize_icao(" lrop "), "LROP");
         assert_eq!(sanitize_icao("LROP123"), "LROP");
@@ -436,6 +481,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Diese Funktion dekodiert basic.
+    // Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
     fn decode_basic() {
         let raw = "LROP 301600Z 11005KT 9999 FEW040 SCT100 17/01 Q1018 NOSIG";
         let out = decode_metar(raw);
@@ -450,6 +497,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Diese Funktion dekodiert gust and negative temp.
+    // Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
     fn decode_gust_and_negative_temp() {
         let raw = "EHAM 301600Z 27015G25KT 8000 BKN010 M02/M05 Q0998";
         let out = decode_metar(raw);
@@ -459,6 +508,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Diese Funktion dekodiert cavok vrb.
+    // Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
     fn decode_cavok_vrb() {
         let raw = "LICJ 301600Z VRB03KT CAVOK 25/12 Q1015";
         let out = decode_metar(raw);
@@ -467,18 +518,24 @@ mod tests {
     }
 
     #[test]
+    // Was: Diese Funktion fordert metar prefix.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn request_metar_prefix() {
         assert!(matches!(parse_wx_request("METAR LROP"), Some(WxRequest::Metar(ref s)) if s == "LROP"));
         assert!(matches!(parse_wx_request("metar kjfk"), Some(WxRequest::Metar(ref s)) if s == "KJFK"));
     }
 
     #[test]
+    // Was: Diese Funktion fordert wx prefix.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn request_wx_prefix() {
         assert!(matches!(parse_wx_request("WX Bucharest"), Some(WxRequest::Wx(ref s)) if s == "Bucharest"));
         assert!(matches!(parse_wx_request("wx Cluj Napoca"), Some(WxRequest::Wx(ref s)) if s == "Cluj Napoca"));
     }
 
     #[test]
+    // Was: Diese Funktion fordert only two commands.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn request_only_two_commands() {
         // Anything that is not METAR/WX yields no command (no PING/HELP/bare/usage).
         assert!(parse_wx_request("PING").is_none());
@@ -490,6 +547,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Diese Funktion schreibt toml replace section.
+    // Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
     fn write_toml_replace_section() {
         let cfg = "[cell]\nfoo = 1\n\n[wx_service]\nenabled = false\nservice_issi = 9998\n\n[security]\nbar = 2\n";
         let dir = std::env::temp_dir();
@@ -519,6 +578,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Diese Funktion schreibt toml append when missing.
+    // Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
     fn write_toml_append_when_missing() {
         let cfg = "[cell]\nfoo = 1\n";
         let dir = std::env::temp_dir();

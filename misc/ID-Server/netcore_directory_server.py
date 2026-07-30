@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für netcore directory server.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 """
 NetCore Directory Server
 Local RadioID-style registry for FlowStation / NetCore-Tetra.
@@ -35,10 +38,14 @@ APP_NAME = "NetCore Directory"
 APP_VERSION = "0.2.0"
 
 
+# Was: Führt den Arbeitsschritt `now_iso` für now iso aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
+# Was: Führt den Arbeitsschritt `row_to_dict` für row to dict aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def row_to_dict(row: sqlite3.Row) -> dict:
     return {k: row[k] for k in row.keys()}
 
@@ -153,23 +160,33 @@ TABLES = {
 }
 
 
+# Was: Bündelt Daten und Verhalten für store.
+# Warum: Zusammengehöriger Zustand und seine Operationen bleiben dadurch an einer klaren Stelle.
 class Store:
+    # Was: Diese Funktion initialisiert den vorgesehenen Arbeitsschritt.
+    # Warum: Alle benötigten Startwerte werden so in einer festen Reihenfolge eingerichtet.
     def __init__(self, path: Path):
         self.path = path
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.init_db()
 
+    # Was: Führt den Arbeitsschritt `conn` für conn aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def conn(self) -> sqlite3.Connection:
         c = sqlite3.connect(self.path)
         c.row_factory = sqlite3.Row
         c.execute("PRAGMA foreign_keys=ON")
         return c
 
+    # Was: Diese Funktion initialisiert Datenbank.
+    # Warum: Alle benötigten Startwerte werden so in einer festen Reihenfolge eingerichtet.
     def init_db(self) -> None:
         with self.conn() as c:
             c.executescript(SCHEMA)
             c.commit()
 
+    # Was: Diese Funktion liefert items.
+    # Warum: Die Zusammenstellung der Einträge bleibt damit konsistent und wiederverwendbar.
     def list_items(self, table: str) -> list[dict]:
         meta = TABLES[table]
         pk = meta["pk"]
@@ -177,6 +194,8 @@ class Store:
             rows = c.execute(f"SELECT * FROM {table} ORDER BY {pk} ASC").fetchall()
         return [row_to_dict(r) for r in rows]
 
+    # Was: Diese Funktion liest item.
+    # Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     def get_item(self, table: str, pk_value: int) -> dict | None:
         meta = TABLES[table]
         pk = meta["pk"]
@@ -184,6 +203,8 @@ class Store:
             row = c.execute(f"SELECT * FROM {table} WHERE {pk}=?", (pk_value,)).fetchone()
         return row_to_dict(row) if row else None
 
+    # Was: Führt den Arbeitsschritt `next_pk` für next pk aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def next_pk(self, table: str) -> int:
         meta = TABLES[table]
         pk = meta["pk"]
@@ -191,6 +212,8 @@ class Store:
             row = c.execute(f"SELECT COALESCE(MAX({pk}), 0) + 1 AS next_id FROM {table}").fetchone()
         return int(row["next_id"] if row else 1)
 
+    # Was: Diese Funktion liest und prüft member issis.
+    # Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     @staticmethod
     def parse_member_issis(raw) -> list[int]:
         if raw is None:
@@ -206,7 +229,11 @@ class Store:
 
         out: list[int] = []
         seen: set[int] = set()
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for v in values:
+            # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+            # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
             try:
                 if isinstance(v, dict):
                     v = v.get("issi") or v.get("id") or v.get("device_issi")
@@ -219,8 +246,12 @@ class Store:
             out.append(issi)
         return out
 
+    # Was: Diese Funktion liefert device groups.
+    # Warum: Die Zusammenstellung der Einträge bleibt damit konsistent und wiederverwendbar.
     def list_device_groups(self) -> list[dict]:
         groups = self.list_items("device_groups")
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for g in groups:
             gid = int(g["group_id"])
             g["members"] = self.list_device_group_members(gid)
@@ -228,6 +259,8 @@ class Store:
             g["member_devices"] = [d for d in g["member_devices"] if d]
         return groups
 
+    # Was: Diese Funktion liest device Gruppe.
+    # Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     def get_device_group(self, group_id: int) -> dict | None:
         item = self.get_item("device_groups", group_id)
         if not item:
@@ -237,6 +270,8 @@ class Store:
         item["member_devices"] = [d for d in item["member_devices"] if d]
         return item
 
+    # Was: Diese Funktion liefert device Gruppe members.
+    # Warum: Die Zusammenstellung der Einträge bleibt damit konsistent und wiederverwendbar.
     def list_device_group_members(self, group_id: int) -> list[int]:
         with self.conn() as c:
             rows = c.execute(
@@ -245,10 +280,14 @@ class Store:
             ).fetchall()
         return [int(r["issi"]) for r in rows]
 
+    # Was: Diese Funktion setzt device Gruppe members.
+    # Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     def set_device_group_members(self, group_id: int, members: list[int]) -> None:
         ts = now_iso()
         with self.conn() as c:
             c.execute("DELETE FROM device_group_members WHERE group_id=?", (group_id,))
+            # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+            # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
             for issi in members:
                 c.execute(
                     "INSERT OR REPLACE INTO device_group_members (group_id, issi, role, created_at) VALUES (?, ?, '', ?)",
@@ -256,6 +295,8 @@ class Store:
                 )
             c.commit()
 
+    # Was: Führt den Arbeitsschritt `upsert_device_group` für upsert device Gruppe aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def upsert_device_group(self, data: dict, pk_override: int | None = None) -> dict:
         payload = dict(data)
         has_members = any(k in payload for k in ("members", "member_issis", "members_text"))
@@ -285,6 +326,8 @@ class Store:
             self.set_device_group_members(gid, members)
         return self.get_device_group(gid) or item
 
+    # Was: Diese Funktion löscht device Gruppe.
+    # Warum: Das Entfernen wird dadurch kontrolliert durchgeführt und hinterlässt keine verwaisten Verweise.
     def delete_device_group(self, group_id: int) -> bool:
         with self.conn() as c:
             c.execute("DELETE FROM device_group_members WHERE group_id=?", (group_id,))
@@ -292,6 +335,8 @@ class Store:
             c.commit()
             return cur.rowcount > 0
 
+    # Was: Führt den Arbeitsschritt `groups_for_issi` für groups for Teilnehmerkennung (ISSI) aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def groups_for_issi(self, issi: int) -> list[dict]:
         with self.conn() as c:
             rows = c.execute(
@@ -304,12 +349,16 @@ class Store:
                 (issi,),
             ).fetchall()
         out = []
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for r in rows:
             g = row_to_dict(r)
             g["members"] = self.list_device_group_members(int(g["group_id"]))
             out.append(g)
         return out
 
+    # Was: Diese Funktion löscht item.
+    # Warum: Das Entfernen wird dadurch kontrolliert durchgeführt und hinterlässt keine verwaisten Verweise.
     def delete_item(self, table: str, pk_value: int) -> bool:
         meta = TABLES[table]
         pk = meta["pk"]
@@ -318,12 +367,16 @@ class Store:
             c.commit()
             return cur.rowcount > 0
 
+    # Was: Führt den Arbeitsschritt `upsert_item` für upsert item aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def upsert_item(self, table: str, data: dict, pk_override: int | None = None) -> dict:
         meta = TABLES[table]
         pk = meta["pk"]
         fields = meta["fields"]
 
         item = {}
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for f in fields:
             if f in data:
                 item[f] = data[f]
@@ -337,6 +390,8 @@ class Store:
             else:
                 raise ValueError(f"missing {pk}")
 
+        # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+        # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
         try:
             item[pk] = int(item[pk])
         except Exception:
@@ -393,6 +448,8 @@ class Store:
             c.commit()
         return self.get_item(table, base[pk]) or base
 
+    # Was: Führt den Arbeitsschritt `export_all` für export all aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def export_all(self) -> dict:
         return {
             "version": 1,
@@ -404,14 +461,20 @@ class Store:
             "status_messages": self.list_items("status_messages"),
         }
 
+    # Was: Führt den Arbeitsschritt `import_all` für import all aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def import_all(self, payload: dict) -> dict:
         counts = {}
 
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for key in ("device_groups", "device-groups", "vehicles", "status_groups"):
             items = payload.get(key)
             if not isinstance(items, list):
                 continue
             n = 0
+            # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+            # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
             for item in items:
                 if isinstance(item, dict):
                     self.upsert_device_group(item)
@@ -425,11 +488,15 @@ class Store:
             "status_messages": "status_messages",
             "status": "status_messages",
         }
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for key, table in mapping.items():
             items = payload.get(key)
             if not isinstance(items, list):
                 continue
             n = 0
+            # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+            # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
             for item in items:
                 if isinstance(item, dict):
                     self.upsert_item(table, item)
@@ -619,12 +686,18 @@ load();
 """
 
 
+# Was: Bündelt Daten und Verhalten für handler.
+# Warum: Zusammengehöriger Zustand und seine Operationen bleiben dadurch an einer klaren Stelle.
 class Handler(BaseHTTPRequestHandler):
     store: Store = None  # type: ignore
 
+    # Was: Führt den Arbeitsschritt `log_message` für log Nachricht aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def log_message(self, fmt: str, *args) -> None:
         print(f"{self.address_string()} - {fmt % args}")
 
+    # Was: Diese Funktion sendet text.
+    # Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     def send_text(self, status: int, body: str, content_type: str = "text/plain; charset=utf-8") -> None:
         data = body.encode("utf-8")
         self.send_response(status)
@@ -635,9 +708,13 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    # Was: Diese Funktion sendet JSON-Daten.
+    # Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     def send_json(self, status: int, obj) -> None:
         self.send_text(status, json.dumps(obj, ensure_ascii=False), "application/json; charset=utf-8")
 
+    # Was: Diese Funktion liest JSON-Daten.
+    # Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
     def read_json(self) -> dict:
         n = int(self.headers.get("Content-Length", "0") or "0")
         if n <= 0:
@@ -645,6 +722,8 @@ class Handler(BaseHTTPRequestHandler):
         raw = self.rfile.read(min(n, 2 * 1024 * 1024))
         return json.loads(raw.decode("utf-8"))
 
+    # Was: Führt den Arbeitsschritt `do_GET` für do get aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
         path = parsed.path.rstrip("/") or "/"
@@ -681,9 +760,13 @@ class Handler(BaseHTTPRequestHandler):
             groups = self.store.groups_for_issi(issi)
             members: list[int] = []
             seen: set[int] = set()
+            # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+            # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
             for g in groups:
                 if not g.get("status_sync", 1):
                     continue
+                # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+                # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
                 for m in g.get("members", []):
                     if m not in seen:
                         seen.add(m)
@@ -709,11 +792,15 @@ class Handler(BaseHTTPRequestHandler):
 
         self.send_json(404, {"error": "not found"})
 
+    # Was: Führt den Arbeitsschritt `do_POST` für do post aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def do_POST(self) -> None:
         parsed = urlparse(self.path)
         parts = [p for p in parsed.path.rstrip("/").split("/") if p]
 
         if parsed.path.rstrip("/") == "/api/import":
+            # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+            # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
             try:
                 payload = self.read_json()
                 counts = self.store.import_all(payload)
@@ -725,6 +812,8 @@ class Handler(BaseHTTPRequestHandler):
         route = self.resolve_collection(parts)
         if route:
             table, pk = route
+            # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+            # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
             try:
                 if table == "device_groups":
                     item = self.store.upsert_device_group(self.read_json(), pk)
@@ -737,12 +826,18 @@ class Handler(BaseHTTPRequestHandler):
 
         self.send_json(404, {"error": "not found"})
 
+    # Was: Führt den Arbeitsschritt `do_PUT` für do put aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def do_PUT(self) -> None:
         self.do_POST()
 
+    # Was: Führt den Arbeitsschritt `do_PATCH` für do patch aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def do_PATCH(self) -> None:
         self.do_POST()
 
+    # Was: Führt den Arbeitsschritt `do_DELETE` für do delete aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def do_DELETE(self) -> None:
         parsed = urlparse(self.path)
         parts = [p for p in parsed.path.rstrip("/").split("/") if p]
@@ -760,13 +855,19 @@ class Handler(BaseHTTPRequestHandler):
             return
         self.send_json(404, {"error": "not found"})
 
+    # Was: Diese Funktion liest und prüft int.
+    # Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     @staticmethod
     def parse_int(v) -> int:
+        # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+        # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
         try:
             return int(str(v).strip())
         except Exception:
             return 0
 
+    # Was: Diese Funktion ermittelt collection.
+    # Warum: Unklare oder indirekte Angaben werden so vor der weiteren Verarbeitung eindeutig gemacht.
     def resolve_collection(self, parts: list[str]) -> tuple[str, int | None] | None:
         if len(parts) < 2 or parts[0] != "api":
             return None
@@ -790,6 +891,8 @@ class Handler(BaseHTTPRequestHandler):
             pk = self.parse_int(parts[2])
         return alias, pk
 
+    # Was: Führt den Arbeitsschritt `radioid_device_response` für radioid device response aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def radioid_device_response(self, issi: int) -> dict:
         if not issi:
             return {"count": 0, "results": []}
@@ -812,6 +915,8 @@ class Handler(BaseHTTPRequestHandler):
             }],
         }
 
+    # Was: Führt den Arbeitsschritt `radioid_repeater_response` für radioid repeater response aus.
+    # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     def radioid_repeater_response(self, issi: int) -> dict:
         if not issi:
             return {"count": 0, "results": []}
@@ -833,6 +938,8 @@ class Handler(BaseHTTPRequestHandler):
         }
 
 
+# Was: Führt den Arbeitsschritt `seed_from_file` für seed from file aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def seed_from_file(store: Store, seed_path: Path) -> None:
     if not seed_path.exists():
         return
@@ -842,6 +949,8 @@ def seed_from_file(store: Store, seed_path: Path) -> None:
     # Accept simple devices.json format: {"2010002": {"name": ...}}
     if isinstance(payload, dict) and "devices" not in payload and all(str(k).isdigit() for k in payload.keys()):
         items = []
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for issi, item in payload.items():
             if isinstance(item, str):
                 items.append({"issi": int(issi), "name": item})
@@ -854,6 +963,8 @@ def seed_from_file(store: Store, seed_path: Path) -> None:
         store.import_all(payload)
 
 
+# Was: Startet das Programm, lädt die benötigten Einstellungen und übergibt an den eigentlichen Dienstablauf.
+# Warum: Ein klarer Einstiegspunkt hält Startreihenfolge, Fehlerausgabe und geordnetes Beenden zusammen.
 def main() -> None:
     ap = argparse.ArgumentParser(description=APP_NAME)
     ap.add_argument("--host", default="0.0.0.0")
@@ -870,11 +981,15 @@ def main() -> None:
     srv = ThreadingHTTPServer((args.host, args.port), Handler)
     print(f"{APP_NAME} {APP_VERSION} listening on http://{args.host}:{args.port}")
     print(f"DB: {Path(args.db).resolve()}")
+    # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+    # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
     try:
         srv.serve_forever()
     except KeyboardInterrupt:
         print("\nbye")
 
 
+# Was: Startet den Programmablauf nur dann, wenn diese Datei direkt ausgeführt wird.
+# Warum: Beim Import als Modul sollen nur Funktionen bereitstehen und keine Nebenwirkungen automatisch starten.
 if __name__ == "__main__":
     main()

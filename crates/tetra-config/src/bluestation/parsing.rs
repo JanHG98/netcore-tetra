@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Einlesen und Prüfen der TETRA-Konfiguration.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufReader, Read};
@@ -7,7 +10,7 @@ use serde::Deserialize;
 use toml::Value;
 
 use crate::bluestation::sec_cell::{CfgNeighborCellCa, SdsCommandControlDto};
-use crate::bluestation::{CellInfoDto, CfgControlDto, CfgControlRoomDto, NetInfoDto, apply_control_patch, apply_control_room_patch, cell_dto_to_cfg, net_dto_to_cfg};
+use crate::bluestation::{CellInfoDto, CfgControlDto, CfgControlRoomDto, CfgEdgeFallbackDto, NetInfoDto, apply_control_patch, apply_control_room_patch, apply_edge_fallback_patch, cell_dto_to_cfg, net_dto_to_cfg};
 
 use super::config::{StackConfig, StackMode};
 use super::sec_asterisk::{CfgAsteriskDto, apply_asterisk_patch};
@@ -23,6 +26,7 @@ use super::sec_recovery::{CfgRecoveryDto, apply_recovery_patch};
 use super::sec_audio_player::{CfgAudioPlayerDto, apply_audio_player_patch};
 use super::sec_tts::{CfgTtsDto, apply_tts_patch};
 use super::sec_recording::{CfgRecordingDto, apply_recording_patch};
+use super::sec_media_library::{CfgMediaLibraryDto, apply_media_library_patch};
 use super::sec_security::{CfgSecurityDto, apply_security_patch};
 use super::sec_snom_notify::{CfgSnomNotifyDto, apply_snom_notify_patch};
 use super::sec_telegram::{CfgTelegramDto, apply_telegram_patch};
@@ -32,6 +36,8 @@ use super::sec_wx::{CfgWxServiceDto, apply_wx_service_patch};
 use super::{PhyIoDto, phy_dto_to_cfg};
 
 /// Build `StackConfig` from a TOML configuration file
+// Was: Wandelt Eingangsdaten in toml str um.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn from_toml_str(toml_str: &str) -> Result<StackConfig, Box<dyn std::error::Error>> {
     // Parse once as raw Value so we can extract neighbor_cells_ca before
     // deserializing into typed DTOs. This avoids a conflict between serde's
@@ -187,6 +193,13 @@ pub fn from_toml_str(toml_str: &str) -> Result<StackConfig, Box<dyn std::error::
         return Err(format!("Unrecognized fields in snom_notify config: {:?}", sorted_keys(&snom.extra)).into());
     }
 
+    // Optional media_library section
+    if let Some(ref media_library) = root.media_library
+        && !media_library.extra.is_empty()
+    {
+        return Err(format!("Unrecognized fields in media_library config: {:?}", sorted_keys(&media_library.extra)).into());
+    }
+
     // Optional recording section
     if let Some(ref recording) = root.recording
         && !recording.extra.is_empty()
@@ -220,6 +233,13 @@ pub fn from_toml_str(toml_str: &str) -> Result<StackConfig, Box<dyn std::error::
         && !control_room.extra.is_empty()
     {
         return Err(format!("Unrecognized fields in control_room config: {:?}", sorted_keys(&control_room.extra)).into());
+    }
+
+    // Optional edge_fallback section — reject misspelled safety controls.
+    if let Some(ref edge_fallback) = root.edge_fallback
+        && !edge_fallback.extra.is_empty()
+    {
+        return Err(format!("Unrecognized fields in edge_fallback config: {:?}", sorted_keys(&edge_fallback.extra)).into());
     }
 
     // Optional telegram_alerts section
@@ -296,12 +316,14 @@ pub fn from_toml_str(toml_str: &str) -> Result<StackConfig, Box<dyn std::error::
         tpg2200_action: apply_tpg2200_action_patch(root.tpg2200_action.unwrap_or_default())?,
         snom_notify: apply_snom_notify_patch(root.snom_notify.unwrap_or_default())?,
         dashboard: None,
+        media_library: apply_media_library_patch(root.media_library.unwrap_or_default())?,
         recording: apply_recording_patch(root.recording.unwrap_or_default())?,
         audio_player: apply_audio_player_patch(root.audio_player.unwrap_or_default())?,
         tts: apply_tts_patch(root.tts.unwrap_or_default())?,
         telemetry: None,
         control: None,
         control_room: None,
+        edge_fallback: apply_edge_fallback_patch(root.edge_fallback.unwrap_or_default())?,
         security: apply_security_patch(root.security.unwrap_or_default()),
         wx_service: apply_wx_service_patch(root.wx_service.unwrap_or_default()),
         recovery: apply_recovery_patch(root.recovery.unwrap_or_default()),
@@ -341,6 +363,8 @@ pub fn from_toml_str(toml_str: &str) -> Result<StackConfig, Box<dyn std::error::
 }
 
 /// Build `SharedConfig` from any reader.
+// Was: Wandelt Eingangsdaten in reader um.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn from_reader<R: Read>(reader: R) -> Result<StackConfig, Box<dyn std::error::Error>> {
     let mut contents = String::new();
     let mut reader = BufReader::new(reader);
@@ -349,6 +373,8 @@ pub fn from_reader<R: Read>(reader: R) -> Result<StackConfig, Box<dyn std::error
 }
 
 /// Build `SharedConfig` from a file path.
+// Was: Wandelt Eingangsdaten in file um.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn from_file<P: AsRef<Path>>(path: P) -> Result<StackConfig, Box<dyn std::error::Error>> {
     let f = File::open(path)?;
     let r = BufReader::new(f);
@@ -356,6 +382,8 @@ pub fn from_file<P: AsRef<Path>>(path: P) -> Result<StackConfig, Box<dyn std::er
     Ok(cfg)
 }
 
+// Was: Führt den Arbeitsschritt `sorted_keys` für sorted keys aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn sorted_keys(map: &HashMap<String, Value>) -> Vec<&str> {
     let mut v: Vec<&str> = map.keys().map(|s| s.as_str()).collect();
     v.sort_unstable();
@@ -365,6 +393,8 @@ fn sorted_keys(map: &HashMap<String, Value>) -> Vec<&str> {
 /// ----------------------- DTOs for input shape -----------------------
 
 #[derive(Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für toml Konfiguration root in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct TomlConfigRoot {
     config_version: String,
     stack_mode: StackMode,
@@ -386,12 +416,14 @@ struct TomlConfigRoot {
     tpg2200_action: Option<CfgTpg2200ActionDto>,
     snom_notify: Option<CfgSnomNotifyDto>,
     dashboard: Option<CfgDashboardDto>,
+    media_library: Option<CfgMediaLibraryDto>,
     recording: Option<CfgRecordingDto>,
     audio_player: Option<CfgAudioPlayerDto>,
     tts: Option<CfgTtsDto>,
     telemetry: Option<CfgTelemetryDto>,
     command: Option<CfgControlDto>,
     control_room: Option<CfgControlRoomDto>,
+    edge_fallback: Option<CfgEdgeFallbackDto>,
     security: Option<CfgSecurityDto>,
     #[serde(rename = "wx_service")]
     wx_service: Option<CfgWxServiceDto>,
@@ -406,6 +438,8 @@ struct TomlConfigRoot {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
@@ -414,6 +448,8 @@ mod tests {
     /// stay valid against the DTOs, and the strict `extra`/`deny`-style flatten maps must not reject
     /// any uncommented key.
     #[test]
+    // Was: Führt den Arbeitsschritt `example_config_parses` für example Konfiguration parses aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn example_config_parses() {
         let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../example_config/config.toml");
         from_file(path).unwrap_or_else(|e| panic!("example_config/config.toml must parse: {e}"));
@@ -422,6 +458,8 @@ mod tests {
     /// Gold-standard guard: every optional block documented (commented) in example_config must
     /// parse against the DTOs when a user UNCOMMENTS it — field names and types must match.
     #[test]
+    // Was: Führt den Arbeitsschritt `documented_optional_blocks_parse_when_uncommented` für documented optional blocks parse when uncommented aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn documented_optional_blocks_parse_when_uncommented() {
         let toml = r#"
 config_version = "0.6"
@@ -706,6 +744,8 @@ sds_queue_critical = 128
         assert!(!cfg.echolink.default_tetra_dest_is_group);
     }
 
+    // Was: Führt den Arbeitsschritt `minimal_toml` für minimal toml aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn minimal_toml(extra_cell: &str) -> String {
         format!(
             r#"
@@ -733,6 +773,8 @@ location_area = 1
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall no neighbor cells.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_no_neighbor_cells() {
         let toml = minimal_toml("");
         let cfg = from_toml_str(&toml).expect("parse failed");
@@ -740,6 +782,8 @@ location_area = 1
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall two neighbor cells.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_two_neighbor_cells() {
         let toml = minimal_toml(
             r#"
@@ -773,6 +817,8 @@ main_carrier_number = 1586
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall too many neighbor cells rejected.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_too_many_neighbor_cells_rejected() {
         // 8 entries — should fail validation
         let entries: String = (1u8..=8)
@@ -786,12 +832,16 @@ main_carrier_number = 1586
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall unrecognized cell info field still rejected.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_unrecognized_cell_info_field_still_rejected() {
         let toml = minimal_toml("bogus_field = 42");
         assert!(from_toml_str(&toml).is_err(), "should reject unknown field");
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `telegram_alerts_section_parses` für telegram alerts section parses aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn telegram_alerts_section_parses() {
         let toml = minimal_toml("")
             + r#"
@@ -814,6 +864,8 @@ alert_critical_logs = false
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `telegram_alerts_unknown_field_rejected` für telegram alerts unknown field rejected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn telegram_alerts_unknown_field_rejected() {
         let toml = minimal_toml("")
             + r#"
@@ -823,4 +875,50 @@ bogus = 1
 "#;
         assert!(from_toml_str(&toml).is_err(), "should reject unknown telegram_alerts field");
     }
+    #[test]
+    fn media_library_top_level_section_parses() {
+        let toml = minimal_toml("")
+            + r#"
+[media_library]
+enabled = true
+base_url = "http://10.0.1.154:8230"
+station_id = "SRV-M-TBS-01"
+publish_recordings = true
+recording_source_base_url = "http://10.0.1.20:8080"
+auto_approve_recordings = false
+audio_source_enabled = true
+only_ready = true
+only_approved = true
+retry_seconds = 60
+request_timeout_seconds = 15
+download_timeout_seconds = 120
+max_list_entries = 1000
+"#;
+
+        let cfg = from_toml_str(&toml).expect("[media_library] must be a recognized top-level section");
+        assert!(cfg.media_library.enabled);
+        assert!(cfg.media_library.publish_recordings);
+        assert!(cfg.media_library.audio_source_enabled);
+        assert_eq!(cfg.media_library.base_url, "http://10.0.1.154:8230");
+        assert_eq!(
+            cfg.media_library.recording_source_base_url,
+            "http://10.0.1.20:8080"
+        );
+    }
+
+    #[test]
+    fn media_library_unknown_field_is_rejected() {
+        let toml = minimal_toml("")
+            + r#"
+[media_library]
+enabled = false
+bogus = true
+"#;
+        let error = from_toml_str(&toml).expect_err("unknown media_library fields must remain rejected");
+        assert!(
+            error.to_string().contains("Unrecognized fields in media_library config"),
+            "unexpected error: {error}"
+        );
+    }
+
 }

@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! DAPNET inbound-message forwarding.
 //!
 //! The receiver uses the DAPNET RWTH core transmitter TCP protocol. It does not transmit POCSAG;
@@ -17,12 +20,20 @@ use crate::net_telegram::TelegramAlertSink;
 use crate::net_telemetry::{TelemetryEvent, TelemetrySink};
 use crate::tpg2200::{build_sds_text_payload, build_tpg2200_callout_payload, format_hex_bytes};
 
+// Was: Vergibt für cmd sender einen fachlich verständlichen Typnamen.
+// Warum: Der Alias macht Signaturen lesbarer und hält technische Details aus dem aufrufenden Code heraus.
 type CmdSender = crossbeam_channel::Sender<ControlCommand>;
 
+// Was: Legt den festen Wert `TCP_READ_TIMEOUT` für tcp read timeout fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const TCP_READ_TIMEOUT: Duration = Duration::from_secs(30);
+// Was: Legt den festen Wert `CALLOUT_TEXT_MAX_CHARS` für callout text max chars fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const CALLOUT_TEXT_MAX_CHARS: usize = 80;
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für dapnet Nachricht in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct DapnetMessage {
     id: String,
     callsign: String,
@@ -36,12 +47,16 @@ struct DapnetMessage {
     function: Option<u8>,
 }
 
+// Was: Diese Funktion startet dapnet Hintergrundverarbeitung.
+// Warum: Länger laufende Arbeit blockiert dadurch nicht den aufrufenden Ablauf.
 pub fn spawn_dapnet_worker(
     cfg: SharedConfig,
     cmce_cmd_tx: Option<CmdSender>,
     telegram_sink: Option<TelegramAlertSink>,
     telemetry_sink: Option<TelemetrySink>,
 ) -> Option<thread::JoinHandle<()>> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match thread::Builder::new()
         .name("dapnet-worker".into())
         .spawn(move || DapnetWorker::new(cfg, cmce_cmd_tx, telegram_sink, telemetry_sink).run())
@@ -54,6 +69,8 @@ pub fn spawn_dapnet_worker(
     }
 }
 
+// Was: Bündelt die zusammengehörigen Werte für dapnet Hintergrundverarbeitung in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct DapnetWorker {
     cfg: SharedConfig,
     cmce_cmd_tx: Option<CmdSender>,
@@ -66,7 +83,11 @@ struct DapnetWorker {
     last_enabled: Option<bool>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `DapnetWorker`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl DapnetWorker {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     fn new(
         cfg: SharedConfig,
         cmce_cmd_tx: Option<CmdSender>,
@@ -87,6 +108,8 @@ impl DapnetWorker {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `refresh_status` für refresh Status aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn refresh_status(&self, dapnet: &CfgDapnet, rwth_core_status: impl Into<String>, last_rx: Option<String>, last_error: Option<String>) {
         let mut state = self.cfg.state_write();
         let previous_last_rx = state.dapnet_status.last_rx.clone();
@@ -106,7 +129,11 @@ impl DapnetWorker {
         };
     }
 
+    // Was: Diese Funktion führt den vorgesehenen Arbeitsschritt.
+    // Warum: Der Lebenszyklus des Dienstes bleibt so an einer zentralen Stelle steuerbar.
     fn run(&mut self) {
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             let dapnet = self.cfg.effective_dapnet();
             let sleep = Duration::from_secs(dapnet.effective_poll_interval_secs());
@@ -158,6 +185,8 @@ impl DapnetWorker {
         }
     }
 
+    // Was: Diese Funktion führt rwth core.
+    // Warum: Der Lebenszyklus des Dienstes bleibt so an einer zentralen Stelle steuerbar.
     fn run_rwth_core(&mut self, dapnet: &CfgDapnet) -> Result<(), String> {
         let host = dapnet.rwth_core_host.trim();
         let callsign = dapnet.rwth_core_callsign.trim();
@@ -187,8 +216,12 @@ impl DapnetWorker {
         let mut reader = BufReader::new(reader_stream);
         let mut logged_in = false;
 
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
             let mut line = String::new();
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match reader.read_line(&mut line) {
                 Ok(0) => return Err("RWTH core closed connection".to_string()),
                 Ok(_) => {
@@ -196,6 +229,8 @@ impl DapnetWorker {
                     if line.is_empty() {
                         continue;
                     }
+                    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                     match self.handle_rwth_line(dapnet, &mut stream, line, &mut logged_in) {
                         Ok(()) => {}
                         Err(err) => return Err(err),
@@ -209,6 +244,8 @@ impl DapnetWorker {
         }
     }
 
+    // Was: Diese Funktion schreibt login.
+    // Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
     fn write_login(&self, stream: &mut TcpStream, dapnet: &CfgDapnet) -> Result<(), String> {
         let device = non_empty_or(&dapnet.rwth_core_device, "FlowStation");
         let version = dapnet_version(&dapnet.rwth_core_version);
@@ -218,6 +255,8 @@ impl DapnetWorker {
         write_wire(stream, &login)
     }
 
+    // Was: Diese Funktion verarbeitet rwth line.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_rwth_line(&mut self, dapnet: &CfgDapnet, stream: &mut TcpStream, line: &str, logged_in: &mut bool) -> Result<(), String> {
         if line.starts_with('+') {
             return Ok(());
@@ -256,7 +295,11 @@ impl DapnetWorker {
         write_wire(stream, "-\r\n")
     }
 
+    // Was: Diese Funktion verarbeitet rwth Nachricht.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_rwth_message(&mut self, dapnet: &CfgDapnet, stream: &mut TcpStream, line: &str) -> Result<(), String> {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let msg_id = match rwth_line_id(line) {
             Some(id) => id,
             None => {
@@ -265,6 +308,8 @@ impl DapnetWorker {
                 return Ok(());
             }
         };
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match parse_rwth_message(line) {
             Ok(message) => {
                 write_wire(stream, &rwth_ack_line(msg_id, true))?;
@@ -296,11 +341,15 @@ impl DapnetWorker {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `remember_seen` für remember seen aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn remember_seen(&mut self, id: &str, limit: usize) -> bool {
         if !self.seen.insert(id.to_string()) {
             return false;
         }
         self.seen_order.push_back(id.to_string());
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while self.seen_order.len() > limit {
             if let Some(old) = self.seen_order.pop_front() {
                 self.seen.remove(&old);
@@ -309,12 +358,16 @@ impl DapnetWorker {
         true
     }
 
+    // Was: Diese Funktion leitet Nachricht.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn forward_message(&mut self, dapnet: &CfgDapnet, msg: &DapnetMessage) {
         let mut paths: Vec<&str> = Vec::new();
         let mut filtered: Vec<&str> = Vec::new();
 
         if dapnet.forward_sds {
             if ric_allowed(&dapnet.sds_allowed_rics, msg) {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match self.forward_sds(dapnet, msg) {
                     Ok(()) => paths.push("sds"),
                     Err(err) => tracing::warn!("DAPNET: SDS forward failed for id={}: {}", msg.id, err),
@@ -326,6 +379,8 @@ impl DapnetWorker {
 
         if dapnet.forward_callout {
             if ric_allowed(&dapnet.callout_allowed_rics, msg) {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match self.forward_callout(dapnet, msg) {
                     Ok(()) => paths.push("callout"),
                     Err(err) => tracing::warn!("DAPNET: Call-Out forward failed for id={}: {}", msg.id, err),
@@ -337,6 +392,8 @@ impl DapnetWorker {
 
         if dapnet.forward_telegram {
             if ric_allowed(&dapnet.telegram_allowed_rics, msg) {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match self.forward_telegram(dapnet, msg) {
                     Ok(()) => paths.push("telegram"),
                     Err(err) => tracing::warn!("DAPNET: Telegram forward failed for id={}: {}", msg.id, err),
@@ -385,6 +442,8 @@ impl DapnetWorker {
         }
     }
 
+    // Was: Diese Funktion leitet TETRA-Kurznachricht (SDS).
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn forward_sds(&self, dapnet: &CfgDapnet, msg: &DapnetMessage) -> Result<(), String> {
         let (dest_ssi, dest_is_group, route_label) = resolve_sds_destination(dapnet, msg)?;
         let Some(tx) = &self.cmce_cmd_tx else {
@@ -410,6 +469,8 @@ impl DapnetWorker {
         .map_err(|e| format!("send to CMCE failed: {}", e))
     }
 
+    // Was: Diese Funktion leitet callout.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn forward_callout(&mut self, dapnet: &CfgDapnet, msg: &DapnetMessage) -> Result<(), String> {
         if dapnet.callout_dest_issi == 0 {
             return Err("callout_dest_issi is 0".to_string());
@@ -458,6 +519,8 @@ impl DapnetWorker {
         .map_err(|e| format!("send to CMCE failed: {}", e))
     }
 
+    // Was: Diese Funktion leitet telegram.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn forward_telegram(&self, dapnet: &CfgDapnet, msg: &DapnetMessage) -> Result<(), String> {
         let Some(sink) = &self.telegram_sink else {
             return Err("Telegram alerter unavailable".to_string());
@@ -466,6 +529,8 @@ impl DapnetWorker {
         Ok(())
     }
 
+    // Was: Führt den Arbeitsschritt `next_callout_id` für next callout Kennung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn next_callout_id(&mut self) -> u16 {
         let callout_id = self.next_callout_id.min(255);
         self.next_callout_id = if callout_id >= 255 { 0 } else { callout_id + 1 };
@@ -473,6 +538,8 @@ impl DapnetWorker {
     }
 }
 
+// Was: Diese Funktion schreibt wire.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 fn write_wire(stream: &mut TcpStream, text: &str) -> Result<(), String> {
     stream
         .write_all(text.as_bytes())
@@ -480,6 +547,8 @@ fn write_wire(stream: &mut TcpStream, text: &str) -> Result<(), String> {
         .map_err(|e| format!("write failed: {}", e))
 }
 
+// Was: Führt den Arbeitsschritt `dapnet_version` für dapnet version aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn dapnet_version(version: &str) -> String {
     let trimmed = version.trim();
     if trimmed.is_empty() {
@@ -491,6 +560,8 @@ fn dapnet_version(version: &str) -> String {
     }
 }
 
+// Was: Führt den Arbeitsschritt `non_empty_or` für non empty or aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn non_empty_or(value: &str, fallback: &str) -> String {
     let trimmed = value.trim();
     if trimmed.is_empty() {
@@ -500,17 +571,23 @@ fn non_empty_or(value: &str, fallback: &str) -> String {
     }
 }
 
+// Was: Führt den Arbeitsschritt `rwth_line_id` für rwth line Kennung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn rwth_line_id(line: &str) -> Option<u8> {
     let id = line.get(1..3)?;
     u8::from_str_radix(id, 16).ok()
 }
 
+// Was: Führt den Arbeitsschritt `rwth_ack_line` für rwth ack line aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn rwth_ack_line(msg_id: u8, ok: bool) -> String {
     let ack_id = msg_id.wrapping_add(1);
     let status = if ok { "+" } else { "-" };
     format!("#{ack_id:02x} {status}\r\n")
 }
 
+// Was: Diese Funktion ermittelt TETRA-Kurznachricht (SDS) destination.
+// Warum: Unklare oder indirekte Angaben werden so vor der weiteren Verarbeitung eindeutig gemacht.
 fn resolve_sds_destination(dapnet: &CfgDapnet, msg: &DapnetMessage) -> Result<(u32, bool, String), String> {
     if let Some(ric) = msg.ric {
         if let Some(gssi) = dapnet.ric_gssi_routes.get(&ric) {
@@ -541,16 +618,22 @@ fn resolve_sds_destination(dapnet: &CfgDapnet, msg: &DapnetMessage) -> Result<(u
     }
 }
 
+// Was: Führt den Arbeitsschritt `ric_allowed` für ric allowed aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn ric_allowed(allowed_rics: &std::collections::BTreeSet<u32>, msg: &DapnetMessage) -> bool {
     if allowed_rics.is_empty() {
         return true;
     }
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match msg.ric {
         Some(ric) => allowed_rics.contains(&ric),
         None => false,
     }
 }
 
+// Was: Diese Funktion liest und prüft rwth Nachricht.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_rwth_message(line: &str) -> Result<DapnetMessage, String> {
     let msg_id = rwth_line_id(line).ok_or_else(|| "invalid message id".to_string())?;
     let body = line.get(4..).ok_or_else(|| "message line too short".to_string())?;
@@ -566,6 +649,8 @@ fn parse_rwth_message(line: &str) -> Result<DapnetMessage, String> {
     if text.is_empty() {
         return Err("empty message text".to_string());
     }
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let recipient = match (ric, function) {
         (Some(ric), Some(function)) => {
             format!("RIC {} / func {}", tetra_config::bluestation::format_ric_route_key(ric), function)
@@ -591,11 +676,15 @@ fn parse_rwth_message(line: &str) -> Result<DapnetMessage, String> {
     })
 }
 
+// Was: Führt den Arbeitsschritt `stable_hash_hex` für stable hash hex aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn stable_hash_hex(input: &str) -> String {
     let digest = md5::compute(input.as_bytes());
     format!("{digest:x}")
 }
 
+// Was: Führt den Arbeitsschritt `normalize_text` für normalize text aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn normalize_text(text: &str) -> String {
     text.chars()
         .filter(|c| !c.is_control() || matches!(c, '\t'))
@@ -604,6 +693,8 @@ fn normalize_text(text: &str) -> String {
         .to_string()
 }
 
+// Was: Diese Funktion dekodiert dapnet text.
+// Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
 fn decode_dapnet_text(text: &str) -> String {
     let decoded = rot1_decode(text);
     if should_decode_rot1(text, &decoded) {
@@ -613,17 +704,23 @@ fn decode_dapnet_text(text: &str) -> String {
     }
 }
 
+// Was: Führt den Arbeitsschritt `rot1_decode` für rot1 Dekodierung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn rot1_decode(text: &str) -> String {
     text.chars()
         .map(|c| if ('!'..='~').contains(&c) { ((c as u8) - 1) as char } else { c })
         .collect()
 }
 
+// Was: Führt den Arbeitsschritt `clean_rot1_text` für clean rot1 text aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn clean_rot1_text(decoded: &str) -> String {
     let stripped = strip_skyper_rubric_prefix(decoded.trim()).unwrap_or_else(|| decoded.trim());
     skyper_charset_to_unicode(stripped.trim())
 }
 
+// Was: Führt den Arbeitsschritt `strip_skyper_rubric_prefix` für strip skyper rubric prefix aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn strip_skyper_rubric_prefix(text: &str) -> Option<&str> {
     let mut chars = text.char_indices();
     let (_, first) = chars.next()?;
@@ -646,6 +743,8 @@ fn strip_skyper_rubric_prefix(text: &str) -> Option<&str> {
     None
 }
 
+// Was: Führt den Arbeitsschritt `skyper_charset_to_unicode` für skyper charset to unicode aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn skyper_charset_to_unicode(text: &str) -> String {
     text.chars()
         .map(|c| match c {
@@ -661,6 +760,8 @@ fn skyper_charset_to_unicode(text: &str) -> String {
         .collect()
 }
 
+// Was: Prüft, ob Dekodierung rot1 zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
 fn should_decode_rot1(raw: &str, decoded: &str) -> bool {
     if raw.is_empty() {
         return false;
@@ -676,7 +777,11 @@ fn should_decode_rot1(raw: &str, decoded: &str) -> bool {
     encoded_spaces >= 2 && encoded_spaces > raw_spaces && decoded_spaces >= encoded_spaces && encoded_punctuation > 0
 }
 
+// Was: Führt den Arbeitsschritt `extract_callsign` für extract callsign aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn extract_callsign(text: &str) -> Option<String> {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for token in text.split_whitespace() {
         let cleaned = token.trim_matches(|c: char| !c.is_ascii_alphanumeric() && c != '-' && c != '/');
         if cleaned.len() < 3 || cleaned.len() > 12 {
@@ -692,6 +797,8 @@ fn extract_callsign(text: &str) -> Option<String> {
     None
 }
 
+// Was: Führt den Arbeitsschritt `format_plain_message` für format plain Nachricht aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn format_plain_message(callsign: &str, text: &str) -> String {
     let callsign = callsign.trim();
     let text = text.trim();
@@ -702,6 +809,8 @@ fn format_plain_message(callsign: &str, text: &str) -> String {
     }
 }
 
+// Was: Führt den Arbeitsschritt `prefixed_text` für prefixed text aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn prefixed_text(prefix: &str, text: &str) -> String {
     let prefix = prefix.trim();
     let text = text.trim();
@@ -714,18 +823,26 @@ fn prefixed_text(prefix: &str, text: &str) -> String {
     }
 }
 
+// Was: Führt den Arbeitsschritt `truncate_chars` für truncate chars aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn truncate_chars(text: &str, max: usize) -> (String, bool) {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match text.char_indices().nth(max) {
         Some((idx, _)) => (text[..idx].to_string(), true),
         None => (text.to_string(), false),
     }
 }
 
+// Was: Führt den Arbeitsschritt `sanitize_log_line` für sanitize log line aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn sanitize_log_line(line: &str) -> String {
     truncate_chars(line, 160).0
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::{
         dapnet_version, decode_dapnet_text, extract_callsign, format_plain_message, parse_rwth_message, prefixed_text,
@@ -734,6 +851,8 @@ mod tests {
     use tetra_config::bluestation::CfgDapnet;
 
     #[test]
+    // Was: Diese Funktion liest und prüft rwth text Nachricht normalizes fields.
+    // Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     fn parse_rwth_text_message_normalizes_fields() {
         let msg = parse_rwth_message("#00 6:1:3EC:3:5357.0 EA5FIV von DL4MFF um 1933z").unwrap();
         assert_eq!(msg.msg_type, 6);
@@ -746,12 +865,16 @@ mod tests {
     }
 
     #[test]
+    // Was: Diese Funktion liest und prüft rwth Nachricht keeps colons in text.
+    // Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     fn parse_rwth_message_keeps_colons_in_text() {
         let msg = parse_rwth_message("#01 6:1:3EC:3:Alarm: Pumpe: Test").unwrap();
         assert_eq!(msg.text, "Alarm: Pumpe: Test");
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `dapnet_text_decodes_skyper_rot1_but_keeps_plain_text` für dapnet text decodes skyper rot1 but keeps und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn dapnet_text_decodes_skyper_rot1_but_keeps_plain_text() {
         let darc_70mhz = ";#EBSD;!Cvoeftsbut.Esvdltbdif!efgjojfsu!jo!Gvopuf!Sfdiutsbinfo!g~s!81.NI{.Cfusjfc";
         let nordsee = "\\&Opsetff;!33/17/37!27;41!Ifmhpmboe!Cjoofoibgfo!679/1dn!NOX;vocflboou";
@@ -775,6 +898,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `helpers_are_stable` für helpers are stable aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn helpers_are_stable() {
         assert_eq!(dapnet_version("1.0"), "v1.0");
         assert_eq!(dapnet_version("v2"), "v2");
@@ -785,6 +910,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `rwth_ack_line_increments_8bit_counter_and_uses_wire_format` für rwth ack line increments 8bit counter and und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rwth_ack_line_increments_8bit_counter_and_uses_wire_format() {
         assert_eq!(rwth_ack_line(0x00, true), "#01 +\r\n");
         assert_eq!(rwth_ack_line(0x09, true), "#0a +\r\n");
@@ -793,6 +920,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `sds_destination_prefers_ric_route_over_static_destination` für TETRA-Kurznachricht (SDS) destination prefers ric Weiterleitung over static und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn sds_destination_prefers_ric_route_over_static_destination() {
         let msg = parse_rwth_message("#00 6:1:9A709:3:Alarm DJ2TH").unwrap();
         let mut dapnet = CfgDapnet::default();
@@ -807,6 +936,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `sds_destination_can_route_dapnet_ric_to_tetra_group` für TETRA-Kurznachricht (SDS) destination can Weiterleitung dapnet ric to und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn sds_destination_can_route_dapnet_ric_to_tetra_group() {
         let msg = parse_rwth_message("#00 6:1:11A8:3:Rubric alarm").unwrap();
         let mut dapnet = CfgDapnet::default();

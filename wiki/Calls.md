@@ -44,3 +44,9 @@ Nicht nur den Rufaufbau testen, sondern auch:
 - abrupt verschwindender Sender
 - Einzelruf ohne Antwort
 - vollständige Freigabe aller Timeslots danach
+
+## v21 radio compatibility rule
+
+For locally accepted RF calls, Core policy may decide admission before setup, but it must not alter
+the `main` CMCE floor/release state machine, hangtime timing, FACCH/MCCH release sequence or UMAC
+circuit-drain behavior.

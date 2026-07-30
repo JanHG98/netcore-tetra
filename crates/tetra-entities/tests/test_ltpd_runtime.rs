@@ -1,0 +1,524 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+// Was: Bindet das Untermodul common in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
+mod common;
+
+use common::ComponentTest;
+use tetra_config::bluestation::StackMode;
+use tetra_core::tetra_entities::TetraEntity;
+use tetra_core::{BitBuffer, Layer2Service, Sap, SsiType, TdmaTime, TetraAddress};
+use tetra_entities::mle::mle_bs::MleBs;
+use tetra_entities::sndcp::sndcp_bs::Sndcp;
+use tetra_saps::common::{
+    ChannelAdvice, DataClass, DataPriority, Layer2Qos, Layer2Report,
+    LowerLayerResourceAvailability, LowerLayerResourceReason, PduPriority,
+    ReconnectionResult, RequestHandle, ReservationInfo, ScheduledDataStatus,
+    SetupReport, StealingPermission, TransferResult,
+};
+use tetra_saps::ltpd::{
+    LtpdMleCancelReq, LtpdMleConnectReq, LtpdMleDisconnectReq, LtpdMleReconnectReq,
+    LtpdMleUnitdataReq,
+};
+use tetra_saps::tla::TlaTlDataIndBl;
+use tetra_saps::tlmc::TlmcConfigureInd;
+use tetra_saps::{SapMsg, SapMsgInner};
+
+// Was: Führt den Arbeitsschritt `incoming_sndcp` für incoming SNDCP-Paketdaten aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn incoming_sndcp(address: TetraAddress, endpoint_id: u32, link_id: u32) -> SapMsg {
+    let mut sdu = BitBuffer::new(11);
+    sdu.write_bits(0b100, 3);
+    sdu.write_bits(0x21, 8);
+    sdu.seek(0);
+    SapMsg {
+        sap: Sap::TlaSap,
+        src: TetraEntity::Llc,
+        dest: TetraEntity::Mle,
+        msg: SapMsgInner::TlaTlDataIndBl(TlaTlDataIndBl {
+            main_address: address,
+            link_id,
+            endpoint_id,
+            new_endpoint_id: None,
+            css_endpoint_id: None,
+            tl_sdu: Some(sdu),
+            scrambling_code: 0,
+            fcs_flag: false,
+            air_interface_encryption: 0,
+            chan_change_resp_req: false,
+            chan_change_handle: None,
+            chan_info: None,
+            req_handle: 0,
+        }),
+    }
+}
+
+// Was: Führt den Arbeitsschritt `unitdata` für unitdata aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn unitdata(address: Option<TetraAddress>, handle: u32, endpoint_id: u32, link_id: u32) -> SapMsg {
+    let mut sdu = BitBuffer::new(8);
+    sdu.write_bits(0x42, 8);
+    sdu.seek(0);
+    SapMsg {
+        sap: Sap::TlpdSap,
+        src: TetraEntity::Sndcp,
+        dest: TetraEntity::Mle,
+        msg: SapMsgInner::LtpdMleUnitdataReq(LtpdMleUnitdataReq {
+            sdu,
+            handle: RequestHandle(handle),
+            address,
+            layer2service: Layer2Service::Acknowledged,
+            unacknowledged_basic_link_repetitions: 0,
+            pdu_priority: PduPriority::default(),
+            endpoint_id,
+            link_id,
+            stealing_permission: StealingPermission::NotRequired,
+            stealing_repeats_flag: false,
+            channel_advice: ChannelAdvice::NotRequested,
+            data_class_information: DataClass::NonClassified,
+            data_priority: DataPriority::Undefined,
+            mle_data_priority_flag: false,
+            packet_data_flag: true,
+            scheduled_data_status: ScheduledDataStatus::NotScheduled,
+            maximum_schedule_interval_slots: None,
+            fcs_flag: false,
+            chan_alloc: None,
+        }),
+    }
+}
+
+#[test]
+// Was: Führt den Arbeitsschritt `initial_open_and_info_update_the_sndcp_client_snapshot` für initial open and info update the SNDCP-Paketdaten und weitere Angaben aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn initial_open_and_info_update_the_sndcp_client_snapshot() {
+    let mut test = ComponentTest::new(StackMode::Bs, Some(TdmaTime::default()));
+    test.populate_entities(vec![TetraEntity::Mle, TetraEntity::Sndcp], vec![]);
+
+    test.router.tick_start();
+    test.deliver_all_messages();
+
+    let component = test
+        .router
+        .get_entity(TetraEntity::Sndcp)
+        .expect("SNDCP missing");
+    let sndcp = component
+        .as_any_mut()
+        .downcast_mut::<Sndcp>()
+        .expect("SNDCP downcast failed");
+    let snapshot = sndcp.ltpd_snapshot();
+    assert!(snapshot.network.is_some());
+    assert_eq!(snapshot.link_state, tetra_saps::common::LtpdLinkState::Open);
+    assert!(!snapshot.busy);
+    assert!(!snapshot.disabled);
+}
+
+#[test]
+// Was: Führt den Arbeitsschritt `inbound_unitdata_registers_route_and_reaches_sndcp` für inbound unitdata registers Weiterleitung and reaches SNDCP-Paketdaten aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn inbound_unitdata_registers_route_and_reaches_sndcp() {
+    let mut test = ComponentTest::new(StackMode::Bs, None);
+    test.populate_entities(vec![TetraEntity::Mle], vec![TetraEntity::Sndcp]);
+    let address = TetraAddress::new(1001, SsiType::Issi);
+
+    test.submit_message(incoming_sndcp(address, 2, 3));
+    test.deliver_all_messages();
+
+    let messages = test.dump_sinks();
+    assert!(messages.iter().any(|message| {
+        matches!(
+            &message.msg,
+            SapMsgInner::LtpdMleUnitdataInd(indication)
+                if indication.received_tetra_address == address
+                    && indication.endpoint_id == 2
+                    && indication.link_id == 3
+        )
+    }));
+
+    let component = test.router.get_entity(TetraEntity::Mle).expect("MLE missing");
+    let mle = component
+        .as_any_mut()
+        .downcast_mut::<MleBs>()
+        .expect("MLE-BS downcast failed");
+    let snapshot = mle.ltpd_snapshot();
+    assert_eq!(snapshot.links.len(), 1);
+    assert_eq!(snapshot.links[0].address, address);
+}
+
+#[test]
+// Was: Führt den Arbeitsschritt `downlink_unitdata_is_wrapped_by_mle_and_reported_to_sndcp` für Downlink (Netz zum Funkgerät) unitdata is wrapped by MLE-Verbindungssteuerung and und weitere Angaben aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn downlink_unitdata_is_wrapped_by_mle_and_reported_to_sndcp() {
+    let mut test = ComponentTest::new(StackMode::Bs, None);
+    test.populate_entities(
+        vec![TetraEntity::Mle],
+        vec![TetraEntity::Sndcp, TetraEntity::Llc],
+    );
+    let address = TetraAddress::new(1002, SsiType::Issi);
+    test.submit_message(incoming_sndcp(address, 4, 5));
+    test.deliver_all_messages();
+    let _ = test.dump_sinks();
+
+    test.submit_message(unitdata(None, 77, 4, 5));
+    test.deliver_all_messages();
+    let mut messages = test.dump_sinks();
+
+    let reporter = messages
+        .iter_mut()
+        .find_map(|message| match &mut message.msg {
+            SapMsgInner::TlaTlDataReqBl(request)
+                if request.main_address == address
+                    && request.endpoint_id == 4
+                    && request.link_id == 5
+                    && request.tl_sdu.peek_bits(3) == Some(0b100) =>
+            {
+                request.tx_reporter.take()
+            }
+            _ => None,
+        })
+        .expect("LTPD TxReporter missing");
+    assert!(!messages
+        .iter()
+        .any(|message| matches!(&message.msg, SapMsgInner::LtpdMleReportInd(_))));
+
+    reporter.mark_transmitted();
+    reporter.mark_acknowledged();
+    test.router.tick_start();
+    test.deliver_all_messages();
+    let reports = test.dump_sinks();
+    assert!(reports.iter().any(|message| {
+        matches!(
+            &message.msg,
+            SapMsgInner::LtpdMleReportInd(report)
+                if report.handle == RequestHandle(77)
+                    && report.transfer_result == TransferResult::SuccessBufferEmpty
+        )
+    }));
+}
+
+#[test]
+// Was: Diese Funktion leitet hint rebuilds Kontext after local restart.
+// Warum: Nachrichten und Daten gelangen dadurch nachvollziehbar an das richtige Ziel.
+fn route_hint_rebuilds_context_after_local_restart() {
+    let mut test = ComponentTest::new(StackMode::Bs, None);
+    test.populate_entities(
+        vec![TetraEntity::Mle],
+        vec![TetraEntity::Sndcp, TetraEntity::Llc],
+    );
+    let address = TetraAddress::new(1003, SsiType::Issi);
+
+    test.submit_message(unitdata(Some(address), 78, 6, 7));
+    test.deliver_all_messages();
+    let messages = test.dump_sinks();
+
+    assert!(messages.iter().any(|message| {
+        matches!(
+            &message.msg,
+            SapMsgInner::TlaTlDataReqBl(request) if request.main_address == address
+        )
+    }));
+}
+
+#[test]
+// Was: Führt den Arbeitsschritt `unknown_route_without_hint_is_rejected` für unknown Weiterleitung without hint is rejected aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn unknown_route_without_hint_is_rejected() {
+    let mut test = ComponentTest::new(StackMode::Bs, None);
+    test.populate_entities(
+        vec![TetraEntity::Mle],
+        vec![TetraEntity::Sndcp, TetraEntity::Llc],
+    );
+
+    test.submit_message(unitdata(None, 79, 8, 9));
+    test.deliver_all_messages();
+    let messages = test.dump_sinks();
+
+    assert!(!messages
+        .iter()
+        .any(|message| matches!(&message.msg, SapMsgInner::TlaTlDataReqBl(_))));
+    assert!(messages.iter().any(|message| {
+        matches!(
+            &message.msg,
+            SapMsgInner::LtpdMleReportInd(report)
+                if report.handle == RequestHandle(79)
+                    && report.transfer_result == TransferResult::FailedRemovedFromBuffer
+        )
+    }));
+}
+
+#[test]
+// Was: Diese Funktion verbindet disconnect and reconnect have explicit results.
+// Warum: Der Verbindungsaufbau wird dadurch zentral überwacht und kann sauber fehlschlagen.
+fn connect_disconnect_and_reconnect_have_explicit_results() {
+    let mut test = ComponentTest::new(StackMode::Bs, None);
+    test.populate_entities(vec![TetraEntity::Mle], vec![TetraEntity::Sndcp]);
+    let address = TetraAddress::new(1004, SsiType::Issi);
+
+    test.submit_message(SapMsg {
+        sap: Sap::TlpdSap,
+        src: TetraEntity::Sndcp,
+        dest: TetraEntity::Mle,
+        msg: SapMsgInner::LtpdMleConnectReq(LtpdMleConnectReq {
+            address,
+            endpoint_id: 10,
+            link_id: 11,
+            reservation_information: ReservationInfo { octets_available: 512 },
+            pdu_priority: PduPriority::default(),
+            layer_2_qos: Layer2Qos::default(),
+            encryption_flag: false,
+            setup_report: SetupReport::Success,
+        }),
+    });
+    test.deliver_all_messages();
+    let connected = test.dump_sinks();
+    assert!(connected.iter().any(|message| {
+        matches!(
+            &message.msg,
+            SapMsgInner::LtpdMleConnectConfirm(confirm)
+                if confirm.setup_report == SetupReport::Success
+        )
+    }));
+
+    test.submit_message(SapMsg {
+        sap: Sap::TlpdSap,
+        src: TetraEntity::Sndcp,
+        dest: TetraEntity::Mle,
+        msg: SapMsgInner::LtpdMleDisconnectReq(LtpdMleDisconnectReq {
+            endpoint_id: 10,
+            link_id: 11,
+            pdu_priority: PduPriority::default(),
+            encryption_flag: false,
+            report: Layer2Report::LocalDisconnection,
+        }),
+    });
+    test.deliver_all_messages();
+    let disconnected = test.dump_sinks();
+    assert!(disconnected.iter().any(|message| {
+        matches!(
+            &message.msg,
+            SapMsgInner::LtpdMleDisconnectInd(indication)
+                if indication.report == Layer2Report::LocalDisconnection
+        )
+    }));
+
+    test.submit_message(SapMsg {
+        sap: Sap::TlpdSap,
+        src: TetraEntity::Sndcp,
+        dest: TetraEntity::Mle,
+        msg: SapMsgInner::LtpdMleReconnectReq(LtpdMleReconnectReq {
+            endpoint_id: 10,
+            link_id: 11,
+            reservation_information: ReservationInfo { octets_available: 128 },
+            pdu_priority: PduPriority::default(),
+            encryption_flag: false,
+            stealing_permission: StealingPermission::NotRequired,
+        }),
+    });
+    test.deliver_all_messages();
+    let reconnected = test.dump_sinks();
+    assert!(reconnected.iter().any(|message| {
+        matches!(
+            &message.msg,
+            SapMsgInner::LtpdMleReconnectConfirm(confirm)
+                if confirm.reconnection_result == ReconnectionResult::Success
+        )
+    }));
+}
+
+#[test]
+// Was: Führt den Arbeitsschritt `tlmc_resource_edges_drive_break_and_resume` für tlmc resource edges drive break and resume aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn tlmc_resource_edges_drive_break_and_resume() {
+    let mut test = ComponentTest::new(StackMode::Bs, Some(TdmaTime::default()));
+    test.populate_entities(vec![TetraEntity::Mle], vec![TetraEntity::Sndcp]);
+
+    test.submit_message(SapMsg {
+        sap: Sap::TlmcSap,
+        src: TetraEntity::Umac,
+        dest: TetraEntity::Mle,
+        msg: SapMsgInner::TlmcConfigureInd(TlmcConfigureInd {
+            endpoint_id: 0,
+            lower_layer_resource_availability: LowerLayerResourceAvailability::Unavailable,
+            reason: LowerLayerResourceReason::LossOfRadioResources,
+        }),
+    });
+    test.deliver_all_messages();
+    let broken = test.dump_sinks();
+    assert!(broken
+        .iter()
+        .any(|message| matches!(&message.msg, SapMsgInner::LtpdMleBreakInd(_))));
+
+    test.submit_message(SapMsg {
+        sap: Sap::TlmcSap,
+        src: TetraEntity::Umac,
+        dest: TetraEntity::Mle,
+        msg: SapMsgInner::TlmcConfigureInd(TlmcConfigureInd {
+            endpoint_id: 0,
+            lower_layer_resource_availability: LowerLayerResourceAvailability::Available,
+            reason: LowerLayerResourceReason::RecoveryOfRadioResources,
+        }),
+    });
+    test.deliver_all_messages();
+    let resumed = test.dump_sinks();
+    assert!(resumed
+        .iter()
+        .any(|message| matches!(&message.msg, SapMsgInner::LtpdMleResumeInd(_))));
+}
+
+
+#[test]
+// Was: Führt den Arbeitsschritt `duplicate_handle_is_rejected_while_original_transfer_is_pending` für duplicate handle is rejected while original transfer und weitere Angaben aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn duplicate_handle_is_rejected_while_original_transfer_is_pending() {
+    let mut test = ComponentTest::new(StackMode::Bs, None);
+    test.populate_entities(
+        vec![TetraEntity::Mle],
+        vec![TetraEntity::Sndcp, TetraEntity::Llc],
+    );
+    let address = TetraAddress::new(1101, SsiType::Issi);
+    test.submit_message(incoming_sndcp(address, 12, 13));
+    test.deliver_all_messages();
+    let _ = test.dump_sinks();
+
+    test.submit_message(unitdata(None, 90, 12, 13));
+    test.submit_message(unitdata(None, 90, 12, 13));
+    test.deliver_all_messages();
+    let messages = test.dump_sinks();
+
+    assert_eq!(
+        messages
+            .iter()
+            .filter(|message| matches!(&message.msg, SapMsgInner::TlaTlDataReqBl(_)))
+            .count(),
+        1
+    );
+    assert!(messages.iter().any(|message| matches!(
+        &message.msg,
+        SapMsgInner::LtpdMleReportInd(report)
+            if report.handle == RequestHandle(90)
+                && report.transfer_result == TransferResult::Other(2)
+    )));
+
+    let component = test.router.get_entity(TetraEntity::Mle).expect("MLE missing");
+    let mle = component
+        .as_any_mut()
+        .downcast_mut::<MleBs>()
+        .expect("MLE-BS downcast failed");
+    let snapshot = mle.ltpd_snapshot();
+    assert_eq!(snapshot.pending_transfer_count, 1);
+    assert_eq!(snapshot.duplicate_handle_rejections, 1);
+}
+
+#[test]
+// Was: Diese Funktion bricht removes pending transfer and reports failure.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn cancel_removes_pending_transfer_and_reports_failure() {
+    let mut test = ComponentTest::new(StackMode::Bs, None);
+    test.populate_entities(
+        vec![TetraEntity::Mle],
+        vec![TetraEntity::Sndcp, TetraEntity::Llc],
+    );
+    let address = TetraAddress::new(1102, SsiType::Issi);
+    test.submit_message(incoming_sndcp(address, 14, 15));
+    test.deliver_all_messages();
+    let _ = test.dump_sinks();
+
+    test.submit_message(unitdata(None, 91, 14, 15));
+    test.deliver_all_messages();
+    let _ = test.dump_sinks();
+    test.submit_message(SapMsg {
+        sap: Sap::TlpdSap,
+        src: TetraEntity::Sndcp,
+        dest: TetraEntity::Mle,
+        msg: SapMsgInner::LtpdMleCancelReq(LtpdMleCancelReq {
+            handle: RequestHandle(91),
+        }),
+    });
+    test.deliver_all_messages();
+    let messages = test.dump_sinks();
+
+    assert!(messages.iter().any(|message| matches!(
+        &message.msg,
+        SapMsgInner::LtpdMleReportInd(report)
+            if report.handle == RequestHandle(91)
+                && report.transfer_result == TransferResult::FailedRemovedFromBuffer
+    )));
+    let component = test.router.get_entity(TetraEntity::Mle).expect("MLE missing");
+    let mle = component
+        .as_any_mut()
+        .downcast_mut::<MleBs>()
+        .expect("MLE-BS downcast failed");
+    let snapshot = mle.ltpd_snapshot();
+    assert_eq!(snapshot.pending_transfer_count, 0);
+    assert_eq!(snapshot.cancelled_transfers, 1);
+}
+
+#[test]
+// Was: Führt den Arbeitsschritt `pending_transfer_times_out_without_llc_or_mac_progress` für pending transfer times out without LLC-Verbindungsschicht or und weitere Angaben aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn pending_transfer_times_out_without_llc_or_mac_progress() {
+    let start = TdmaTime::default();
+    let mut test = ComponentTest::new(StackMode::Bs, Some(start));
+    test.populate_entities(
+        vec![TetraEntity::Mle],
+        vec![TetraEntity::Sndcp, TetraEntity::Llc],
+    );
+    let address = TetraAddress::new(1103, SsiType::Issi);
+    test.submit_message(incoming_sndcp(address, 16, 17));
+    test.deliver_all_messages();
+    let _ = test.dump_sinks();
+
+    test.submit_message(unitdata(None, 92, 16, 17));
+    test.deliver_all_messages();
+    let _ = test.dump_sinks();
+    test.router.set_dl_time(start.add_timeslots(432));
+    test.router.tick_start();
+    test.deliver_all_messages();
+    let messages = test.dump_sinks();
+
+    assert!(messages.iter().any(|message| matches!(
+        &message.msg,
+        SapMsgInner::LtpdMleReportInd(report)
+            if report.handle == RequestHandle(92)
+                && report.transfer_result == TransferResult::FailedRemovedFromBuffer
+    )));
+    let component = test.router.get_entity(TetraEntity::Mle).expect("MLE missing");
+    let mle = component
+        .as_any_mut()
+        .downcast_mut::<MleBs>()
+        .expect("MLE-BS downcast failed");
+    assert_eq!(mle.ltpd_snapshot().timed_out_transfers, 1);
+}
+
+#[test]
+// Was: Diese Funktion verbindet from already connected Zustand is rejected.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn reconnect_from_already_connected_state_is_rejected() {
+    let mut test = ComponentTest::new(StackMode::Bs, None);
+    test.populate_entities(vec![TetraEntity::Mle], vec![TetraEntity::Sndcp]);
+    let address = TetraAddress::new(1104, SsiType::Issi);
+    test.submit_message(incoming_sndcp(address, 18, 19));
+    test.deliver_all_messages();
+    let _ = test.dump_sinks();
+
+    test.submit_message(SapMsg {
+        sap: Sap::TlpdSap,
+        src: TetraEntity::Sndcp,
+        dest: TetraEntity::Mle,
+        msg: SapMsgInner::LtpdMleReconnectReq(LtpdMleReconnectReq {
+            endpoint_id: 18,
+            link_id: 19,
+            reservation_information: ReservationInfo { octets_available: 128 },
+            pdu_priority: PduPriority::default(),
+            encryption_flag: false,
+            stealing_permission: StealingPermission::NotRequired,
+        }),
+    });
+    test.deliver_all_messages();
+    let messages = test.dump_sinks();
+    assert!(messages.iter().any(|message| matches!(
+        &message.msg,
+        SapMsgInner::LtpdMleReconnectConfirm(confirm)
+            if confirm.reconnection_result == ReconnectionResult::Reject
+    )));
+}

@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 
 use crate::cmce::enums::call_timeout::CallTimeout;
@@ -16,6 +19,8 @@ use tetra_core::{BitBuffer, expect_pdu_type, pdu_parse_error::PduParseErr};
 // note 2: For resolution of possible Facility (Talking Party Identifier)/Calling party identifier conflicts, refer to ETSI EN 300 392-12-3 [12], clause 5.2.1.5 and ETSI EN 300 392-12-1 [11], clause 4.3.5.
 // note 3: Shall be conditional on the value of Calling Party Type Identifier (CPTI): • CPTI = 1 ⇒ Calling Party SSI; • CPTI = 2 ⇒ Calling Party SSI + Calling Party Extension.
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für dsetup in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DSetup {
     /// Type1, 14 bits, Call identifier
     pub call_identifier: u16,
@@ -55,8 +60,12 @@ pub struct DSetup {
 }
 
 #[allow(unreachable_code)] // TODO FIXME review, finalize and remove this
+// Was: Implementiert das zugehörige Verhalten für `DSetup`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl DSetup {
     /// Parse from BitBuffer
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buffer: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let pdu_type = buffer.read_field(5, "pdu_type")?;
         expect_pdu_type!(pdu_type, CmcePduTypeDl::DSetup)?;
@@ -143,6 +152,8 @@ impl DSetup {
     }
 
     /// Serialize this PDU into the given BitBuffer.
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buffer: &mut BitBuffer) -> Result<(), PduParseErr> {
         // PDU Type
         buffer.write_bits(CmcePduTypeDl::DSetup.into_raw(), 5);
@@ -184,6 +195,8 @@ impl DSetup {
         typed::write_type2_generic(obit, buffer, self.temporary_address, 24);
 
         // Type2
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let calling_party_type_identifier = match (self.calling_party_address_ssi, self.calling_party_extension) {
             (None, None) => None,
             (Some(_), None) => Some(1),
@@ -222,7 +235,11 @@ impl DSetup {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for DSetup`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for DSetup {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -248,6 +265,8 @@ impl fmt::Display for DSetup {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
 
     use tetra_core::debug;
@@ -256,6 +275,8 @@ mod tests {
     use super::*;
 
     #[test]
+    // Was: Prüft automatisch den Fall d setup lab.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_d_setup_lab() {
         debug::setup_logging_verbose();
         let mut buffer = BitBuffer::from_bitstr("00111000000000001000111000000010011000001001010000110111100010101100010");
@@ -292,6 +313,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall d setup.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_d_setup() {
         debug::setup_logging_verbose();
         let mut buffer = BitBuffer::from_bitstr("00111000000110000110000000000010011000001001010001111100100110001010000");

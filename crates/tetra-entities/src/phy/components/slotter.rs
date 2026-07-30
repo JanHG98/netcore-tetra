@@ -1,26 +1,45 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use tetra_core::TrainingSequence;
 
 use crate::phy::components::{burst_consts::*, train_consts::*};
 
 #[allow(non_upper_case_globals)]
+// Was: Bindet das Untermodul bitseq in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 pub mod bitseq {
     /// Clause 9.4.4.3.2 Normal Training Sequence 1, 22 n-bits
+    // Was: Legt den festen Wert `n` für n fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     pub const n: [u8; 22] = [1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 1, 0, 0];
     /// Clause 9.4.4.3.2 Normal Training Sequence 2, 22 p-bits
+    // Was: Legt den festen Wert `p` für p fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     pub const p: [u8; 22] = [0, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0];
     /// Clause 9.4.4.3.2 Normal Training Sequence 3, 22 q-bits
+    // Was: Legt den festen Wert `q` für q fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     pub const q: [u8; 22] = [1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1];
     /// Clause 9.4.4.3.3 Extended training sequence, 30 x-bits
+    // Was: Legt den festen Wert `x` für x fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     pub const x: [u8; 30] = [
         1, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1,
     ];
     /// Clause 9.4.4.3.4 Synchronization training sequence, 38 y-bits
+    // Was: Legt den festen Wert `y` für y fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     pub const y: [u8; 38] = [
         1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1,
     ];
     /// Clause 9.4.4.3.5, tail bits
+    // Was: Legt den festen Wert `t` für t fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     pub const t: [u8; 4] = [1, 1, 0, 0];
     /// Clause 9.4.4.3.1 Frequency Correction Field
+    // Was: Legt den festen Wert `f` für f fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
     pub const f: [u8; 80] = [
         1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -28,6 +47,8 @@ pub mod bitseq {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+// Was: Listet die möglichen Varianten für phase adjust bits auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 enum PhaseAdjustBits {
     HA = 0,
     HB = 1,
@@ -42,6 +63,8 @@ enum PhaseAdjustBits {
 }
 
 /// Phase‐adjustment parameters
+// Was: Legt den festen Wert `PHASE_ADJ` für phase adj fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const PHASE_ADJ: [(u16, u16); 10] = [
     (8, 122),   // HA
     (123, 249), // HB
@@ -55,6 +78,8 @@ const PHASE_ADJ: [(u16, u16); 10] = [
     (104, 224), // HJ
 ];
 
+// Was: Führt den Arbeitsschritt `calc_phase_adj` für calc phase adj aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn calc_phase_adj(phase: i32) -> i32 {
     let mut adj_phase = -(phase % 8);
 
@@ -67,10 +92,14 @@ fn calc_phase_adj(phase: i32) -> i32 {
 }
 
 /// map 2‐bit symbol → +/- phase (in pi/4 units)
+// Was: Legt den festen Wert `BITS2PHASE` für bits2 phase fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const BITS2PHASE: [i8; 4] = [1, -1, 3, -3];
 
 /// map adjusted phase (-3,-1,1,3) → 2 bits
 /// indexed by (phase+3)
+// Was: Legt den festen Wert `PHASE2BITS` für phase2 bits fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const PHASE2BITS: [(i8, [u8; 2]); 6] = [
     /* -3 */ (-3, [1, 1]),
     /* -2 unused */
@@ -85,9 +114,13 @@ const PHASE2BITS: [(i8, [u8; 2]); 6] = [
 /// sum up the phases for a window of symbols;  
 /// `bits` is the full burst, `start_symbol` is index in *bits* of the first symbol to include,
 /// and `n_symbols` is how many symbols (each symbol = 2 bits).
+// Was: Führt den Arbeitsschritt `sum_up_phase` für sum up phase aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn sum_up_phase(bits: &[u8], start_symbol: usize, n_symbols: usize) -> i32 {
     let mut sum = 0i32;
     let mut idx = start_symbol * 2;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for _ in 0..n_symbols {
         let sym = (bits[idx] | (bits[idx + 1] << 1)) as usize;
         sum += BITS2PHASE[sym] as i32;
@@ -100,6 +133,8 @@ fn sum_up_phase(bits: &[u8], start_symbol: usize, n_symbols: usize) -> i32 {
 /// the burst buffer.  `window` is the full bit‐slice of the burst,
 /// `bitbuf` is the BitBuffer, and `bit_offset` is the bit‐index within the burst
 /// where these 2 bits should be placed.
+// Was: Führt den Arbeitsschritt `compute_phase_adj_bits` für compute phase adj bits aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn compute_phase_adj_bits(window: &[u8], pan: PhaseAdjustBits) -> [u8; 2] {
     let (n1, n2) = PHASE_ADJ[pan as usize];
     // sum from symbol index (n1-1) to (n2-1), inclusive
@@ -110,6 +145,8 @@ fn compute_phase_adj_bits(window: &[u8], pan: PhaseAdjustBits) -> [u8; 2] {
     // If a sum ever maps to one anyway, fall back to "no adjustment" ([0,0]) and warn
     // rather than unwrap-panicking on the TX path (a crash here would kill the cell on
     // every sync burst).
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let bits = match PHASE2BITS.iter().find(|&&(ph, _)| ph as i32 == adj) {
         Some(&(_, b)) => b,
         None => {
@@ -125,6 +162,8 @@ fn compute_phase_adj_bits(window: &[u8], pan: PhaseAdjustBits) -> [u8; 2] {
 /// blk1: 120-bit SB1 type5 bits (sb1)
 /// bbk: 30-bit BBK type5 bits (bb)
 /// blk2: 216-bit SB2 type5 bits (bkn2)
+// Was: Diese Funktion erstellt sdb.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
 pub fn build_sdb(blk1: &[u8; SB_BLK1_BITS], bbk: &[u8; SB_BBK_BITS], blk2: &[u8; SB_BLK2_BITS]) -> [u8; TIMESLOT_TYPE4_BITS] {
     let mut type5 = [0u8; TIMESLOT_TYPE4_BITS];
 
@@ -158,6 +197,8 @@ pub fn build_sdb(blk1: &[u8; SB_BLK1_BITS], bbk: &[u8; SB_BBK_BITS], blk2: &[u8;
 /// blk1: 216-bit BLK1 type5 bits (bkn1)
 /// bbk: 30-bit BBK type5 bits (bb)
 /// blk2: 216-bit SB2 type5 bits (bkn2)
+// Was: Diese Funktion erstellt ndb.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
 pub fn build_ndb(
     train_seq: TrainingSequence,
     blk1: &[u8; NDB_BLK_BITS],
@@ -175,6 +216,8 @@ pub fn build_ndb(
     // Scrambled broadcast bits (first part)
     type5[230..244].copy_from_slice(&bbk[..14]);
 
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match train_seq {
         TrainingSequence::NormalTrainSeq1 => {
             type5[244..266].copy_from_slice(&bitseq::n);
@@ -206,6 +249,8 @@ pub fn build_ndb(
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use tetra_core::bitbuffer::BitBuffer;
 
@@ -214,6 +259,8 @@ mod tests {
     use super::*;
 
     #[test]
+    // Was: Prüft automatisch den Fall build sdb 1.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_build_sdb_1() {
         let bbk = "010110000011111100010011101001";
         let blk1 =
@@ -248,6 +295,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall build sdb 2.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_build_sdb_2() {
         let bbk = "001010010110101111111110100100";
         let blk1 =

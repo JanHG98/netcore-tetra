@@ -1,0 +1,328 @@
+# NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für die Verbindung zwischen Basisstationen und Backend-Diensten.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+# Was: Öffnet den Konfigurationsabschnitt `server`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[server]
+# Open lab listener. Put this LXC only into an isolated management/test VLAN.
+# Was: Setzt die Einstellung `bind` für server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+bind = "0.0.0.0:8080"
+# Was: Setzt die Einstellung `node_path` für server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+node_path = "/ws/node"
+# Was: Setzt die Einstellung `backend_path` für server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+backend_path = "/ws/backend"
+# Was: Setzt die Einstellung `history_limit` für server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+history_limit = 1000
+# Was: Setzt die Einstellung `stale_after_secs` für server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+stale_after_secs = 20
+# Was: Setzt die Einstellung `hello_timeout_secs` für server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+hello_timeout_secs = 10
+# Was: Setzt die Einstellung `application_ping_secs` für server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+application_ping_secs = 15
+
+# Was: Öffnet den Konfigurationsabschnitt `security`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[security]
+# This package deliberately supports only open_lab.
+# No token fields exist and no user/password login is performed.
+# Was: Setzt die Einstellung `mode` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+mode = "open_lab"
+# Was: Setzt die Einstellung `allow_remote_management` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+allow_remote_management = true
+
+# Was: Öffnet den Konfigurationsabschnitt `limits`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[limits]
+# Was: Setzt die Einstellung `max_message_bytes` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_message_bytes = 1048576
+# Was: Setzt die Einstellung `max_http_body_bytes` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_http_body_bytes = 1048576
+
+# Was: Öffnet den Konfigurationsabschnitt `service_monitor`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[service_monitor]
+# Health is evaluated by service, not by Internet reachability. The TBS receives
+# this matrix over its existing Node Gateway WebSocket and chooses central or
+# local authority per feature.
+# Was: Setzt die Einstellung `enabled` für Dienst monitor.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+enabled = true
+# Was: Setzt die Einstellung `interval_secs` für Dienst monitor.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+interval_secs = 5
+# Was: Setzt die Einstellung `timeout_ms` für Dienst monitor.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+timeout_ms = 1500
+# Was: Setzt die Einstellung `failure_threshold` für Dienst monitor.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+failure_threshold = 2
+# Was: Setzt die Einstellung `recovery_threshold` für Dienst monitor.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+recovery_threshold = 2
+
+# Was: Öffnet den Konfigurationsabschnitt `service_monitor.targets`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[[service_monitor.targets]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "mobility-core"
+# Was: Setzt die Einstellung `url` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+url = "http://10.0.20.11:8090/health/ready"
+# Was: Setzt die Einstellung `critical_for_edge` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+critical_for_edge = true
+# Was: Setzt die Einstellung `fallback_mode` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+fallback_mode = "local_registration_and_location_area"
+
+# Was: Öffnet den Konfigurationsabschnitt `service_monitor.targets`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[[service_monitor.targets]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "subscriber-core"
+# Was: Setzt die Einstellung `url` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+url = "http://10.0.20.12:8100/health/ready"
+# Was: Setzt die Einstellung `critical_for_edge` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+critical_for_edge = true
+# Was: Setzt die Einstellung `fallback_mode` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+fallback_mode = "cached_policy_then_static_config"
+
+# Was: Öffnet den Konfigurationsabschnitt `service_monitor.targets`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[[service_monitor.targets]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "group-core"
+# Was: Setzt die Einstellung `url` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+url = "http://10.0.20.13:8110/health/ready"
+# Was: Setzt die Einstellung `critical_for_edge` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+critical_for_edge = true
+# Was: Setzt die Einstellung `fallback_mode` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+fallback_mode = "cached_policy_then_local_affiliations"
+
+# Was: Öffnet den Konfigurationsabschnitt `service_monitor.targets`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[[service_monitor.targets]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "call-control"
+# Was: Setzt die Einstellung `url` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+url = "http://10.0.20.14:8120/health/ready"
+# Was: Setzt die Einstellung `critical_for_edge` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+critical_for_edge = true
+# Was: Setzt die Einstellung `fallback_mode` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+fallback_mode = "local_cell_calls_only"
+
+# Was: Öffnet den Konfigurationsabschnitt `service_monitor.targets`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[[service_monitor.targets]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "media-switch"
+# Was: Setzt die Einstellung `url` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+url = "http://10.0.20.15:8130/health/ready"
+# Was: Setzt die Einstellung `critical_for_edge` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+critical_for_edge = true
+# Was: Setzt die Einstellung `fallback_mode` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+fallback_mode = "local_air_interface_media_only"
+
+# Was: Öffnet den Konfigurationsabschnitt `service_monitor.targets`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[[service_monitor.targets]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "recorder"
+# Was: Setzt die Einstellung `url` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+url = "http://10.0.20.16:8140/health/ready"
+# Was: Setzt die Einstellung `critical_for_edge` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+critical_for_edge = false
+# Was: Setzt die Einstellung `fallback_mode` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+fallback_mode = "local_recorder_continues"
+
+# Was: Öffnet den Konfigurationsabschnitt `service_monitor.targets`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[[service_monitor.targets]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "sds-router"
+# Was: Setzt die Einstellung `url` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+url = "http://10.0.20.17:8150/health/ready"
+# Was: Setzt die Einstellung `critical_for_edge` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+critical_for_edge = true
+# Was: Setzt die Einstellung `fallback_mode` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+fallback_mode = "local_delivery_and_durable_store_forward"
+
+# Was: Öffnet den Konfigurationsabschnitt `service_monitor.targets`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[[service_monitor.targets]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "packet-core"
+# Was: Setzt die Einstellung `url` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+url = "http://10.0.20.18:8160/health/ready"
+# Was: Setzt die Einstellung `critical_for_edge` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+critical_for_edge = false
+# Was: Setzt die Einstellung `fallback_mode` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+fallback_mode = "local_sndcp_contexts"
+
+# Was: Öffnet den Konfigurationsabschnitt `service_monitor.targets`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[[service_monitor.targets]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "ip-gateway"
+# Was: Setzt die Einstellung `url` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+url = "http://10.0.20.19:8170/health/ready"
+# Was: Setzt die Einstellung `critical_for_edge` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+critical_for_edge = false
+# Was: Setzt die Einstellung `fallback_mode` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+fallback_mode = "local_tun_gateway_when_configured"
+
+# Was: Öffnet den Konfigurationsabschnitt `service_monitor.targets`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[[service_monitor.targets]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "security-core"
+# Was: Setzt die Einstellung `url` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+url = "http://10.0.20.20:8180/health/ready"
+# Was: Setzt die Einstellung `critical_for_edge` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+critical_for_edge = false
+# Was: Setzt die Einstellung `fallback_mode` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+fallback_mode = "last_known_security_policy_no_downgrade"
+
+# Was: Öffnet den Konfigurationsabschnitt `service_monitor.targets`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[[service_monitor.targets]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "kmf"
+# Was: Setzt die Einstellung `url` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+url = "http://10.0.20.21:8190/health/ready"
+# Was: Setzt die Einstellung `critical_for_edge` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+critical_for_edge = false
+# Was: Setzt die Einstellung `fallback_mode` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+fallback_mode = "installed_keys_only_no_otar"
+
+# Was: Öffnet den Konfigurationsabschnitt `service_monitor.targets`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[[service_monitor.targets]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "transit"
+# Was: Setzt die Einstellung `url` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+url = "http://10.0.20.22:8200/health/ready"
+# Was: Setzt die Einstellung `critical_for_edge` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+critical_for_edge = false
+# Was: Setzt die Einstellung `fallback_mode` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+fallback_mode = "no_inter_region_routing"
+
+# Was: Öffnet den Konfigurationsabschnitt `service_monitor.targets`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[[service_monitor.targets]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "observability"
+# Was: Setzt die Einstellung `url` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+url = "http://10.0.20.26:8210/health/ready"
+# Was: Setzt die Einstellung `critical_for_edge` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+critical_for_edge = false
+# Was: Setzt die Einstellung `fallback_mode` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+fallback_mode = "local_logs_and_health_continue"
+
+# Was: Öffnet den Konfigurationsabschnitt `service_monitor.targets`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[[service_monitor.targets]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "application-gateway"
+# Was: Setzt die Einstellung `url` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+url = "http://10.0.20.23:8220/health/ready"
+# Was: Setzt die Einstellung `critical_for_edge` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+critical_for_edge = false
+# Was: Setzt die Einstellung `fallback_mode` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+fallback_mode = "local_integrations_only"
+
+# Was: Öffnet den Konfigurationsabschnitt `service_monitor.targets`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[[service_monitor.targets]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "media-library"
+# Was: Setzt die Einstellung `url` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+url = "http://10.0.20.24:8230/health/ready"
+# Was: Setzt die Einstellung `critical_for_edge` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+critical_for_edge = false
+# Was: Setzt die Einstellung `fallback_mode` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+fallback_mode = "local_media_cache_and_playout"
+
+# Was: Öffnet den Konfigurationsabschnitt `service_monitor.targets`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[[service_monitor.targets]]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "control-room"
+# Was: Setzt die Einstellung `url` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+url = "http://10.0.20.25:9010/health/ready"
+# Was: Setzt die Einstellung `critical_for_edge` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+critical_for_edge = false
+# Was: Setzt die Einstellung `fallback_mode` für Dienst monitor targets.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+fallback_mode = "local_dashboard_and_audit"

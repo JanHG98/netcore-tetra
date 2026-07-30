@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use tetra_core::{Direction, TdmaTime};
 use tetra_saps::{
     control::enums::{circuit_mode_type::CircuitModeType, communication_type::CommunicationType},
@@ -20,6 +23,8 @@ use tetra_saps::{
 // }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für CMCE-Rufsteuerung circuit in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CmceCircuit {
     /// Time when this circuit was created
     /// Used to schedule D-SETUP repetitions

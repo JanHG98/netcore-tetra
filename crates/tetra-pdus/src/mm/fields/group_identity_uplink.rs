@@ -1,9 +1,14 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt;
 
 use tetra_core::{BitBuffer, pdu_parse_error::PduParseErr};
 
 /// 16.10.27 Group identity uplink
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für Gruppe identity Uplink (Funkgerät zum Netz) in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct GroupIdentityUplink {
     // 1
     // pub attach_detach_type_identifier: bool,
@@ -21,7 +26,11 @@ pub struct GroupIdentityUplink {
     pub vgssi: Option<u32>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `GroupIdentityUplink`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl GroupIdentityUplink {
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buf: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let mut s = GroupIdentityUplink {
             // attach_detach_type_identifier: false,
@@ -55,6 +64,8 @@ impl GroupIdentityUplink {
         Ok(s)
     }
 
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buf: &mut BitBuffer) -> Result<(), PduParseErr> {
         assert!(
             self.class_of_usage.is_some() ^ self.group_identity_detachment_uplink.is_some(),
@@ -90,7 +101,11 @@ impl GroupIdentityUplink {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `fmt::Display for GroupIdentityUplink`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl fmt::Display for GroupIdentityUplink {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,

@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::ffi::CString;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Read};
@@ -7,14 +10,17 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{SyncSender, sync_channel};
 use std::sync::{Arc, Mutex};
 
-use tetra_config::bluestation::{CfgRecording, RecordingMode};
+use tetra_config::bluestation::{CfgMediaLibrary, CfgRecording, RecordingMode};
 use uuid::Uuid;
 
 use super::archive::{recording_is_archived, spawn_archive_worker};
+use super::media_library::{marker_path as media_library_marker_path, recording_is_published, recording_requires_publish, spawn_media_library_worker};
 use super::types::{RecorderStatus, RecordingMetadata};
 use super::wav::recover_part;
 
 #[derive(Default)]
+// Was: Bündelt die zusammengehörigen Werte für live Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub(super) struct LiveStatus {
     active_sessions: usize,
     active_call_ids: Vec<u16>,
@@ -26,26 +32,48 @@ pub(super) struct LiveStatus {
     pub(super) archive_completed: usize,
     pub(super) archive_last_success_at: Option<String>,
     pub(super) archive_last_error: Option<String>,
+    pub(super) media_library_available: bool,
+    pub(super) media_library_active: bool,
+    pub(super) media_library_pending: usize,
+    pub(super) media_library_completed: usize,
+    pub(super) media_library_last_success_at: Option<String>,
+    pub(super) media_library_last_error: Option<String>,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für Aufzeichnung shared in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub(super) struct RecorderShared {
     pub(super) config: CfgRecording,
+    pub(super) media_library: CfgMediaLibrary,
     pub(super) root: PathBuf,
     active: AtomicBool,
     live: Mutex<LiveStatus>,
     archive_tx: Option<SyncSender<()>>,
+    media_library_tx: Option<SyncSender<()>>,
 }
 
 #[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für Aufzeichnung handle in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct RecorderHandle {
     inner: Arc<RecorderShared>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `RecorderHandle`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl RecorderHandle {
-    pub(crate) fn new(config: CfgRecording) -> io::Result<Self> {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
+    pub(crate) fn new(config: CfgRecording, media_library: CfgMediaLibrary) -> io::Result<Self> {
         let root = PathBuf::from(&config.directory);
         fs::create_dir_all(&root)?;
         let (archive_tx, archive_rx) = if config.archive_enabled || config.tts_archive_enabled {
+            let (tx, rx) = sync_channel(1);
+            (Some(tx), Some(rx))
+        } else {
+            (None, None)
+        };
+        let (media_library_tx, media_library_rx) = if media_library.enabled && media_library.publish_recordings {
             let (tx, rx) = sync_channel(1);
             (Some(tx), Some(rx))
         } else {
@@ -55,9 +83,11 @@ impl RecorderHandle {
             inner: Arc::new(RecorderShared {
                 active: AtomicBool::new(config.active),
                 config,
+                media_library,
                 root,
                 live: Mutex::new(LiveStatus::default()),
                 archive_tx,
+                media_library_tx,
             }),
         };
         handle.recover_partials();
@@ -66,25 +96,44 @@ impl RecorderHandle {
         if let Some(rx) = archive_rx {
             spawn_archive_worker(&handle.inner, rx);
         }
+        if let Some(rx) = media_library_rx {
+            spawn_media_library_worker(&handle.inner, rx);
+        }
         Ok(handle)
     }
 
+    // Was: Prüft, ob active zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     pub fn is_active(&self) -> bool {
         self.inner.active.load(Ordering::Relaxed)
     }
 
+    // Was: Diese Funktion setzt active.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_active(&self, active: bool) {
         self.inner.active.store(active, Ordering::Relaxed);
     }
 
+    // Was: Führt den Arbeitsschritt `config` für Konfiguration aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn config(&self) -> &CfgRecording {
         &self.inner.config
     }
 
+    // Was: Führt den Arbeitsschritt `root` für root aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn root(&self) -> &Path {
         &self.inner.root
     }
 
+    /// Whether the deliberately narrow public recording-export route may serve
+    /// completed WAV files to the configured Media Library.
+    pub fn media_library_export_enabled(&self) -> bool {
+        self.inner.media_library.enabled && self.inner.media_library.publish_recordings
+    }
+
+    // Was: Diese Funktion setzt active calls.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub(crate) fn set_active_calls(&self, mut ids: Vec<u16>) {
         let active_sessions = ids.len();
         ids.sort_unstable();
@@ -95,6 +144,8 @@ impl RecorderHandle {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `note_completed` für note completed aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(crate) fn note_completed(&self, id: String) {
         if let Ok(mut live) = self.inner.live.lock() {
             live.last_recording_id = Some(id);
@@ -103,8 +154,13 @@ impl RecorderHandle {
         if let Some(tx) = &self.inner.archive_tx {
             let _ = tx.try_send(());
         }
+        if let Some(tx) = &self.inner.media_library_tx {
+            let _ = tx.try_send(());
+        }
     }
 
+    // Was: Führt den Arbeitsschritt `note_error` für note error aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(crate) fn note_error(&self, error: impl Into<String>) {
         let error = error.into();
         tracing::error!("Recorder: {}", error);
@@ -113,21 +169,29 @@ impl RecorderHandle {
         }
     }
 
+    // Was: Prüft, ob Datensatz zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     pub fn should_record(&self, destination_id: u32, destination_is_group: bool) -> bool {
         if !self.is_active() {
             return false;
         }
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.inner.config.mode {
             RecordingMode::All => true,
             RecordingMode::SelectedGroups => destination_is_group && self.inner.config.selected_groups.binary_search(&destination_id).is_ok(),
         }
     }
 
+    // Was: Prüft, ob minimum free space zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     pub fn has_minimum_free_space(&self) -> bool {
         let required = self.inner.config.minimum_free_space_mb.saturating_mul(1024 * 1024);
         available_space(&self.inner.root).map(|free| free >= required).unwrap_or(false)
     }
 
+    // Was: Führt den Arbeitsschritt `status` für Status aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn status(&self) -> RecorderStatus {
         let recordings = self.scan_recordings();
         let (
@@ -141,25 +205,50 @@ impl RecorderHandle {
             archive_completed,
             archive_last_success_at,
             archive_last_error,
-        ) = self
-            .inner
-            .live
-            .lock()
-            .map(|live| {
-                (
-                    live.active_sessions,
-                    live.active_call_ids.clone(),
-                    live.last_recording_id.clone(),
-                    live.last_error.clone(),
-                    live.archive_available,
-                    live.archive_active,
-                    live.archive_pending,
-                    live.archive_completed,
-                    live.archive_last_success_at.clone(),
-                    live.archive_last_error.clone(),
-                )
-            })
-            .unwrap_or_default();
+            media_library_available,
+            media_library_active,
+            media_library_pending,
+            media_library_completed,
+            media_library_last_success_at,
+            media_library_last_error,
+        ) = match self.inner.live.lock() {
+            Ok(live) => (
+                live.active_sessions,
+                live.active_call_ids.clone(),
+                live.last_recording_id.clone(),
+                live.last_error.clone(),
+                live.archive_available,
+                live.archive_active,
+                live.archive_pending,
+                live.archive_completed,
+                live.archive_last_success_at.clone(),
+                live.archive_last_error.clone(),
+                live.media_library_available,
+                live.media_library_active,
+                live.media_library_pending,
+                live.media_library_completed,
+                live.media_library_last_success_at.clone(),
+                live.media_library_last_error.clone(),
+            ),
+            Err(_) => (
+                0,
+                Vec::new(),
+                None,
+                Some("recorder status lock poisoned".to_string()),
+                false,
+                false,
+                0,
+                0,
+                None,
+                None,
+                false,
+                false,
+                0,
+                0,
+                None,
+                None,
+            ),
+        };
         RecorderStatus {
             available: true,
             active: self.is_active(),
@@ -188,9 +277,19 @@ impl RecorderHandle {
             archive_completed,
             archive_last_success_at,
             archive_last_error,
+            media_library_enabled: self.inner.media_library.enabled && self.inner.media_library.publish_recordings,
+            media_library_url: self.inner.media_library.base_url.clone(),
+            media_library_available,
+            media_library_active,
+            media_library_pending,
+            media_library_completed,
+            media_library_last_success_at,
+            media_library_last_error,
         }
     }
 
+    // Was: Diese Funktion liefert recordings.
+    // Warum: Die Zusammenstellung der Einträge bleibt damit konsistent und wiederverwendbar.
     pub fn list_recordings(&self, limit: Option<usize>) -> Vec<RecordingMetadata> {
         let mut metadata = self.scan_recordings();
         metadata.truncate(limit.unwrap_or(self.inner.config.max_list_entries).min(self.inner.config.max_list_entries));
@@ -201,6 +300,8 @@ impl RecorderHandle {
     /// The WAV and JSON sidecar are written exactly like normal call recordings,
     /// so playback, deletion and retention use the same code path. The archive
     /// worker routes `origin = "tts"` to the dedicated TTS server directory.
+    // Was: Führt den Arbeitsschritt `import_named_wav` für import named wav aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn import_named_wav(&self, source: &Path, title: &str, origin: &str) -> Result<RecordingMetadata, String> {
         if !self.has_minimum_free_space() {
             return Err(format!(
@@ -279,6 +380,8 @@ impl RecorderHandle {
             Ok(metadata)
         })();
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match result {
             Ok(metadata) => {
                 self.note_completed(metadata.id.clone());
@@ -301,11 +404,17 @@ impl RecorderHandle {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `scan_recordings` für scan recordings aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn scan_recordings(&self) -> Vec<RecordingMetadata> {
         let mut metadata = Vec::new();
         let mut files = Vec::new();
         collect_files_with_suffix(&self.inner.root, ".json", &mut files);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for path in files {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match fs::read_to_string(&path)
                 .ok()
                 .and_then(|body| serde_json::from_str::<RecordingMetadata>(&body).ok())
@@ -318,6 +427,8 @@ impl RecorderHandle {
         metadata
     }
 
+    // Was: Diese Funktion sucht recording.
+    // Warum: Die Suchlogik bleibt damit wiederverwendbar und muss nicht an mehreren Stellen kopiert werden.
     pub fn find_recording(&self, id: &str) -> Option<RecordingMetadata> {
         if !valid_id(id) {
             return None;
@@ -325,6 +436,8 @@ impl RecorderHandle {
         self.scan_recordings().into_iter().find(|item| item.id == id)
     }
 
+    // Was: Führt den Arbeitsschritt `audio_path` für audio path aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn audio_path(&self, id: &str) -> Result<PathBuf, String> {
         let metadata = self.find_recording(id).ok_or_else(|| "recording not found".to_string())?;
         let relative = safe_relative_path(&metadata.relative_audio_path)?;
@@ -337,6 +450,8 @@ impl RecorderHandle {
         Ok(canonical_path)
     }
 
+    // Was: Diese Funktion löscht recording.
+    // Warum: Das Entfernen wird dadurch kontrolliert durchgeführt und hinterlässt keine verwaisten Verweise.
     pub fn delete_recording(&self, id: &str) -> Result<(), String> {
         if !valid_id(id) {
             return Err("invalid recording id".to_string());
@@ -345,6 +460,7 @@ impl RecorderHandle {
         let audio = self.audio_path(id)?;
         let json = audio.with_extension("json");
         let archived = audio.with_extension("archived");
+        let media_library_marker = media_library_marker_path(&audio);
         if audio.exists() {
             fs::remove_file(&audio).map_err(|e| format!("failed to delete {}: {e}", audio.display()))?;
         }
@@ -354,6 +470,8 @@ impl RecorderHandle {
             // Metadata may not share the WAV stem if manually imported; locate it by id.
             let mut files = Vec::new();
             collect_files_with_suffix(&self.inner.root, ".json", &mut files);
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for path in files {
                 if fs::read_to_string(&path)
                     .ok()
@@ -368,14 +486,24 @@ impl RecorderHandle {
         if archived.exists() {
             fs::remove_file(&archived).map_err(|e| format!("failed to delete {}: {e}", archived.display()))?;
         }
+        if media_library_marker.exists() {
+            fs::remove_file(&media_library_marker)
+                .map_err(|e| format!("failed to delete {}: {e}", media_library_marker.display()))?;
+        }
         Ok(())
     }
 
+    // Was: Diese Funktion stellt partials.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn recover_partials(&self) {
         let mut parts = Vec::new();
         collect_files_with_suffix(&self.inner.root, ".wav.part", &mut parts);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for part in parts {
             let final_path = PathBuf::from(part.to_string_lossy().trim_end_matches(".part"));
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match recover_part(&part, &final_path) {
                 Ok(data_bytes) => {
                     let json_part = PathBuf::from(format!("{}.json.part", final_path.with_extension("").display()));
@@ -407,9 +535,13 @@ impl RecorderHandle {
         }
     }
 
+    // Was: Diese Funktion stellt metadata partials.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn recover_metadata_partials(&self) {
         let mut parts = Vec::new();
         collect_files_with_suffix(&self.inner.root, ".json.part", &mut parts);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for json_part in parts {
             let stem = json_part.to_string_lossy().trim_end_matches(".json.part").to_string();
             let wav_path = PathBuf::from(format!("{stem}.wav"));
@@ -427,6 +559,8 @@ impl RecorderHandle {
                 last.end_ms = metadata.duration_ms;
             }
             let json_final = PathBuf::from(format!("{stem}.json"));
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match serde_json::to_vec_pretty(&metadata)
                 .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
                 .and_then(|body| fs::write(&json_final, body))
@@ -440,6 +574,8 @@ impl RecorderHandle {
         }
     }
 
+    // Was: Diese Funktion räumt retention.
+    // Warum: Zurückgelassene Ressourcen würden sonst spätere Starts oder Verbindungen stören.
     fn cleanup_retention(&self) {
         let days = self.inner.config.retention_days;
         if days == 0 {
@@ -448,15 +584,19 @@ impl RecorderHandle {
         let cutoff = std::time::SystemTime::now()
             .checked_sub(std::time::Duration::from_secs(days as u64 * 86_400))
             .unwrap_or(std::time::UNIX_EPOCH);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for item in self.scan_recordings() {
             let Ok(audio) = self.audio_path(&item.id) else { continue };
             let modified = audio.metadata().and_then(|m| m.modified()).unwrap_or(std::time::SystemTime::now());
             if modified < cutoff {
-                if super::archive::recording_requires_archive(&self.inner, &item)
-                    && !recording_is_archived(&self.inner, &item)
-                {
+                let archive_pending = super::archive::recording_requires_archive(&self.inner, &item)
+                    && !recording_is_archived(&self.inner, &item);
+                let media_library_pending = recording_requires_publish(&self.inner, &item)
+                    && !recording_is_published(&self.inner, &item);
+                if archive_pending || media_library_pending {
                     tracing::warn!(
-                        "Recorder: retention kept unarchived recording id={} because archive copy is not confirmed",
+                        "Recorder: retention kept recording id={} because archive/media-library transfer is not confirmed",
                         item.id
                     );
                     continue;
@@ -470,18 +610,34 @@ impl RecorderHandle {
 }
 
 
+// Was: Implementiert das zugehörige Verhalten für `RecorderShared`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl RecorderShared {
+    // Was: Diese Funktion aktualisiert archive Status.
+    // Warum: Bestehender Zustand wird dadurch kontrolliert und nach einheitlichen Regeln geändert.
     pub(super) fn update_archive_status(&self, update: impl FnOnce(&mut LiveStatus)) {
         if let Ok(mut live) = self.live.lock() {
             update(&mut live);
         }
     }
 
+    pub(super) fn update_media_library_status(&self, update: impl FnOnce(&mut LiveStatus)) {
+        if let Ok(mut live) = self.live.lock() {
+            update(&mut live);
+        }
+    }
+
+    // Was: Führt den Arbeitsschritt `scan_recordings` für scan recordings aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub(super) fn scan_recordings(&self) -> Vec<RecordingMetadata> {
         let mut metadata = Vec::new();
         let mut files = Vec::new();
         collect_files_with_suffix(&self.root, ".json", &mut files);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for path in files {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match fs::read_to_string(&path)
                 .ok()
                 .and_then(|body| serde_json::from_str::<RecordingMetadata>(&body).ok())
@@ -495,6 +651,8 @@ impl RecorderShared {
     }
 }
 
+// Was: Führt den Arbeitsschritt `normalize_library_title` für normalize library title aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn normalize_library_title(title: &str) -> Result<String, String> {
     let title = title.split_whitespace().collect::<Vec<_>>().join(" ");
     let count = title.chars().count();
@@ -507,6 +665,8 @@ fn normalize_library_title(title: &str) -> Result<String, String> {
     Ok(title)
 }
 
+// Was: Führt den Arbeitsschritt `normalize_library_origin` für normalize library origin aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn normalize_library_origin(origin: &str) -> Result<String, String> {
     let origin = origin.trim().to_ascii_lowercase();
     if origin.is_empty()
@@ -518,9 +678,13 @@ fn normalize_library_origin(origin: &str) -> Result<String, String> {
     Ok(origin)
 }
 
+// Was: Führt den Arbeitsschritt `library_filename_component` für library filename component aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn library_filename_component(title: &str) -> String {
     let mut out = String::new();
     let mut separator = false;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for ch in title.chars() {
         if ch.is_alphanumeric() || matches!(ch, '-' | '_') {
             out.push(ch);
@@ -541,6 +705,8 @@ fn library_filename_component(title: &str) -> String {
     }
 }
 
+// Was: Führt den Arbeitsschritt `inspect_recording_wav` für inspect recording wav aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn inspect_recording_wav(path: &Path) -> Result<(u64, u64), String> {
     let mut file = File::open(path).map_err(|error| format!("cannot open generated WAV {}: {error}", path.display()))?;
     let mut header = [0u8; 44];
@@ -571,6 +737,8 @@ fn inspect_recording_wav(path: &Path) -> Result<(u64, u64), String> {
     Ok((duration_ms, data_bytes))
 }
 
+// Was: Diese Funktion schreibt recording metadata atomic.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 fn write_recording_metadata_atomic(path: &Path, metadata: &RecordingMetadata) -> Result<(), String> {
     let body = serde_json::to_vec_pretty(metadata).map_err(|error| error.to_string())?;
     let tmp = PathBuf::from(format!("{}.tmp", path.display()));
@@ -583,17 +751,25 @@ fn write_recording_metadata_atomic(path: &Path, metadata: &RecordingMetadata) ->
     fs::rename(&tmp, path).map_err(|error| format!("cannot rename {} -> {}: {error}", tmp.display(), path.display()))
 }
 
+// Was: Führt den Arbeitsschritt `valid_id` für valid Kennung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn valid_id(id: &str) -> bool {
     id.len() == 36 && id.chars().all(|c| c.is_ascii_hexdigit() || c == '-')
 }
 
+// Was: Führt den Arbeitsschritt `safe_relative_path` für safe relative path aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub(super) fn safe_relative_path(path: &str) -> Result<PathBuf, String> {
     let path = Path::new(path);
     if path.is_absolute() {
         return Err("absolute recording path rejected".to_string());
     }
     let mut clean = PathBuf::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for component in path.components() {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match component {
             Component::Normal(part) => clean.push(part),
             _ => return Err("invalid recording path".to_string()),
@@ -602,8 +778,12 @@ pub(super) fn safe_relative_path(path: &str) -> Result<PathBuf, String> {
     Ok(clean)
 }
 
+// Was: Diese Funktion sammelt files with suffix.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn collect_files_with_suffix(root: &Path, suffix: &str, out: &mut Vec<PathBuf>) {
     let Ok(entries) = fs::read_dir(root) else { return };
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for entry in entries.flatten() {
         let Ok(file_type) = entry.file_type() else { continue };
         if file_type.is_symlink() {
@@ -618,6 +798,8 @@ fn collect_files_with_suffix(root: &Path, suffix: &str, out: &mut Vec<PathBuf>) 
     }
 }
 
+// Was: Führt den Arbeitsschritt `directory_size` für directory size aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn directory_size(root: &Path) -> u64 {
     let Ok(entries) = fs::read_dir(root) else { return 0 };
     entries
@@ -639,6 +821,8 @@ fn directory_size(root: &Path) -> u64 {
         .sum()
 }
 
+// Was: Führt den Arbeitsschritt `available_space` für available space aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn available_space(path: &Path) -> Option<u64> {
     let c_path = CString::new(path.as_os_str().as_bytes()).ok()?;
     let mut stat = std::mem::MaybeUninit::<libc::statvfs>::uninit();

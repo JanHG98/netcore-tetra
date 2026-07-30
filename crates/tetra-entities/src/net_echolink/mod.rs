@@ -1,5 +1,10 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! EchoLink UDP/GSM bridge for circuit-switched individual calls.
 
+// Was: Bindet das Untermodul audio in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod audio;
 
 use std::io::{Read, Write};
@@ -23,30 +28,66 @@ use crate::{MessageQueue, TetraEntityTrait};
 
 use self::audio::{ECHOLINK_GSM_FRAME_BYTES, ECHOLINK_GSM_PACKET_BYTES, EcholinkAudioTranscoder};
 
+// Was: Legt den festen Wert `RTP_VERSION_ECHOLINK` für rtp version echolink fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const RTP_VERSION_ECHOLINK: u8 = 3;
+// Was: Legt den festen Wert `RTCP_RR` für rtcp rr fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const RTCP_RR: u8 = 201;
+// Was: Legt den festen Wert `RTCP_SDES` für rtcp sdes fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const RTCP_SDES: u8 = 202;
+// Was: Legt den festen Wert `RTCP_BYE` für rtcp bye fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const RTCP_BYE: u8 = 203;
+// Was: Legt den festen Wert `RTCP_SDES_END` für rtcp sdes end fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const RTCP_SDES_END: u8 = 0;
+// Was: Legt den festen Wert `RTCP_SDES_CNAME` für rtcp sdes cname fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const RTCP_SDES_CNAME: u8 = 1;
+// Was: Legt den festen Wert `RTCP_SDES_NAME` für rtcp sdes name fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const RTCP_SDES_NAME: u8 = 2;
+// Was: Legt den festen Wert `RTCP_SDES_EMAIL` für rtcp sdes email fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const RTCP_SDES_EMAIL: u8 = 3;
+// Was: Legt den festen Wert `RTCP_SDES_PHONE` für rtcp sdes phone fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const RTCP_SDES_PHONE: u8 = 4;
+// Was: Legt den festen Wert `ECHOLINK_RTP_GSM_PT` für echolink rtp gsm pt fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const ECHOLINK_RTP_GSM_PT: u8 = 0x03;
+// Was: Legt den festen Wert `ECHOLINK_RTP_HEADER` für echolink rtp header fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const ECHOLINK_RTP_HEADER: usize = 12;
+// Was: Legt den festen Wert `CONNECT_TIMEOUT` für connect timeout fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(30);
+// Was: Legt den festen Wert `KEEPALIVE_INTERVAL` für keepalive interval fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const KEEPALIVE_INTERVAL: Duration = Duration::from_secs(10);
+// Was: Legt den festen Wert `DIRECTORY_TIMEOUT` für directory timeout fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const DIRECTORY_TIMEOUT: Duration = Duration::from_secs(3);
+// Was: Legt den festen Wert `DIRECTORY_REFRESH_INTERVAL` für directory refresh interval fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const DIRECTORY_REFRESH_INTERVAL: Duration = Duration::from_secs(5 * 60);
+// Was: Legt den festen Wert `DIRECTORY_DESCRIPTION_MAX_CHARS` für directory description max chars fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const DIRECTORY_DESCRIPTION_MAX_CHARS: usize = 27;
 
 #[derive(Debug, Clone)]
+// Was: Listet die möglichen Varianten für echolink command auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum EcholinkCommand {
     Connect { target: String },
     Disconnect,
 }
 
 #[derive(Debug)]
+// Was: Listet die möglichen Varianten für echolink directory Ereignis auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 enum EcholinkDirectoryEvent {
     Online {
         generation: u64,
@@ -59,20 +100,30 @@ enum EcholinkDirectoryEvent {
     },
 }
 
+// Was: Vergibt für echolink cmd sender einen fachlich verständlichen Typnamen.
+// Warum: Der Alias macht Signaturen lesbarer und hält technische Details aus dem aufrufenden Code heraus.
 pub type EcholinkCmdSender = crossbeam_channel::Sender<EcholinkCommand>;
+// Was: Vergibt für echolink cmd receiver einen fachlich verständlichen Typnamen.
+// Warum: Der Alias macht Signaturen lesbarer und hält technische Details aus dem aufrufenden Code heraus.
 pub type EcholinkCmdReceiver = crossbeam_channel::Receiver<EcholinkCommand>;
 
+// Was: Führt den Arbeitsschritt `echolink_channel` für echolink Kanal aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn echolink_channel() -> (EcholinkCmdSender, EcholinkCmdReceiver) {
     crossbeam_channel::unbounded()
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für qso Zustand auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 enum QsoState {
     Connecting,
     Connected,
     Released,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für echolink dialog in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct EcholinkDialog {
     uuid: Option<Uuid>,
     call: Option<NetworkCircuitCall>,
@@ -92,12 +143,16 @@ struct EcholinkDialog {
 }
 
 #[derive(Clone, Debug)]
+// Was: Bündelt die zusammengehörigen Werte für directory station in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct DirectoryStation {
     callsign: String,
     id: u32,
     ip: IpAddr,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für echolink entity in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct EcholinkEntity {
     config: SharedConfig,
     cmd_rx: EcholinkCmdReceiver,
@@ -121,7 +176,11 @@ pub struct EcholinkEntity {
     last_error: Option<String>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `EcholinkEntity`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl EcholinkEntity {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(config: SharedConfig, cmd_rx: EcholinkCmdReceiver) -> Self {
         let (directory_event_tx, directory_event_rx) = crossbeam_channel::unbounded();
         let mut entity = Self {
@@ -150,10 +209,14 @@ impl EcholinkEntity {
         entity
     }
 
+    // Was: Führt den Arbeitsschritt `effective` für effective aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn effective(&self) -> CfgEcholink {
         self.config.effective_echolink()
     }
 
+    // Was: Führt den Arbeitsschritt `refresh_status` für refresh Status aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn refresh_status(&mut self) {
         let cfg = self.effective();
         let connected = self.dialogs.iter().find(|d| d.state != QsoState::Released).map(|d| {
@@ -184,6 +247,8 @@ impl EcholinkEntity {
             self.directory_stations_dirty = false;
         }
         let mut state = self.config.state_write();
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let directory_stations = match directory_stations {
             Some(stations) => stations,
             None => std::mem::take(&mut state.echolink_status.directory_stations),
@@ -204,12 +269,16 @@ impl EcholinkEntity {
         };
     }
 
+    // Was: Diese Funktion setzt error.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     fn set_error(&mut self, msg: impl Into<String>) {
         let msg = msg.into();
         tracing::warn!("EchoLink: {}", msg);
         self.last_error = Some(msg);
     }
 
+    // Was: Diese Funktion stellt ports.
+    // Warum: So wird die notwendige Voraussetzung hergestellt, bevor abhängiger Code weiterläuft.
     fn ensure_ports(&mut self, cfg: &CfgEcholink) -> Result<(), String> {
         let audio_bind = format!("{}:{}", cfg.bind_addr, cfg.audio_port);
         if self.audio_bind.as_deref() != Some(audio_bind.as_str()) {
@@ -240,6 +309,8 @@ impl EcholinkEntity {
         Ok(())
     }
 
+    // Was: Diese Funktion gibt ports.
+    // Warum: Ressourcen werden dadurch rechtzeitig freigegeben und blockieren keine weiteren Vorgänge.
     fn release_ports(&mut self) {
         self.audio_socket = None;
         self.control_socket = None;
@@ -247,8 +318,14 @@ impl EcholinkEntity {
         self.control_bind = None;
     }
 
+    // Was: Diese Funktion verarbeitet dashboard commands.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_dashboard_commands(&mut self, queue: &mut MessageQueue, cfg: &CfgEcholink) {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while let Ok(cmd) = self.cmd_rx.try_recv() {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match cmd {
                 EcholinkCommand::Connect { target } => {
                     let target = normalize_echolink_target(&target);
@@ -260,6 +337,8 @@ impl EcholinkEntity {
                         self.set_error(format!("target {target} is not allowed by EchoLink routing"));
                         continue;
                     }
+                    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                     match self.resolve_target(cfg, &target) {
                         Ok(ip) => {
                             let Some(audio) = EcholinkAudioTranscoder::new() else {
@@ -300,6 +379,8 @@ impl EcholinkEntity {
         }
     }
 
+    // Was: Diese Funktion startet outbound Ruf.
+    // Warum: Der Dienst oder Teilprozess wird so in einer festen und überprüfbaren Reihenfolge gestartet.
     fn start_outbound_call(&mut self, queue: &mut MessageQueue, cfg: &CfgEcholink, brew_uuid: Uuid, call: NetworkCircuitCall) {
         if !cfg.outbound_enabled {
             self.reject_setup(queue, brew_uuid, 34);
@@ -316,6 +397,8 @@ impl EcholinkEntity {
             self.reject_setup(queue, brew_uuid, 34);
             return;
         }
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let remote_ip = match self.resolve_target(cfg, &target) {
             Ok(ip) => ip,
             Err(err) => {
@@ -355,6 +438,8 @@ impl EcholinkEntity {
         tracing::info!("EchoLink: outbound setup uuid={} target={} ip={}", brew_uuid, target, remote_ip);
     }
 
+    // Was: Führt den Arbeitsschritt `reject_setup` für reject setup aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn reject_setup(&self, queue: &mut MessageQueue, brew_uuid: Uuid, cause: u8) {
         queue.push_back(SapMsg {
             sap: Sap::Control,
@@ -364,6 +449,8 @@ impl EcholinkEntity {
         });
     }
 
+    // Was: Diese Funktion sendet setup accept.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_setup_accept(&self, queue: &mut MessageQueue, brew_uuid: Uuid) {
         queue.push_back(SapMsg {
             sap: Sap::Control,
@@ -373,6 +460,8 @@ impl EcholinkEntity {
         });
     }
 
+    // Was: Diese Funktion sendet alert.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_alert(&self, queue: &mut MessageQueue, brew_uuid: Uuid) {
         queue.push_back(SapMsg {
             sap: Sap::Control,
@@ -382,6 +471,8 @@ impl EcholinkEntity {
         });
     }
 
+    // Was: Diese Funktion sendet release to CMCE-Rufsteuerung.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_release_to_cmce(&self, queue: &mut MessageQueue, brew_uuid: Uuid, cause: u8) {
         queue.push_back(SapMsg {
             sap: Sap::Control,
@@ -391,7 +482,11 @@ impl EcholinkEntity {
         });
     }
 
+    // Was: Führt den Arbeitsschritt `maybe_connect_dialog` für maybe connect dialog aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn maybe_connect_dialog(&mut self, queue: &mut MessageQueue, cfg: &CfgEcholink, idx: usize) {
+        // Was: Listet die möglichen Varianten für connect action auf.
+        // Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
         enum ConnectAction {
             ConfirmTetraOriginated(Uuid, NetworkCircuitCall),
             StartTetraLeg(Uuid, NetworkCircuitCall),
@@ -444,6 +539,8 @@ impl EcholinkEntity {
             }
         };
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match action {
             ConnectAction::ConfirmTetraOriginated(uuid, call) => {
                 self.send_alert(queue, uuid);
@@ -470,6 +567,8 @@ impl EcholinkEntity {
         }
     }
 
+    // Was: Diese Funktion kennzeichnet Audio- und Mediendaten ready.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn mark_media_ready(&mut self, brew_uuid: Uuid, call_id: u16, ts: u8) {
         if let Some((idx, dialog)) = self.dialogs.iter_mut().enumerate().find(|(_, d)| d.uuid == Some(brew_uuid)) {
             dialog.media_ready = Some((call_id, ts));
@@ -478,12 +577,16 @@ impl EcholinkEntity {
         }
     }
 
+    // Was: Diese Funktion gibt dialog by uuid.
+    // Warum: Ressourcen werden dadurch rechtzeitig freigegeben und blockieren keine weiteren Vorgänge.
     fn release_dialog_by_uuid(&mut self, queue: &mut MessageQueue, brew_uuid: Uuid, from_cmce: bool) {
         if let Some(idx) = self.dialogs.iter().position(|d| d.uuid == Some(brew_uuid)) {
             self.release_dialog_idx(queue, idx, from_cmce, true);
         }
     }
 
+    // Was: Diese Funktion gibt dialog idx.
+    // Warum: Ressourcen werden dadurch rechtzeitig freigegeben und blockieren keine weiteren Vorgänge.
     fn release_dialog_idx(&mut self, queue: &mut MessageQueue, idx: usize, from_cmce: bool, send_bye: bool) {
         if idx >= self.dialogs.len() {
             return;
@@ -505,14 +608,22 @@ impl EcholinkEntity {
         self.rebuild_ts_index();
     }
 
+    // Was: Diese Funktion trennt all.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn disconnect_all(&mut self, queue: &mut MessageQueue, send_bye: bool) {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while !self.dialogs.is_empty() {
             self.release_dialog_idx(queue, 0, false, send_bye);
         }
     }
 
+    // Was: Führt den Arbeitsschritt `rebuild_ts_index` für rebuild ts index aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rebuild_ts_index(&mut self) {
         self.dialog_by_ts.clear();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (idx, dialog) in self.dialogs.iter().enumerate() {
             if let Some((_, ts)) = dialog.media_ready {
                 self.dialog_by_ts.insert(ts, idx);
@@ -520,6 +631,8 @@ impl EcholinkEntity {
         }
     }
 
+    // Was: Diese Funktion verarbeitet ul voice.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_ul_voice(&mut self, prim: TmdCircuitDataInd) {
         let Some(&idx) = self.dialog_by_ts.get(&prim.ts) else {
             return;
@@ -552,8 +665,12 @@ impl EcholinkEntity {
         let mut seq = start_seq;
         let mut sent_packets = 0usize;
         let mut last_error = None;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for payload in payloads {
             let packet = build_audio_packet(seq, &payload);
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match socket.send_to(&packet, remote_audio) {
                 Ok(_) => {
                     seq = seq.wrapping_add(1);
@@ -576,12 +693,18 @@ impl EcholinkEntity {
         }
     }
 
+    // Was: Diese Funktion fragt audio.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn poll_audio(&mut self, queue: &mut MessageQueue) {
         let Some(socket) = self.audio_socket.as_ref().and_then(|s| s.try_clone().ok()) else {
             return;
         };
         let mut buf = [0u8; 1500];
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for _ in 0..32 {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match socket.recv_from(&mut buf) {
                 Ok((len, addr)) => self.handle_audio_packet(queue, &buf[..len], addr),
                 Err(err) if err.kind() == std::io::ErrorKind::WouldBlock => break,
@@ -593,6 +716,8 @@ impl EcholinkEntity {
         }
     }
 
+    // Was: Diese Funktion verarbeitet audio Datenpaket.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_audio_packet(&mut self, queue: &mut MessageQueue, packet: &[u8], addr: SocketAddr) {
         if packet.len() < ECHOLINK_RTP_HEADER || packet[0] != 0xc0 {
             return;
@@ -624,6 +749,8 @@ impl EcholinkEntity {
             };
             (ts, dialog.audio.decode_gsm_payload_to_tmd(payload))
         };
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for frame in frames {
             queue.push_back(SapMsg {
                 sap: Sap::TmdSap,
@@ -635,12 +762,18 @@ impl EcholinkEntity {
         self.last_rx = Some(format!("audio {} bytes from {}", packet.len(), addr));
     }
 
+    // Was: Diese Funktion fragt Steuerung.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn poll_control(&mut self, queue: &mut MessageQueue, cfg: &CfgEcholink) {
         let Some(socket) = self.control_socket.as_ref().and_then(|s| s.try_clone().ok()) else {
             return;
         };
         let mut buf = [0u8; 1500];
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for _ in 0..32 {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match socket.recv_from(&mut buf) {
                 Ok((len, addr)) => self.handle_control_packet(queue, cfg, &buf[..len], addr),
                 Err(err) if err.kind() == std::io::ErrorKind::WouldBlock => break,
@@ -652,6 +785,8 @@ impl EcholinkEntity {
         }
     }
 
+    // Was: Diese Funktion verarbeitet Steuerung Datenpaket.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_control_packet(&mut self, queue: &mut MessageQueue, cfg: &CfgEcholink, packet: &[u8], addr: SocketAddr) {
         if is_rtcp_bye(packet) {
             if let Some(idx) = self.find_dialog_by_ip(addr.ip()) {
@@ -698,6 +833,8 @@ impl EcholinkEntity {
         }
     }
 
+    // Was: Diese Funktion startet inbound Ruf.
+    // Warum: Der Dienst oder Teilprozess wird so in einer festen und überprüfbaren Reihenfolge gestartet.
     fn start_inbound_call(&mut self, queue: &mut MessageQueue, cfg: &CfgEcholink, remote_call: String, remote_control: SocketAddr) {
         let Some(audio) = EcholinkAudioTranscoder::new() else {
             self.set_error("EchoLink codec allocation failed for inbound QSO");
@@ -756,6 +893,8 @@ impl EcholinkEntity {
         );
     }
 
+    // Was: Diese Funktion sendet sdes idx.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_sdes_idx(&mut self, idx: usize, cfg: &CfgEcholink) {
         let Some(dialog) = self.dialogs.get(idx) else {
             return;
@@ -763,6 +902,8 @@ impl EcholinkEntity {
         let packet = build_sdes_packet(&cfg.callsign, &cfg.location);
         let addr = dialog.remote_control;
         if let Some(socket) = self.control_socket.as_ref().and_then(|s| s.try_clone().ok()) {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match socket.send_to(&packet, addr) {
                 Ok(_) => {
                     if let Some(dialog) = self.dialogs.get_mut(idx) {
@@ -775,6 +916,8 @@ impl EcholinkEntity {
         }
     }
 
+    // Was: Diese Funktion sendet bye idx.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_bye_idx(&mut self, idx: usize) {
         let Some(dialog) = self.dialogs.get(idx) else {
             return;
@@ -783,9 +926,13 @@ impl EcholinkEntity {
         self.send_bye_to(addr);
     }
 
+    // Was: Diese Funktion sendet bye to.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_bye_to(&mut self, addr: SocketAddr) {
         let packet = build_bye_packet();
         if let Some(socket) = self.control_socket.as_ref().and_then(|s| s.try_clone().ok()) {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match socket.send_to(&packet, addr) {
                 Ok(_) => {
                     self.last_tx = Some(format!("BYE to {}", addr));
@@ -795,22 +942,32 @@ impl EcholinkEntity {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `maybe_keepalive` für maybe keepalive aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn maybe_keepalive(&mut self, cfg: &CfgEcholink) {
         let now = Instant::now();
         let mut idxs = Vec::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (idx, dialog) in self.dialogs.iter().enumerate() {
             if dialog.state != QsoState::Released && now.duration_since(dialog.last_sdes) >= KEEPALIVE_INTERVAL {
                 idxs.push(idx);
             }
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for idx in idxs {
             self.send_sdes_idx(idx, cfg);
         }
     }
 
+    // Was: Führt den Arbeitsschritt `maybe_timeout` für maybe timeout aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn maybe_timeout(&mut self, queue: &mut MessageQueue) {
         let now = Instant::now();
         let mut idx = 0;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while idx < self.dialogs.len() {
             if self.dialogs[idx].state == QsoState::Connecting && now.duration_since(self.dialogs[idx].started) >= CONNECT_TIMEOUT {
                 let target = self.dialogs[idx].target.clone();
@@ -822,10 +979,14 @@ impl EcholinkEntity {
         }
     }
 
+    // Was: Diese Funktion sucht dialog by IP-Daten.
+    // Warum: Die Suchlogik bleibt damit wiederverwendbar und muss nicht an mehreren Stellen kopiert werden.
     fn find_dialog_by_ip(&self, ip: IpAddr) -> Option<usize> {
         self.dialogs.iter().position(|d| d.state != QsoState::Released && d.remote_ip == ip)
     }
 
+    // Was: Diese Funktion ermittelt target.
+    // Warum: Unklare oder indirekte Angaben werden so vor der weiteren Verarbeitung eindeutig gemacht.
     fn resolve_target(&mut self, _cfg: &CfgEcholink, target: &str) -> Result<IpAddr, String> {
         if let Ok(ip) = target.parse::<IpAddr>() {
             return Ok(ip);
@@ -846,6 +1007,8 @@ impl EcholinkEntity {
             .ok_or_else(|| format!("EchoLink target {target_upper} not found in directory"))
     }
 
+    // Was: Diese Funktion startet directory Hintergrundverarbeitung.
+    // Warum: Der Dienst oder Teilprozess wird so in einer festen und überprüfbaren Reihenfolge gestartet.
     fn start_directory_worker(&mut self) {
         self.stop_directory_worker();
 
@@ -867,14 +1030,20 @@ impl EcholinkEntity {
         );
 
         let spawn = thread::Builder::new().name("flow-echolink-directory".to_string()).spawn(move || {
+            // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+            // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
             loop {
                 let cfg = config.effective_echolink();
                 if !cfg.enabled {
                     break;
                 }
 
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 let wait = match directory_make_online_request(&cfg) {
                     Ok(()) => {
+                        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                         match directory_get_calls_request(&cfg) {
                             Ok(stations) => {
                                 let _ = event_tx.send(EcholinkDirectoryEvent::Online {
@@ -916,6 +1085,8 @@ impl EcholinkEntity {
         }
     }
 
+    // Was: Diese Funktion stoppt directory Hintergrundverarbeitung.
+    // Warum: Der Betrieb wird dadurch geordnet beendet und Ressourcen werden freigegeben.
     fn stop_directory_worker(&mut self) {
         if let Some(stop_tx) = self.directory_stop_tx.take() {
             let _ = stop_tx.send(());
@@ -926,6 +1097,8 @@ impl EcholinkEntity {
         self.directory_stations_dirty = true;
     }
 
+    // Was: Diese Funktion stellt directory Hintergrundverarbeitung.
+    // Warum: So wird die notwendige Voraussetzung hergestellt, bevor abhängiger Code weiterläuft.
     fn ensure_directory_worker(&mut self, cfg: &CfgEcholink) {
         let key = directory_config_key(cfg);
         if self.directory_stop_tx.is_none() || self.directory_config_key.as_deref() != Some(key.as_str()) {
@@ -933,8 +1106,14 @@ impl EcholinkEntity {
         }
     }
 
+    // Was: Diese Funktion fragt directory events.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn poll_directory_events(&mut self) {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while let Ok(event) = self.directory_event_rx.try_recv() {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match event {
                 EcholinkDirectoryEvent::Online {
                     generation,
@@ -959,13 +1138,21 @@ impl EcholinkEntity {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `TetraEntityTrait for EcholinkEntity`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl TetraEntityTrait for EcholinkEntity {
+    // Was: Führt den Arbeitsschritt `entity` für entity aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn entity(&self) -> TetraEntity {
         TetraEntity::Echolink
     }
 
+    // Was: Führt den Arbeitsschritt `rx_prim` für rx prim aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_prim(&mut self, queue: &mut MessageQueue, message: SapMsg) {
         let cfg = self.effective();
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match message.msg {
             SapMsgInner::CmceCallControl(CallControl::NetworkCircuitSetupRequest { brew_uuid, call }) => {
                 self.start_outbound_call(queue, &cfg, brew_uuid, call);
@@ -1011,6 +1198,8 @@ impl TetraEntityTrait for EcholinkEntity {
         self.refresh_status();
     }
 
+    // Was: Diese Funktion bearbeitet start.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn tick_start(&mut self, queue: &mut MessageQueue, _ts: TdmaTime) {
         let cfg = self.effective();
         if !cfg.enabled {
@@ -1038,6 +1227,8 @@ impl TetraEntityTrait for EcholinkEntity {
             self.last_enabled = Some(true);
         }
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.ensure_ports(&cfg) {
             Ok(()) => {
                 if self.last_directory_status == "disabled" {
@@ -1062,6 +1253,8 @@ impl TetraEntityTrait for EcholinkEntity {
     }
 }
 
+// Was: Führt den Arbeitsschritt `target_allowed` für target allowed aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn target_allowed(cfg: &CfgEcholink, target: &str) -> bool {
     if cfg.allowed_callsigns.is_empty() && cfg.allowed_node_ids.is_empty() {
         return true;
@@ -1076,6 +1269,8 @@ fn target_allowed(cfg: &CfgEcholink, target: &str) -> bool {
         .unwrap_or(false)
 }
 
+// Was: Führt den Arbeitsschritt `station_matches_target` für station matches target aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn station_matches_target(station: &str, target: &str) -> bool {
     if station.eq_ignore_ascii_case(target) {
         return true;
@@ -1083,6 +1278,8 @@ fn station_matches_target(station: &str, target: &str) -> bool {
     station.trim_matches('*').eq_ignore_ascii_case(target.trim_matches('*'))
 }
 
+// Was: Diese Funktion leitet label.
+// Warum: Nachrichten und Daten gelangen dadurch nachvollziehbar an das richtige Ziel.
 fn route_label(cfg: &CfgEcholink) -> Option<String> {
     if cfg.default_tetra_dest_issi == 0 {
         return None;
@@ -1095,6 +1292,8 @@ fn route_label(cfg: &CfgEcholink) -> Option<String> {
     ))
 }
 
+// Was: Führt den Arbeitsschritt `directory_description` für directory description aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn directory_description(status_text: &str) -> String {
     status_text
         .trim()
@@ -1104,6 +1303,8 @@ fn directory_description(status_text: &str) -> String {
         .collect()
 }
 
+// Was: Führt den Arbeitsschritt `directory_config_key` für directory Konfiguration key aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn directory_config_key(cfg: &CfgEcholink) -> String {
     format!(
         "{}\u{1f}{}\u{1f}{}\u{1f}{}\u{1f}{}\u{1f}{}:{}:{}",
@@ -1118,6 +1319,8 @@ fn directory_config_key(cfg: &CfgEcholink) -> String {
     )
 }
 
+// Was: Führt den Arbeitsschritt `directory_make_online_request` für directory make online request aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn directory_make_online_request(cfg: &CfgEcholink) -> Result<(), String> {
     let mut stream = directory_connect(cfg)?;
     let time = chrono::Local::now().format("%H:%M").to_string();
@@ -1145,12 +1348,18 @@ fn directory_make_online_request(cfg: &CfgEcholink) -> Result<(), String> {
     }
 }
 
+// Was: Führt den Arbeitsschritt `directory_get_calls_request` für directory get calls request aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn directory_get_calls_request(cfg: &CfgEcholink) -> Result<Vec<DirectoryStation>, String> {
     let mut stream = directory_connect(cfg)?;
     stream.write_all(b"s").map_err(|e| format!("directory list write failed: {}", e))?;
     let mut buf = Vec::new();
     let mut chunk = [0u8; 4096];
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
     loop {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match stream.read(&mut chunk) {
             Ok(0) => break,
             Ok(len) => {
@@ -1169,7 +1378,11 @@ fn directory_get_calls_request(cfg: &CfgEcholink) -> Result<Vec<DirectoryStation
     parse_directory_list(&text)
 }
 
+// Was: Führt den Arbeitsschritt `directory_connect` für directory connect aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn directory_connect(cfg: &CfgEcholink) -> Result<TcpStream, String> {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for server in &cfg.directory_servers {
         let server = server.trim();
         if server.is_empty() {
@@ -1178,7 +1391,11 @@ fn directory_connect(cfg: &CfgEcholink) -> Result<TcpStream, String> {
         let addrs = (server, cfg.directory_port)
             .to_socket_addrs()
             .map_err(|e| format!("directory DNS {}:{} failed: {}", server, cfg.directory_port, e))?;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for addr in addrs {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match TcpStream::connect_timeout(&addr, DIRECTORY_TIMEOUT) {
                 Ok(stream) => {
                     let _ = stream.set_read_timeout(Some(DIRECTORY_TIMEOUT));
@@ -1192,6 +1409,8 @@ fn directory_connect(cfg: &CfgEcholink) -> Result<TcpStream, String> {
     Err("could not connect to any EchoLink directory server".to_string())
 }
 
+// Was: Diese Funktion erstellt audio Datenpaket.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
 fn build_audio_packet(seq: u16, payload: &[u8]) -> Vec<u8> {
     let mut packet = Vec::with_capacity(ECHOLINK_RTP_HEADER + payload.len());
     packet.push(0xc0);
@@ -1203,6 +1422,8 @@ fn build_audio_packet(seq: u16, payload: &[u8]) -> Vec<u8> {
     packet
 }
 
+// Was: Diese Funktion erstellt sdes Datenpaket.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
 fn build_sdes_packet(callsign: &str, name: &str) -> Vec<u8> {
     let mut packet = Vec::new();
     packet.push(RTP_VERSION_ECHOLINK << 6);
@@ -1224,6 +1445,8 @@ fn build_sdes_packet(callsign: &str, name: &str) -> Vec<u8> {
     add_sdes_item(&mut packet, RTCP_SDES_PHONE, &time);
     packet.push(RTCP_SDES_END);
     packet.push(0);
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while (packet.len() - sdes_start) % 4 != 0 {
         packet.push(0);
     }
@@ -1232,6 +1455,8 @@ fn build_sdes_packet(callsign: &str, name: &str) -> Vec<u8> {
     packet
 }
 
+// Was: Diese Funktion erstellt bye Datenpaket.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
 fn build_bye_packet() -> Vec<u8> {
     let mut packet = Vec::new();
     packet.push(RTP_VERSION_ECHOLINK << 6);
@@ -1245,6 +1470,8 @@ fn build_bye_packet() -> Vec<u8> {
     packet.extend_from_slice(&0u16.to_be_bytes());
     packet.extend_from_slice(&0u32.to_be_bytes());
     add_counted_text(&mut packet, "jan2002");
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while (packet.len() - bye_start) % 4 != 0 {
         packet.push(0);
     }
@@ -1253,11 +1480,15 @@ fn build_bye_packet() -> Vec<u8> {
     packet
 }
 
+// Was: Diese Funktion fügt sdes item.
+// Warum: Das Einfügen wird so einheitlich geprüft und verwaltet.
 fn add_sdes_item(packet: &mut Vec<u8>, item_type: u8, text: &str) {
     packet.push(item_type);
     add_counted_text(packet, text);
 }
 
+// Was: Diese Funktion fügt counted text.
+// Warum: Das Einfügen wird so einheitlich geprüft und verwaltet.
 fn add_counted_text(packet: &mut Vec<u8>, text: &str) {
     let bytes = text.as_bytes();
     let len = bytes.len().min(255);
@@ -1265,12 +1496,18 @@ fn add_counted_text(packet: &mut Vec<u8>, text: &str) {
     packet.extend_from_slice(&bytes[..len]);
 }
 
+// Was: Prüft, ob rtcp bye zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
 fn is_rtcp_bye(packet: &[u8]) -> bool {
     rtcp_contains(packet, RTCP_BYE)
 }
 
+// Was: Diese Funktion liest und prüft rtcp sdes name.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_rtcp_sdes_name(packet: &[u8]) -> Option<String> {
     let mut offset = 0usize;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while offset + 4 <= packet.len() {
         let version = (packet[offset] >> 6) & 0x03;
         if version != RTP_VERSION_ECHOLINK && version != 1 {
@@ -1285,6 +1522,8 @@ fn parse_rtcp_sdes_name(packet: &[u8]) -> Option<String> {
         if pt == RTCP_SDES && offset + 8 <= packet.len() {
             let mut item = offset + 8;
             let end = offset + len;
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             while item + 2 <= end {
                 let item_type = packet[item];
                 if item_type == RTCP_SDES_END {
@@ -1305,8 +1544,12 @@ fn parse_rtcp_sdes_name(packet: &[u8]) -> Option<String> {
     None
 }
 
+// Was: Führt den Arbeitsschritt `rtcp_contains` für rtcp contains aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn rtcp_contains(packet: &[u8], packet_type: u8) -> bool {
     let mut offset = 0usize;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while offset + 4 <= packet.len() {
         let version = (packet[offset] >> 6) & 0x03;
         if version != RTP_VERSION_ECHOLINK && version != 1 {
@@ -1325,6 +1568,8 @@ fn rtcp_contains(packet: &[u8], packet_type: u8) -> bool {
     false
 }
 
+// Was: Diese Funktion liest und prüft directory list.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
 fn parse_directory_list(text: &str) -> Result<Vec<DirectoryStation>, String> {
     let mut lines = text.lines();
     let Some(start) = lines.next() else {
@@ -1335,6 +1580,8 @@ fn parse_directory_list(text: &str) -> Result<Vec<DirectoryStation>, String> {
     }
     let count = lines.next().and_then(|s| s.trim().parse::<usize>().ok()).unwrap_or(0);
     let mut stations = Vec::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for _ in 0..count {
         let Some(callsign) = lines.next() else {
             break;
@@ -1356,10 +1603,14 @@ fn parse_directory_list(text: &str) -> Result<Vec<DirectoryStation>, String> {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
     #[test]
+    // Was: Führt den Arbeitsschritt `echolink_conference_targets_match_with_or_without_stars` für echolink conference targets match with or without und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn echolink_conference_targets_match_with_or_without_stars() {
         assert!(station_matches_target("*ECHOTEST*", "ECHOTEST"));
         assert!(station_matches_target("ECHOTEST", "*ECHOTEST*"));

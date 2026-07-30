@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
@@ -31,6 +34,8 @@ use crate::net_telemetry::{TelemetryEvent, TelemetrySink};
 /// Actions that sds_bs cannot execute itself (need access to CcBsSubentity or system),
 /// queued during U-STATUS processing and drained by CmceBs::tick_start.
 #[derive(Debug, Clone)]
+// Was: Listet die möglichen Varianten für TETRA-Kurznachricht (SDS) pending action auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum SdsPendingAction {
     KickAll,
 }
@@ -46,6 +51,8 @@ pub enum SdsPendingAction {
 /// held until the call releases and then delivered on the MCCH, which is acknowledged end-to-end
 /// (verified on-air). (FH-BUG-034.)
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für pending TETRA-Kurznachricht (SDS) in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct PendingSds {
     pub source_issi: u32,
     pub dest_ssi: u32,
@@ -61,15 +68,23 @@ pub struct PendingSds {
 /// short call or EE window resolves well within this; a long (back-to-back) call makes the SDS fail
 /// rather than arrive long after the sender's radio already declared it undelivered.
 
+// Was: Legt den festen Wert `SECONDARY_CARRIER_HINT` für secondary carrier hint fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const SECONDARY_CARRIER_HINT: Todo = -2;
 
+// Was: Führt den Arbeitsschritt `sds_air_ts` für TETRA-Kurznachricht (SDS) air ts aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn sds_air_ts(logical_ts: u8) -> u8 {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match logical_ts {
         5..=7 => logical_ts - 3,
         _ => logical_ts,
     }
 }
 
+// Was: Führt den Arbeitsschritt `sds_carrier_hint` für TETRA-Kurznachricht (SDS) carrier hint aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn sds_carrier_hint(logical_ts: u8) -> Option<Todo> {
     if (5..=7).contains(&logical_ts) {
         Some(SECONDARY_CARRIER_HINT)
@@ -78,6 +93,8 @@ fn sds_carrier_hint(logical_ts: u8) -> Option<Todo> {
     }
 }
 
+// Was: Führt den Arbeitsschritt `sds_chan_alloc_for_ts` für TETRA-Kurznachricht (SDS) chan alloc for ts aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn sds_chan_alloc_for_ts(usage: u8, logical_ts: u8) -> CmceChanAllocReq {
     let air_ts = sds_air_ts(logical_ts);
     let mut timeslots = [false; 4];
@@ -95,6 +112,8 @@ fn sds_chan_alloc_for_ts(usage: u8, logical_ts: u8) -> CmceChanAllocReq {
     }
 }
 
+// Was: Legt den festen Wert `SDS_DEFER_DEADLINE` für TETRA-Kurznachricht (SDS) defer deadline fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const SDS_DEFER_DEADLINE: std::time::Duration = std::time::Duration::from_secs(10);
 
 /// SDS-TL delivery-report "delivery status" octet signalling a negative outcome (could not be
@@ -102,25 +121,45 @@ const SDS_DEFER_DEADLINE: std::time::Duration = std::time::Duration::from_secs(1
 /// the field terminals (Motorola MXP600/MTP6750) render this as "not delivered" — it is
 /// codeplug-dependent. If a radio ignores it, it still falls back to its own delivery-report
 /// timeout (also "failed"), and we never deliver the message late, so the two cannot contradict.
+// Was: Legt den festen Wert `SDS_TL_STATUS_UNDELIVERABLE` für TETRA-Kurznachricht (SDS) tl Status undeliverable fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const SDS_TL_STATUS_UNDELIVERABLE: u8 = 0x02;
+// Was: Legt den festen Wert `SDS_PROTOCOL_LIP` für TETRA-Kurznachricht (SDS) protocol lip fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const SDS_PROTOCOL_LIP: u8 = 0x0A;
 /// ETSI SDS-TL protocol ID used by Motorola Home Mode Display.
+// Was: Legt den festen Wert `SDS_PROTOCOL_HOME_MODE_DISPLAY` für TETRA-Kurznachricht (SDS) protocol home mode display fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const SDS_PROTOCOL_HOME_MODE_DISPLAY: u8 = 220;
 /// Synthetic protocol ID used only for dashboard SDS log rows representing U-STATUS.
+// Was: Legt den festen Wert `SDS_PROTOCOL_STATUS_LABEL` für TETRA-Kurznachricht (SDS) protocol Status label fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const SDS_PROTOCOL_STATUS_LABEL: u8 = 218;
 /// Source ISSI used by this BS/dashboard for local control/status replies.
+// Was: Legt den festen Wert `DASHBOARD_ISSI` für dashboard Teilnehmerkennung (ISSI) fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const DASHBOARD_ISSI: u32 = 4010001;
 /// Avoid spamming Motorola/Sepura/Hytera displays when a radio periodically re-sends the same
 /// status (for example GPS/location status). Dashboard state is still updated every time.
+// Was: Legt den festen Wert `STATUS_HMD_REPLY_THROTTLE` für Status hmd reply throttle fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const STATUS_HMD_REPLY_THROTTLE: Duration = Duration::from_secs(30);
+// Was: Legt den festen Wert `STATUS_DIRECTORY_REFRESH` für Status directory refresh fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const STATUS_DIRECTORY_REFRESH: Duration = Duration::from_secs(30);
 /// Cache lifetime for NetCore Directory status-group membership lookups. Kept short so
 /// Directory edits feel live on the BS without waiting for a new radio status.
+// Was: Legt den festen Wert `STATUS_GROUP_MEMBERS_REFRESH` für Status Gruppe members refresh fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const STATUS_GROUP_MEMBERS_REFRESH: Duration = Duration::from_secs(5);
 /// Poll interval for re-applying cached statuses to newly-added status-sync members.
+// Was: Legt den festen Wert `STATUS_GROUP_MEMBERS_POLL` für Status Gruppe members poll fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const STATUS_GROUP_MEMBERS_POLL: Duration = Duration::from_secs(5);
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für Status directory entry in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct StatusDirectoryEntry {
     label: String,
     severity: String,
@@ -128,6 +167,8 @@ struct StatusDirectoryEntry {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für Status directory Laufzeit Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct StatusDirectoryRuntimeConfig {
     enabled: bool,
     base_url: String,
@@ -135,23 +176,33 @@ struct StatusDirectoryRuntimeConfig {
 }
 
 #[derive(Debug, Default)]
+// Was: Bündelt die zusammengehörigen Werte für Status directory Zwischenspeicher in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct StatusDirectoryCache {
     base_url: String,
     loaded_at: Option<Instant>,
     map: HashMap<u16, StatusDirectoryEntry>,
 }
 
+// Was: Legt den festen Wert `STATUS_DIRECTORY_CACHE` für Status directory Zwischenspeicher fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 static STATUS_DIRECTORY_CACHE: OnceLock<Mutex<StatusDirectoryCache>> = OnceLock::new();
 
 #[derive(Debug, Default)]
+// Was: Bündelt die zusammengehörigen Werte für Status Gruppe members Zwischenspeicher in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct StatusGroupMembersCache {
     base_url: String,
     map: HashMap<u32, (Instant, Vec<u32>)>,
 }
 
+// Was: Legt den festen Wert `STATUS_GROUP_MEMBERS_CACHE` für Status Gruppe members Zwischenspeicher fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 static STATUS_GROUP_MEMBERS_CACHE: OnceLock<Mutex<StatusGroupMembersCache>> = OnceLock::new();
 
 #[derive(Debug, Clone, Copy)]
+// Was: Bündelt die zusammengehörigen Werte für lip position in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct LipPosition {
     latitude: f64,
     longitude: f64,
@@ -162,6 +213,8 @@ struct LipPosition {
 /// pre-coded Emergency status (0), Hytera often sends a mapped NetCore Directory status (32780),
 /// and Sepura HotMic units send a proprietary Type4 SDS before raising the priority-15 group call.
 #[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für emergency source kind auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 enum EmergencySourceKind {
     StandardStatus,
     DirectoryStatus(u16),
@@ -174,6 +227,8 @@ enum EmergencySourceKind {
 /// or send a normal status on exit, so `last_seen` drives the timeout sweep. Sepura HotMic is more
 /// vendor-specific: it sends a proprietary Type4 SDS to the dashboard ISSI before raising the
 /// priority-15 group call, and later sends a related Type4 SDS when the terminal leaves emergency.
+// Was: Bündelt die zusammengehörigen Werte für emergency Sitzung in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct EmergencySession {
     dest_ssi: u32,
     last_seen: std::time::Instant,
@@ -182,6 +237,8 @@ struct EmergencySession {
     clear_requested_at: Option<std::time::Instant>,
 }
 
+// Was: Bündelt die zusammengehörigen Werte für TETRA-Kurznachricht (SDS) Basisstation subentity in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SdsBsSubentity {
     config: SharedConfig,
     telemetry: Option<TelemetrySink>,
@@ -219,7 +276,11 @@ pub struct SdsBsSubentity {
     last_status_group_refresh: Option<Instant>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SdsBsSubentity`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SdsBsSubentity {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(config: SharedConfig) -> Self {
         SdsBsSubentity {
             config,
@@ -239,25 +300,35 @@ impl SdsBsSubentity {
         }
     }
 
+    // Was: Diese Funktion setzt Telemetrie.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_telemetry(&mut self, sink: TelemetrySink) {
         self.telemetry = Some(sink);
     }
 
     /// Provide the control-command sender used to deliver WX/METAR replies.
+    // Was: Diese Funktion setzt wx cmd sender.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_wx_cmd_sender(&mut self, tx: crossbeam_channel::Sender<ControlCommand>) {
         self.wx_cmd_tx = Some(tx);
     }
 
+    // Was: Führt den Arbeitsschritt `shared_config` für shared Konfiguration aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn shared_config(&self) -> &SharedConfig {
         &self.config
     }
 
+    // Was: Diese Funktion gibt den vorgesehenen Arbeitsschritt.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn emit(&self, event: TelemetryEvent) {
         if let Some(sink) = &self.telemetry {
             sink.send(event);
         }
     }
 
+    // Was: Führt den Arbeitsschritt `format_hex_bytes` für format hex bytes aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn format_hex_bytes(bytes: &[u8]) -> String {
         bytes.iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(", ")
     }
@@ -270,7 +341,11 @@ impl SdsBsSubentity {
     // priority-15 group call and later another related Type4 SDS when the terminal leaves
     // emergency locally. The dashboard banner is driven by this unified state.
 
+    // Was: Führt den Arbeitsschritt `emergency_kind_label` für emergency kind label aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn emergency_kind_label(kind: &EmergencySourceKind) -> &'static str {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match kind {
             EmergencySourceKind::StandardStatus => "standard status 0",
             EmergencySourceKind::DirectoryStatus(_) => "mapped Directory status",
@@ -280,12 +355,16 @@ impl SdsBsSubentity {
 
     /// Directory/NetCore status values that should be treated as real emergency, not only as a
     /// normal text status. 32780 is the observed "Notruf" status from Motorola/Hytera codeplugs.
+    // Was: Prüft, ob mapped emergency Status zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     fn is_mapped_emergency_status(status_code: u16) -> bool {
         matches!(status_code, 32780)
     }
 
     /// Raise (or refresh) an emergency for `source_issi`. Emits `EmergencyAlarm` only on the
     /// idle→emergency transition so periodic re-sends don't re-fire the alarm / Telegram.
+    // Was: Führt den Arbeitsschritt `emergency_enter_with_kind` für emergency enter with kind aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn emergency_enter_with_kind(
         &mut self,
         source_issi: u32,
@@ -294,6 +373,8 @@ impl SdsBsSubentity {
         sepura_payload: Option<Vec<u8>>,
     ) {
         let now = std::time::Instant::now();
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.emergency_sessions.get_mut(&source_issi) {
             Some(s) => {
                 // REFRESH — radio is still in emergency; keep the session alive and update the
@@ -329,11 +410,15 @@ impl SdsBsSubentity {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `emergency_enter` für emergency enter aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn emergency_enter(&mut self, source_issi: u32, dest_ssi: u32) {
         self.emergency_enter_with_kind(source_issi, dest_ssi, EmergencySourceKind::StandardStatus, None);
     }
 
     /// Clear an emergency for `source_issi` if present, emitting `EmergencyCancel`.
+    // Was: Führt den Arbeitsschritt `emergency_clear` für emergency clear aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn emergency_clear(&mut self, source_issi: u32, reason: &str) {
         if self.emergency_sessions.remove(&source_issi).is_some() {
             tracing::info!("EMERGENCY: ISSI {} cleared ({})", source_issi, reason);
@@ -341,10 +426,14 @@ impl SdsBsSubentity {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `same_sepura_signature` für same sepura signature aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn same_sepura_signature(a: &[u8], b: &[u8]) -> bool {
         a.len() == b.len() && a.len() >= 4 && a[0] == b[0] && a[1] == b[1] && a[3..] == b[3..]
     }
 
+    // Was: Führt den Arbeitsschritt `sepura_emergency_payload` für sepura emergency payload aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn sepura_emergency_payload(data: &SdsUserData) -> Option<Vec<u8>> {
         let payload = data.to_arr();
         // Observed Sepura HotMic emergency SDS, addressed to the local dashboard ISSI, starts with
@@ -359,6 +448,8 @@ impl SdsBsSubentity {
 
     /// Handle Sepura HotMic proprietary Type4 SDS packets. Returns true when the packet was
     /// consumed locally as Sepura emergency signalling.
+    // Was: Diese Funktion verarbeitet sepura emergency TETRA-Kurznachricht (SDS).
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_sepura_emergency_sds(
         &mut self,
         _queue: &mut MessageQueue,
@@ -411,6 +502,8 @@ impl SdsBsSubentity {
         true
     }
 
+    // Was: Diese Funktion sendet sepura emergency cancel TETRA-Kurznachricht (SDS).
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_sepura_emergency_cancel_sds(&mut self, queue: &mut MessageQueue, dest_issi: u32, last_payload: &[u8]) {
         let mut payload = last_payload.to_vec();
         if payload.len() >= 3 {
@@ -441,9 +534,13 @@ impl SdsBsSubentity {
     /// Operator/manual clear dispatched from the dashboard (`issi == 0` clears every session).
     /// For Sepura HotMic we do not immediately emit EmergencyCancel: the call is released by CC,
     /// but the terminal may keep its local red emergency mode until it sends its later Type4 packet.
+    // Was: Diese Funktion leert emergency command.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn clear_emergency_command(&mut self, queue: &mut MessageQueue, issi: u32) {
         if issi == 0 {
             let all: Vec<u32> = self.emergency_sessions.keys().copied().collect();
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for i in all {
                 self.clear_one_emergency_from_operator(queue, i, "operator clear (all)");
             }
@@ -452,8 +549,12 @@ impl SdsBsSubentity {
         }
     }
 
+    // Was: Diese Funktion leert one emergency from operator.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn clear_one_emergency_from_operator(&mut self, queue: &mut MessageQueue, issi: u32, reason: &str) {
         let now = std::time::Instant::now();
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let sepura_payload = match self.emergency_sessions.get_mut(&issi) {
             Some(s) if s.kind == EmergencySourceKind::SepuraType4 => {
                 s.clear_requested_at = Some(now);
@@ -477,6 +578,8 @@ impl SdsBsSubentity {
     /// Sweep emergency sessions whose last emergency signal is older than `clear_timeout_secs`.
     /// Standard/Directory radios often go silent on exit; Sepura may also stay latched if its
     /// proprietary clear was not understood, so timeout is the final safety net.
+    // Was: Führt den Arbeitsschritt `expire_emergency_sessions` für expire emergency sessions aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn expire_emergency_sessions(&mut self) {
         if self.emergency_sessions.is_empty() {
             return;
@@ -488,6 +591,8 @@ impl SdsBsSubentity {
             .filter(|(_, s)| s.last_seen.elapsed() > timeout)
             .map(|(issi, _)| *issi)
             .collect();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for issi in expired {
             self.emergency_clear(issi, "timeout");
         }
@@ -497,6 +602,8 @@ impl SdsBsSubentity {
     /// is "rx" (uplink from a local MS), "net" (from the network for local delivery), or "tx"
     /// (injected by the dashboard operator). The body is decoded best-effort; non-text
     /// payloads (status/reports/binary) log with empty text and the raw protocol-id byte.
+    // Was: Führt den Arbeitsschritt `log_sds` für log TETRA-Kurznachricht (SDS) aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn log_sds(&self, direction: &str, source_issi: u32, dest_issi: u32, is_group: bool, data: &SdsUserData) {
         let protocol_id = data.to_arr().first().copied().unwrap_or(0);
         self.emit(TelemetryEvent::SdsLog {
@@ -509,9 +616,77 @@ impl SdsBsSubentity {
         });
     }
 
+    // Was: Führt den Arbeitsschritt `central_sds_routing_configured` für central TETRA-Kurznachricht (SDS) routing configured aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn central_sds_routing_configured(&self) -> bool {
+        self.config
+            .config()
+            .control_room
+            .as_ref()
+            .is_some_and(|cfg| cfg.enabled && cfg.central_sds_routing)
+    }
+
+    // Was: Führt den Arbeitsschritt `central_sds_routing_enabled` für central TETRA-Kurznachricht (SDS) routing enabled aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn central_sds_routing_enabled(&self) -> bool {
+        self.central_sds_routing_configured() && self.config.central_service_available("sds-router")
+    }
+
+    // Was: Diese Funktion gibt TETRA-Kurznachricht (SDS) edge data.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn emit_sds_edge_data(
+        &self,
+        ingress: &str,
+        source_issi: u32,
+        dest_issi: u32,
+        is_group: bool,
+        data: &SdsUserData,
+        priority: u8,
+    ) {
+        let payload = data.to_arr();
+        self.emit(TelemetryEvent::SdsEdgeIngress {
+            message_id: uuid::Uuid::new_v4().to_string(),
+            ingress: ingress.to_string(),
+            source_issi,
+            dest_issi,
+            is_group,
+            sds_type: data.type_identifier().saturating_add(1),
+            protocol_id: payload.first().copied().unwrap_or(0),
+            len_bits: data.length_bits(),
+            payload,
+            priority: priority.min(15),
+        });
+    }
+
+    // Was: Diese Funktion gibt TETRA-Kurznachricht (SDS) edge Status.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn emit_sds_edge_status(
+        &self,
+        ingress: &str,
+        source_issi: u32,
+        dest_issi: u32,
+        status: PreCodedStatus,
+    ) {
+        let raw = status.into_raw();
+        self.emit(TelemetryEvent::SdsEdgeIngress {
+            message_id: uuid::Uuid::new_v4().to_string(),
+            ingress: ingress.to_string(),
+            source_issi,
+            dest_issi,
+            is_group: false,
+            sds_type: 0,
+            protocol_id: 0,
+            len_bits: 16,
+            payload: raw.to_be_bytes().to_vec(),
+            priority: if matches!(status, PreCodedStatus::Emergency) { 15 } else { 0 },
+        });
+    }
+
     /// True if `dest_ssi` (an individual ISSI) is currently on one of our traffic timeslots —
     /// either directly (active talker / individual-call party) or as an affiliated member of an
     /// active group call. Such an MS follows the FACCH on its traffic slot, not the MCCH.
+    // Was: Führt den Arbeitsschritt `issi_on_local_traffic` für Teilnehmerkennung (ISSI) on local Nutzdatenverkehr aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn issi_on_local_traffic(&self, dest_ssi: u32) -> bool {
         let state = self.config.state_read();
         state.active_call_ts.contains_key(&dest_ssi)
@@ -526,8 +701,12 @@ impl SdsBsSubentity {
     /// monitoring window (so an unsolicited SDS sent now would be missed — defer it to the window).
     /// Returns false for StayAlive / unknown MSs (absent from the published map) and whenever the
     /// window is open, i.e. those are delivered immediately. (ETSI EN 300 392-2 §16.7.)
+    // Was: Führt den Arbeitsschritt `ee_window_blocks` für ee window blocks aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn ee_window_blocks(&self, dest_ssi: u32) -> bool {
         let state = self.config.state_read();
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match state.ee_monitoring_windows.get(&dest_ssi) {
             Some(&(frame, mframe, cycle_len)) => !self.last_dltime.in_ee_monitoring_window(frame, mframe, cycle_len),
             None => false, // not in energy economy — always reachable
@@ -542,10 +721,14 @@ impl SdsBsSubentity {
     /// destination is reachable; past it we GIVE UP and report failure to the originator rather than
     /// delivering minutes late — which would surface as "failed then delivered" once the sender's
     /// own delivery-report timer had already expired (FH-BUG-036).
+    // Was: Diese Funktion schreibt pending TETRA-Kurznachricht (SDS).
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn flush_pending_sds(&mut self, queue: &mut MessageQueue) {
         if self.pending_sds.is_empty() {
             return;
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for p in std::mem::take(&mut self.pending_sds) {
             let reachable = !self.issi_on_local_traffic(p.dest_ssi) && !self.ee_window_blocks(p.dest_ssi);
             if reachable {
@@ -573,6 +756,8 @@ impl SdsBsSubentity {
     /// never contradicted by a late delivery, since the message is dropped here. Only emitted when
     /// the original was an SDS-TL message carrying a message reference (status-only / non-TL SDS have
     /// nothing to report against, and an SDS-TL report itself has no reference, so this never loops).
+    // Was: Führt den Arbeitsschritt `report_sds_failure` für report TETRA-Kurznachricht (SDS) failure aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn report_sds_failure(&mut self, queue: &mut MessageQueue, p: &PendingSds) {
         let Some(mr) = Self::sds_tl_message_reference(&p.user_defined_data) else {
             return;
@@ -591,6 +776,8 @@ impl SdsBsSubentity {
     }
 
     /// Called every tick from CmceBs::tick_start. Fires Home Mode Display broadcast when due.
+    // Was: Diese Funktion bearbeitet start.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn tick_start(&mut self, queue: &mut MessageQueue, dltime: TdmaTime) {
         self.last_dltime = dltime; // record current time for the EE monitoring-window gate
         // Auto-clear emergency sessions whose radio stopped re-sending the emergency status
@@ -615,6 +802,8 @@ impl SdsBsSubentity {
     }
 
     /// Handle incoming U-SDS-DATA from a local MS (via RF uplink)
+    // Was: Diese Funktion leitet Funkstrecke deliver.
+    // Warum: Nachrichten und Daten gelangen dadurch nachvollziehbar an das richtige Ziel.
     pub fn route_rf_deliver(&mut self, queue: &mut MessageQueue, mut message: SapMsg) {
         tracing::trace!("SDS route_rf_deliver");
 
@@ -624,6 +813,8 @@ impl SdsBsSubentity {
         };
         let calling_party = prim.received_tetra_address;
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let pdu = match USdsData::from_bitbuf(&mut prim.sdu) {
             Ok(pdu) => {
                 tracing::debug!("<- {:?}", pdu);
@@ -711,10 +902,48 @@ impl SdsBsSubentity {
             return;
         }
 
-        // Route: local delivery (ISSI or GSSI), Brew forward, or drop
+        // Resolve local reachability before deciding between central routing and the
+        // isolated-cell path.  That prevents a WAN outage from turning locally addressable
+        // SDS into a black hole.
         let is_local_issi = self.config.state_read().subscribers.is_registered(dest_ssi);
         let is_local_group = !is_local_issi && self.config.state_read().subscribers.has_group_members(dest_ssi);
 
+        // In healthy central SDS mode the TBS remains the Air-Interface edge only.
+        if self.central_sds_routing_enabled() {
+            tracing::info!(
+                "SDS: central handoff {} -> {} (group={}, type={})",
+                source_ssi,
+                dest_ssi,
+                rx_is_group,
+                pdu.user_defined_data.type_identifier().saturating_add(1)
+            );
+            self.emit_sds_edge_data("air", source_ssi, dest_ssi, rx_is_group, &pdu.user_defined_data, 0);
+            return;
+        }
+
+        // When central routing is configured but unreachable, keep local delivery alive.
+        // Non-local messages and group messages with possible remote legs are durably
+        // spooled by the Control-Room worker and replayed after reconnection.
+        if self.central_sds_routing_configured() {
+            if is_local_issi {
+                tracing::warn!("SDS: central router unavailable; delivering locally {} -> {}", source_ssi, dest_ssi);
+                self.send_d_sds_data(queue, source_ssi, dest_ssi, SsiType::Issi, pdu.user_defined_data);
+                self.emit(TelemetryEvent::SdsActivity { source_issi: source_ssi, dest_issi: dest_ssi, source: "fallback-local".to_string() });
+                return;
+            }
+            if is_local_group {
+                tracing::warn!("SDS: central router unavailable; serving local group leg and queueing remote legs {} -> GSSI {}", source_ssi, dest_ssi);
+                self.send_d_sds_data(queue, source_ssi, dest_ssi, SsiType::Gssi, pdu.user_defined_data.clone());
+                self.emit_sds_edge_data("air_fallback_local_delivered", source_ssi, dest_ssi, true, &pdu.user_defined_data, 0);
+                self.emit(TelemetryEvent::SdsActivity { source_issi: source_ssi, dest_issi: dest_ssi, source: "fallback-local".to_string() });
+                return;
+            }
+            tracing::warn!("SDS: central router unavailable; queueing non-local message {} -> {}", source_ssi, dest_ssi);
+            self.emit_sds_edge_data("air_fallback_queued", source_ssi, dest_ssi, rx_is_group, &pdu.user_defined_data, 0);
+            return;
+        }
+
+        // Legacy route: local delivery (ISSI or GSSI), Brew forward, or drop.
         if is_local_issi {
             tracing::info!("SDS: local delivery: {} -> {}", source_ssi, dest_ssi);
             self.send_d_sds_data(queue, source_ssi, dest_ssi, SsiType::Issi, pdu.user_defined_data);
@@ -751,6 +980,8 @@ impl SdsBsSubentity {
     }
 
     /// Handle incoming SDS data from Brew entity (network-originated SDS)
+    // Was: Führt den Arbeitsschritt `rx_sds_from_brew` für rx TETRA-Kurznachricht (SDS) from Brew-Verbindung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn rx_sds_from_brew(&mut self, queue: &mut MessageQueue, message: SapMsg) {
         let source = crate::net_telemetry::telemetry_source_for_entity(message.src);
         let SapMsgInner::CmceSdsData(sds) = message.msg else {
@@ -776,6 +1007,18 @@ impl SdsBsSubentity {
 
         // Log the network-originated SDS in the dashboard SDS Log before it is delivered.
         self.log_sds("net", sds.source_issi, sds.dest_issi, is_local_group, &sds.user_defined_data);
+
+        if self.central_sds_routing_enabled() {
+            self.emit_sds_edge_data(
+                source,
+                sds.source_issi,
+                sds.dest_issi,
+                is_local_group,
+                &sds.user_defined_data,
+                0,
+            );
+            return;
+        }
 
         if is_local_issi {
             // Send D-SDS-DATA downlink to the local MS on the MCCH.
@@ -803,8 +1046,12 @@ impl SdsBsSubentity {
     }
 
     /// Handle incoming SDS data from Control entity (network-originated SDS)
+    // Was: Führt den Arbeitsschritt `rx_sds_from_control` für rx TETRA-Kurznachricht (SDS) from Steuerung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn rx_sds_from_control(&mut self, queue: &mut MessageQueue, message: ControlCommand) -> bool {
-        let (handle, source_ssi, dest_ssi, dest_is_group, len_bits, payload, raw_type4) = match message {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+        let (handle, source_ssi, dest_ssi, dest_is_group, len_bits, payload, raw_type4, preserved_type) = match message {
             ControlCommand::SendRawSdsType4 {
                 handle,
                 source_ssi,
@@ -812,7 +1059,7 @@ impl SdsBsSubentity {
                 dest_is_group,
                 len_bits,
                 payload,
-            } => (handle, source_ssi, dest_ssi, dest_is_group, len_bits, payload, true),
+            } => (handle, source_ssi, dest_ssi, dest_is_group, len_bits, payload, true, None),
             ControlCommand::SendSds {
                 handle,
                 source_ssi,
@@ -820,7 +1067,16 @@ impl SdsBsSubentity {
                 dest_is_group,
                 len_bits,
                 payload,
-            } => (handle, source_ssi, dest_ssi, dest_is_group, len_bits, payload, false),
+            } => (handle, source_ssi, dest_ssi, dest_is_group, len_bits, payload, false, None),
+            ControlCommand::DeliverSds {
+                handle,
+                source_ssi,
+                dest_ssi,
+                dest_is_group,
+                sds_type,
+                len_bits,
+                payload,
+            } => (handle, source_ssi, dest_ssi, dest_is_group, len_bits, payload, false, Some(sds_type)),
             other => {
                 tracing::error!(
                     "SDS: rx_sds_from_control expected SDS command, got unexpected command type {:?}",
@@ -829,6 +1085,45 @@ impl SdsBsSubentity {
                 return false;
             }
         };
+
+        if let Some(sds_type) = preserved_type {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+            let sds_data = match sds_type {
+                1 if len_bits == 16 && payload.len() == 2 => {
+                    SdsUserData::Type1(u16::from_be_bytes([payload[0], payload[1]]))
+                }
+                2 if len_bits == 32 && payload.len() == 4 => SdsUserData::Type2(
+                    u32::from_be_bytes([payload[0], payload[1], payload[2], payload[3]]),
+                ),
+                3 if len_bits == 64 && payload.len() == 8 => SdsUserData::Type3(u64::from_be_bytes([
+                    payload[0], payload[1], payload[2], payload[3],
+                    payload[4], payload[5], payload[6], payload[7],
+                ])),
+                4 if len_bits > 0 && (len_bits as usize) <= payload.len().saturating_mul(8) => {
+                    SdsUserData::Type4(len_bits, payload)
+                }
+                _ => {
+                    tracing::warn!(
+                        "SDS: central delivery rejected: invalid type={} len_bits={} payload_bytes={}",
+                        sds_type,
+                        len_bits,
+                        payload.len()
+                    );
+                    return false;
+                }
+            };
+
+            self.log_sds("net", source_ssi, dest_ssi, dest_is_group, &sds_data);
+            self.send_d_sds_data(
+                queue,
+                source_ssi,
+                dest_ssi,
+                if dest_is_group { SsiType::Gssi } else { SsiType::Issi },
+                sds_data,
+            );
+            return true;
+        }
 
         if raw_type4 {
             tracing::info!(
@@ -872,6 +1167,8 @@ impl SdsBsSubentity {
         //   Byte 2: MR    — Message Reference (1..255, incrementat)
         //   Byte 3: 0x01  — Encoding (ISO-8859-1 / ASCII)
         //   Bytes 4+: text payload
+        // Was: Legt den festen Wert `SDS_MR` für TETRA-Kurznachricht (SDS) mr fest.
+        // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
         static SDS_MR: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(1);
         let mr = {
             let v = SDS_MR.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -943,6 +1240,8 @@ impl SdsBsSubentity {
     }
 
     /// Handle incoming U-STATUS from a local MS (via RF uplink)
+    // Was: Diese Funktion leitet Status deliver.
+    // Warum: Nachrichten und Daten gelangen dadurch nachvollziehbar an das richtige Ziel.
     pub fn route_status_deliver(&mut self, queue: &mut MessageQueue, mut message: SapMsg) {
         tracing::trace!("SDS route_status_deliver");
 
@@ -952,6 +1251,8 @@ impl SdsBsSubentity {
         };
         let calling_party = prim.received_tetra_address;
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let pdu = match UStatus::from_bitbuf(&mut prim.sdu) {
             Ok(pdu) => {
                 tracing::debug!("<- {:?}", pdu);
@@ -999,6 +1300,8 @@ impl SdsBsSubentity {
         // Local-only — evaluated before any Brew forward and gated by the [emergency] config below.
         if dest_ssi != DASHBOARD_ISSI {
             let status_code = pdu.pre_coded_status.into_raw() as u16;
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match pdu.pre_coded_status {
                 PreCodedStatus::Emergency => self.emergency_enter(source_ssi, dest_ssi),
                 _ if Self::is_mapped_emergency_status(status_code) => self.emergency_enter_with_kind(
@@ -1015,6 +1318,28 @@ impl SdsBsSubentity {
         // a system action (restart, shutdown, kick_all) if the status code matches.
         if dest_ssi == DASHBOARD_ISSI {
             self.handle_sds_command_status(queue, source_ssi, &pdu.pre_coded_status);
+            return;
+        }
+
+        if self.central_sds_routing_enabled() {
+            tracing::info!(
+                "SDS-STATUS: central handoff {} -> {} status={}",
+                source_ssi,
+                dest_ssi,
+                pdu.pre_coded_status
+            );
+            self.emit_sds_edge_status("air", source_ssi, dest_ssi, pdu.pre_coded_status);
+            return;
+        }
+
+        if self.central_sds_routing_configured() {
+            if self.config.state_read().subscribers.is_registered(dest_ssi) {
+                tracing::warn!("SDS-STATUS: central router unavailable; delivering locally {} -> {}", source_ssi, dest_ssi);
+                self.send_d_status(queue, source_ssi, dest_ssi, pdu.pre_coded_status);
+            } else {
+                tracing::warn!("SDS-STATUS: central router unavailable; queueing {} -> {}", source_ssi, dest_ssi);
+                self.emit_sds_edge_status("air_fallback_queued", source_ssi, dest_ssi, pdu.pre_coded_status);
+            }
             return;
         }
 
@@ -1038,6 +1363,8 @@ impl SdsBsSubentity {
             // Non-SDS-TL pre-coded statuses are forwarded as-is (Type1).
             // Local delivery (D-STATUS) is not affected, it stays as pre-coded status above.
             let user_defined_data = if let PreCodedStatus::SdsTl(report) = &pdu.pre_coded_status {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 let delivery_status = match report.short_report_type() {
                     ShortReportType::MessageReceived => 0x00,
                     ShortReportType::MessageConsumed => 0x00,
@@ -1088,6 +1415,8 @@ impl SdsBsSubentity {
     /// Otherwise it goes on the MCCH as before. Without this, an in-call MS never receives
     /// status messages and the U-STATUS feedback chain (e.g. SDS-TL delivery short reports)
     /// silently breaks during a QSO.
+    // Was: Diese Funktion sendet d Status.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_d_status(&self, queue: &mut MessageQueue, source_issi: u32, dest_issi: u32, pre_coded_status: PreCodedStatus) {
         let pdu = DStatus {
             calling_party_type_identifier: PartyTypeIdentifier::Ssi,
@@ -1125,6 +1454,8 @@ impl SdsBsSubentity {
             })
         };
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let (stealing_permission, chan_alloc, layer2service) = match traffic {
             Some((ts, usage)) if (2..=7).contains(&ts) => {
                 tracing::debug!(
@@ -1163,6 +1494,33 @@ impl SdsBsSubentity {
         queue.push_back(msg);
     }
 
+    /// Deliver one central pre-coded status to a local subscriber.
+    // Was: Diese Funktion sendet Status from Steuerung.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
+    pub fn send_status_from_control(
+        &mut self,
+        queue: &mut MessageQueue,
+        source_ssi: u32,
+        dest_ssi: u32,
+        pre_coded_status: u16,
+    ) -> bool {
+        if source_ssi == 0 || source_ssi > 0xFF_FFFF || dest_ssi == 0 || dest_ssi > 0xFF_FFFF {
+            tracing::warn!(
+                "SDS-STATUS: central delivery rejected for invalid source/destination {}/{}",
+                source_ssi,
+                dest_ssi
+            );
+            return false;
+        }
+        self.send_d_status(
+            queue,
+            source_ssi,
+            dest_ssi,
+            PreCodedStatus::from(pre_coded_status),
+        );
+        true
+    }
+
     // ── Built-in WX/METAR service ──────────────────────────────────────────
     //
     // Extract the text from an incoming SDS, parse the weather command, fetch the METAR on
@@ -1175,6 +1533,8 @@ impl SdsBsSubentity {
     /// message-type byte 0x10. Mirrors the `data[1] == 0x10` check in tetraflow-sds-bot's
     /// `parse_text_payload` / `handle_downlink_sds`, the proven discriminator that keeps
     /// reports out of the responder.
+    // Was: Prüft, ob TETRA-Kurznachricht (SDS) tl report zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     fn is_sds_tl_report(data: &SdsUserData) -> bool {
         let bytes = data.to_arr();
         bytes.len() >= 4 && matches!(bytes.first(), Some(0x82) | Some(0x89)) && bytes[1] == 0x10
@@ -1184,6 +1544,8 @@ impl SdsBsSubentity {
     /// not itself a report. Echoed back in the delivery confirmation, mirroring the
     /// `message_reference` the bot pulls in `parse_text_payload`. `None` when there is no
     /// usable SDS-TL header.
+    // Was: Führt den Arbeitsschritt `sds_tl_message_reference` für TETRA-Kurznachricht (SDS) tl Nachricht reference aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn sds_tl_message_reference(data: &SdsUserData) -> Option<u8> {
         let bytes = data.to_arr();
         if bytes.len() >= 4 && matches!(bytes.first(), Some(0x82) | Some(0x89)) && bytes[1] != 0x10 {
@@ -1201,6 +1563,8 @@ impl SdsBsSubentity {
     /// plausible WGS84 position; otherwise they still fall back to "[LIP position]". Any OTHER
     /// protocol identifier is treated as non-text and yields an empty string so binary payloads do
     /// not show up as mojibake. Returns a best-effort Unicode string.
+    // Was: Führt den Arbeitsschritt `extract_sds_text` für extract TETRA-Kurznachricht (SDS) text aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn extract_sds_text(data: &SdsUserData) -> String {
         let bytes = data.to_arr();
         if bytes.first() == Some(&SDS_PROTOCOL_LIP) {
@@ -1214,6 +1578,8 @@ impl SdsBsSubentity {
         // [pid, msg_type, message_ref, coding_scheme, text...]. Older terminals also send
         // bare text under PID 0x02/0x09; in that case the byte after the PID may be a coding
         // scheme, or it may already be the first text byte.
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let (scheme, payload): (Option<u8>, &[u8]) = match bytes.first() {
             Some(0x82) | Some(0x80) | Some(0x8A) | Some(0x89) if bytes.len() > 4 => (Some(bytes[3]), &bytes[4..]),
             Some(pid) if *pid == SDS_PROTOCOL_HOME_MODE_DISPLAY && bytes.len() > 4 => (Some(bytes[3]), &bytes[4..]),
@@ -1225,7 +1591,11 @@ impl SdsBsSubentity {
         Self::decode_sds_text_bytes(scheme, payload)
     }
 
+    // Was: Diese Funktion dekodiert TETRA-Kurznachricht (SDS) text bytes.
+    // Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
     fn decode_sds_text_bytes(scheme: Option<u8>, payload: &[u8]) -> String {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match scheme {
             Some(0x02) | Some(0x1A) => {
                 let words = payload
@@ -1249,11 +1619,15 @@ impl SdsBsSubentity {
         }
     }
 
+    // Was: Diese Funktion liest lip bits.
+    // Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
     fn read_lip_bits(bytes: &[u8], total_bits: usize, offset: usize, len: usize) -> Option<u32> {
         if len > 32 || offset.checked_add(len)? > total_bits {
             return None;
         }
         let mut value = 0u32;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for bit in offset..offset + len {
             let byte = *bytes.get(bit / 8)?;
             let bit_value = (byte >> (7 - (bit % 8))) & 1;
@@ -1262,6 +1636,8 @@ impl SdsBsSubentity {
         Some(value)
     }
 
+    // Was: Führt den Arbeitsschritt `lip_latitude` für lip latitude aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn lip_latitude(raw: u32) -> f64 {
         let scale = (1u32 << 24) as f64;
         if raw & (1 << 23) != 0 {
@@ -1271,6 +1647,8 @@ impl SdsBsSubentity {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `lip_longitude` für lip longitude aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn lip_longitude(raw: u32) -> f64 {
         let scale = (1u32 << 24) as f64;
         if raw & (1 << 24) != 0 {
@@ -1280,6 +1658,8 @@ impl SdsBsSubentity {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `lip_position_from_raw` für lip position from raw aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn lip_position_from_raw(longitude: u32, latitude: u32) -> Option<LipPosition> {
         let pos = LipPosition {
             latitude: Self::lip_latitude(latitude),
@@ -1298,8 +1678,12 @@ impl SdsBsSubentity {
         Some(pos)
     }
 
+    // Was: Diese Funktion dekodiert lip position.
+    // Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
     fn decode_lip_position(payload: &[u8], total_bits: usize) -> Option<LipPosition> {
         let pdu_type = Self::read_lip_bits(payload, total_bits, 0, 2)?;
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match pdu_type {
             0 => {
                 // Short Location Report: type(2), time(2), longitude(25), latitude(24), ...
@@ -1314,6 +1698,8 @@ impl SdsBsSubentity {
                 }
                 let time_data = Self::read_lip_bits(payload, total_bits, 6, 2)?;
                 let mut offset = 8usize;
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match time_data {
                     0 => {}
                     1 => offset += 2,
@@ -1322,6 +1708,8 @@ impl SdsBsSubentity {
                 }
                 let location_shape = Self::read_lip_bits(payload, total_bits, offset, 4)?;
                 offset += 4;
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match location_shape {
                     1..=7 | 9 | 10 => {
                         let longitude = Self::read_lip_bits(payload, total_bits, offset, 25)?;
@@ -1337,6 +1725,8 @@ impl SdsBsSubentity {
 
     /// Handle a weather request SDS addressed to the service ISSI. Spawns a worker that
     /// fetches the METAR and sends the reply back to `requester_issi`.
+    // Was: Diese Funktion verarbeitet wx request.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_wx_request(&self, requester_issi: u32, data: &SdsUserData) {
         use crate::net_dashboard::wx_service::{self, WxRequest};
 
@@ -1364,6 +1754,8 @@ impl SdsBsSubentity {
         std::thread::Builder::new()
             .name("wx-fetch".into())
             .spawn(move || {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 let reply = match request {
                     WxRequest::Metar(icao) => match wx_service::fetch_metar_decoded(&icao) {
                         Ok(decoded) if !decoded.is_empty() => decoded,
@@ -1389,6 +1781,8 @@ impl SdsBsSubentity {
 
     /// Build a SendSds control command carrying `text` and push it onto the control queue.
     /// `payload` here is the bare text; rx_sds_from_control wraps it in the SDS-TL header.
+    // Was: Führt den Arbeitsschritt `queue_wx_reply` für Warteschlange wx reply aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn queue_wx_reply(tx: &crossbeam_channel::Sender<ControlCommand>, source_issi: u32, dest_issi: u32, text: &str) {
         // TETRA SDS-TL simple text is length-limited; trim to a safe size.
         let mut payload: Vec<u8> = text.bytes().take(220).collect();
@@ -1411,12 +1805,16 @@ impl SdsBsSubentity {
 
     /// Called every tick. When periodic WX is enabled and the interval has elapsed, fetch
     /// the configured station's METAR and send it to the configured destination.
+    // Was: Diese Funktion bearbeitet periodic wx.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn tick_periodic_wx(&mut self) {
         let wx = self.config.effective_wx_service();
         if !wx.periodic_enabled || wx.periodic_issi == 0 || wx.periodic_icao.trim().is_empty() {
             return;
         }
         let interval = std::time::Duration::from_secs(wx.effective_interval_secs());
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let due = match self.last_periodic_wx {
             None => true,
             Some(t) => t.elapsed() >= interval,
@@ -1438,6 +1836,8 @@ impl SdsBsSubentity {
             .name("wx-periodic".into())
             .spawn(move || {
                 use crate::net_dashboard::wx_service;
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 let reply = match wx_service::fetch_metar_decoded(&icao) {
                     Ok(d) if !d.is_empty() => d,
                     _ => return, // skip this cycle on failure; try again next interval
@@ -1464,6 +1864,8 @@ impl SdsBsSubentity {
     /// delivered when the destination is reachable again (see PendingSds / flush_pending_sds). The
     /// field radios do not accept an SDS in-band on the traffic channel, and an EE MS only listens
     /// on its monitoring window. All other cases (reachable ISSI, group/GSSI) are sent immediately.
+    // Was: Diese Funktion sendet d TETRA-Kurznachricht (SDS) data.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_d_sds_data(
         &mut self,
         queue: &mut MessageQueue,
@@ -1491,6 +1893,8 @@ impl SdsBsSubentity {
 
     /// Build and send a D-SDS-DATA immediately (no reachability gating). Used for the direct path
     /// and for flushing deferred SDS once the destination is reachable.
+    // Was: Führt den Arbeitsschritt `deliver_d_sds_data_now` für deliver d TETRA-Kurznachricht (SDS) data now aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn deliver_d_sds_data_now(
         &mut self,
         queue: &mut MessageQueue,
@@ -1553,6 +1957,8 @@ impl SdsBsSubentity {
             })
         };
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let (stealing_permission, chan_alloc) = match traffic {
             Some((ts, usage)) if (2..=7).contains(&ts) => {
                 tracing::debug!("SDS: dest {} is on logical traffic ts {} — delivering via FACCH stealing", dest_ssi, ts);
@@ -1573,6 +1979,8 @@ impl SdsBsSubentity {
         let layer2service = if stealing_permission {
             Layer2Service::Unacknowledged
         } else {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match dest_ssi_type {
                 SsiType::Issi => Layer2Service::Acknowledged,
                 _ => Layer2Service::Unacknowledged,
@@ -1601,6 +2009,8 @@ impl SdsBsSubentity {
         queue.push_back(msg);
     }
 
+    // Was: Führt den Arbeitsschritt `feature_check_u_sds_data` für feature check u TETRA-Kurznachricht (SDS) data aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn feature_check_u_sds_data(pdu: &USdsData) -> bool {
         let mut supported = true;
         if pdu.called_party_ssi.is_none() {
@@ -1623,6 +2033,8 @@ impl SdsBsSubentity {
         supported
     }
 
+    // Was: Führt den Arbeitsschritt `feature_check_u_status` für feature check u Status aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn feature_check_u_status(pdu: &UStatus) -> bool {
         let mut supported = true;
         if pdu.called_party_ssi.is_none() {
@@ -1649,6 +2061,8 @@ impl SdsBsSubentity {
     /// This is what makes Directory group edits feel live: when a radio is added to a vehicle
     /// group, it receives the current group status and the dashboard row is updated even if no
     /// terminal sends a new U-STATUS.
+    // Was: Führt den Arbeitsschritt `refresh_status_groups_from_directory` für refresh Status groups from directory aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn refresh_status_groups_from_directory(&mut self, queue: &mut MessageQueue) {
         let now = Instant::now();
         if let Some(last) = self.last_status_group_refresh {
@@ -1668,6 +2082,8 @@ impl SdsBsSubentity {
             .map(|(&issi, (status_code, entry))| (issi, *status_code, entry.clone()))
             .collect();
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (seed_issi, status_code, entry) in seeds {
             let members = Self::status_directory_group_members(seed_issi);
             if members.len() <= 1 && members.first().copied() == Some(seed_issi) {
@@ -1675,7 +2091,11 @@ impl SdsBsSubentity {
             }
 
             let mut applied: Vec<u32> = Vec::new();
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for member_issi in members {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 let changed = match self.last_status_by_issi.get(&member_issi) {
                     Some((old_code, old_entry)) => {
                         *old_code != status_code
@@ -1730,6 +2150,8 @@ impl SdsBsSubentity {
 
     /// Called by CmceBs when MM reports local subscriber registration/deregistration.
     /// Re-applies the last known Directory status after a radio has dropped and re-registered.
+    // Was: Diese Funktion verarbeitet Teilnehmer update.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     pub fn handle_subscriber_update(&mut self, queue: &mut MessageQueue, update: &MmSubscriberUpdate) {
         if update.action != BrewSubscriberAction::Register {
             return;
@@ -1750,6 +2172,8 @@ impl SdsBsSubentity {
         self.send_status_hmd_reply(queue, update.issi, status_code, &entry, true, "registration replay");
     }
 
+    // Was: Diese Funktion gibt Status dashboard.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn emit_status_dashboard(&self, source_issi: u32, dest_issi: u32, entry: &StatusDirectoryEntry) {
         // Feed the dashboard using the existing SDS Log websocket path. The frontend derives the
         // registered-radio status column from the newest PID-218 row per ISSI.
@@ -1773,6 +2197,8 @@ impl SdsBsSubentity {
         });
     }
 
+    // Was: Diese Funktion sendet Status hmd reply.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_status_hmd_reply(
         &mut self,
         queue: &mut MessageQueue,
@@ -1808,6 +2234,8 @@ impl SdsBsSubentity {
         self.send_home_mode_display_text(queue, DASHBOARD_ISSI, source_issi, &reply);
     }
 
+    // Was: Diese Funktion verarbeitet directory Status label.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_directory_status_label(&mut self, queue: &mut MessageQueue, source_issi: u32, dest_issi: u32, status: &PreCodedStatus) {
         let status_code = status.into_raw() as u16;
         let Some(entry) = Self::status_directory_lookup(status_code) else {
@@ -1828,6 +2256,8 @@ impl SdsBsSubentity {
             members
         );
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for member_issi in members {
             self.last_status_by_issi.insert(member_issi, (status_code, entry.clone()));
             self.emit_status_dashboard(member_issi, dest_issi, &entry);
@@ -1848,9 +2278,13 @@ impl SdsBsSubentity {
         }
     }
 
+    // Was: Prüft, ob send Status hmd reply zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     fn should_send_status_hmd_reply(&mut self, source_issi: u32, status_code: u16) -> bool {
         let now = Instant::now();
         let key = (source_issi, status_code);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.status_reply_last.get(&key) {
             Some(last) if now.duration_since(*last) < STATUS_HMD_REPLY_THROTTLE => false,
             _ => {
@@ -1860,6 +2294,8 @@ impl SdsBsSubentity {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `status_hmd_reply_text` für Status hmd reply text aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn status_hmd_reply_text(label: &str) -> String {
         let mut text = format!("Status: {}", label.trim());
         // Keep the reply short enough for old Motorola display lines and avoid non-Latin-1 chars.
@@ -1867,6 +2303,8 @@ impl SdsBsSubentity {
             .chars()
             .map(|ch| if (ch as u32) <= 0xFF { ch } else { '?' })
             .collect::<String>();
+        // Was: Legt den festen Wert `MAX_CHARS` für max chars fest.
+        // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
         const MAX_CHARS: usize = 64;
         if text.chars().count() > MAX_CHARS {
             text = text.chars().take(MAX_CHARS - 1).collect::<String>();
@@ -1875,7 +2313,11 @@ impl SdsBsSubentity {
         text
     }
 
+    // Was: Diese Funktion sendet home mode display text.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_home_mode_display_text(&mut self, queue: &mut MessageQueue, source_issi: u32, dest_issi: u32, text: &str) {
+        // Was: Legt den festen Wert `HMD_MR` für hmd mr fest.
+        // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
         static HMD_MR: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(1);
         let mr = {
             let v = HMD_MR.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -1904,6 +2346,8 @@ impl SdsBsSubentity {
         self.deliver_d_sds_data_now(queue, source_issi, dest_issi, SsiType::Issi, sds_data, true);
     }
 
+    // Was: Führt den Arbeitsschritt `status_directory_group_members` für Status directory Gruppe members aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn status_directory_group_members(source_issi: u32) -> Vec<u32> {
         let Some(cfg) = Self::status_directory_runtime_config() else {
             return vec![source_issi];
@@ -1914,6 +2358,8 @@ impl SdsBsSubentity {
 
         let base_url = cfg.base_url.trim().trim_end_matches('/').to_string();
         let cache_lock = STATUS_GROUP_MEMBERS_CACHE.get_or_init(|| Mutex::new(StatusGroupMembersCache::default()));
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let mut cache = match cache_lock.lock() {
             Ok(cache) => cache,
             Err(_) => return vec![source_issi],
@@ -1930,6 +2376,8 @@ impl SdsBsSubentity {
             }
         }
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let members = match Self::fetch_status_group_members(&base_url, cfg.timeout_ms, source_issi) {
             Ok(members) => members,
             Err(err) => {
@@ -1946,6 +2394,8 @@ impl SdsBsSubentity {
         members
     }
 
+    // Was: Diese Funktion lädt Status Gruppe members.
+    // Warum: Externe oder entfernte Daten werden dadurch an einer Stelle geladen und geprüft.
     fn fetch_status_group_members(base_url: &str, timeout_ms: u64, source_issi: u32) -> Result<Vec<u32>, String> {
         let url = format!("{}/api/status-group-members?issi={}", base_url.trim_end_matches('/'), source_issi);
         let client = reqwest::blocking::Client::builder()
@@ -1962,6 +2412,8 @@ impl SdsBsSubentity {
         Ok(Self::parse_status_group_members_json(&text, source_issi))
     }
 
+    // Was: Diese Funktion liest und prüft Status Gruppe members JSON-Daten.
+    // Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     fn parse_status_group_members_json(raw: &str, source_issi: u32) -> Vec<u32> {
         let Ok(json) = serde_json::from_str::<serde_json::Value>(raw) else {
             return vec![source_issi];
@@ -1970,6 +2422,8 @@ impl SdsBsSubentity {
         let mut members = Vec::new();
 
         if let Some(arr) = json.get("status_sync_members").and_then(|v| v.as_array()) {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for value in arr {
                 if let Some(issi) = Self::json_u32(value) {
                     Self::push_unique_issi(&mut members, issi);
@@ -1980,6 +2434,8 @@ impl SdsBsSubentity {
         // Backward/alternate forms: either a top-level "members" array or nested "groups".
         if members.is_empty() {
             if let Some(arr) = json.get("members").and_then(|v| v.as_array()) {
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for value in arr {
                     if let Some(issi) = Self::json_u32(value) {
                         Self::push_unique_issi(&mut members, issi);
@@ -1990,6 +2446,8 @@ impl SdsBsSubentity {
 
         if members.is_empty() {
             if let Some(groups) = json.get("groups").and_then(|v| v.as_array()) {
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for group in groups {
                     let status_sync = group
                         .get("status_sync")
@@ -1999,6 +2457,8 @@ impl SdsBsSubentity {
                         continue;
                     }
                     if let Some(arr) = group.get("members").and_then(|v| v.as_array()) {
+                        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                         for value in arr {
                             if let Some(issi) = Self::json_u32(value) {
                                 Self::push_unique_issi(&mut members, issi);
@@ -2018,6 +2478,8 @@ impl SdsBsSubentity {
         members
     }
 
+    // Was: Führt den Arbeitsschritt `json_u32` für JSON-Daten u32 aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn json_u32(value: &serde_json::Value) -> Option<u32> {
         if let Some(n) = value.as_u64() {
             return (n <= 0x00FF_FFFF).then_some(n as u32);
@@ -2029,6 +2491,8 @@ impl SdsBsSubentity {
         s.parse::<u32>().ok().filter(|n| *n <= 0x00FF_FFFF)
     }
 
+    // Was: Führt den Arbeitsschritt `json_boolish` für JSON-Daten boolish aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn json_boolish(value: &serde_json::Value) -> bool {
         if let Some(v) = value.as_bool() {
             return v;
@@ -2042,12 +2506,16 @@ impl SdsBsSubentity {
         false
     }
 
+    // Was: Diese Funktion legt unique Teilnehmerkennung (ISSI).
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn push_unique_issi(members: &mut Vec<u32>, issi: u32) {
         if issi != 0 && !members.contains(&issi) {
             members.push(issi);
         }
     }
 
+    // Was: Führt den Arbeitsschritt `status_directory_lookup` für Status directory lookup aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn status_directory_lookup(status_code: u16) -> Option<StatusDirectoryEntry> {
         let cfg = Self::status_directory_runtime_config()?;
         if !cfg.enabled || cfg.base_url.trim().is_empty() {
@@ -2061,6 +2529,8 @@ impl SdsBsSubentity {
                 .loaded_at
                 .is_some_and(|loaded| loaded.elapsed() < STATUS_DIRECTORY_REFRESH);
         if !fresh {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match Self::fetch_status_directory(&base_url, cfg.timeout_ms) {
                 Ok(map) => {
                     tracing::debug!("NetCore Directory: loaded {} status label(s) from {}", map.len(), base_url);
@@ -2077,6 +2547,8 @@ impl SdsBsSubentity {
         cache.map.get(&status_code).cloned()
     }
 
+    // Was: Diese Funktion lädt Status directory.
+    // Warum: Externe oder entfernte Daten werden dadurch an einer Stelle geladen und geprüft.
     fn fetch_status_directory(base_url: &str, timeout_ms: u64) -> Result<HashMap<u16, StatusDirectoryEntry>, String> {
         let url = format!("{}/api/status", base_url.trim_end_matches('/'));
         let client = reqwest::blocking::Client::builder()
@@ -2093,15 +2565,21 @@ impl SdsBsSubentity {
         Self::parse_status_directory_json(&text)
     }
 
+    // Was: Diese Funktion liest und prüft Status directory JSON-Daten.
+    // Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     fn parse_status_directory_json(raw: &str) -> Result<HashMap<u16, StatusDirectoryEntry>, String> {
         let json: serde_json::Value = serde_json::from_str(raw).map_err(|e| e.to_string())?;
         let mut out = HashMap::new();
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match json {
             serde_json::Value::Array(arr) => Self::collect_status_entries(&mut out, arr),
             serde_json::Value::Object(map) => {
                 if let Some(serde_json::Value::Array(arr)) = map.get("status_messages").or_else(|| map.get("status")) {
                     Self::collect_status_entries(&mut out, arr.clone());
                 } else {
+                    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                     for (key, value) in map {
                         if let Ok(code) = key.trim().parse::<u16>() {
                             if let Some(entry) = Self::status_entry_from_value(Some(code), &value) {
@@ -2116,7 +2594,11 @@ impl SdsBsSubentity {
         Ok(out)
     }
 
+    // Was: Diese Funktion sammelt Status entries.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn collect_status_entries(out: &mut HashMap<u16, StatusDirectoryEntry>, arr: Vec<serde_json::Value>) {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for value in arr {
             let code = value
                 .get("code")
@@ -2130,6 +2612,8 @@ impl SdsBsSubentity {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `status_entry_from_value` für Status entry from value aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn status_entry_from_value(code_hint: Option<u16>, value: &serde_json::Value) -> Option<StatusDirectoryEntry> {
         let obj = value.as_object()?;
         let visible = obj.get("visible").and_then(|v| v.as_bool()).unwrap_or(true);
@@ -2172,6 +2656,8 @@ impl SdsBsSubentity {
         })
     }
 
+    // Was: Führt den Arbeitsschritt `status_directory_runtime_config` für Status directory Laufzeit Konfiguration aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn status_directory_runtime_config() -> Option<StatusDirectoryRuntimeConfig> {
         let mut cfg = StatusDirectoryRuntimeConfig {
             enabled: false,
@@ -2179,6 +2665,8 @@ impl SdsBsSubentity {
             timeout_ms: 1_000,
         };
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for path in Self::status_directory_config_candidates() {
             if let Ok(text) = std::fs::read_to_string(&path) {
                 if Self::apply_netcore_directory_toml(&text, &mut cfg) {
@@ -2195,6 +2683,8 @@ impl SdsBsSubentity {
             }
         }
         if let Ok(enabled) = std::env::var("NETCORE_DIRECTORY_ENABLED") {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match enabled.trim().to_ascii_lowercase().as_str() {
                 "1" | "true" | "yes" | "on" => cfg.enabled = true,
                 "0" | "false" | "no" | "off" => cfg.enabled = false,
@@ -2211,8 +2701,12 @@ impl SdsBsSubentity {
         cfg.enabled.then_some(cfg)
     }
 
+    // Was: Führt den Arbeitsschritt `status_directory_config_candidates` für Status directory Konfiguration candidates aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn status_directory_config_candidates() -> Vec<std::path::PathBuf> {
         let mut out = Vec::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for key in ["FLOWSTATION_CONFIG", "TETRA_CONFIG", "BLUESTATION_CONFIG"] {
             if let Ok(v) = std::env::var(key) {
                 let v = v.trim();
@@ -2222,6 +2716,8 @@ impl SdsBsSubentity {
             }
         }
         let args: Vec<String> = std::env::args().collect();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (idx, arg) in args.iter().enumerate() {
             if let Some(v) = arg.strip_prefix("--config=") {
                 out.push(std::path::PathBuf::from(v));
@@ -2231,6 +2727,8 @@ impl SdsBsSubentity {
                 out.push(std::path::PathBuf::from(arg));
             }
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for p in [
             "config.toml",
             "./config.toml",
@@ -2244,9 +2742,13 @@ impl SdsBsSubentity {
         out
     }
 
+    // Was: Diese Funktion wendet netcore directory toml.
+    // Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
     fn apply_netcore_directory_toml(text: &str, cfg: &mut StatusDirectoryRuntimeConfig) -> bool {
         let mut in_section = false;
         let mut seen = false;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for raw in text.lines() {
             let line = Self::strip_toml_comment(raw).trim();
             if line.is_empty() {
@@ -2265,6 +2767,8 @@ impl SdsBsSubentity {
             seen = true;
             let key = key.trim();
             let value = Self::unquote_toml_value(value.trim());
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match key {
                 "enabled" => match value.trim().to_ascii_lowercase().as_str() {
                     "1" | "true" | "yes" | "on" => cfg.enabled = true,
@@ -2287,14 +2791,20 @@ impl SdsBsSubentity {
         seen
     }
 
+    // Was: Führt den Arbeitsschritt `strip_toml_comment` für strip toml comment aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn strip_toml_comment(line: &str) -> &str {
         let mut in_string = false;
         let mut escaped = false;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (idx, ch) in line.char_indices() {
             if escaped {
                 escaped = false;
                 continue;
             }
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match ch {
                 '\\' if in_string => escaped = true,
                 '"' => in_string = !in_string,
@@ -2305,6 +2815,8 @@ impl SdsBsSubentity {
         line
     }
 
+    // Was: Führt den Arbeitsschritt `unquote_toml_value` für unquote toml value aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn unquote_toml_value(value: &str) -> String {
         let v = value.trim();
         if v.len() >= 2 && v.starts_with('"') && v.ends_with('"') {
@@ -2318,7 +2830,11 @@ impl SdsBsSubentity {
     /// Send a short text reply as an SDS-TL simple-text message from `source_issi` to `dest_issi`.
     /// Used by the U-STATUS info responder (FH-FEAT-014). Mirrors the SDS-TL framing used elsewhere:
     /// [PID 0x82, message type 0x04, message reference, encoding 0x01 (ISO-8859-1), text…].
+    // Was: Diese Funktion sendet text TETRA-Kurznachricht (SDS).
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_text_sds(&mut self, queue: &mut MessageQueue, source_issi: u32, dest_issi: u32, text: &str) {
+        // Was: Legt den festen Wert `SDS_MR` für TETRA-Kurznachricht (SDS) mr fest.
+        // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
         static SDS_MR: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(1);
         let mr = {
             let v = SDS_MR.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -2350,6 +2866,8 @@ impl SdsBsSubentity {
         );
     }
 
+    // Was: Diese Funktion verarbeitet TETRA-Kurznachricht (SDS) command Status.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_sds_command_status(&mut self, queue: &mut MessageQueue, source_ssi: u32, status: &PreCodedStatus) {
         let status_code = status.into_raw() as u16;
 
@@ -2391,6 +2909,8 @@ impl SdsBsSubentity {
             status_code
         );
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match entry.action.as_str() {
             "restart" => {
                 crate::service_control::schedule_service_action(
@@ -2438,17 +2958,27 @@ impl SdsBsSubentity {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
+    // Was: Diese Funktion legt bits.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn push_bits(bits: &mut Vec<u8>, value: u32, len: usize) {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for shift in (0..len).rev() {
             bits.push(((value >> shift) & 1) as u8);
         }
     }
 
+    // Was: Führt den Arbeitsschritt `bits_to_bytes` für bits to bytes aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn bits_to_bytes(bits: &[u8]) -> Vec<u8> {
         let mut bytes = vec![0u8; bits.len().div_ceil(8)];
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (idx, bit) in bits.iter().enumerate() {
             if *bit != 0 {
                 bytes[idx / 8] |= 1 << (7 - (idx % 8));
@@ -2457,16 +2987,22 @@ mod tests {
         bytes
     }
 
+    // Was: Diese Funktion kodiert lip latitude.
+    // Warum: Alle Gegenstellen erhalten dadurch dasselbe erwartete Protokollformat.
     fn encode_lip_latitude(latitude: f64) -> u32 {
         let scaled = (latitude.abs() * (1u32 << 24) as f64 / 180.0).round() as u32;
         if latitude < 0.0 { (1u32 << 24) - scaled } else { scaled }
     }
 
+    // Was: Diese Funktion kodiert lip longitude.
+    // Warum: Alle Gegenstellen erhalten dadurch dasselbe erwartete Protokollformat.
     fn encode_lip_longitude(longitude: f64) -> u32 {
         let scaled = (longitude.abs() * (1u32 << 24) as f64 / 180.0).round() as u32;
         if longitude < 0.0 { (1u32 << 25) - scaled } else { scaled }
     }
 
+    // Was: Führt den Arbeitsschritt `lip_short_report` für lip short report aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn lip_short_report(latitude: f64, longitude: f64) -> SdsUserData {
         let mut bits = Vec::new();
         push_bits(&mut bits, SDS_PROTOCOL_LIP as u32, 8);
@@ -2482,6 +3018,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `lip_short_report_decodes_to_position_text` für lip short report decodes to position text aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn lip_short_report_decodes_to_position_text() {
         let text = SdsBsSubentity::extract_sds_text(&lip_short_report(52.520008, 13.404954));
         let coords = text.strip_prefix("LIP position: ").expect("decoded LIP position text");
@@ -2494,6 +3032,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `incomplete_lip_payload_stays_unlabelled` für incomplete lip payload stays unlabelled aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn incomplete_lip_payload_stays_unlabelled() {
         assert_eq!(
             SdsBsSubentity::extract_sds_text(&SdsUserData::Type4(16, vec![SDS_PROTOCOL_LIP, 0x00])),
@@ -2502,6 +3042,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `sds_text_pid_09_decodes_plain_and_coded_text` für TETRA-Kurznachricht (SDS) text pid 09 decodes plain and und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn sds_text_pid_09_decodes_plain_and_coded_text() {
         assert_eq!(
             SdsBsSubentity::extract_sds_text(&SdsUserData::Type4(24, vec![0x09, b'O', b'K'])),
@@ -2514,6 +3056,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `sds_tl_text_pid_89_decodes_utf16_payload` für TETRA-Kurznachricht (SDS) tl text pid 89 decodes utf16 und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn sds_tl_text_pid_89_decodes_utf16_payload() {
         assert_eq!(
             SdsBsSubentity::extract_sds_text(&SdsUserData::Type4(48, vec![0x89, 0x04, 0x22, 0x02, 0x00, b'A'])),

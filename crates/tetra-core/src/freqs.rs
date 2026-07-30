@@ -1,6 +1,11 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für grundlegende TETRA-Datentypen und Hilfsfunktionen.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use serde::Deserialize;
 
 /// ETSI TS 100 392-15 V1.5.1 (2011-02), clause 6: Duplex spacing
+// Was: Legt den festen Wert `TETRA_DUPLEX_SPACING` für TETRA duplex spacing fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const TETRA_DUPLEX_SPACING: [[Option<u32>; 16]; 8] = [
     [
         None,
@@ -119,6 +124,8 @@ const TETRA_DUPLEX_SPACING: [[Option<u32>; 16]; 8] = [
 ];
 
 #[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für freq info in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct FreqInfo {
     /// Frequency band in 100MHz increments
     pub band: u8,
@@ -135,8 +142,14 @@ pub struct FreqInfo {
     pub reverse_operation: bool,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `FreqInfo`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl FreqInfo {
+    // Was: Führt den Arbeitsschritt `freq_offset_id_to_hz` für freq offset Kennung to hz aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn freq_offset_id_to_hz(offset_index: u8) -> Option<i16> {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match offset_index {
             0 => Some(0),
             1 => Some(6250),
@@ -146,7 +159,11 @@ impl FreqInfo {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `freq_offset_hz_to_id` für freq offset hz to Kennung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn freq_offset_hz_to_id(offset_hz: i16) -> Option<u8> {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match offset_hz {
             0 => Some(0),
             6250 => Some(1),
@@ -158,6 +175,8 @@ impl FreqInfo {
 
     /// Construct FreqInfo from band, carrier, frequency offset, duplex spacing index and reverse operation flag.
     /// Optionally accepts a custom duplex spacing value in Hz, if a duplex spacing table is used by the radios.
+    // Was: Wandelt Eingangsdaten in components um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_components(
         band: u8,
         carrier: u16,
@@ -192,6 +211,8 @@ impl FreqInfo {
 
     /// Get the standardized duplex spacing in hz for the current frequency band and a given
     /// duplex spacing table index, as given in the Sysinfo message
+    // Was: Diese Funktion liest default duplex spacing.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     pub fn get_default_duplex_spacing(band: u8, duplex_setting: u8) -> Option<u32> {
         assert!(duplex_setting < 8, "Invalid duplex setting {}", duplex_setting);
         let duplex_spacing = TETRA_DUPLEX_SPACING[duplex_setting as usize][band as usize];
@@ -199,6 +220,8 @@ impl FreqInfo {
     }
 
     /// Get the downlink and uplink frequencies for this instance
+    // Was: Diese Funktion liest freqs.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     pub fn get_freqs(&self) -> (u32, u32) {
         // Compute dlfreq
         let mut dl_freq = 100000000 * self.band as i32;
@@ -217,10 +240,14 @@ impl FreqInfo {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
     #[test]
+    // Was: Prüft automatisch den Fall freqinfo from components.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_freqinfo_from_components() {
         let freq = 400_000_000 + 1001 * 25_000;
         let duplex_index = 0;

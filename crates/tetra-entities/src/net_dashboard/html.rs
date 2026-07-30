@@ -1,3 +1,8 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+// Was: Legt den festen Wert `DASHBOARD_HTML` für dashboard html fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const DASHBOARD_HTML: &str = r#"<!DOCTYPE html>
 <html lang="de" data-uisize="m">
 <head>
@@ -1570,6 +1575,7 @@ tbody tr:hover td{background:color-mix(in srgb,var(--bg3) 70%, transparent);}
 .hero-dot.is-ok{--pc:var(--ok);}
 .hero-dot.is-warn{--pc:var(--warn);}
 .hero-dot.is-danger{--pc:var(--danger);}
+.hero-dot.is-info{--pc:var(--accent2);}
 .hero-dot.is-idle{--pc:var(--text3);}
 .hero-main{flex:1;min-width:0;}
 .hero-title{font-size:15px;font-weight:600;color:var(--text);letter-spacing:-0.01em;}
@@ -1677,6 +1683,77 @@ tbody tr:hover td{background:color-mix(in srgb,var(--bg3) 70%, transparent);}
   animation:fs-breathe 2.5s ease-in-out infinite;
 }
 @keyframes fs-breathe{0%,100%{opacity:1;}50%{opacity:.45;}}
+
+/* ── NetCore service plane / edge-fallback overview ───────────────────── */
+.core-summary-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;
+  margin-bottom:14px;
+}
+.core-service-grid{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;
+}
+.core-service-card{
+  position:relative;min-width:0;padding:11px 12px;
+  background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-card);
+  box-shadow:var(--hair);overflow:hidden;
+  transition:border-color .16s ease,box-shadow .16s ease,background .16s ease;
+}
+.core-service-card.is-critical{border-top-width:2px;}
+.core-service-card.is-fallback-active{
+  background:color-mix(in srgb,var(--warn) 6%,var(--bg2));
+  border-color:color-mix(in srgb,var(--warn) 38%,var(--border));
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--warn) 10%,transparent),var(--hair);
+}
+.core-service-card.is-danger.is-fallback-active{
+  background:color-mix(in srgb,var(--danger) 7%,var(--bg2));
+  border-color:color-mix(in srgb,var(--danger) 48%,var(--border));
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--danger) 12%,transparent),var(--hair);
+}
+.core-service-card::before{
+  content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--text3);
+}
+.core-service-card.is-ok::before{background:var(--ok);}
+.core-service-card.is-warn::before{background:var(--warn);}
+.core-service-card.is-danger::before{background:var(--danger);}
+.core-service-card.is-info::before{background:var(--accent2);}
+.core-service-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+.core-service-pills{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px;}
+.core-service-fallback-pill{font-size:8px;padding:2px 5px;letter-spacing:.04em;}
+.core-service-name{font-size:13px;font-weight:650;color:var(--text);line-height:1.2;}
+.core-service-tech{font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:2px;}
+.core-service-role{font-size:11px;line-height:1.35;color:var(--text2);margin-top:8px;min-height:30px;}
+.core-service-fallback{
+  margin-top:8px;padding:7px 8px;border-top:1px solid var(--sep);border-radius:6px;
+  font-size:10px;line-height:1.35;color:var(--text2);
+}
+.core-service-card.is-fallback-active .core-service-fallback{
+  background:color-mix(in srgb,var(--warn) 9%,transparent);
+  border-top-color:color-mix(in srgb,var(--warn) 28%,var(--sep));
+}
+.core-service-card.is-danger.is-fallback-active .core-service-fallback{
+  background:color-mix(in srgb,var(--danger) 9%,transparent);
+  border-top-color:color-mix(in srgb,var(--danger) 30%,var(--sep));
+}
+.core-service-fallback strong{color:var(--text);font-weight:600;}
+.core-service-card.is-warn .core-service-fallback strong,
+.core-service-card.is-danger .core-service-fallback strong{color:var(--warn);}
+.core-service-meta{display:flex;flex-wrap:wrap;gap:5px 8px;margin-top:7px;font-size:9px;color:var(--text3);}
+.core-service-critical{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.04em;color:var(--warn);}
+.core-plane-note{
+  display:flex;align-items:flex-start;gap:9px;padding:10px 12px;margin-bottom:14px;
+  border:1px solid var(--border);border-radius:var(--r-ctrl);background:var(--bg3);
+  font-size:12px;line-height:1.45;color:var(--text2);
+}
+.core-plane-note.is-ok{border-color:color-mix(in srgb,var(--ok) 32%,var(--border));}
+.core-plane-note.is-warn{border-color:color-mix(in srgb,var(--warn) 40%,var(--border));}
+.core-plane-note.is-danger{border-color:color-mix(in srgb,var(--danger) 42%,var(--border));}
+.core-plane-note .banner-ico{margin-top:1px;}
+@media(max-width:1500px){.core-service-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
+@media(max-width:1050px){.core-service-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:700px){
+  .core-service-grid{grid-template-columns:1fr;}
+  .core-service-role{min-height:0;}
+}
 
 /* ── Empty state (one component for the duplicated stubs) ──
    v3 flex layout; keeps the legacy .empty-icon/.empty-text children working
@@ -2479,6 +2556,7 @@ tbody tr:hover td{background:color-mix(in srgb,var(--bg3) 70%, transparent);}
     <div class="topbar-chips" aria-hidden="false">
       <span class="pill pill-idle" id="chip-bs" title="Verbindung zur Basisstation"><span data-i18n="bs_label">BS</span></span>
       <span class="pill pill-idle" id="chip-brew" title="Brew-Netzwerk"><span>Brew</span></span>
+      <span class="pill pill-idle" id="chip-core" style="display:none" title="NetCore-Dienstebene"><span>CORE …</span></span>
       <span class="pill pill-danger" id="chip-emergency" style="display:none" title="Notfall aktiv">
         <span class="pill-icon" data-icon="emergency"></span><span data-i18n="emg_chip">NOTFALL</span>
       </span>
@@ -2553,6 +2631,15 @@ tbody tr:hover td{background:color-mix(in srgb,var(--bg3) 70%, transparent);}
     <div class="banner-body">
       <div data-i18n="fallback_title">FALLBACK-KONFIGURATION AKTIV — Primäre Konfiguration konnte nicht geladen werden</div>
       <div id="fallback-reason" class="banner-sub"></div>
+    </div>
+  </div>
+
+  <!-- Runtime edge-fallback banner. This is separate from the configuration-file fallback above. -->
+  <div id="edge-fallback-banner" class="banner banner-warn" style="display:none">
+    <span class="banner-ico" data-icon="network"></span>
+    <div class="banner-body">
+      <div id="edge-fallback-title">LOKALER FALLBACK AKTIV</div>
+      <div id="edge-fallback-reason" class="banner-sub"></div>
     </div>
   </div>
 
@@ -3961,75 +4048,6 @@ tbody tr:hover td{background:color-mix(in srgb,var(--bg3) 70%, transparent);}
         <div class="stat-card is-idle"><div class="stat-label">Verkehrskanal</div><div class="stat-value is-text" id="audio-channel">—</div><div class="stat-sub" id="audio-call">Kein aktiver Ruf</div></div>
         <div class="stat-card is-idle"><div class="stat-label">MP3-Decoder</div><div class="stat-value is-text" id="audio-ffmpeg">—</div><div class="stat-sub" id="audio-error">Kein Fehler</div></div>
       </div>
-      <div class="card" id="tts-template-card">
-        <div class="card-head">
-          <div>
-            <div class="card-title">Lokale TTS-Vorlagen</div>
-            <div class="card-sub" id="tts-template-directory">/var/lib/netcore/tts/templates</div>
-          </div>
-          <div class="card-actions" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <span class="badge" id="tts-template-badge">PRÜFE …</span>
-            <button class="btn btn-sm" id="tts-template-refresh" onclick="loadTtsTemplates()">Aktualisieren</button>
-          </div>
-        </div>
-        <div class="card-body">
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">
-            <label><span class="mesh-msg-filter-label">Vorlage auswählen</span><select class="form-input" id="tts-template-select" onchange="loadSelectedTtsTemplate()"><option value="">Keine Vorlage ausgewählt</option></select></label>
-            <label><span class="mesh-msg-filter-label">Vorlagenname</span><input class="form-input" id="tts-template-name" maxlength="120" placeholder="z. B. Evakuierung Haupthalle"></label>
-          </div>
-          <div class="stat-sub" id="tts-template-state" style="margin-top:10px">Erzeugte Texte werden automatisch lokal gespeichert.</div>
-          <div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:12px">
-            <button class="btn" id="tts-template-new" onclick="newTtsTemplate()">Neue Vorlage</button>
-            <button class="btn btn-primary" id="tts-template-save" onclick="saveCurrentTtsTemplate()">Speichern</button>
-            <button class="btn btn-danger" id="tts-template-delete" onclick="deleteCurrentTtsTemplate()" disabled>Löschen</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="card" id="tts-card">
-        <div class="card-head">
-          <div>
-            <div class="card-title">Textdurchsage</div>
-            <div class="card-sub" id="tts-provider-detail">Lokale Piper-Sprachsynthese</div>
-          </div>
-          <div class="card-actions" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <span class="badge" id="tts-provider-state">PRÜFE …</span>
-            <button class="btn btn-sm btn-danger" id="tts-stop" onclick="stopTtsJob()" disabled>Abbrechen</button>
-          </div>
-        </div>
-        <div class="card-body">
-          <label>
-            <span class="mesh-msg-filter-label">Sprechtext</span>
-            <textarea class="form-input" id="tts-text" rows="6" placeholder="Text der Durchsage eingeben …" oninput="updateTtsCharacterCount()"></textarea>
-          </label>
-          <div class="stat-sub" id="tts-character-count" style="text-align:right;margin-top:5px">0 Zeichen</div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:12px">
-            <label><span class="mesh-msg-filter-label">Stimme</span><select class="form-input" id="tts-voice" onchange="renderTtsStatus()"><option value="">Lade Stimmen …</option></select></label>
-            <label><span class="mesh-msg-filter-label">Sprechtempo</span><div style="display:flex;gap:10px;align-items:center"><input id="tts-speed" type="range" min="50" max="150" step="5" value="95" oninput="updateTtsSpeedLabel()" style="width:100%"><strong id="tts-speed-label" style="min-width:52px;text-align:right">95 %</strong></div></label>
-            <label><span class="mesh-msg-filter-label">Name der WAV / Durchsage</span><input class="form-input" id="tts-recording-name" maxlength="120" placeholder="Bei Freitext zwingend erforderlich"></label>
-          </div>
-          <div id="tts-job-state" class="stat-sub" style="margin-top:12px">Bereit zum Erzeugen einer WAV-Datei.</div>
-          <div class="stat-sub" style="margin-top:12px">Die TTS wird vollständig erzeugt, unter Aufzeichnungen gespeichert und später ausschließlich von dort ausgewählt und gesendet. Bei einer Vorlage wird automatisch der Vorlagenname verwendet.</div>
-          <div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:14px">
-            <button class="btn btn-primary" id="tts-generate" onclick="generateTtsRecording()">💾 Als WAV in Aufzeichnungen speichern</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="card" id="tts-preview-card" style="display:none">
-        <div class="card-head">
-          <div><div class="card-title">Erzeugte TTS-Vorschau</div><div class="card-sub" id="tts-preview-title">—</div></div>
-          <div class="card-actions"><button class="btn btn-sm" onclick="closeTtsPreview()">Schließen</button></div>
-        </div>
-        <div class="card-body">
-          <audio id="tts-preview-player" controls preload="metadata" style="width:100%"></audio>
-          <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-top:10px">
-            <div class="stat-sub" id="tts-preview-state">Als Aufzeichnung gespeichert</div>
-            <button class="btn btn-primary" id="tts-open-recording" onclick="showSavedTtsRecording()">Zu den Aufzeichnungen</button>
-          </div>
-        </div>
-      </div>
-
       <div class="card">
         <div class="card-head">
           <div><div class="card-title">WAV-/MP3-Medienbibliothek</div><div class="card-sub" id="audio-root">—</div></div>
@@ -4076,7 +4094,7 @@ tbody tr:hover td{background:color-mix(in srgb,var(--bg3) 70%, transparent);}
       </div>
 
       <!-- ── LOCAL RECORDINGS ── -->
-      <div class="section-label" style="margin-top:24px">AUFZEICHNUNGEN & TTS-WAVs</div>
+      <div class="section-label" style="margin-top:24px">AUFZEICHNUNGEN</div>
       <div class="stat-grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">
         <div class="stat-card is-idle" id="rec-state-card">
           <div class="stat-label">Aufzeichnung</div>
@@ -4109,7 +4127,7 @@ tbody tr:hover td{background:color-mix(in srgb,var(--bg3) 70%, transparent);}
       <div class="card">
         <div class="card-head">
           <div>
-            <div class="card-title">Lokale Aufzeichnungen und gespeicherte TTS-WAVs</div>
+            <div class="card-title">Lokale Aufzeichnungen</div>
             <div class="card-sub">8 kHz · Mono · 16 Bit PCM WAV mit JSON-Metadaten</div>
           </div>
           <div class="card-actions" style="display:flex;gap:8px;flex-wrap:wrap">
@@ -4471,6 +4489,10 @@ tbody tr:hover td{background:color-mix(in srgb,var(--bg3) 70%, transparent);}
         <div id="health-integrations-grid" class="h-grid">
           <div class="sds-empty" style="padding:12px 0">Zustand der Integrationen wird geladen…</div>
         </div>
+        <div class="h-sec">Systemweite Dienste</div>
+        <div id="health-core-services-grid" class="core-service-grid">
+          <div class="sds-empty" style="grid-column:1/-1;padding:18px 0">Dienstestatus wird geladen…</div>
+        </div>
         <div class="h-note">
           Automatische Aktualisierung alle paar Sekunden. Stufen:
           <b class="ok">OK</b> · <b class="warn">EINGESCHRÄNKT</b> · <b class="bad">KRITISCH</b>.
@@ -4521,6 +4543,55 @@ tbody tr:hover td{background:color-mix(in srgb,var(--bg3) 70%, transparent);}
           <div class="stat-label" data-i18n="sys_temp">CPU-Temperatur</div>
           <div class="stat-value is-text" id="sysCpuTemp">—</div>
           <div class="stat-sub" id="sysCpuTempSub">—</div>
+        </div>
+      </div>
+
+      <!-- Complete NetCore service plane + per-service fallback state. -->
+      <div class="section-label" data-i18n="sys_sec_core">NetCore-Dienstebene</div>
+      <div class="card" id="core-services-card">
+        <div class="card-head">
+          <div>
+            <div class="card-title" data-i18n="core_services_title">Systemweite Dienste und Fallback</div>
+            <div class="card-sub" id="core-services-sub">Warte auf den Node-Gateway-Status…</div>
+          </div>
+          <div class="card-actions" style="display:flex;align-items:center;gap:8px">
+            <span class="pill pill-idle" id="core-mode-pill">UNBEKANNT</span>
+            <button class="btn btn-sm" onclick="loadEdgeFallback(true)"><span class="btn-icon" data-icon="restart"></span><span data-i18n="sys_refresh">Aktualisieren</span></button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="core-summary-grid">
+            <div class="stat-card is-idle" id="core-gateway-card">
+              <div class="stat-label">Node Gateway</div>
+              <div class="stat-value is-text" id="core-gateway-status">UNBEKANNT</div>
+              <div class="stat-sub" id="core-gateway-sub">—</div>
+            </div>
+            <div class="stat-card is-idle" id="core-mode-card">
+              <div class="stat-label">Betriebsmodus</div>
+              <div class="stat-value is-text" id="core-mode-status">UNBEKANNT</div>
+              <div class="stat-sub" id="core-mode-sub">—</div>
+            </div>
+            <div class="stat-card is-idle" id="core-count-card">
+              <div class="stat-label">Zentrale Dienste</div>
+              <div class="stat-value is-text" id="core-count-status">0 / 17</div>
+              <div class="stat-sub" id="core-count-sub">noch keine Matrix</div>
+            </div>
+            <div class="stat-card is-idle" id="core-fallback-card">
+              <div class="stat-label">Lokale Ersatzfunktionen</div>
+              <div class="stat-value is-text" id="core-fallback-status">—</div>
+              <div class="stat-sub" id="core-fallback-sub">—</div>
+            </div>
+          </div>
+          <div class="core-plane-note" id="core-plane-note">
+            <span class="banner-ico" data-icon="network"></span>
+            <div>
+              <div id="core-plane-reason">Der Zustand der systemweiten Dienste wird geladen.</div>
+              <div id="core-plane-meta" class="banner-sub">—</div>
+            </div>
+          </div>
+          <div class="core-service-grid" id="core-services-grid">
+            <div class="sds-empty" style="grid-column:1/-1;padding:18px 0">Dienstestatus wird geladen…</div>
+          </div>
         </div>
       </div>
 
@@ -5044,6 +5115,8 @@ const LANGS={
     "sys_ram":"RAM",
     "sys_refresh":"Aktualisieren",
     "sys_rf":"RF-Hardware (SoapySDR)",
+    "sys_sec_core":"NetCore-Dienstebene",
+    "core_services_title":"Systemweite Dienste und Fallback",
     "sys_sec_host":"Host",
     "sys_sec_profiles":"Profile",
     "sys_sec_radio":"Funk-Hardware",
@@ -5331,7 +5404,7 @@ function showPage(name,el){
   if(name==='audio'){loadAudioPage(true);loadRecordings(true);}
   if(name==='config'){loadConfig();loadWhitelist();loadWx();}
   if(name==='telegram'){loadTelegram();}
-  if(name==='system'){loadSystemInfo();loadConfigProfiles();loadLiveSds();loadBrightness();}
+  if(name==='system'){loadSystemInfo();loadEdgeFallback(true);loadConfigProfiles();loadLiveSds();loadBrightness();}
   else if(sysAutoRefreshTimer){clearInterval(sysAutoRefreshTimer);sysAutoRefreshTimer=null;const cb=document.getElementById('sys-autorefresh');if(cb)cb.checked=false;}
   if(name==='wifi')wifiRefresh();
   if(window.innerWidth<=700)closeMobileSidebar();
@@ -8750,7 +8823,207 @@ let sysData=null;
 let sysAutoRefreshTimer = null;
 function toggleSysAutoRefresh(on) {
   if (sysAutoRefreshTimer) { clearInterval(sysAutoRefreshTimer); sysAutoRefreshTimer = null; }
-  if (on) sysAutoRefreshTimer = setInterval(loadSystemInfo, 5000);
+  if (on) sysAutoRefreshTimer = setInterval(()=>{loadSystemInfo();loadEdgeFallback();}, 5000);
+}
+
+// ── NetCore service plane / edge fallback ────────────────────────────────────
+const CORE_SERVICE_CATALOG=[
+  ['node-gateway','Node Gateway','Verbindung der Basisstation mit der zentralen NetCore-Dienstebene.'],
+  ['subscriber-core','Teilnehmerverwaltung','Zentrale Teilnehmer-, Berechtigungs- und Zugangsrichtlinien.'],
+  ['group-core','Gruppenverwaltung','Rufgruppen, Mitgliedschaften, DGNA und Gruppenrichtlinien.'],
+  ['mobility-core','Mobilitätsverwaltung','Registrierung, Attach/Detach, Location Areas und Mobilitätskontexte.'],
+  ['call-control','Rufsteuerung','Aufbau, Legs, Floor Control, Prioritäten und Rufwiederherstellung.'],
+  ['media-switch','Medienvermittlung','Sprachrouting zwischen Zellen, Leitstellen und weiteren Teilnehmern.'],
+  ['sds-router','SDS-Router','Systemweites SDS-/Status-Routing und Store-and-Forward.'],
+  ['packet-core','Paketdatenkern','SNDCP-/PDCH-Kontexte und paketvermittelte Datendienste.'],
+  ['ip-gateway','IP-Gateway','TUN/TAP-, Routing- und optionale NAT-Anbindung für Paketdaten.'],
+  ['security-core','Sicherheitskern','Zentrale Sicherheitsrichtlinien ohne automatische Herabstufung.'],
+  ['kmf','Schlüsselverwaltung (KMF)','Schlüsselbestand, OTAR-Steuerung und Schlüsselverteilung.'],
+  ['transit','Transit / Interconnect','Verbindungen zu weiteren Regionen, Netzen und Übergängen.'],
+  ['application-gateway','Anwendungs-Gateway','Zentrale Anwendungen, TTS und weitere Integrationen.'],
+  ['media-library','Medienbibliothek','Zentrale Aufzeichnungen, TTS-Dateien und Audioaussendungen.'],
+  ['recorder','Recorder','Systemweite Rufaufzeichnung und Metadatenübergabe.'],
+  ['observability','Observability','Metriken, Logs, Health und zentrale Betriebsdiagnose.'],
+  ['control-room','Leitstelle','Operator-Zugriff, Disposition, Audit und zentrale Bedienung.'],
+];
+const CORE_FALLBACK_TEXT={
+  local_edge_autonomy:'Die Zelle arbeitet mit lokaler Edge-Autorität weiter.',
+  cached_policy_then_static_config:'Letzte zentrale Teilnehmerrichtlinie, danach statische lokale Konfiguration.',
+  cached_policy_then_local_affiliations:'Letzte Gruppenrichtlinie, danach lokale Gruppenmitgliedschaften.',
+  local_registration_and_location_area:'Lokale Registrierung und lokale Location Area bleiben verfügbar.',
+  local_cell_calls_only:'Rufe bleiben innerhalb dieser Zelle möglich; keine zellübergreifende Rufsteuerung.',
+  local_air_interface_media_only:'Lokales TETRA-Audio bleibt aktiv; keine Medienweiterleitung zu anderen Zellen.',
+  local_delivery_and_durable_store_forward:'Lokale SDS-Zustellung; externe Nachrichten werden dauerhaft zwischengespeichert.',
+  local_sndcp_contexts:'Bereits lokale SNDCP-Kontexte arbeiten weiter.',
+  local_tun_gateway_when_configured:'Lokales TUN-Gateway bleibt verfügbar, sofern auf der Station konfiguriert.',
+  last_known_security_policy_no_downgrade:'Letzte bekannte Sicherheitsrichtlinie bleibt aktiv; keine unsichere Herabstufung.',
+  installed_keys_only_no_otar:'Installierte Schlüssel bleiben nutzbar; kein OTAR bis zur Wiederanbindung.',
+  no_inter_region_routing:'Kein Routing zu anderen Regionen oder externen Netzen.',
+  local_integrations_only:'Nur lokal auf der Basisstation verfügbare Integrationen bleiben aktiv.',
+  local_media_cache_and_playout:'Lokaler Mediencache und lokale Wiedergabe bleiben verfügbar.',
+  local_recorder_continues:'Die lokale Aufzeichnung läuft unabhängig weiter.',
+  local_logs_and_health_continue:'Lokale Logs und Zustandsüberwachung laufen weiter.',
+  local_dashboard_and_audit:'Lokales Dashboard und lokaler Audit-Pfad bleiben erreichbar.',
+};
+const CORE_CRITICAL_SERVICES=new Set([
+  'node-gateway','mobility-core','subscriber-core','group-core','call-control','media-switch','sds-router'
+]);
+const CORE_DEFAULT_FALLBACK=Object.fromEntries([
+  ['node-gateway','local_edge_autonomy'],['subscriber-core','cached_policy_then_static_config'],
+  ['group-core','cached_policy_then_local_affiliations'],['mobility-core','local_registration_and_location_area'],
+  ['call-control','local_cell_calls_only'],['media-switch','local_air_interface_media_only'],
+  ['sds-router','local_delivery_and_durable_store_forward'],['packet-core','local_sndcp_contexts'],
+  ['ip-gateway','local_tun_gateway_when_configured'],['security-core','last_known_security_policy_no_downgrade'],
+  ['kmf','installed_keys_only_no_otar'],['transit','no_inter_region_routing'],
+  ['application-gateway','local_integrations_only'],['media-library','local_media_cache_and_playout'],
+  ['recorder','local_recorder_continues'],['observability','local_logs_and_health_continue'],
+  ['control-room','local_dashboard_and_audit'],
+]);
+const CORE_LEVEL_META={
+  available:{label:'ONLINE',pill:'pill-ok',card:'is-ok'},
+  degraded:{label:'EINGESCHRÄNKT',pill:'pill-warn',card:'is-warn'},
+  unavailable:{label:'AUSGEFALLEN',pill:'pill-danger',card:'is-danger'},
+  unknown:{label:'UNKLAR',pill:'pill-idle',card:'is-idle'},
+};
+let edgeFallbackData=null;
+let edgeFallbackLoading=false;
+
+function edgeModeMeta(data){
+  if(data&&data.enabled===false)return {label:'FALLBACK AUS',short:'FALLBACK AUS',pill:'pill-idle',card:'is-idle',banner:'',title:'Fallback-Automatik ist deaktiviert'};
+  const mode=String(data?.mode||'isolated').toLowerCase();
+  return ({
+    online:{label:'ZENTRAL ONLINE',short:'CORE ONLINE',pill:'pill-ok',card:'is-ok',banner:'',title:'Zentrale NetCore-Dienste sind verfügbar'},
+    degraded:{label:'TEIL-FALLBACK',short:'TEIL-FALLBACK',pill:'pill-warn',card:'is-warn',banner:'banner-warn',title:'TEIL-FALLBACK AKTIV — einzelne Dienste werden lokal ersetzt'},
+    isolated:{label:'LOKALER FALLBACK',short:'FALLBACK LOKAL',pill:'pill-danger',card:'is-danger',banner:'banner-danger',title:'LOKALER FALLBACK AKTIV — die Zelle arbeitet eigenständig'},
+    recovering:{label:'WIEDERANBINDUNG',short:'WIEDERANBINDUNG',pill:'pill-info',card:'is-info',banner:'',title:'Zentrale Dienste wieder erreichbar — Wiederanbindung läuft'},
+  })[mode]||{label:'UNBEKANNT',short:'CORE ?',pill:'pill-idle',card:'is-idle',banner:'banner-warn',title:'Status der NetCore-Dienstebene ist unklar'};
+}
+function coreReasonText(reason){
+  const r=String(reason||'').trim();
+  if(!r)return '';
+  if(r==='Node Gateway unreachable; local edge authority active')return 'Node Gateway nicht erreichbar; lokale Edge-Autorität ist aktiv.';
+  if(r==='Node Gateway health matrix missing or stale; conservative local edge authority active')return 'Die Dienstematrix des Node Gateways fehlt oder ist veraltet; vorsichtshalber arbeitet die Zelle lokal.';
+  if(r==='central service plane healthy')return 'Die zentrale NetCore-Dienstebene ist vollständig verfügbar.';
+  if(r==='central service plane healthy; hysteresis/replay in progress')return 'Die zentrale Dienstebene ist wieder verfügbar; Hysterese und Replay laufen noch.';
+  if(r==='edge fallback disabled by configuration')return 'Die automatische Fallback-Umschaltung ist in der Konfiguration deaktiviert.';
+  const m=r.match(/^required core service\(s\) unavailable: (.+); service-specific fallbacks active$/);
+  if(m)return 'Erforderliche zentrale Dienste nicht verfügbar: '+m[1]+'. Dienstspezifische Fallbacks sind aktiv.';
+  return r;
+}
+function coreMessageText(message){
+  const m=String(message||'').trim();
+  if(!m)return '';
+  if(m==='not reported by Node Gateway')return 'Noch nicht vom Node Gateway gemeldet';
+  if(m==='Node Gateway WebSocket connected')return 'WebSocket verbunden';
+  if(m==='Node Gateway unreachable')return 'Nicht erreichbar';
+  if(m==='not probed yet')return 'Noch nicht geprüft';
+  return m;
+}
+function coreTimestamp(value){
+  if(!value)return '—';
+  const d=new Date(value);if(Number.isNaN(d.getTime()))return String(value);
+  return d.toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+function coreBytes(value){
+  let n=Number(value||0);if(!Number.isFinite(n)||n<=0)return '0 B';
+  const u=['B','KiB','MiB','GiB'];let i=0;while(n>=1024&&i<u.length-1){n/=1024;i++;}
+  return (i===0?Math.round(n):n.toFixed(n>=10?1:2))+' '+u[i];
+}
+function setCoreStat(cardId,valueId,subId,cardClass,value,sub){
+  const card=document.getElementById(cardId);if(card)card.className='stat-card '+cardClass;
+  const val=document.getElementById(valueId);if(val)val.textContent=value;
+  const subEl=document.getElementById(subId);if(subEl)subEl.textContent=sub;
+}
+function renderCoreServiceGrid(gridId,services,d){
+  const grid=document.getElementById(gridId);
+  if(!grid)return;
+  grid.innerHTML=services.map(x=>{
+    const lm=CORE_LEVEL_META[x.level]||CORE_LEVEL_META.unknown;
+    const fallback=CORE_FALLBACK_TEXT[x.fallback_mode]||String(x.fallback_mode||'Kein lokaler Ersatzmodus dokumentiert.').replaceAll('_',' ');
+    const fallbackActiveForService=x.level!=='available'&&d.enabled!==false;
+    const statusMessage=coreMessageText(x.message);
+    const cardClasses=[lm.card,x.critical_for_edge?'is-critical':'',fallbackActiveForService?'is-fallback-active':''].filter(Boolean).join(' ');
+    return `<div class="core-service-card ${cardClasses}">
+      <div class="core-service-top"><div><div class="core-service-name">${escHtml(x.name)}</div><div class="core-service-tech">${escHtml(x.service)}</div></div><div class="core-service-pills"><span class="pill ${lm.pill}">${lm.label}</span>${fallbackActiveForService?'<span class="pill pill-warn core-service-fallback-pill">FALLBACK</span>':''}</div></div>
+      <div class="core-service-role">${escHtml(x.role)}</div>
+      <div class="core-service-fallback"><strong>${fallbackActiveForService?'Lokaler Ersatz aktiv/bereit':'Bei Ausfall'}:</strong> ${escHtml(fallback)}</div>
+      <div class="core-service-meta">${x.critical_for_edge?'<span class="core-service-critical">NETZKRITISCH</span>':''}<span>Prüfung: ${escHtml(coreTimestamp(x.checked_at))}</span>${statusMessage?'<span>'+escHtml(statusMessage)+'</span>':''}</div>
+    </div>`;
+  }).join('');
+}
+function renderEdgeFallback(){
+  const d=edgeFallbackData||{};
+  const mode=edgeModeMeta(d);
+  const chip=document.getElementById('chip-core');
+  if(chip){chip.style.display='inline-flex';chip.className='pill '+mode.pill;chip.textContent=mode.short;chip.title=(coreReasonText(d.reason)||mode.title);}
+
+  const banner=document.getElementById('edge-fallback-banner');
+  const bannerTitle=document.getElementById('edge-fallback-title');
+  const bannerReason=document.getElementById('edge-fallback-reason');
+  const shouldBanner=d.enabled!==false&&String(d.mode||'').toLowerCase()!=='online';
+  if(banner){
+    banner.style.display=shouldBanner?'flex':'none';
+    banner.className='banner '+(mode.banner||'');
+  }
+  if(bannerTitle)bannerTitle.textContent=mode.title;
+  if(bannerReason)bannerReason.textContent=coreReasonText(d.reason)||'Keine Begründung vom Edge-Fallback-Controller gemeldet.';
+
+  const reported=new Map((Array.isArray(d.services)?d.services:[]).map(x=>[String(x.service||''),x]));
+  const matrixAuthoritative=d.gateway_connected===true&&d.service_matrix_fresh===true;
+  const services=CORE_SERVICE_CATALOG.map(([service,name,role],catalogOrder)=>{
+    const runtime=reported.get(service)||{};
+    const reportedLevel=String(runtime.level||'unknown').toLowerCase();
+    const effectiveLevel=(service==='node-gateway'||matrixAuthoritative)?reportedLevel:'unknown';
+    const hasCriticalFlag=Object.prototype.hasOwnProperty.call(runtime,'critical_for_edge');
+    const criticalForEdge=hasCriticalFlag?runtime.critical_for_edge===true:CORE_CRITICAL_SERVICES.has(service);
+    return {service,name,role,level:effectiveLevel,critical_for_edge:criticalForEdge,catalog_order:catalogOrder,
+      fallback_mode:runtime.fallback_mode||CORE_DEFAULT_FALLBACK[service]||'',checked_at:runtime.checked_at||null,
+      last_success_at:runtime.last_success_at||null,message:runtime.message||''};
+  });
+  const levelOrder={unavailable:0,degraded:1,unknown:2,available:3};
+  services.sort((a,b)=>(Number(b.critical_for_edge)-Number(a.critical_for_edge))||
+    ((levelOrder[a.level]??9)-(levelOrder[b.level]??9))||(a.catalog_order-b.catalog_order));
+  const counts={available:0,degraded:0,unavailable:0,unknown:0};
+  services.forEach(x=>{counts[x.level]=(counts[x.level]||0)+1;});
+  const centralOk=counts.available;
+  const fallbackActive=services.filter(x=>x.level==='degraded'||x.level==='unavailable'||x.level==='unknown').length;
+
+  const gateway=d.gateway_connected===true;
+  setCoreStat('core-gateway-card','core-gateway-status','core-gateway-sub',gateway?'is-ok':'is-danger',gateway?'VERBUNDEN':'GETRENNT',gateway?'Node-Gateway-WebSocket aktiv':'Lokale Edge-Autorität aktiv');
+  setCoreStat('core-mode-card','core-mode-status','core-mode-sub',mode.card,mode.label,d.enabled===false?'Automatische Umschaltung deaktiviert':(coreReasonText(d.reason)||'—'));
+  const countClass=counts.unavailable?'is-danger':(counts.degraded||counts.unknown?'is-warn':'is-ok');
+  setCoreStat('core-count-card','core-count-status','core-count-sub',countClass,centralOk+' / '+services.length,
+    counts.unavailable+' ausgefallen · '+counts.degraded+' eingeschränkt · '+counts.unknown+' unklar');
+  const fallbackClass=d.enabled===false?'is-idle':(String(d.mode||'').toLowerCase()==='isolated'?'is-danger':fallbackActive?'is-warn':'is-ok');
+  setCoreStat('core-fallback-card','core-fallback-status','core-fallback-sub',fallbackClass,d.enabled===false?'DEAKTIVIERT':(fallbackActive?fallbackActive+' BEREIT/AKTIV':'BEREITSCHAFT'),
+    'Cache '+(d.policy_loaded_from_cache?'geladen':'lokal')+' · Spool '+(d.event_spool_entries||0)+' Einträge');
+
+  const pill=document.getElementById('core-mode-pill');if(pill){pill.className='pill '+mode.pill;pill.textContent=mode.label;}
+  const sub=document.getElementById('core-services-sub');if(sub)sub.textContent='Alle '+services.length+' NetCore-Dienste · Matrix Revision '+(d.service_revision||0);
+  const note=document.getElementById('core-plane-note');if(note)note.className='core-plane-note '+mode.card;
+  const reason=document.getElementById('core-plane-reason');if(reason)reason.textContent=coreReasonText(d.reason)||mode.title;
+  const meta=document.getElementById('core-plane-meta');if(meta){
+    const matrix=d.service_matrix_fresh?'frisch':'FEHLEND/VERALTET';
+    meta.textContent='Service-Matrix '+matrix+' · zuletzt '+coreTimestamp(d.service_matrix_received_at)+' · Übergang '+coreTimestamp(d.last_transition_at)+' · Event-Spool '+coreBytes(d.event_spool_bytes);
+  }
+
+  renderCoreServiceGrid('core-services-grid',services,d);
+  renderCoreServiceGrid('health-core-services-grid',services,d);
+  if(typeof paintIcons==='function')paintIcons(document.getElementById('core-services-card'));
+  updateSysHero();
+}
+async function loadEdgeFallback(force){
+  if(edgeFallbackLoading&&!force)return;
+  edgeFallbackLoading=true;
+  try{
+    const r=await fetch('/api/edge-fallback',{cache:'no-store',credentials:'same-origin'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    edgeFallbackData=await r.json();
+    renderEdgeFallback();
+  }catch(error){
+    edgeFallbackData={enabled:true,gateway_connected:false,mode:'isolated',reason:'Fallback-Status konnte lokal nicht gelesen werden: '+error.message,services:[]};
+    renderEdgeFallback();
+  }finally{edgeFallbackLoading=false;}
 }
 
 // ── Display brightness (FH-FEAT-008) ─────────────────────────────────────────
@@ -8972,10 +9245,14 @@ function updateSysHero(){
   const btsCard=document.getElementById('sysBtsCard');
   const btsOnline=btsCard&&btsCard.classList.contains('is-ok');
   const brewSummary=brewUiSummary(state.brewOnline,state.brewVer);
-  if(dot) dot.className='hero-dot '+(btsOnline?'is-ok':'is-danger');
+  const coreKnown=!!edgeFallbackData;
+  const coreMode=coreKnown?edgeModeMeta(edgeFallbackData):{label:'CORE WIRD GELADEN'};
+  const coreState=String(edgeFallbackData?.mode||'').toLowerCase();
+  const heroClass=!btsOnline?'is-danger':(!coreKnown?'is-idle':coreState==='isolated'?'is-danger':coreState==='degraded'?'is-warn':coreState==='recovering'?'is-info':'is-ok');
+  if(dot) dot.className='hero-dot '+heroClass;
   if(sub){
     const host=(sysData&&sysData.hostname)||document.getElementById('sysHostname').textContent||'—';
-    sub.textContent=(btsOnline?t('online'):t('offline'))+' · '+brewSummary.value+' · '+host;
+    sub.textContent=(btsOnline?t('online'):t('offline'))+' · '+coreMode.label+' · '+brewSummary.value+' · '+host;
   }
   if(tempV){
     const tc=document.getElementById('sysCpuTemp');
@@ -10181,113 +10458,6 @@ window.addEventListener('resize', () => {
 
 // ── Local/server WAV/MP3 audio dispatch ──────────────────────────────────
 let audioCurrentPath='',audioCurrentSource='local',audioSources=[],audioEntries=[],audioStatus=null,audioPendingSource=null,audioGroups={},audioDevices={};
-let ttsStatus=null,ttsVoices=[],ttsTemplates=[],ttsSelectedTemplateId="",ttsLastSavedTemplateId="",ttsDefaultsApplied=false,ttsPreviewLoadedJob=null,ttsRequestInFlight=false,ttsTemplateRequestInFlight=false;
-function ttsStateLabel(state){return ({idle:'BEREIT',synthesizing:'ERZEUGT UND SPEICHERT WAV',ready:'ALS AUFZEICHNUNG GESPEICHERT',dispatching:'VERALTETER DIREKTPFAD',failed:'FEHLER',cancelled:'ABGEBROCHEN'})[state]||String(state||'—').toUpperCase();}
-function updateTtsCharacterCount(){const input=document.getElementById('tts-text'),label=document.getElementById('tts-character-count');if(!input||!label)return;const count=[...input.value].length,max=ttsStatus?.max_text_characters||2000;input.maxLength=max;label.textContent=count+' / '+max+' Zeichen';}
-function updateTtsSpeedLabel(){const slider=document.getElementById('tts-speed'),label=document.getElementById('tts-speed-label');if(slider&&label)label.textContent=slider.value+' %';}
-async function loadTtsVoices(){const select=document.getElementById('tts-voice');if(!select)return;try{const r=await fetch('/api/audio/tts/voices',{cache:'no-store'}),j=await r.json().catch(()=>({error:'HTTP '+r.status}));if(!r.ok)throw new Error(j.error||('HTTP '+r.status));ttsVoices=Array.isArray(j.voices)?j.voices:[];const requested=select.value||ttsStatus?.default_voice||'',fallback=ttsVoices.find(v=>v.id===requested)||ttsVoices.find(v=>v.available)||ttsVoices[0],current=fallback?.id||'';select.innerHTML=ttsVoices.map(v=>'<option value="'+escAttr(v.id)+'"'+(v.id===current?' selected':'')+(v.available?'':' disabled')+'>'+escHtml(v.name+(v.available?'':' · NICHT INSTALLIERT'))+'</option>').join('')||'<option value="">Keine Stimme konfiguriert</option>';select.title=ttsVoices.find(v=>v.id===current)?.error||'';}catch(error){ttsVoices=[];select.innerHTML='<option value="">TTS nicht verfügbar</option>';select.title=String(error);}}
-
-function formatTtsTemplateTime(value){if(!value)return '';const d=new Date(value);return Number.isNaN(d.getTime())?String(value):d.toLocaleString('de-DE',{dateStyle:'short',timeStyle:'short'});}
-function renderTtsTemplateControls(){
-  const available=!!ttsStatus?.template_available,badge=document.getElementById('tts-template-badge'),dir=document.getElementById('tts-template-directory'),state=document.getElementById('tts-template-state'),select=document.getElementById('tts-template-select');
-  if(dir)dir.textContent=ttsStatus?.template_directory||'/var/lib/netcore/tts/templates';
-  if(badge){badge.textContent=available?'LOKAL BEREIT':'LOKAL OFFLINE';badge.style.color=available?'var(--success)':'var(--danger)';badge.title=ttsStatus?.template_error||'';}
-  const selected=ttsTemplates.find(t=>t.id===ttsSelectedTemplateId);
-  if(state&&!ttsTemplateRequestInFlight){state.textContent=!available?(ttsStatus?.template_error||'Lokaler Vorlagenspeicher ist nicht verfügbar.'):selected?((selected.auto_saved?'Automatisch gespeichert':'Gespeichert')+' · '+formatTtsTemplateTime(selected.updated_at)):(ttsStatus?.auto_save_generated_templates?'Erzeugte Texte werden automatisch lokal gespeichert.':'Automatisches Speichern ist deaktiviert.');}
-  if(select)select.disabled=!available||ttsTemplateRequestInFlight;
-  const save=document.getElementById('tts-template-save'),del=document.getElementById('tts-template-delete'),fresh=document.getElementById('tts-template-new'),refresh=document.getElementById('tts-template-refresh');
-  if(save)save.disabled=!available||ttsTemplateRequestInFlight;
-  if(del)del.disabled=!available||ttsTemplateRequestInFlight||!ttsSelectedTemplateId;
-  if(fresh)fresh.disabled=!available||ttsTemplateRequestInFlight;
-  if(refresh)refresh.disabled=!available||ttsTemplateRequestInFlight;
-}
-async function loadTtsTemplates(preferredId=''){
-  const select=document.getElementById('tts-template-select');if(!select)return;
-  try{
-    const r=await fetch('/api/audio/tts/templates',{cache:'no-store'}),j=await r.json().catch(()=>({error:'HTTP '+r.status}));if(!r.ok)throw new Error(j.error||('HTTP '+r.status));
-    ttsTemplates=Array.isArray(j.templates)?j.templates:[];
-    const wanted=preferredId||ttsSelectedTemplateId||select.value||'';
-    select.innerHTML='<option value="">Keine Vorlage ausgewählt</option>'+ttsTemplates.map(t=>'<option value="'+escAttr(t.id)+'">'+escHtml((t.auto_saved?'AUTO · ':'')+t.name)+'</option>').join('');
-    if(wanted&&ttsTemplates.some(t=>t.id===wanted)){select.value=wanted;ttsSelectedTemplateId=wanted;const t=ttsTemplates.find(row=>row.id===wanted);document.getElementById('tts-template-name').value=t?.name||'';}else{select.value='';ttsSelectedTemplateId='';}
-  }catch(error){ttsTemplates=[];select.innerHTML='<option value="">Vorlagen nicht verfügbar</option>';const state=document.getElementById('tts-template-state');if(state)state.textContent=String(error.message||error);}
-  renderTtsTemplateControls();syncTtsRecordingName();
-}
-function syncTtsRecordingName(){
-  const input=document.getElementById('tts-recording-name');if(!input)return;
-  const selected=ttsTemplates.find(row=>row.id===ttsSelectedTemplateId);
-  if(selected){input.value=selected.name||'';input.readOnly=true;input.title='Für Vorlagen wird automatisch der Vorlagenname als WAV-Name verwendet.';}
-  else{const wasReadOnly=input.readOnly;input.readOnly=false;if(wasReadOnly)input.value='';input.title='Bei Freitext ist ein eigener Name zwingend erforderlich.';}
-}
-function loadSelectedTtsTemplate(){
-  const id=document.getElementById('tts-template-select')?.value||'';ttsSelectedTemplateId=id;const t=ttsTemplates.find(row=>row.id===id);
-  if(!t){document.getElementById('tts-template-name').value='';syncTtsRecordingName();renderTtsTemplateControls();return;}
-  document.getElementById('tts-template-name').value=t.name||'';document.getElementById('tts-text').value=t.text||'';
-  const voice=document.getElementById('tts-voice');if(voice&&[...voice.options].some(o=>o.value===t.voice_id))voice.value=t.voice_id;
-  document.getElementById('tts-speed').value=Math.round(Number(t.speed||0.95)*100);
-  syncTtsRecordingName();updateTtsSpeedLabel();updateTtsCharacterCount();renderTtsTemplateControls();
-}
-function newTtsTemplate(){ttsSelectedTemplateId='';const select=document.getElementById('tts-template-select');if(select)select.value='';document.getElementById('tts-template-name').value='';const recordingName=document.getElementById('tts-recording-name');if(recordingName){recordingName.value='';recordingName.readOnly=false;}renderTtsTemplateControls();document.getElementById('tts-template-name').focus();}
-function ttsSynthesisPayload(){
-  const text=document.getElementById('tts-text').value.trim();if(!text)throw new Error('Bitte zuerst einen Sprechtext eingeben.');
-  return {text,voice_id:document.getElementById('tts-voice').value,speed:Number(document.getElementById('tts-speed').value)/100};
-}
-function currentTtsTemplatePayload(){
-  const generation=ttsSynthesisPayload(),name=document.getElementById('tts-template-name').value.trim();if(!name)throw new Error('Bitte einen Namen für die Vorlage eingeben.');
-  const payload={...generation,name,priority:ttsStatus?.default_priority??5};if(ttsSelectedTemplateId)payload.id=ttsSelectedTemplateId;
-  return payload;
-}
-async function saveCurrentTtsTemplate(){if(ttsTemplateRequestInFlight)return;let payload;try{payload=currentTtsTemplatePayload();}catch(error){alert(error.message||String(error));return;}ttsTemplateRequestInFlight=true;const state=document.getElementById('tts-template-state');if(state)state.textContent='Vorlage wird gespeichert …';renderTtsTemplateControls();try{const j=await postTts('/api/audio/tts/templates/save',payload),id=j.template?.id||'';ttsSelectedTemplateId=id;await loadTtsTemplates(id);syncTtsRecordingName();if(state)state.textContent='Vorlage gespeichert.';}catch(error){alert(error.message||String(error));if(state)state.textContent=String(error.message||error);}finally{ttsTemplateRequestInFlight=false;renderTtsTemplateControls();}}
-async function deleteCurrentTtsTemplate(){if(ttsTemplateRequestInFlight||!ttsSelectedTemplateId)return;const t=ttsTemplates.find(row=>row.id===ttsSelectedTemplateId);if(!confirm('Vorlage „'+(t?.name||ttsSelectedTemplateId)+'“ wirklich löschen?'))return;ttsTemplateRequestInFlight=true;renderTtsTemplateControls();try{await postTts('/api/audio/tts/templates/delete',{id:ttsSelectedTemplateId});ttsSelectedTemplateId='';document.getElementById('tts-template-name').value='';await loadTtsTemplates();syncTtsRecordingName();}catch(error){alert(error.message||String(error));}finally{ttsTemplateRequestInFlight=false;renderTtsTemplateControls();}}
-function ttsGenerationPayload(){
-  const payload=ttsSynthesisPayload(),selected=ttsTemplates.find(row=>row.id===ttsSelectedTemplateId),nameInput=document.getElementById('tts-recording-name');
-  const recordingName=(selected?.name||nameInput?.value||'').trim();
-  if(!recordingName)throw new Error('Bitte für den Freitext einen Namen der WAV / Durchsage eingeben.');
-  payload.recording_name=recordingName;
-  return payload;
-}
-async function postTts(url,body){const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})}),j=await r.json().catch(()=>({error:'HTTP '+r.status}));if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j;}
-function audioDispatchBusy(){return !!audioStatus&&!['idle','failed'].includes(audioStatus.state);}
-async function generateTtsRecording(){
-  if(ttsRequestInFlight)return;
-  let payload;try{payload=ttsGenerationPayload();}catch(error){alert(error.message||String(error));return;}
-  ttsRequestInFlight=true;renderTtsStatus();
-  try{await postTts('/api/audio/tts/generate',payload);await loadTtsStatus();}
-  catch(error){alert(error.message||String(error));}
-  finally{ttsRequestInFlight=false;renderTtsStatus();}
-}
-async function showSavedTtsRecording(){
-  const id=ttsStatus?.recording_id;if(!id){alert('Die gespeicherte Aufzeichnung wurde noch nicht gefunden.');return;}
-  await loadRecordings(true);
-  const filter=document.getElementById('rec-filter');if(filter){filter.value='';renderRecordings();}
-  const row=document.querySelector('[data-recording-id="'+CSS.escape(id)+'"]');
-  if(row){row.scrollIntoView({behavior:'smooth',block:'center'});row.style.outline='2px solid var(--success)';setTimeout(()=>{row.style.outline='';},2500);}
-}
-async function stopTtsJob(){try{await postTts('/api/audio/tts/stop',{});closeTtsPreview();await Promise.all([loadTtsStatus(),loadAudioStatus()]);}catch(error){alert(error.message||String(error));}}
-function closeTtsPreview(){const card=document.getElementById('tts-preview-card'),player=document.getElementById('tts-preview-player');if(player){player.pause();player.removeAttribute('src');player.load();}if(card)card.style.display='none';ttsPreviewLoadedJob=null;}
-function renderTtsStatus(){
-  const s=ttsStatus||{},provider=document.getElementById('tts-provider-state'),detail=document.getElementById('tts-provider-detail'),job=document.getElementById('tts-job-state');
-  if(!provider||!job)return;
-  provider.textContent=s.provider_available?'PIPER ONLINE':'PIPER OFFLINE';
-  provider.style.color=s.provider_available?'var(--success)':'var(--danger)';
-  detail.textContent=s.provider_endpoint||'Lokale Piper-Sprachsynthese';provider.title=s.provider_error||s.startup_warning||'';
-  if(!ttsDefaultsApplied&&s.available){document.getElementById('tts-speed').value=Math.round(Number(s.default_speed||0.95)*100);ttsDefaultsApplied=true;updateTtsSpeedLabel();updateTtsCharacterCount();}
-  const busy=s.state==='synthesizing',ready=s.state==='ready'&&s.generated_audio_available,selectedVoiceId=document.getElementById('tts-voice')?.value||'',selectedVoice=ttsVoices.find(v=>v.id===selectedVoiceId),voiceReady=!!selectedVoice?.available;
-  const generate=document.getElementById('tts-generate'),openRecording=document.getElementById('tts-open-recording');
-  generate.disabled=busy||ttsRequestInFlight||!s.provider_available||!voiceReady;
-  generate.title=!voiceReady?(selectedVoice?.error||'Die ausgewählte Stimme ist nicht installiert.'):'Erzeugt eine vollständige WAV und speichert sie in der Aufzeichnungsbibliothek.';
-  if(openRecording)openRecording.disabled=!ready||!s.recording_id;
-  document.getElementById('tts-stop').disabled=!busy&&!ready&&s.state!=='failed'&&s.state!=='cancelled';
-  let status=ttsStateLabel(s.state);if(ttsRequestInFlight&&!busy)status='AUFTRAG WIRD ÜBERGEBEN';if(s.text_preview)status+=' · '+s.text_preview;if(s.recording_id)status+=' · Aufzeichnung '+s.recording_id;if(s.last_error)status+=' · '+s.last_error;
-  job.textContent=status;job.style.color=s.state==='failed'?'var(--danger)':s.state==='ready'?'var(--success)':'';
-  const card=document.getElementById('tts-preview-card'),player=document.getElementById('tts-preview-player');
-  if(s.generated_audio_available&&s.job_id){
-    card.style.display='block';document.getElementById('tts-preview-title').textContent=s.file_name||'TTS-Durchsage';
-    document.getElementById('tts-preview-state').textContent=s.recording_id?'Als WAV unter Aufzeichnungen gespeichert. Von dort auswählen und senden.':'WAV wird gespeichert …';
-    if(ttsPreviewLoadedJob!==s.job_id){player.pause();player.src='/api/audio/tts/preview?job_id='+encodeURIComponent(s.job_id)+'&_='+Date.now();player.load();ttsPreviewLoadedJob=s.job_id;}
-  }else if(!busy){closeTtsPreview();}
-  syncTtsRecordingName();
-}
-async function loadTtsStatus(){try{const r=await fetch('/api/audio/tts/status',{cache:'no-store'}),j=await r.json().catch(()=>({error:'HTTP '+r.status}));if(!r.ok)throw new Error(j.error||('HTTP '+r.status));ttsStatus=j;renderTtsStatus();renderTtsTemplateControls();if(j.saved_template_id&&j.saved_template_id!==ttsLastSavedTemplateId){ttsLastSavedTemplateId=j.saved_template_id;loadTtsTemplates();}}catch(error){ttsStatus={available:false,provider_available:false,template_available:false,state:'failed',last_error:String(error)};renderTtsStatus();renderTtsTemplateControls();}}
 function audioStateLabel(s){return ({idle:'BEREIT',preparing:'VORBEREITUNG',calling:'RUFBAU',waiting_for_answer:'WARTE AUF ANNAHME',playing:'SENDET',finishing:'BEENDET RUF',failed:'FEHLER'})[s]||String(s||'—').toUpperCase();}
 async function loadAudioRegistries(){
   if(!deviceRegistryLoaded&&!deviceRegistryInflight)await loadDeviceRegistry(); audioDevices=deviceRegistry||{};
@@ -10298,7 +10468,7 @@ function updateAudioSourceHeader(){
   const source=currentAudioSource(),root=document.getElementById('audio-root'),state=document.getElementById('audio-source-state');
   if(!source){if(root)root.textContent='—';if(state)state.textContent='Quelle nicht gefunden';return;}
   if(root)root.textContent=source.path||'—';
-  if(state){state.textContent=source.available?(source.source_type==='server'?'SERVER ONLINE':'LOKAL'):'NICHT VERFÜGBAR';state.style.color=source.available?'var(--success)':'var(--danger)';state.title=source.error||'';}
+  if(state){const labels={server:'SERVER ONLINE',media_library:'MEDIA LIBRARY ONLINE',local:'LOKAL'},label=source.id==='media-library'?'MEDIA LIBRARY ONLINE':(labels[source.source_type]||String(source.source_type||'ONLINE').toUpperCase());state.textContent=source.available?label:'NICHT VERFÜGBAR';state.style.color=source.available?'var(--success)':'var(--danger)';state.title=source.error||'';}
 }
 async function loadAudioSources(){
   const r=await fetch('/api/audio/sources',{cache:'no-store'}),j=await r.json().catch(()=>({error:'HTTP '+r.status}));
@@ -10316,7 +10486,7 @@ async function loadAudioStatus(){
     const card=document.getElementById('audio-state-card');card.classList.remove('is-ok','is-danger','is-idle','is-warn');card.classList.add(j.state==='failed'?'is-danger':active?'is-ok':'is-idle');
     document.getElementById('audio-state').textContent=audioStateLabel(j.state);const targetText=j.target_id?((j.target_type==='group'?'GSSI ':'ISSI ')+j.target_id):'Bereit';const sourceText=j.source_id?(' ['+j.source_id+']'):'';document.getElementById('audio-target').textContent=(j.file_name?j.file_name+sourceText+' → ':'')+targetText;
     document.getElementById('audio-progress').textContent=recFmtDuration(j.position_ms)+' / '+recFmtDuration(j.duration_ms);document.getElementById('audio-blocks').textContent=(j.sent_blocks||0)+' / '+(j.total_blocks||0)+' Blöcke';
-    document.getElementById('audio-channel').textContent=j.timeslot?'TS '+j.timeslot:'—';document.getElementById('audio-call').textContent=j.call_id?'Call '+j.call_id:'Kein aktiver Ruf';document.getElementById('audio-ffmpeg').textContent=j.ffmpeg_available?'VERFÜGBAR':'NICHT GEFUNDEN';document.getElementById('audio-error').textContent=j.last_error||j.startup_warning||'Kein Fehler';document.getElementById('audio-stop').disabled=!active;updateAudioSourceHeader();renderTtsStatus();
+    document.getElementById('audio-channel').textContent=j.timeslot?'TS '+j.timeslot:'—';document.getElementById('audio-call').textContent=j.call_id?'Call '+j.call_id:'Kein aktiver Ruf';document.getElementById('audio-ffmpeg').textContent=j.ffmpeg_available?'VERFÜGBAR':'NICHT GEFUNDEN';document.getElementById('audio-error').textContent=j.last_error||j.startup_warning||'Kein Fehler';document.getElementById('audio-stop').disabled=!active;updateAudioSourceHeader();
   }catch(e){document.getElementById('audio-state').textContent='NICHT VERFÜGBAR';document.getElementById('audio-error').textContent=String(e);}
 }
 async function browseAudio(path){
@@ -10326,15 +10496,18 @@ async function browseAudio(path){
 }
 function audioJsArg(value){return escAttr(JSON.stringify(String(value)));}
 function renderAudioEntries(){
-  const tb=document.getElementById('audio-tbody');if(!audioEntries.length){tb.innerHTML='<tr><td colspan="4" class="sds-empty">Keine WAV-/MP3-Dateien vorhanden.</td></tr>';return;}
+  const tb=document.getElementById('audio-tbody');if(!audioEntries.length){const hint=audioCurrentSource==='media-library'?'Keine fertigen Medien in der Media Library. Prüfe Import/Verarbeitung im Media-Library-WebUI.':'Keine WAV-/MP3-Dateien vorhanden.';tb.innerHTML='<tr><td colspan="4" class="sds-empty">'+escHtml(hint)+'</td></tr>';return;}
   const sourceArg=audioJsArg(audioCurrentSource);
   tb.innerHTML=audioEntries.map(e=>{
     const pathArg=audioJsArg(e.path),nameArg=audioJsArg(e.name);
-    const rowCtx=e.entry_type==='file'?' class="audio-context-row" oncontextmenu="return openAudioContext(event,\'media\','+pathArg+','+nameArg+','+sourceArg+')"':'';
+    const canPlay=e.playable!==false;
+    const rowCtx=e.entry_type==='file'&&canPlay?' class="audio-context-row" oncontextmenu="return openAudioContext(event,\'media\','+pathArg+','+nameArg+','+sourceArg+')"':'';
+    const sendButton=canPlay?'<button class="btn btn-sm btn-primary" onclick="openAudioSend(\'media\','+pathArg+','+nameArg+','+sourceArg+')">Senden an…</button>':'<button class="btn btn-sm" disabled title="Zuerst in der Media Library freigeben">Nicht freigegeben</button>';
     const actions=e.entry_type==='directory'
       ? '<div class="audio-row-actions"><button class="btn btn-sm" onclick="browseAudio('+pathArg+')">Öffnen</button></div>'
-      : '<div class="audio-row-actions"><span class="audio-desktop-actions"><button class="btn btn-sm" onclick="previewAudioFile('+pathArg+','+nameArg+','+sourceArg+')">▶ Vorschau</button><button class="btn btn-sm btn-primary" onclick="openAudioSend(\'media\','+pathArg+','+nameArg+','+sourceArg+')">Senden an…</button></span><button type="button" class="btn btn-sm audio-more-btn" aria-label="Weitere Aktionen" aria-haspopup="menu" onclick="return openAudioContextFromButton(event,\'media\','+pathArg+','+nameArg+','+sourceArg+')">⋮</button></div>';
-    return '<tr'+rowCtx+'><td>'+escHtml(e.name)+'</td><td>'+escHtml(e.entry_type==='directory'?'Ordner':String(e.extension||'').toUpperCase())+'</td><td>'+escHtml(e.size_bytes==null?'—':recFmtBytes(e.size_bytes))+'</td><td>'+actions+'</td></tr>';
+      : '<div class="audio-row-actions"><span class="audio-desktop-actions"><button class="btn btn-sm" onclick="previewAudioFile('+pathArg+','+nameArg+','+sourceArg+')">▶ Vorschau</button>'+sendButton+'</span>'+(canPlay?'<button type="button" class="btn btn-sm audio-more-btn" aria-label="Weitere Aktionen" aria-haspopup="menu" onclick="return openAudioContextFromButton(event,\'media\','+pathArg+','+nameArg+','+sourceArg+')">⋮</button>':'')+'</div>';
+    const typeText=e.entry_type==='directory'?'Ordner':(String(e.extension||'').toUpperCase()+(e.status?' · '+e.status:''));
+    return '<tr'+rowCtx+'><td>'+escHtml(e.name)+'</td><td>'+escHtml(typeText)+'</td><td>'+escHtml(e.size_bytes==null?'—':recFmtBytes(e.size_bytes))+'</td><td>'+actions+'</td></tr>';
   }).join('');
 }
 function previewAudioFile(path,label,sourceId){
@@ -10354,8 +10527,7 @@ function closeAudioPreview(){const card=document.getElementById('audio-preview-c
 function audioContextPreview(){const source=audioPendingSource;if(!source)return;hideAudioContext();if(source.type==='recording'){playRecording(source.id);const box=document.getElementById('rec-player-box');if(box)box.scrollIntoView({behavior:'smooth',block:'nearest'});return;}previewAudioFile(source.id,source.label,source.sourceId);}
 function audioUp(){if(!audioCurrentPath)return;const p=audioCurrentPath.split('/');p.pop();browseAudio(p.join('/'));}
 async function loadAudioPage(force){
-  await Promise.all([loadAudioStatus(),loadAudioRegistries(),loadTtsStatus()]);
-  await loadTtsVoices();await loadTtsTemplates();syncTtsRecordingName();
+  await Promise.all([loadAudioStatus(),loadAudioRegistries()]);
   try{await loadAudioSources();await browseAudio(audioCurrentPath);}catch(e){document.getElementById('audio-tbody').innerHTML='<tr><td colspan="4" class="sds-empty">'+escHtml(e)+'</td></tr>';}
   refreshAudioTargetOptions();
 }
@@ -10405,7 +10577,7 @@ function refreshAudioTargetOptions(){const type=document.getElementById('audio-t
 function audioSelectTarget(){const v=document.getElementById('audio-target-select').value;if(v)document.getElementById('audio-target-manual').value=v;}
 async function submitAudioTransmission(){if(!audioPendingSource)return;const targetId=Number(document.getElementById('audio-target-manual').value),priority=Number(document.getElementById('audio-priority').value);if(!Number.isInteger(targetId)||targetId<=0||targetId>0xFFFFFF){alert('Bitte gültige 24-Bit-ISSI/GSSI eingeben.');return;}if(!Number.isInteger(priority)||priority<0||priority>15){alert('Priorität muss zwischen 0 und 15 liegen.');return;}const body={source_type:audioPendingSource.type,target_type:document.getElementById('audio-target-type').value,target_id:targetId,priority};if(audioPendingSource.type==='recording')body.recording_id=audioPendingSource.id;else{body.path=audioPendingSource.id;body.source_id=audioPendingSource.sourceId||audioCurrentSource||'local';}const r=await fetch('/api/audio/play',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}),j=await r.json().catch(()=>({error:'HTTP '+r.status}));if(!r.ok){alert(j.error||'Aussendung konnte nicht gestartet werden');return;}closeAudioSend();await loadAudioStatus();}
 async function stopAudioTransmission(){const r=await fetch('/api/audio/stop',{method:'POST'}),j=await r.json().catch(()=>({error:'HTTP '+r.status}));if(!r.ok)alert(j.error||'Stop fehlgeschlagen');await loadAudioStatus();}
-setInterval(()=>{const page=document.getElementById('page-audio');if(page&&page.classList.contains('active'))Promise.all([loadAudioStatus(),loadTtsStatus()]);},1000);
+setInterval(()=>{const page=document.getElementById('page-audio');if(page&&page.classList.contains('active'))loadAudioStatus();},1000);
 
 // ── Local call recordings ────────────────────────────────────────────────
 let recordingRows=[];
@@ -10450,9 +10622,9 @@ function recFmtDuration(ms){
 function recFmtTime(value){
   const d=new Date(value); return Number.isNaN(d.getTime())?String(value||'—'):d.toLocaleString();
 }
-function recDisplayName(row){return row.title||((row.origin==='tts'||row.destination_type==='library')?'TTS-Durchsage':'Aufzeichnung Call '+row.call_id);}
+function recDisplayName(row){return row.title||((row.origin==='tts'||row.destination_type==='library')?'Importiertes Medium':'Aufzeichnung Call '+row.call_id);}
 function recSourceLabel(row){
-  if(row.origin==='tts'||row.destination_type==='library')return 'TTS';
+  if(row.origin==='tts'||row.destination_type==='library')return 'Lokales Medium';
   const sources=[...new Set((row.segments||[]).map(s=>s.source_issi).filter(Boolean))];
   const ids=sources.length?sources:(row.source_issi?[row.source_issi]:[]);
   if(!ids.length)return '—';
@@ -10493,7 +10665,7 @@ async function loadRecordingStatus(){
     document.getElementById('rec-error').textContent=j.last_error||'Kein Fehler';
     const archiveCard=document.getElementById('rec-archive-card');
     archiveCard.classList.remove('is-ok','is-danger','is-idle','is-warn');
-    const anyArchive=!!(j.archive_enabled||j.tts_archive_enabled);
+    const anyArchive=!!j.archive_enabled;
     let archiveState='DEAKTIVIERT',archiveClass='is-idle';
     if(anyArchive){
       if(j.archive_active){archiveState='ÜBERTRÄGT';archiveClass='is-warn';}
@@ -10505,7 +10677,6 @@ async function loadRecordingStatus(){
     document.getElementById('rec-archive-progress').textContent=anyArchive?`${j.archive_completed||0} archiviert · ${j.archive_pending||0} ausstehend`:'Automatische Kopie aus';
     const archivePaths=[];
     if(j.archive_enabled)archivePaths.push(`Recordings: ${j.archive_directory}`);
-    if(j.tts_archive_enabled)archivePaths.push(`TTS: ${j.tts_archive_directory}`);
     const archiveDetail=j.archive_last_error||archivePaths.join(' · ')||'—';
     document.getElementById('rec-archive-detail').textContent=archiveDetail;
     document.getElementById('rec-archive-detail').title=j.archive_last_success_at?`Letzte erfolgreiche Kopie: ${recFmtTime(j.archive_last_success_at)}`:archiveDetail;
@@ -10546,7 +10717,7 @@ function renderRecordings(){
     const name=recDisplayName(r),callLabel=(r.origin==='tts'||r.destination_type==='library')?'—':String(r.call_id);
     return '<tr class="audio-context-row" data-recording-id="'+escAttr(r.id)+'" oncontextmenu="return openAudioContext(event,\'recording\',\''+escAttr(r.id)+'\',\''+escAttr(name)+'\')">'+
       '<td>'+escHtml(recFmtTime(r.started_at))+recovered+'</td>'+
-      '<td><strong>'+escHtml(name)+'</strong>'+(r.origin==='tts'?' <span class="pill pill-info">TTS</span>':'')+'</td>'+
+      '<td><strong>'+escHtml(name)+'</strong></td>'+
       '<td>'+escHtml(recSourceLabel(r))+'</td>'+
       '<td>'+escHtml(dest)+'</td>'+
       '<td>'+escHtml(callLabel)+'</td>'+
@@ -10626,6 +10797,8 @@ async function boot(){
   // Populate the topbar SDR badge (and prime system data) immediately on load,
   // instead of waiting for the user to open the System tab.
   loadSystemInfo();
+  loadEdgeFallback(true);
+  setInterval(()=>loadEdgeFallback(),5000);
   loadBtsInfo();        // TETRA BTS Details card on the default (Radios) page
   loadDualCarrierInfo();
   refreshBrewServerStatus(true);
@@ -10673,6 +10846,8 @@ boot();
 /// configured. Keeps the visual language of the dashboard (same dark palette, mono
 /// title type) but is self-contained: a single document, no external deps, no
 /// font downloads. Form posts to POST /api/login as JSON via fetch().
+// Was: Legt den festen Wert `LOGIN_HTML` für login html fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const LOGIN_HTML: &str = r##"<!DOCTYPE html>
 <html lang="de">
 <head>

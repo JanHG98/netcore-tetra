@@ -1,0 +1,25 @@
+# NETCORE-KOMMENTAR – Was: Beschreibt Installation oder Betrieb von netcore Hintergrunddienst.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+# Was: Beginnt den Abschnitt `Unit`.
+# Warum: Zusammengehörige Start-, Laufzeit- oder Installationswerte bleiben dadurch geordnet.
+[Unit]
+# Was: Beschreibt den Dienst für systemd und Administratoren.
+# Warum: Statusausgaben zeigen dadurch sofort, wofür die Einheit zuständig ist.
+Description=NetCore-Tetra complete backend target (co-located lab only)
+# Was: Verweist auf ergänzende Betriebsdokumentation.
+# Warum: Administratoren finden dadurch die vorgesehenen Installations- und Fehlerhinweise.
+Documentation=file:/opt/netcore-tetra-src/Docs/OPEN_LAB_LXC_DEPLOYMENT.md
+# Was: Nennt Einheiten, die gemeinsam gestartet werden sollen.
+# Warum: Zusammengehörige Dienste stehen dadurch beim Start möglichst vollständig bereit.
+Wants=netcore-node-gateway.service netcore-subscriber-core.service netcore-group-core.service netcore-mobility-core.service netcore-call-control.service netcore-media-switch.service netcore-recorder.service netcore-sds-router.service netcore-packet-core.service netcore-ip-gateway.service netcore-security-core.service netcore-kmf.service netcore-transit.service netcore-application-gateway.service netcore-media-library.service netcore-control-room.service netcore-observability.service
+# Was: Legt die Startreihenfolge gegenüber anderen Einheiten fest.
+# Warum: Abhängige Netzwerk- oder Systemfunktionen müssen zuerst verfügbar sein.
+After=network-online.target
+
+# Was: Beginnt den Abschnitt `Install`.
+# Warum: Zusammengehörige Start-, Laufzeit- oder Installationswerte bleiben dadurch geordnet.
+[Install]
+# Was: Legt fest, an welches systemd-Ziel die Einheit bei Aktivierung angehängt wird.
+# Warum: Der Dienst startet dadurch automatisch in der vorgesehenen Betriebsphase.
+WantedBy=multi-user.target

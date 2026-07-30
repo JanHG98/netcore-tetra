@@ -1,8 +1,13 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! Common things used by both modulator and demodulator.
 
 use super::dsp_types::*;
 
 /// RRC channel filter taps, designed using design_channel_filter.py
+// Was: Legt den festen Wert `CHANNEL_FILTER_TAPS` für Kanal filter taps fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const CHANNEL_FILTER_TAPS: [RealSample; 16] = [
     0.264_971_8,
     0.20002119,

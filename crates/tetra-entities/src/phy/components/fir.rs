@@ -1,8 +1,15 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use super::dsp_types::*;
 
+// Was: Legt den festen Wert `VECLEN` für veclen fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const VECLEN: usize = 4;
 
 /// FIR filter for complex signal with symmetric real taps.
+// Was: Bündelt die zusammengehörigen Werte für fir complex sym in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct FirComplexSym {
     half_length: usize,
     i: usize,
@@ -19,7 +26,11 @@ pub struct FirComplexSym {
     reversed_im: Vec<RealSample>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `FirComplexSym`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl FirComplexSym {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(half_length: usize) -> Self {
         assert!(half_length % VECLEN == 0);
         let len = half_length * 2;
@@ -33,6 +44,8 @@ impl FirComplexSym {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `sample` für sample aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn sample(&mut self, half_taps: &[RealSample], in_: ComplexSample) -> ComplexSample {
         assert!(half_taps.len() == self.half_length);
         // Index to history buffer
@@ -58,6 +71,8 @@ impl FirComplexSym {
         let mut sum_re: [RealSample; VECLEN] = [num::zero(); VECLEN];
         let mut sum_im: [RealSample; VECLEN] = [num::zero(); VECLEN];
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for ((((t, h_re), h_im), r_re), r_im) in half_taps
             .chunks_exact(VECLEN)
             .zip(self.history_re[i + 1..i + 1 + self.half_length].chunks_exact(VECLEN))
@@ -65,6 +80,8 @@ impl FirComplexSym {
             .zip(self.reversed_re[ir..ir + self.half_length].chunks_exact(VECLEN))
             .zip(self.reversed_im[ir..ir + self.half_length].chunks_exact(VECLEN))
         {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for vi in 0..VECLEN {
                 sum_re[vi] += (h_re[vi] + r_re[vi]) * t[vi];
                 sum_im[vi] += (h_im[vi] + r_im[vi]) * t[vi];
@@ -82,10 +99,16 @@ impl FirComplexSym {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
     #[test]
+    // Was: Prüft automatisch den Fall fir complex sym.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_fir_complex_sym() {
+        // Was: Legt den festen Wert `TAPS` für taps fest.
+        // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
         const TAPS: [RealSample; 8] = [8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0];
         let mut fir = FirComplexSym::new(TAPS.len());
 
@@ -101,9 +124,13 @@ mod tests {
             ComplexSample { re: -0.3, im: -0.4 },
         ];
         let nzeros: [usize; 4] = [100, 101, 102, 123];
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (in_, zeros) in impulses_in.iter().zip(nzeros) {
             out.clear();
             out.push(fir.sample(&TAPS, *in_));
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for _ in 0..zeros {
                 out.push(fir.sample(&TAPS, num::zero()));
             }
@@ -112,11 +139,15 @@ mod tests {
             // and then not reversed, multiplied by the input value.
             // Check if the output is close enough to the expected value,
             // allowing for some rounding errors.
+            // Was: Diese Funktion prüft den vorgesehenen Arbeitsschritt.
+            // Warum: Fehler oder unzulässige Zustände werden dadurch früh erkannt.
             fn check(value: ComplexSample, expected: ComplexSample) {
                 //eprintln!("Output {}, should be {}", value, expected);
                 assert!((expected.re - value.re).abs() < 1e-6);
                 assert!((expected.im - value.im).abs() < 1e-6);
             }
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for i in 0..TAPS.len() {
                 //eprintln!("Checking tap {}", i);
                 // Reversed part of impulse response
@@ -126,6 +157,8 @@ mod tests {
             }
             // Rest of output should be zeros
             //eprintln!("Checking output is zeros when it should be");
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for value in out[TAPS.len() * 2..].iter() {
                 check(*value, num::zero());
             }

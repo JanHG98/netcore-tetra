@@ -1,10 +1,13 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Einlesen und Prüfen der TETRA-Konfiguration.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use serde::Deserialize;
 use std::sync::{Arc, RwLock};
 use tetra_core::freqs::FreqInfo;
 
 use crate::bluestation::{
-    CfgAsterisk, CfgCellInfo, CfgControl, CfgControlRoom, CfgDapnet, CfgEcholink, CfgEmergency, CfgGeoalarm, CfgHealth, CfgMeshcom, CfgNetInfo, CfgPhyIo,
-    CfgAudioPlayer, CfgRecording, CfgRecovery, CfgTts, CfgSecurity, CfgSnomNotify, CfgTpg2200Action, CfgWxService, PhyBackend, StackState,
+    CfgAsterisk, CfgCellInfo, CfgControl, CfgControlRoom, CfgEdgeFallback, CfgDapnet, CfgEcholink, CfgEmergency, CfgGeoalarm, CfgHealth, CfgMeshcom, CfgNetInfo, CfgPhyIo,
+    CfgAudioPlayer, CfgMediaLibrary, CfgRecording, CfgRecovery, CfgTts, CfgSecurity, CfgSnomNotify, CfgTpg2200Action, CfgWxService, PhyBackend, StackState,
 };
 
 use super::sec_brew::CfgBrew;
@@ -15,35 +18,57 @@ use super::sec_telemetry::CfgTelemetry;
 /// Wrapper for a string that should be treated as a secret. Display and Debug will redact the actual value,
 /// to prevent accidental logging of secrets.
 #[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für secret field in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SecretField {
     pub val: String,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `From<String> for SecretField`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl From<String> for SecretField {
+    // Was: Wandelt Eingangsdaten in den vorgesehenen Arbeitsschritt um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn from(val: String) -> Self {
         Self { val }
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `From<SecretField> for String`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl From<SecretField> for String {
+    // Was: Wandelt Eingangsdaten in den vorgesehenen Arbeitsschritt um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn from(secret: SecretField) -> Self {
         secret.val
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `AsRef<str> for SecretField`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl AsRef<str> for SecretField {
+    // Was: Wandelt den vorhandenen Wert in ref um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn as_ref(&self) -> &str {
         &self.val
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `std::fmt::Display for SecretField`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl std::fmt::Display for SecretField {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "********")
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `std::fmt::Debug for SecretField`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl std::fmt::Debug for SecretField {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SecretField").field("val", &"********").finish()
     }
@@ -51,6 +76,8 @@ impl std::fmt::Debug for SecretField {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "PascalCase")]
+// Was: Listet die möglichen Varianten für stack mode auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum StackMode {
     Bs,
     Ms,
@@ -58,6 +85,8 @@ pub enum StackMode {
 }
 
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für stack Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct StackConfig {
     pub stack_mode: StackMode,
     pub debug_log: Option<String>,
@@ -102,6 +131,9 @@ pub struct StackConfig {
     /// Dashboard HTTP server configuration (None = disabled)
     pub dashboard: Option<CfgDashboard>,
 
+    /// Bidirectional Base Station ↔ Media Library integration.
+    pub media_library: CfgMediaLibrary,
+
     /// Local TETRA speech recording configuration.
     pub recording: CfgRecording,
 
@@ -119,6 +151,9 @@ pub struct StackConfig {
 
     /// NetCore Control-Room endpoint configuration
     pub control_room: Option<CfgControlRoom>,
+
+    /// Automatic local autonomy when the Node Gateway or core services are unavailable.
+    pub edge_fallback: CfgEdgeFallback,
 
     /// Access control / security configuration
     pub security: CfgSecurity,
@@ -141,10 +176,16 @@ pub struct StackConfig {
     pub emergency: CfgEmergency,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `StackConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl StackConfig {
     /// Return BS phase-modulated carrier numbers and their DL/UL frequencies.
+    // Was: Führt den Arbeitsschritt `bs_phase_mod_carriers` für Basisstation phase mod carriers aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn bs_phase_mod_carriers(&self) -> Result<Vec<(u16, u32, u32)>, String> {
         let mut carriers = Vec::with_capacity(if self.cell.secondary_carrier.is_some() { 2 } else { 1 });
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for carrier in [Some(self.cell.main_carrier), self.cell.secondary_carrier].into_iter().flatten() {
             let freq_info = FreqInfo::from_components(
                 self.cell.freq_band,
@@ -160,14 +201,20 @@ impl StackConfig {
         Ok(carriers)
     }
 
+    // Was: Führt den Arbeitsschritt `frequencies_fit_center` für frequencies fit center aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn frequencies_fit_center(center_hz: f64, sample_rate_hz: f64, freqs_hz: &[u32]) -> bool {
         let half_bw = sample_rate_hz / 2.0;
         freqs_hz.iter().all(|freq| ((*freq as f64) - center_hz).abs() <= half_bw)
     }
 
     /// Validate that all required configuration fields are properly set.
+    // Was: Diese Funktion prüft den vorgesehenen Arbeitsschritt.
+    // Warum: Unzulässige Werte werden dadurch erkannt, bevor sie im Betrieb Schaden anrichten.
     pub fn validate(&self) -> Result<(), &str> {
         // Check input device settings
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self.phy_io.backend {
             PhyBackend::SoapySdr => {
                 if self.phy_io.soapysdr.is_none() {
@@ -355,6 +402,8 @@ impl StackConfig {
         if gateway.dns_servers.len() > 2 {
             return Err("cell_info.packet_data_gateway.dns_servers supports at most two IPv4 addresses");
         }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for address in &gateway.dns_servers {
             if address.is_unspecified() || address.is_multicast() || *address == std::net::Ipv4Addr::BROADCAST {
                 return Err("packet-data DNS addresses must be unicast IPv4 addresses");
@@ -420,6 +469,8 @@ impl StackConfig {
         {
             let mut seen_ids = std::collections::HashSet::new();
             let mut seen_carriers = std::collections::HashSet::new();
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for cell in &self.cell.neighbor_cells_ca {
                 if !seen_ids.insert(cell.cell_identifier_ca) {
                     return Err("cell.neighbor_cells_ca: duplicate cell_identifier_ca — each neighbour must have a unique identifier");
@@ -430,6 +481,8 @@ impl StackConfig {
             }
         }
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for cell in &self.cell.neighbor_cells_ca {
             if cell.bs_service_details.as_ref().is_some_and(|details| details.sndcp_service) {
                 return Err("cell.neighbor_cells_ca: neighbor SNDCP advertisement is unsupported by the local WAP profile");
@@ -525,6 +578,8 @@ impl StackConfig {
 
 /// Global shared configuration: immutable config + mutable state.
 #[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für shared Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SharedConfig {
     /// Read-only configuration (immutable after construction).
     cfg: Arc<StackConfig>,
@@ -532,9 +587,15 @@ pub struct SharedConfig {
     state: Arc<RwLock<StackState>>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SharedConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SharedConfig {
+    // Was: Wandelt Eingangsdaten in parts um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_parts(cfg: StackConfig, state: Option<StackState>) -> Self {
         // Check config for validity before returning the SharedConfig object
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match cfg.validate() {
             Ok(_) => {}
             Err(e) => panic!("Invalid stack configuration: {}", e),
@@ -547,23 +608,163 @@ impl SharedConfig {
     }
 
     /// Access immutable config.
+    // Was: Führt den Arbeitsschritt `config` für Konfiguration aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn config(&self) -> Arc<StackConfig> {
         Arc::clone(&self.cfg)
     }
 
     /// Read guard for mutable state.
+    // Was: Führt den Arbeitsschritt `state_read` für Zustand read aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn state_read(&self) -> std::sync::RwLockReadGuard<'_, StackState> {
         self.state.read().expect("StackState RwLock blocked")
     }
 
     /// Write guard for mutable state.
+    // Was: Führt den Arbeitsschritt `state_write` für Zustand write aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn state_write(&self) -> std::sync::RwLockWriteGuard<'_, StackState> {
         self.state.write().expect("StackState RwLock blocked")
+    }
+
+    /// Whether a particular central service may currently be used by the
+    /// Air-Interface edge. Unknown services are handled according to the
+    /// explicit edge_fallback policy rather than optimistically sending data
+    /// into a black hole.
+    // Was: Führt den Arbeitsschritt `central_service_available` für central Dienst available aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn central_service_available(&self, service: &str) -> bool {
+        if !self.cfg.edge_fallback.enabled {
+            return true;
+        }
+        let state = self.state_read();
+        if !state.core_gateway_connected || !state.edge_service_matrix_fresh {
+            return false;
+        }
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+        match state.edge_services.get(service) {
+            Some(status) => matches!(status.level, crate::bluestation::EdgeServiceLevel::Available),
+            None => self.cfg.edge_fallback.unknown_service_is_available,
+        }
+    }
+
+    /// Effective SwMI connectivity used for the SYSINFO system-wide-services
+    /// bit. A Brew link or a healthy NetCore service plane is sufficient.
+    // Was: Führt den Arbeitsschritt `system_wide_services_available` für system wide services available aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn system_wide_services_available(&self) -> bool {
+        if self.state_read().network_connected {
+            return true;
+        }
+        if self.cfg.control_room.as_ref().is_none_or(|control| !control.enabled) {
+            return self.cfg.cell.system_wide_services;
+        }
+        if !self.cfg.edge_fallback.enabled {
+            return self.state_read().core_gateway_connected;
+        }
+        self.cfg
+            .edge_fallback
+            .required_services
+            .iter()
+            .all(|service| self.central_service_available(service))
+    }
+
+    // Was: Führt den Arbeitsschritt `edge_fallback_snapshot` für edge fallback snapshot aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn edge_fallback_snapshot(&self) -> crate::bluestation::EdgeFallbackSnapshot {
+        let state = self.state_read();
+
+        // Always expose the complete configured NetCore service plane to the
+        // local TBS WebUI.  Before the first Node-Gateway matrix arrives (or
+        // while it is stale), services that have not reported yet remain
+        // explicitly `unknown` instead of disappearing from the dashboard.
+        // The Node Gateway itself is represented from the WebSocket state.
+        let required: std::collections::HashSet<&str> = self
+            .cfg
+            .edge_fallback
+            .required_services
+            .iter()
+            .map(String::as_str)
+            .collect();
+        let mut service_map = state.edge_services.clone();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+        for (service, fallback_mode) in &self.cfg.edge_fallback.service_fallbacks {
+            service_map.entry(service.clone()).or_insert_with(|| {
+                let is_gateway = service == "node-gateway";
+                let gateway_available = is_gateway && state.core_gateway_connected;
+                crate::bluestation::EdgeServiceRuntime {
+                    service: service.clone(),
+                    level: if is_gateway {
+                        if gateway_available {
+                            crate::bluestation::EdgeServiceLevel::Available
+                        } else {
+                            crate::bluestation::EdgeServiceLevel::Unavailable
+                        }
+                    } else {
+                        crate::bluestation::EdgeServiceLevel::Unknown
+                    },
+                    critical_for_edge: is_gateway || required.contains(service.as_str()),
+                    fallback_mode: fallback_mode.clone(),
+                    checked_at: state
+                        .edge_service_matrix_received_at
+                        .clone()
+                        .unwrap_or_else(|| state.edge_fallback_last_transition_at.clone()),
+                    last_success_at: if gateway_available {
+                        state.edge_service_matrix_received_at.clone()
+                    } else {
+                        None
+                    },
+                    message: Some(if is_gateway {
+                        if gateway_available {
+                            "Node Gateway WebSocket connected".to_string()
+                        } else {
+                            "Node Gateway unreachable".to_string()
+                        }
+                    } else {
+                        "not reported by Node Gateway".to_string()
+                    }),
+                }
+            });
+        }
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+        for service in service_map.values_mut() {
+            service.critical_for_edge = service.service == "node-gateway"
+                || required.contains(service.service.as_str());
+            if service.fallback_mode.trim().is_empty()
+                && let Some(mode) = self.cfg.edge_fallback.service_fallbacks.get(&service.service)
+            {
+                service.fallback_mode = mode.clone();
+            }
+        }
+        let mut services: Vec<_> = service_map.into_values().collect();
+        services.sort_by(|a, b| a.service.cmp(&b.service));
+        crate::bluestation::EdgeFallbackSnapshot {
+            enabled: self.cfg.edge_fallback.enabled,
+            gateway_connected: state.core_gateway_connected,
+            mode: state.edge_fallback_mode,
+            reason: state.edge_fallback_reason.clone(),
+            last_transition_at: state.edge_fallback_last_transition_at.clone(),
+            service_revision: state.edge_service_revision,
+            service_matrix_fresh: state.edge_service_matrix_fresh,
+            service_matrix_received_at: state.edge_service_matrix_received_at.clone(),
+            services,
+            policy_loaded_from_cache: state.edge_policy_loaded_from_cache,
+            policy_cache_saved_at: state.edge_policy_cache_saved_at.clone(),
+            policy_cache_age_secs: state.edge_policy_cache_age_secs,
+            event_spool_entries: state.edge_event_spool_entries,
+            event_spool_bytes: state.edge_event_spool_bytes,
+        }
     }
 
     /// Effective WX/METAR service settings: the dashboard runtime override if present,
     /// otherwise the config file values. Returns an owned CfgWxService so callers don't
     /// hold the state lock.
+    // Was: Führt den Arbeitsschritt `effective_wx_service` für effective wx Dienst aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn effective_wx_service(&self) -> crate::bluestation::CfgWxService {
         let base = self.cfg.wx_service.clone();
         if let Some(o) = self.state_read().wx_override.as_ref() {
@@ -585,6 +786,8 @@ impl SharedConfig {
     /// the config file values (or defaults when there is no `[telegram_alerts]` section). Returns
     /// an owned [`CfgTelegram`] so callers don't hold the state lock. The alerter and the
     /// dashboard both read through this so a live edit applies without a restart.
+    // Was: Führt den Arbeitsschritt `effective_telegram` für effective telegram aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn effective_telegram(&self) -> crate::bluestation::CfgTelegram {
         let base = self.cfg.telegram.clone().unwrap_or_default();
         if let Some(o) = self.state_read().telegram_override.as_ref() {
@@ -613,6 +816,8 @@ impl SharedConfig {
 
     /// Effective DAPNET settings: the dashboard runtime override if present, otherwise the config
     /// file values. Returns an owned [`CfgDapnet`] so callers don't hold the state lock.
+    // Was: Führt den Arbeitsschritt `effective_dapnet` für effective dapnet aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn effective_dapnet(&self) -> crate::bluestation::CfgDapnet {
         let base = self.cfg.dapnet.clone();
         if let Some(o) = self.state_read().dapnet_override.as_ref() {
@@ -658,6 +863,8 @@ impl SharedConfig {
 
     /// Effective EchoLink settings: the dashboard runtime override if present, otherwise the
     /// config file values. Returns an owned [`CfgEcholink`] so callers don't hold the state lock.
+    // Was: Führt den Arbeitsschritt `effective_echolink` für effective echolink aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn effective_echolink(&self) -> crate::bluestation::CfgEcholink {
         let base = self.cfg.echolink.clone();
         if let Some(o) = self.state_read().echolink_override.as_ref() {
@@ -694,6 +901,8 @@ impl SharedConfig {
 
     /// Effective MeshCom settings: the dashboard runtime override if present, otherwise the
     /// config file values. Returns an owned [`CfgMeshcom`] so callers don't hold the state lock.
+    // Was: Führt den Arbeitsschritt `effective_meshcom` für effective meshcom aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn effective_meshcom(&self) -> crate::bluestation::CfgMeshcom {
         let base = self.cfg.meshcom.clone();
         if let Some(o) = self.state_read().meshcom_override.as_ref() {
@@ -725,6 +934,8 @@ impl SharedConfig {
 
     /// Effective GeoAlarm settings: the dashboard runtime override if present, otherwise the
     /// config file values. Returns an owned [`CfgGeoalarm`] so callers don't hold the state lock.
+    // Was: Führt den Arbeitsschritt `effective_geoalarm` für effective geoalarm aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn effective_geoalarm(&self) -> crate::bluestation::CfgGeoalarm {
         let base = self.cfg.geoalarm.clone();
         if let Some(o) = self.state_read().geoalarm_override.as_ref() {
@@ -775,6 +986,8 @@ impl SharedConfig {
     /// Effective Snom XML NOTIFY settings: the dashboard runtime override if present, otherwise
     /// the config file values. Returns an owned [`CfgSnomNotify`] so callers don't hold the
     /// state lock while sending AMI requests.
+    // Was: Führt den Arbeitsschritt `effective_snom_notify` für effective snom notify aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn effective_snom_notify(&self) -> crate::bluestation::CfgSnomNotify {
         let base = self.cfg.snom_notify.clone();
         if let Some(o) = self.state_read().snom_notify_override.as_ref() {

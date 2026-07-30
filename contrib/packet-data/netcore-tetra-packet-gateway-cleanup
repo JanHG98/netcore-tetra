@@ -1,4 +1,7 @@
 #!/bin/sh
+# NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für netcore TETRA Datenpaket Gateway cleanup.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 # Crash-safe cleanup for the NetCore-Tetra SNDCP packet-data gateway.
 # Invoked by systemd ExecStopPost after normal exits and crashes.
 
@@ -7,17 +10,27 @@ IPT_FILTER_CHAIN=NETCORE_TETRA_FWD
 IPT_NAT_CHAIN=NETCORE_TETRA_NAT
 STATE_FILE=/run/netcore-tetra/packet-gateway-sysctls
 
+# Was: Prüft die folgende Voraussetzung und führt den passenden Zweig aus.
+# Warum: Fehlende Rechte, Dateien oder Einstellungen sollen früh und verständlich behandelt werden.
 if command -v nft >/dev/null 2>&1; then
+    # Was: Ändert die nftables-Regeln für Paketweiterleitung oder NAT.
+    # Warum: IP-Pakete müssen gezielt erlaubt und an das richtige Netz weitergegeben werden.
     nft delete table ip "$NFT_TABLE" >/dev/null 2>&1 || true
 fi
 
+# Was: Prüft die folgende Voraussetzung und führt den passenden Zweig aus.
+# Warum: Fehlende Rechte, Dateien oder Einstellungen sollen früh und verständlich behandelt werden.
 if command -v iptables >/dev/null 2>&1; then
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung gilt.
+    # Warum: Gleichartige Installations- oder Prüfaufgaben werden dadurch vollständig abgearbeitet.
     while iptables -C FORWARD -j "$IPT_FILTER_CHAIN" >/dev/null 2>&1; do
         iptables -D FORWARD -j "$IPT_FILTER_CHAIN" >/dev/null 2>&1 || break
     done
     iptables -F "$IPT_FILTER_CHAIN" >/dev/null 2>&1 || true
     iptables -X "$IPT_FILTER_CHAIN" >/dev/null 2>&1 || true
 
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung gilt.
+    # Warum: Gleichartige Installations- oder Prüfaufgaben werden dadurch vollständig abgearbeitet.
     while iptables -t nat -C POSTROUTING -j "$IPT_NAT_CHAIN" >/dev/null 2>&1; do
         iptables -t nat -D POSTROUTING -j "$IPT_NAT_CHAIN" >/dev/null 2>&1 || break
     done
@@ -25,9 +38,15 @@ if command -v iptables >/dev/null 2>&1; then
     iptables -t nat -X "$IPT_NAT_CHAIN" >/dev/null 2>&1 || true
 fi
 
+# Was: Prüft die folgende Voraussetzung und führt den passenden Zweig aus.
+# Warum: Fehlende Rechte, Dateien oder Einstellungen sollen früh und verständlich behandelt werden.
 if [ -r "$STATE_FILE" ]; then
     tab=$(printf '\t')
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung gilt.
+    # Warum: Gleichartige Installations- oder Prüfaufgaben werden dadurch vollständig abgearbeitet.
     while IFS="$tab" read -r path previous; do
+        # Was: Wählt abhängig vom angegebenen Wert den passenden Befehlszweig.
+        # Warum: Mehrere Betriebsarten bleiben dadurch übersichtlich in einem gemeinsamen Ablauf.
         case "$path" in
             /proc/sys/net/*) ;;
             *) continue ;;
@@ -35,6 +54,8 @@ if [ -r "$STATE_FILE" ]; then
         [ -w "$path" ] || continue
         printf '%s\n' "$previous" > "$path" 2>/dev/null || true
     done < "$STATE_FILE"
+    # Was: Entfernt nicht mehr benötigte Dateien oder alte Zustände.
+    # Warum: Veraltete Reste könnten einen erneuten Start oder eine Neuinstallation verfälschen.
     rm -f "$STATE_FILE"
 fi
 

@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! Brew protocol entity bridging a remote network backend to UMAC/MLE with hangtime-based circuit reuse
 //!
 //! Transport-agnostic: the concrete transport (WebSocket, QUIC, TCP, …) is
@@ -28,12 +31,16 @@ use tetra_saps::{
 use super::worker::{BrewCommand, BrewEvent, BrewWorker};
 
 /// Hangtime before releasing group call circuit to allow reuse without re-signaling.
+// Was: Legt den festen Wert `GROUP_CALL_HANGTIME_DEFAULT_SECS` für Gruppe Ruf hangtime default secs fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const GROUP_CALL_HANGTIME_DEFAULT_SECS: u64 = 5;
 
 // ─── Active call tracking ─────────────────────────────────────────
 
 /// Tracks the state of a single active Brew group call (currently transmitting)
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für active Ruf in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct ActiveCall {
     /// Brew session UUID
     uuid: Uuid,
@@ -53,6 +60,8 @@ struct ActiveCall {
 
 /// Group call in hangtime with circuit still allocated.
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für hanging Ruf in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct HangingCall {
     /// Brew session UUID
     uuid: Uuid,
@@ -74,6 +83,8 @@ struct HangingCall {
 
 /// Kind of UL call being forwarded to TetraPack
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für ul forward kind auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 enum UlForwardKind {
     /// PTT group call (floor-controlled)
     Group,
@@ -83,6 +94,8 @@ enum UlForwardKind {
 
 /// Tracks a local UL call being forwarded to TetraPack
 #[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für ul forwarded Ruf in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct UlForwardedCall {
     /// Brew session UUID for this forwarded call
     uuid: Uuid,
@@ -100,6 +113,8 @@ struct UlForwardedCall {
 
 // ─── BrewEntity ───────────────────────────────────────────────────
 
+// Was: Bündelt die zusammengehörigen Werte für Brew-Verbindung entity in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct BrewEntity {
     entity: TetraEntity,
     log_label: String,
@@ -157,11 +172,15 @@ pub struct BrewEntity {
     worker_handle: Option<thread::JoinHandle<()>>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `BrewEntity`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl BrewEntity {
     /// Create a new BrewEntity with the given transport.
     ///
     /// The transport is moved into a worker thread. Any [`NetworkTransport`]
     /// implementation can be used (WebSocket, QUIC, TCP, …).
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new<T: NetworkTransport + 'static>(config: SharedConfig, entity: TetraEntity, brew_config: CfgBrew, transport: T) -> Self {
         assert!(super::is_brew_entity(entity), "BrewEntity requires a Brew router entity");
         let log_label = Self::make_log_label(entity, &brew_config);
@@ -217,7 +236,11 @@ impl BrewEntity {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `make_log_label` für make log label aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn make_log_label(entity: TetraEntity, brew_config: &CfgBrew) -> String {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let name = match entity {
             TetraEntity::Brew => "Brew",
             TetraEntity::Brew2 => "Brew2",
@@ -227,18 +250,28 @@ impl BrewEntity {
         format!("{name} {scheme}://{}:{}", brew_config.host, brew_config.port)
     }
 
+    // Was: Führt den Arbeitsschritt `log_label` für log label aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn log_label(&self) -> &str {
         &self.log_label
     }
 
     /// Set telemetry sink for emitting brew status events.
+    // Was: Diese Funktion setzt Telemetrie sink.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     pub fn set_telemetry_sink(&mut self, sink: TelemetrySink) {
         self.telemetry_sink = Some(sink);
     }
 
     /// Process all pending events from the worker thread
+    // Was: Diese Funktion verarbeitet events.
+    // Warum: Die einzelnen Verarbeitungsschritte bleiben damit gebündelt und leichter testbar.
     fn process_events(&mut self, queue: &mut MessageQueue) {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         while let Ok(event) = self.event_receiver.try_recv() {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match event {
                 BrewEvent::Connected { server_version } => {
                     tracing::debug!(
@@ -329,6 +362,8 @@ impl BrewEntity {
                     // Notify CMCE so it updates group_listeners — without this, has_listener()
                     // returns false for GSSIs where only external subscribers are present,
                     // causing BS to reject U-SETUP with "no listeners".
+                    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                     match msg_type {
                         t if t == self.brew_config.subscriber_type_register => {
                             tracing::debug!("[{}] BrewEntity: external subscriber issi={} -> REGISTER", self.log_label(), issi);
@@ -597,6 +632,8 @@ impl BrewEntity {
 
     /// Handle RSSI update from MM. Forwards to Brew server if feature_rssi_export is enabled,
     /// applying rate limiting (one update per MS every 5 seconds) to avoid flooding the server.
+    // Was: Diese Funktion verarbeitet rssi update.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_rssi_update(&mut self, issi: u32, rssi_dbfs: f32) {
         if !self.brew_config.feature_rssi_export {
             return;
@@ -608,9 +645,13 @@ impl BrewEntity {
             return;
         }
 
+        // Was: Legt den festen Wert `RSSI_EXPORT_INTERVAL` für rssi export interval fest.
+        // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
         const RSSI_EXPORT_INTERVAL: Duration = Duration::from_secs(5);
 
         let now = Instant::now();
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let should_send = match self.rssi_last_sent.get(&issi) {
             None => true,
             Some(last) => now.duration_since(*last) >= RSSI_EXPORT_INTERVAL,
@@ -628,6 +669,8 @@ impl BrewEntity {
         }
     }
 
+    // Was: Diese Funktion verarbeitet Teilnehmer update.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_subscriber_update(&mut self, update: MmSubscriberUpdate) {
         let log_label = self.log_label().to_string();
         let issi = update.issi;
@@ -635,6 +678,8 @@ impl BrewEntity {
         let routable = super::is_brew_local_issi_allowed_for_entity(&self.config, self.entity, issi)
             && super::is_brew_issi_routable_for_entity(&self.config, self.entity, issi);
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match update.action {
             BrewSubscriberAction::Register => {
                 self.subscriber_groups.entry(issi).or_insert_with(HashSet::new);
@@ -692,6 +737,8 @@ impl BrewEntity {
             BrewSubscriberAction::Affiliate => {
                 let entry = self.subscriber_groups.entry(issi).or_insert_with(HashSet::new);
                 let mut new_groups = Vec::new();
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for gssi in groups {
                     if entry.insert(gssi) {
                         new_groups.push(gssi);
@@ -724,6 +771,8 @@ impl BrewEntity {
             BrewSubscriberAction::Deaffiliate => {
                 let mut removed_groups = Vec::new();
                 if let Some(entry) = self.subscriber_groups.get_mut(&issi) {
+                    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                     for gssi in groups {
                         if entry.remove(&gssi) {
                             removed_groups.push(gssi);
@@ -760,8 +809,12 @@ impl BrewEntity {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `resync_subscribers` für resync subscribers aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn resync_subscribers(&self) {
         let log_label = self.log_label().to_string();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (issi, groups) in &self.subscriber_groups {
             let routable = super::is_brew_local_issi_allowed_for_entity(&self.config, self.entity, *issi)
                 && super::is_brew_issi_routable_for_entity(&self.config, self.entity, *issi);
@@ -793,6 +846,8 @@ impl BrewEntity {
         }
     }
 
+    // Was: Diese Funktion setzt network connected.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     fn set_network_connected(&mut self, connected: bool, server_version: u8) {
         self.connected = connected;
         let log_label = self.log_label().to_string();
@@ -833,6 +888,8 @@ impl BrewEntity {
     }
 
     /// Emit a brew version upgrade event directly without changing connection state.
+    // Was: Diese Funktion gibt Brew-Verbindung version.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn emit_brew_version(&self, version: u8) {
         if let Some(ref sink) = self.telemetry_sink {
             let _ = sink.send(TelemetryEvent::BrewConnected {
@@ -842,6 +899,8 @@ impl BrewEntity {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `announce_brew_reconnected` für announce Brew-Verbindung reconnected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn announce_brew_reconnected(&mut self, queue: &mut MessageQueue) {
         if self.brew_reconnect_announced {
             return;
@@ -855,6 +914,8 @@ impl BrewEntity {
         });
     }
 
+    // Was: Diese Funktion gibt external Teilnehmer registered.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn emit_external_subscriber_registered(&self, issi: u32) {
         if let Some(ref sink) = self.telemetry_sink {
             let _ = sink.send(TelemetryEvent::BrewSubscriberRegistered {
@@ -864,6 +925,8 @@ impl BrewEntity {
         }
     }
 
+    // Was: Diese Funktion gibt external Teilnehmer deregistered.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn emit_external_subscriber_deregistered(&self, issi: u32) {
         if let Some(ref sink) = self.telemetry_sink {
             let _ = sink.send(TelemetryEvent::BrewSubscriberDeregistered {
@@ -874,6 +937,8 @@ impl BrewEntity {
     }
 
     /// Handle new group call from Brew, reusing hanging call circuits if available.
+    // Was: Diese Funktion verarbeitet Gruppe Ruf start.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_group_call_start(&mut self, queue: &mut MessageQueue, uuid: Uuid, source_issi: u32, dest_gssi: u32, priority: u8) {
         let log_label = self.log_label().to_string();
         // Check if this call is already active (speaker change or repeated GROUP_TX)
@@ -1011,6 +1076,8 @@ impl BrewEntity {
     }
 
     /// Handle GROUP_IDLE by forwarding to CMCE and tracking for hangtime reuse
+    // Was: Diese Funktion verarbeitet Gruppe Ruf end.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_group_call_end(&mut self, queue: &mut MessageQueue, uuid: Uuid, _cause: u8) {
         let Some(call) = self.active_calls.remove(&uuid) else {
             tracing::debug!("[{}] BrewEntity: GROUP_IDLE for unknown uuid={}", self.log_label(), uuid);
@@ -1086,6 +1153,8 @@ impl BrewEntity {
     }
 
     /// Clean up expired hanging call tracking hints (CMCE already released circuits)
+    // Was: Führt den Arbeitsschritt `expire_hanging_calls` für expire hanging calls aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn expire_hanging_calls(&mut self, _queue: &mut MessageQueue) {
         let hangtime = Duration::from_secs(self.config.config().cell.hangtime_secs as u64);
         let expired: Vec<u32> = self
@@ -1095,6 +1164,8 @@ impl BrewEntity {
             .map(|(gssi, _)| *gssi)
             .collect();
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for gssi in expired {
             if let Some(hanging) = self.hanging_calls.remove(&gssi) {
                 tracing::debug!(
@@ -1109,6 +1180,8 @@ impl BrewEntity {
     }
 
     /// Handle a voice frame from Brew — inject into the downlink
+    // Was: Diese Funktion verarbeitet voice Funkrahmen.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_voice_frame(&mut self, uuid: Uuid, _length_bits: u16, data: Vec<u8>) {
         let log_label = self.log_label().to_string();
         let Some(call) = self.active_calls.get_mut(&uuid) else {
@@ -1142,6 +1215,8 @@ impl BrewEntity {
 
         // Log the first frame per call (whether or not the channel is open yet).
         if frame_count == 1 {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match ts {
                 Some(ts) => tracing::info!(
                     "[{}] BrewEntity: voice frame #1 uuid={} len={} bytes ts={}",
@@ -1171,6 +1246,8 @@ impl BrewEntity {
             .push(acelp_data);
     }
 
+    // Was: Diese Funktion arbeitet Laufzeitschwankung playout.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn drain_jitter_playout(&mut self, queue: &mut MessageQueue) {
         if self.dltime.f == 18 {
             return;
@@ -1178,6 +1255,8 @@ impl BrewEntity {
 
         let mut to_send: Vec<(u8, Uuid, usize, JitterFrame)> = Vec::new();
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (uuid, call) in &self.active_calls {
             let Some(ts) = call.ts else {
                 continue;
@@ -1198,6 +1277,8 @@ impl BrewEntity {
         // A buffer is removed when it empties naturally, OR when it has been draining for
         // far longer than any reasonable playout (its timeslot stopped being scheduled) —
         // the latter guards against slow leaks under repeated PTT cycling.
+        // Was: Legt den festen Wert `DRAIN_REAP_AFTER` für drain reap after fest.
+        // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
         const DRAIN_REAP_AFTER: Duration = Duration::from_secs(5);
         let finished: Vec<Uuid> = self
             .draining_jitter
@@ -1210,6 +1291,8 @@ impl BrewEntity {
                 if *ts != self.dltime.t {
                     return None;
                 }
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match jitter.pop_drain() {
                     Some(frame) => {
                         to_send.push((*ts, *uuid, 0, frame));
@@ -1219,11 +1302,15 @@ impl BrewEntity {
                 }
             })
             .collect();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for uuid in finished {
             tracing::debug!("[{}] BrewEntity: drain complete (or reaped) for uuid={}", self.log_label(), uuid);
             self.draining_jitter.remove(&uuid);
         }
 
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (ts, uuid, target_frames, frame) in to_send {
             tracing::trace!(
                 "[{}] BrewEntity: playout uuid={} ts={} rx_seq={} age_ms={} target_frames={}",
@@ -1248,9 +1335,13 @@ impl BrewEntity {
     }
 
     /// Release all active calls (on disconnect)
+    // Was: Diese Funktion gibt all calls.
+    // Warum: Ressourcen werden dadurch rechtzeitig freigegeben und blockieren keine weiteren Vorgänge.
     fn release_all_calls(&mut self, queue: &mut MessageQueue) {
         // Request CMCE to end all active network calls
         let calls: Vec<(Uuid, ActiveCall)> = self.active_calls.drain().collect();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for (uuid, _) in calls {
             self.dl_jitter.remove(&uuid);
             queue.push_back(SapMsg {
@@ -1282,6 +1373,8 @@ impl BrewEntity {
     }
 
     /// Handle NetworkCallReady response from CMCE
+    // Was: Führt den Arbeitsschritt `rx_network_call_ready` für rx network Ruf ready aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_network_call_ready(&mut self, queue: &mut MessageQueue, brew_uuid: Uuid, call_id: u16, ts: u8, usage: u8) {
         tracing::info!(
             "[{}] BrewEntity: network call ready uuid={} call_id={} ts={} usage={}",
@@ -1323,6 +1416,8 @@ impl BrewEntity {
     /// Drop an active circuit call state. Returns true if there was an active circuit.
     /// Flushes the jitter buffer immediately to prevent audio from being sent to a
     /// closed circuit (EN 300 392-2 §14.9: resources must be released immediately on disconnect).
+    // Was: Führt den Arbeitsschritt `drop_network_circuit` für drop network circuit aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn drop_network_circuit(&mut self, brew_uuid: Uuid) -> bool {
         // Flush and remove jitter buffer immediately — prevents DL voice frames
         // from being sent to UMAC after the circuit is already closed.
@@ -1340,6 +1435,8 @@ impl BrewEntity {
             })
             .collect();
         let had_ts = !ts_to_remove.is_empty();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for ts in ts_to_remove {
             self.ul_forwarded.remove(&ts);
         }
@@ -1358,6 +1455,8 @@ impl BrewEntity {
         had_jitter || had_ts
     }
 
+    // Was: Führt den Arbeitsschritt `drop_network_call` für drop network Ruf aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn drop_network_call(&mut self, brew_uuid: Uuid) {
         if let Some(call) = self.active_calls.remove(&brew_uuid) {
             tracing::info!(
@@ -1395,15 +1494,23 @@ impl BrewEntity {
 
 // ─── TetraEntityTrait implementation ──────────────────────────────
 
+// Was: Implementiert das zugehörige Verhalten für `TetraEntityTrait for BrewEntity`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl TetraEntityTrait for BrewEntity {
+    // Was: Führt den Arbeitsschritt `entity` für entity aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn entity(&self) -> TetraEntity {
         self.entity
     }
 
+    // Was: Diese Funktion setzt Konfiguration.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
     fn set_config(&mut self, config: SharedConfig) {
         self.config = config;
     }
 
+    // Was: Diese Funktion bearbeitet start.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn tick_start(&mut self, queue: &mut MessageQueue, ts: TdmaTime) {
         self.dltime = ts;
         // Process all pending events from the worker thread
@@ -1414,7 +1521,11 @@ impl TetraEntityTrait for BrewEntity {
         self.expire_hanging_calls(queue);
     }
 
+    // Was: Führt den Arbeitsschritt `rx_prim` für rx prim aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rx_prim(&mut self, queue: &mut MessageQueue, message: SapMsg) {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match message.msg {
             // UL voice from UMAC — forward to TetraPack if this timeslot is being forwarded
             SapMsgInner::TmdCircuitDataInd(prim) => {
@@ -1623,8 +1734,12 @@ impl TetraEntityTrait for BrewEntity {
 
 // ─── UL call forwarding to TetraPack ──────────────────────────────
 
+// Was: Implementiert das zugehörige Verhalten für `BrewEntity`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl BrewEntity {
     /// Map Brew wire BrewCircularCall to SAP NetworkCircuitCall (CMCE-facing).
+    // Was: Diese Funktion ordnet Brew-Verbindung to network circuit Ruf.
+    // Warum: Die Zuordnung wird so überall nach denselben Regeln vorgenommen.
     fn map_brew_to_network_circuit_call(call: &super::protocol::BrewCircularCall) -> NetworkCircuitCall {
         NetworkCircuitCall {
             source_issi: call.source,
@@ -1645,6 +1760,8 @@ impl BrewEntity {
     }
 
     /// Map SAP NetworkCircuitCall to Brew wire BrewCircularCall (network-facing).
+    // Was: Diese Funktion ordnet network to Brew-Verbindung circuit Ruf.
+    // Warum: Die Zuordnung wird so überall nach denselben Regeln vorgenommen.
     fn map_network_to_brew_circuit_call(call: &NetworkCircuitCall) -> super::protocol::BrewCircularCall {
         super::protocol::BrewCircularCall {
             source: call.source_issi,
@@ -1667,6 +1784,8 @@ impl BrewEntity {
 
     /// Handle notification that a local UL group call has started.
     /// If the group is subscribed (in config.groups), start forwarding to TetraPack.
+    // Was: Diese Funktion verarbeitet local Ruf start.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_local_call_start(&mut self, call_id: u16, source_issi: u32, dest_gssi: u32, ts: u8) {
         let log_label = self.log_label().to_string();
         if !self.connected {
@@ -1750,6 +1869,8 @@ impl BrewEntity {
     }
 
     /// Handle notification that a local UL call has ended.
+    // Was: Diese Funktion verarbeitet local Ruf tx stopped.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_local_call_tx_stopped(&mut self, call_id: u16, ts: u8) {
         let log_label = self.log_label().to_string();
         if let Some(fwd) = self.ul_forwarded.remove(&ts) {
@@ -1762,6 +1883,8 @@ impl BrewEntity {
                     call_id
                 );
             }
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match fwd.kind {
                 UlForwardKind::Group => {
                     tracing::info!(
@@ -1779,6 +1902,8 @@ impl BrewEntity {
         }
     }
 
+    // Was: Diese Funktion verarbeitet local Ruf end.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_local_call_end(&mut self, call_id: u16, ts: u8) {
         let log_label = self.log_label().to_string();
         // Check if ul_forwarded entry still exists (might have been removed by handle_local_call_tx_stopped)
@@ -1792,6 +1917,8 @@ impl BrewEntity {
                     call_id
                 );
             }
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match fwd.kind {
                 UlForwardKind::Group => {
                     tracing::debug!(
@@ -1816,6 +1943,8 @@ impl BrewEntity {
 
     /// Handle UL voice data from UMAC. If the timeslot is being forwarded to TetraPack,
     /// convert to STE format and send.
+    // Was: Diese Funktion verarbeitet ul voice.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_ul_voice(&mut self, ts: u8, acelp_bits: Vec<u8>) {
         let log_label = self.log_label().to_string();
         let Some(fwd) = self.ul_forwarded.get_mut(&ts) else {
@@ -1847,8 +1976,12 @@ impl BrewEntity {
             ste.push(0x00); // STE header byte: normal speech frame
 
             // Pack 274 bits (1-per-byte) into 35 bytes (280 bits, last 6 bits padded)
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for chunk_idx in 0..35 {
                 let mut byte = 0u8;
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for bit in 0..8 {
                     let bit_idx = chunk_idx * 8 + bit;
                     if bit_idx < 274 {
@@ -1870,8 +2003,12 @@ impl BrewEntity {
 
 // ─── SDS handling ─────────────────────────────────────────────────
 
+// Was: Implementiert das zugehörige Verhalten für `BrewEntity`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl BrewEntity {
     /// Handle incoming SDS transfer from Brew (network → local MS)
+    // Was: Diese Funktion verarbeitet TETRA-Kurznachricht (SDS) transfer.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_sds_transfer(
         &mut self,
         queue: &mut MessageQueue,
@@ -1938,6 +2075,8 @@ impl BrewEntity {
     }
 
     /// Handle outgoing SDS from CMCE → Brew (local MS → network)
+    // Was: Diese Funktion verarbeitet TETRA-Kurznachricht (SDS) send.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_sds_send(&self, sds: CmceSdsData) {
         if !self.connected {
             tracing::warn!(
@@ -1988,7 +2127,11 @@ impl BrewEntity {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Drop for BrewEntity`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Drop for BrewEntity {
+    // Was: Führt den Arbeitsschritt `drop` für drop aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn drop(&mut self) {
         tracing::debug!("[{}] BrewEntity: shutting down, sending graceful disconnect", self.log_label());
         let _ = self.command_sender.send(BrewCommand::Disconnect);
@@ -1997,6 +2140,8 @@ impl Drop for BrewEntity {
         if let Some(handle) = self.worker_handle.take() {
             let timeout = std::time::Duration::from_secs(3);
             let start = std::time::Instant::now();
+            // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+            // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
             loop {
                 if handle.is_finished() {
                     let _ = handle.join();

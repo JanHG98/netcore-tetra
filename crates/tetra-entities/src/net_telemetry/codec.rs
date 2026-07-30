@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! Telemetry codec — bitcode-based binary serialization of [`TelemetryEvent`]s.
 
 use crate::{net_telemetry::events::TelemetryEvent, network::transports::NetworkError};
@@ -8,15 +11,23 @@ use crate::{net_telemetry::events::TelemetryEvent, network::transports::NetworkE
 
 /// Codec for telemetry events using bitcode for serialization.
 #[derive(Default)]
+// Was: Bündelt die zusammengehörigen Werte für Telemetrie codec bitcode in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TelemetryCodecBitcode;
 
+// Was: Implementiert das zugehörige Verhalten für `TelemetryCodecBitcode`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl TelemetryCodecBitcode {
     /// Encode a [`TelemetryEvent`] to bitcode bytes.
+    // Was: Diese Funktion kodiert den vorgesehenen Arbeitsschritt.
+    // Warum: Alle Gegenstellen erhalten dadurch dasselbe erwartete Protokollformat.
     pub fn encode(&self, event: &TelemetryEvent) -> Vec<u8> {
         bitcode::encode(event)
     }
 
     /// Decode bitcode bytes into a [`TelemetryEvent`].
+    // Was: Diese Funktion dekodiert den vorgesehenen Arbeitsschritt.
+    // Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
     pub fn decode(&self, payload: &[u8]) -> Result<TelemetryEvent, NetworkError> {
         bitcode::decode(payload).map_err(|e| NetworkError::SerializationError(format!("telemetry decode: {}", e)))
     }
@@ -24,15 +35,23 @@ impl TelemetryCodecBitcode {
 
 /// Codec for telemetry events using JSON for serialization.
 #[derive(Default)]
+// Was: Bündelt die zusammengehörigen Werte für Telemetrie codec JSON-Daten in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TelemetryCodecJson;
 
+// Was: Implementiert das zugehörige Verhalten für `TelemetryCodecJson`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl TelemetryCodecJson {
     /// Encode a [`TelemetryEvent`] to JSON bytes.
+    // Was: Diese Funktion kodiert den vorgesehenen Arbeitsschritt.
+    // Warum: Alle Gegenstellen erhalten dadurch dasselbe erwartete Protokollformat.
     pub fn encode(&self, event: &TelemetryEvent) -> Vec<u8> {
         serde_json::to_vec(event).unwrap_or_default()
     }
 
     /// Decode JSON bytes into a [`TelemetryEvent`].
+    // Was: Diese Funktion dekodiert den vorgesehenen Arbeitsschritt.
+    // Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
     pub fn decode(&self, payload: &[u8]) -> Result<TelemetryEvent, NetworkError> {
         serde_json::from_slice(payload).map_err(|e| NetworkError::SerializationError(format!("telemetry decode: {}", e)))
     }
@@ -43,10 +62,14 @@ impl TelemetryCodecJson {
 // ---------------------------------------------------------------------------
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
     #[test]
+    // Was: Prüft automatisch den Fall roundtrip bitcode registration.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_roundtrip_bitcode_registration() {
         let codec = TelemetryCodecBitcode;
         let event = TelemetryEvent::MsRegistration { issi: 1234 };
@@ -59,6 +82,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall roundtrip JSON-Daten registration.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_roundtrip_json_registration() {
         let codec = TelemetryCodecJson;
         let event = TelemetryEvent::MsRegistration { issi: 1234 };
@@ -71,6 +96,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Prüft automatisch den Fall Dekodierung invalid bytes.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_decode_invalid_bytes() {
         let codec = TelemetryCodecBitcode;
         assert!(codec.decode(&[0xFF, 0x00]).is_err());

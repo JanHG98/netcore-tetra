@@ -1,11 +1,16 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use tetra_config::bluestation::{
-    CfgAsterisk, CfgAudioPlayer, CfgCellInfo, CfgDapnet, CfgEcholink, CfgEmergency, CfgGeoalarm, CfgHealth, CfgMeshcom, CfgNetInfo, CfgPhyIo, CfgRecording, CfgRecovery,
-    CfgSecurity, CfgSnomNotify, CfgWapIp, CfgPacketDataGateway, CfgTpg2200Action, CfgTts, CfgWxService, PhyBackend, StackConfig, StackMode,
+    CfgAsterisk, CfgAudioPlayer, CfgCellInfo, CfgDapnet, CfgEcholink, CfgEmergency, CfgGeoalarm, CfgHealth, CfgMeshcom, CfgMediaLibrary, CfgNetInfo, CfgPhyIo, CfgRecording, CfgRecovery,
+    CfgSecurity, CfgSnomNotify, CfgEdgeFallback, CfgWapIp, CfgPacketDataGateway, CfgTpg2200Action, CfgTts, CfgWxService, PhyBackend, StackConfig, StackMode,
 };
 use tetra_core::{freqs::FreqInfo, ranges::SortedDisjointSsiRanges};
 
 /// Creates a default config for testing. It can still be modified as needed
 /// before passing it to the ComponentTest constructor
+// Was: Führt den Arbeitsschritt `default_test_config_bs` für default test Konfiguration Basisstation aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn default_test_config_bs() -> StackConfig {
     let phy_io = default_phy_io();
     let net_info = default_net_info();
@@ -30,12 +35,14 @@ pub fn default_test_config_bs() -> StackConfig {
         tpg2200_action: CfgTpg2200Action::default(),
         snom_notify: CfgSnomNotify::default(),
         dashboard: None,
+        media_library: CfgMediaLibrary::default(),
         recording: CfgRecording::default(),
         audio_player: CfgAudioPlayer::default(),
         tts: CfgTts::default(),
         telemetry: None,
         control: None,
         control_room: None,
+        edge_fallback: CfgEdgeFallback::default(),
         security: CfgSecurity::default(),
         wx_service: CfgWxService::default(),
         recovery: CfgRecovery::default(),
@@ -45,6 +52,8 @@ pub fn default_test_config_bs() -> StackConfig {
     }
 }
 
+// Was: Führt den Arbeitsschritt `default_phy_io` für default phy io aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn default_phy_io() -> CfgPhyIo {
     CfgPhyIo {
         backend: PhyBackend::None,
@@ -56,10 +65,14 @@ pub fn default_phy_io() -> CfgPhyIo {
     }
 }
 
+// Was: Führt den Arbeitsschritt `default_net_info` für default net info aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn default_net_info() -> CfgNetInfo {
     CfgNetInfo { mcc: 204, mnc: 1337 }
 }
 
+// Was: Führt den Arbeitsschritt `default_cell_info` für default cell info aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn default_cell_info(freq_info: FreqInfo) -> CfgCellInfo {
     CfgCellInfo {
         colour_code: 1,
@@ -107,6 +120,8 @@ pub fn default_cell_info(freq_info: FreqInfo) -> CfgCellInfo {
     }
 }
 
+// Was: Führt den Arbeitsschritt `default_test_config_ms` für default test Konfiguration ms aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn default_test_config_ms() -> StackConfig {
     let mut config = default_test_config_bs();
     config.stack_mode = StackMode::Ms;

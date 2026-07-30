@@ -1,4 +1,13 @@
 @echo off
+REM NETCORE-KOMMENTAR - Was: Enthält einen Teil der Logik für Leitstellenfunktionen und Bedienoberflächen.
+REM NETCORE-KOMMENTAR - Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+REM Was: Wechselt in das Wurzelverzeichnis des Projekts.
+REM Warum: Nachfolgende Pfade und Cargo-Befehle funktionieren dadurch unabhängig vom Startordner.
 cd /d "%~dp0\..\..\..\.."
+REM Was: Startet die gebaute Leitstellenoberfläche.
+REM Warum: Konfiguration und Profil werden ausdrücklich übergeben, damit die richtige Umgebung verwendet wird.
 target\release\netcore-control-room-ui.exe --config "%APPDATA%\netcore\control-room\operator.toml" --profile default
+REM Was: Hält das Fenster offen, bis eine Taste gedrückt wird.
+REM Warum: Fehler- und Statusmeldungen bleiben dadurch für den Benutzer sichtbar.
 pause

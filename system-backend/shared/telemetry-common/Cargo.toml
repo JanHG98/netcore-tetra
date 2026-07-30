@@ -1,0 +1,29 @@
+# NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für gemeinsame Telemetrie.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+# Was: Öffnet den Konfigurationsabschnitt `package`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[package]
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "netcore-telemetry-common"
+# Was: Setzt die Einstellung `version.workspace` für package.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+version.workspace = true
+# Was: Setzt die Einstellung `edition.workspace` für package.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+edition.workspace = true
+# Was: Setzt die Einstellung `license.workspace` für package.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+license.workspace = true
+
+# Was: Öffnet den Konfigurationsabschnitt `dependencies`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[dependencies]
+
+# Was: Öffnet den Konfigurationsabschnitt `lints`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[lints]
+# Was: Setzt die Einstellung `workspace` für lints.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+workspace = true

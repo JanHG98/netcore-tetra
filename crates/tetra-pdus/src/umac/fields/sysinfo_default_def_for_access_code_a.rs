@@ -1,9 +1,14 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Kodierung und Dekodierung von TETRA-Protokollnachrichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use core::fmt::Display;
 
 use tetra_core::{BitBuffer, pdu_parse_error::PduParseErr};
 
 /// Clause 21.4.4.1 SYSINFO -> Default definition for access code A information element contents
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für sysinfo default def for access code a in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SysinfoDefaultDefForAccessCodeA {
     // 4 0: always randomize, 0b1111: imm access allowed, other: randomize after n tdma frames
     pub imm: u8,
@@ -19,7 +24,11 @@ pub struct SysinfoDefaultDefForAccessCodeA {
     pub min_pdu_prio: u8,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `SysinfoDefaultDefForAccessCodeA`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl SysinfoDefaultDefForAccessCodeA {
+    // Was: Wandelt Eingangsdaten in bitbuf um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn from_bitbuf(buf: &mut BitBuffer) -> Result<Self, PduParseErr> {
         let imm = buf.read_field(4, "imm")? as u8;
         let wt = buf.read_field(4, "wt")? as u8;
@@ -38,6 +47,8 @@ impl SysinfoDefaultDefForAccessCodeA {
         })
     }
 
+    // Was: Wandelt den vorhandenen Wert in bitbuf um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn to_bitbuf(&self, buf: &mut BitBuffer) {
         buf.write_bits(self.imm as u64, 4);
         buf.write_bits(self.wt as u64, 4);
@@ -48,7 +59,11 @@ impl SysinfoDefaultDefForAccessCodeA {
     }
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Display for SysinfoDefaultDefForAccessCodeA`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Display for SysinfoDefaultDefForAccessCodeA {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,

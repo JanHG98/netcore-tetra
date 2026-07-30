@@ -20,7 +20,9 @@ use tetra_pdus::umac::pdus::mac_sync::MacSync;
 use tetra_pdus::umac::pdus::mac_sysinfo::MacSysinfo;
 use tetra_pdus::umac::pdus::mac_u_blck::MacUBlck;
 use tetra_pdus::umac::pdus::mac_u_signal::MacUSignal;
+use tetra_saps::common::Layer2Report;
 use tetra_saps::control::call_control::{CallControl, Circuit};
+use tetra_saps::tlmc::TlmcReportInd;
 use tetra_saps::lcmc::enums::alloc_type::ChanAllocType;
 use tetra_saps::lcmc::enums::ul_dl_assignment::UlDlAssignment;
 use tetra_saps::lcmc::fields::chan_alloc_req::CmceChanAllocReq;
@@ -32,9 +34,14 @@ use tetra_saps::tmv::enums::logical_chans::LogicalChannel;
 use tetra_saps::{SapMsg, SapMsgInner};
 
 use crate::lmac::components::scrambler;
+use crate::net_media::{
+    LocalMediaUplinkFrame, MediaCodec, MediaDownlinkSource, MediaTryRecvError,
+    MediaUplinkSink, TETRA_ACELP_FRAME_BYTES,
+};
 use crate::umac::subcomp::bs_frag::BsFragger;
 use crate::umac::subcomp::bs_sched::{BsChannelScheduler, CarrierDownlinkMode, PrecomputedUmacPdus, TCH_S_CAP};
 use crate::umac::subcomp::fillbits;
+use crate::umac::tlmc_runtime::{TlmcRuntime, TlmcRuntimeSnapshot};
 use crate::{MessagePrio, MessageQueue, TetraEntityTrait};
 
 use super::subcomp::bs_defrag::BsDefrag;
@@ -68,6 +75,17 @@ pub struct UmacBs {
     ul_signal_owner: [Option<u32>; 8],
     /// Delay traffic-slot circuit closes until queued FACCH/STCH release signalling drains.
     pending_circuit_closes: [PendingCircuitClose; 8],
+    /// Defensive TLMC runtime for shared stack tests and diagnostics. ETSI cell
+    /// scanning/selection primitives are MS-side and are rejected on a BS.
+    tlmc: TlmcRuntime,
+    /// Non-blocking UL media tap to the Control-Room/Node-Gateway worker.
+    media_uplink_sink: Option<MediaUplinkSink>,
+    /// Non-blocking DL media queue filled by the Control-Room worker.
+    media_downlink_source: Option<MediaDownlinkSource>,
+    /// Per logical-timeslot sequence numbers used by the Media Switch jitter buffer.
+    media_sequence: [u64; 8],
+    media_uplink_dropped: u64,
+    media_downlink_dropped: u64,
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -115,7 +133,104 @@ impl UmacBs {
             last_ul_voice: [None; 8],
             ul_signal_owner: [None; 8],
             pending_circuit_closes: [PendingCircuitClose::default(); 8],
+            tlmc: TlmcRuntime::new(),
+            media_uplink_sink: None,
+            media_downlink_source: None,
+            media_sequence: [0; 8],
+            media_uplink_dropped: 0,
+            media_downlink_dropped: 0,
         }
+    }
+
+    /// Connect the RF scheduler to the central Media Switch transport. The
+    /// queues are bounded and all operations are non-blocking so a slow LXC or
+    /// management network cannot stall TDMA processing.
+    pub fn set_media_bridge(
+        &mut self,
+        uplink_sink: MediaUplinkSink,
+        downlink_source: MediaDownlinkSource,
+    ) {
+        self.media_uplink_sink = Some(uplink_sink);
+        self.media_downlink_source = Some(downlink_source);
+    }
+
+    fn forward_media_uplink(
+        &mut self,
+        carrier_num: u16,
+        logical_ts: u8,
+        data: &[u8],
+    ) {
+        let Some(sink) = self.media_uplink_sink.clone() else {
+            return;
+        };
+        let Some(payload) = pack_ul_acelp_bits(data) else {
+            self.media_uplink_dropped = self.media_uplink_dropped.wrapping_add(1);
+            return;
+        };
+        let Some(index) = logical_ts.checked_sub(1).map(usize::from).filter(|index| *index < 8) else {
+            self.media_uplink_dropped = self.media_uplink_dropped.wrapping_add(1);
+            return;
+        };
+        self.media_sequence[index] = self.media_sequence[index].wrapping_add(1);
+        let frame = LocalMediaUplinkFrame {
+            sequence: self.media_sequence[index],
+            carrier_num,
+            logical_ts,
+            codec: MediaCodec::TetraAcelp0,
+            payload,
+        };
+        if sink.try_send(frame).is_err() {
+            self.media_uplink_dropped = self.media_uplink_dropped.wrapping_add(1);
+        }
+    }
+
+    fn drain_media_downlink(&mut self) {
+        let mut frames = Vec::new();
+        let mut disconnected = false;
+        if let Some(source) = self.media_downlink_source.as_ref() {
+            for _ in 0..64 {
+                match source.try_recv() {
+                    Ok(frame) => frames.push(frame),
+                    Err(MediaTryRecvError::Empty) => break,
+                    Err(MediaTryRecvError::Disconnected) => {
+                        disconnected = true;
+                        break;
+                    }
+                }
+            }
+        }
+        if disconnected {
+            self.media_downlink_source = None;
+        }
+
+        for frame in frames {
+            if frame.codec != MediaCodec::TetraAcelp0
+                || frame.payload.len() != TETRA_ACELP_FRAME_BYTES
+                || !(1..=7).contains(&frame.logical_ts)
+            {
+                self.media_downlink_dropped = self.media_downlink_dropped.wrapping_add(1);
+                continue;
+            }
+            let carrier_num = self.carrier_for_logical_ts(frame.logical_ts);
+            let air_ts = Self::air_ts_for_logical(frame.logical_ts);
+            if self.scheduler_for(carrier_num).circuit_is_active(Direction::Dl, air_ts) {
+                self.scheduler_for_mut(carrier_num)
+                    .dl_schedule_tmd(air_ts, frame.payload);
+            } else {
+                self.media_downlink_dropped = self.media_downlink_dropped.wrapping_add(1);
+                tracing::trace!(
+                    session_id = %frame.session_id,
+                    source_node_id = %frame.source_node_id,
+                    logical_ts = frame.logical_ts,
+                    "dropping central media frame for inactive DL circuit"
+                );
+            }
+        }
+    }
+
+    /// Read-only TLMC state for diagnostics, tests and the future TBS WebUI.
+    pub fn tlmc_snapshot(&self) -> TlmcRuntimeSnapshot {
+        self.tlmc.snapshot()
     }
 
     fn main_carrier(&self) -> u16 {
@@ -1608,6 +1723,10 @@ impl UmacBs {
 
                 let ul_active = self.scheduler_for(carrier_num).circuit_is_active(Direction::Ul, air_ts);
 
+                if ul_active {
+                    self.forward_media_uplink(carrier_num, logical_ts, &data);
+                }
+
                 // Passive local recorder tap. The recorder receives only valid UL media on an
                 // active circuit and correlates the logical timeslot with CMCE lifecycle events.
                 #[cfg(feature = "recording")]
@@ -2060,6 +2179,47 @@ impl UmacBs {
         }
     }
 
+    fn queue_tlmc_to_mle(queue: &mut MessageQueue, msg: SapMsgInner) {
+        queue.push_back(SapMsg {
+            sap: Sap::TlmcSap,
+            src: TetraEntity::Umac,
+            dest: TetraEntity::Mle,
+            msg,
+        });
+    }
+
+    fn rx_tlmc_prim(&mut self, queue: &mut MessageQueue, message: SapMsg) {
+        match message.msg {
+            SapMsgInner::TlmcConfigureReq(request) => match self.tlmc.apply_configure(request) {
+                Ok(confirm) => Self::queue_tlmc_to_mle(queue, SapMsgInner::TlmcConfigureConf(confirm)),
+                Err(error) => {
+                    tracing::warn!("TLMC: BS configure rejected: {}", error);
+                    Self::queue_tlmc_to_mle(
+                        queue,
+                        SapMsgInner::TlmcReportInd(TlmcReportInd {
+                            request_handle: None,
+                            report: Layer2Report::Reject,
+                            endpoint_id: None,
+                            nsapi: None,
+                        }),
+                    );
+                }
+            },
+            other => {
+                tracing::warn!("TLMC: {:?} is MS-side and is not executed by UMAC-BS", other);
+                Self::queue_tlmc_to_mle(
+                    queue,
+                    SapMsgInner::TlmcReportInd(TlmcReportInd {
+                        request_handle: None,
+                        report: Layer2Report::ServiceNotSupported,
+                        endpoint_id: None,
+                        nsapi: None,
+                    }),
+                );
+            }
+        }
+    }
+
     fn rx_control(&mut self, queue: &mut MessageQueue, message: SapMsg) {
         tracing::trace!("rx_control");
         let SapMsgInner::CmceCallControl(prim) = message.msg else {
@@ -2164,7 +2324,7 @@ impl TetraEntityTrait for UmacBs {
                 self.rx_tlmb_prim(queue, message);
             }
             Sap::TlmcSap => {
-                unimplemented!();
+                self.rx_tlmc_prim(queue, message);
             }
             Sap::Control => {
                 self.rx_control(queue, message);
@@ -2178,6 +2338,7 @@ impl TetraEntityTrait for UmacBs {
 
     fn tick_start(&mut self, queue: &mut MessageQueue, ts: TdmaTime) {
         self.dltime = ts;
+        self.drain_media_downlink();
         self.refresh_system_wide_services();
 
         if self.channel_scheduler.cur_dltime != ts && self.channel_scheduler.cur_dltime == (TdmaTime { t: 0, f: 0, m: 0, h: 0 }) {

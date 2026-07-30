@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! Display backlight brightness control for the dashboard (FH-FEAT-008).
 //!
 //! Writes an integer brightness to the kernel backlight sysfs node
@@ -31,14 +34,20 @@ use std::time::{Duration, Instant};
 /// Upper bound on the brightness value accepted from the UI. The official RPi/DSI
 /// panels FlowStation targets use a 0-255 range; the written value is additionally
 /// clamped to the device's own `max_brightness`.
+// Was: Legt den festen Wert `MAX_VALUE` für max value fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 pub const MAX_VALUE: u32 = 255;
 
 /// Cap on how long we wait for the privileged write before giving up — a wedged
 /// `sudo`/`tee` must never lock the HTTP handler thread.
+// Was: Legt den festen Wert `WRITE_TIMEOUT` für write timeout fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const WRITE_TIMEOUT: Duration = Duration::from_secs(5);
 
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(tag = "kind", content = "msg")]
+// Was: Listet die möglichen Varianten für backlight error auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum BacklightError {
     /// No backlight panel on this host (nothing under /sys/class/backlight).
     NotAvailable,
@@ -52,8 +61,14 @@ pub enum BacklightError {
     Timeout,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `std::fmt::Display for BacklightError`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl std::fmt::Display for BacklightError {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self {
             BacklightError::NotAvailable => write!(f, "no backlight device on this host"),
             BacklightError::OutOfRange => write!(f, "brightness must be 0..={MAX_VALUE}"),
@@ -65,6 +80,8 @@ impl std::fmt::Display for BacklightError {
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für backlight Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct BacklightStatus {
     pub present: bool,
     pub device: Option<String>,
@@ -74,6 +91,8 @@ pub struct BacklightStatus {
 
 /// First device under /sys/class/backlight (alphabetical, deterministic) that exposes
 /// a `brightness` node.
+// Was: Führt den Arbeitsschritt `discover` für discover aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn discover() -> Option<PathBuf> {
     let mut dirs: Vec<PathBuf> = std::fs::read_dir("/sys/class/backlight")
         .ok()?
@@ -84,13 +103,19 @@ fn discover() -> Option<PathBuf> {
     dirs.into_iter().find(|p| p.join("brightness").exists())
 }
 
+// Was: Diese Funktion liest u32.
+// Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
 fn read_u32(path: &Path) -> Option<u32> {
     std::fs::read_to_string(path).ok()?.trim().parse::<u32>().ok()
 }
 
 /// Current backlight status. Never errors — an absent panel is reported as
 /// `present: false` so the UI can hide the control gracefully.
+// Was: Führt den Arbeitsschritt `status` für Status aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn status() -> BacklightStatus {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match discover() {
         None => BacklightStatus {
             present: false,
@@ -110,12 +135,16 @@ pub fn status() -> BacklightStatus {
 /// Set the backlight brightness. `value` must be 0..=[`MAX_VALUE`]; it is additionally
 /// clamped to the device's `max_brightness` (if readable) before writing. Tries a
 /// direct sysfs write first, then `sudo -n tee`.
+// Was: Diese Funktion setzt brightness.
+// Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
 pub fn set_brightness(value: u32) -> Result<(), BacklightError> {
     if value > MAX_VALUE {
         return Err(BacklightError::OutOfRange);
     }
     let dir = discover().ok_or(BacklightError::NotAvailable)?;
     let node = dir.join("brightness");
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let clamped = match read_u32(&dir.join("max_brightness")) {
         Some(max) => value.min(max),
         None => value,
@@ -133,7 +162,11 @@ pub fn set_brightness(value: u32) -> Result<(), BacklightError> {
 
 /// `<value> | sudo -n tee <node> >/dev/null`, timeout-guarded. Only ASCII digits reach
 /// stdin and `node` is /sys-confined from discovery — no shell, no injection.
+// Was: Diese Funktion schreibt via sudo tee.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 fn write_via_sudo_tee(node: &Path, payload: &str) -> Result<(), BacklightError> {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let mut child = match Command::new("sudo")
         .arg("-n")
         .arg("tee")
@@ -163,7 +196,11 @@ fn write_via_sudo_tee(node: &Path, payload: &str) -> Result<(), BacklightError> 
     }
 
     let start = Instant::now();
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
     loop {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match child.try_wait() {
             Ok(Some(exit)) => {
                 let output = child.wait_with_output().map_err(|e| BacklightError::Io(e.to_string()))?;
@@ -193,16 +230,22 @@ fn write_via_sudo_tee(node: &Path, payload: &str) -> Result<(), BacklightError> 
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
     #[test]
+    // Was: Führt den Arbeitsschritt `rejects_out_of_range_before_touching_hardware` für rejects out of range before touching hardware aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn rejects_out_of_range_before_touching_hardware() {
         // 256 is rejected purely on the value, regardless of host hardware.
         assert!(matches!(set_brightness(MAX_VALUE + 1), Err(BacklightError::OutOfRange)));
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `status_is_graceful_without_a_panel` für Status is graceful without a panel aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn status_is_graceful_without_a_panel() {
         // On a host with no /sys/class/backlight (CI / dev mac) this must not panic and
         // must report present:false rather than erroring.

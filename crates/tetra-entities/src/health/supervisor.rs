@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! The health sampler thread.
 //!
 //! Wakes every `snapshot_interval`, rolls the registry into a [`HealthSnapshot`], and pushes it
@@ -17,6 +20,8 @@ use crate::service_control::{self, ServiceAction};
 use super::registry::{HealthThresholds, registry};
 
 #[derive(Debug, Clone, Copy)]
+// Was: Bündelt die zusammengehörigen Werte für health monitor Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct HealthMonitorConfig {
     pub snapshot_interval: Duration,
     pub thresholds: HealthThresholds,
@@ -28,7 +33,11 @@ pub struct HealthMonitorConfig {
     pub restart_cooldown: Duration,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for HealthMonitorConfig`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for HealthMonitorConfig {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             snapshot_interval: Duration::from_secs(5),
@@ -41,6 +50,8 @@ impl Default for HealthMonitorConfig {
 }
 
 /// Spawn the background health sampler. `sink` is a clone of the telemetry sink.
+// Was: Diese Funktion startet health monitor.
+// Warum: Länger laufende Arbeit blockiert dadurch nicht den aufrufenden Ablauf.
 pub fn spawn_health_monitor(sink: TelemetrySink, cfg: HealthMonitorConfig) {
     let interval = cfg.snapshot_interval.max(Duration::from_secs(1));
     let stall_critical_ms = cfg.thresholds.core_stall_critical_ms.max(1_000);
@@ -57,6 +68,8 @@ pub fn spawn_health_monitor(sink: TelemetrySink, cfg: HealthMonitorConfig) {
             );
             let mut stall_since: Option<Instant> = None;
             let mut last_restart: Option<Instant> = None;
+            // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+            // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
             loop {
                 thread::sleep(interval);
 

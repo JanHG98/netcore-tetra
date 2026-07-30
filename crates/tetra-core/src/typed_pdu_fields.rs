@@ -1,4 +1,9 @@
-#[derive(Debug, PartialEq, Eq)]
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für grundlegende TETRA-Datentypen und Hilfsfunktionen.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für type4 field generic in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct Type4FieldGeneric {
     pub field_id: u64,
     pub len: usize,
@@ -7,7 +12,9 @@ pub struct Type4FieldGeneric {
     pub data: u64,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für type3 field generic in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct Type3FieldGeneric {
     pub field_id: u64,
     pub len: usize,
@@ -18,40 +25,56 @@ pub struct Type3FieldGeneric {
 }
 
 /// Helper functions for dealing with type2, type3 and type4 fields for MLE, CMCE, MM and SNDCP PDUs.
+// Was: Bindet das Untermodul delimiters in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 pub mod delimiters {
     use crate::{bitbuffer::BitBuffer, pdu_parse_error::PduParseErr};
 
     /// Read the o-bit between type1 and type2/type3 elements
+    // Was: Diese Funktion liest obit.
+    // Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
     pub fn read_obit(buffer: &mut BitBuffer) -> Result<bool, PduParseErr> {
         Ok(buffer.read_field(1, "obit")? == 1)
     }
 
     /// Write the o-bit between type1 and type2/type3 elements
+    // Was: Diese Funktion schreibt obit.
+    // Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
     pub fn write_obit(buffer: &mut BitBuffer, val: u8) {
         buffer.write_bit(val);
     }
 
     /// Read a p-bit preceding a type2 element
+    // Was: Diese Funktion liest pbit.
+    // Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
     pub fn read_pbit(buffer: &mut BitBuffer) -> Result<bool, PduParseErr> {
         Ok(buffer.read_field(1, "pbit")? == 1)
     }
 
     /// Write the p-bit preceding a type2 element
+    // Was: Diese Funktion schreibt pbit.
+    // Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
     pub fn write_pbit(buffer: &mut BitBuffer, val: u8) {
         buffer.write_bit(val);
     }
 
     /// Read an m-bit found before a type3 or type4 element, and trailing the message
+    // Was: Diese Funktion liest mbit.
+    // Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
     pub fn read_mbit(buffer: &mut BitBuffer) -> Result<bool, PduParseErr> {
         Ok(buffer.read_field(1, "mbit")? == 1)
     }
 
     /// Write the m-bit before a type3 or type4 element, and trailing the message
+    // Was: Diese Funktion schreibt mbit.
+    // Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
     pub fn write_mbit(buffer: &mut BitBuffer, val: u8) {
         buffer.write_bit(val);
     }
 }
 
+// Was: Bindet das Untermodul typed in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 pub mod typed {
     use crate::{
         bitbuffer::BitBuffer,
@@ -59,6 +82,8 @@ pub mod typed {
         typed_pdu_fields::{Type3FieldGeneric, Type4FieldGeneric, delimiters},
     };
 
+    // Was: Diese Funktion liest und prüft type2 generic.
+    // Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     pub fn parse_type2_generic(
         obit: bool,
         buffer: &mut BitBuffer,
@@ -68,10 +93,14 @@ pub mod typed {
         if !obit {
             return Ok(None);
         }
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match delimiters::read_pbit(buffer) {
             Ok(true) => {
                 // Field present
                 tracing::trace!("parse_type2_generic field_present {:20}: {}", field_name, buffer.dump_bin());
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match buffer.read_field(num_bits, field_name) {
                     Ok(v) => Ok(Some(v)),
                     Err(e) => Err(e),
@@ -87,6 +116,8 @@ pub mod typed {
     }
 
     /// Parse a Type-2 element into a struct that implements `from_bitbuf`.
+    // Was: Diese Funktion liest und prüft type2 struct.
+    // Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     pub fn parse_type2_struct<T, F>(obit: bool, buffer: &mut BitBuffer, parser: F) -> Result<Option<T>, PduParseErr>
     where
         F: FnOnce(&mut BitBuffer) -> Result<T, PduParseErr>,
@@ -95,6 +126,8 @@ pub mod typed {
             return Ok(None);
         }
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match delimiters::read_pbit(buffer) {
             Ok(true) => {
                 // Field present
@@ -113,6 +146,8 @@ pub mod typed {
 
     /// Write one Type-2 element.
     /// If `value` is `Some(v)`, writes P-bit=1 then `len` bits of `v`. If `None`, writes P-bit=0.
+    // Was: Diese Funktion schreibt type2 generic.
+    // Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
     pub fn write_type2_generic(obit: bool, buffer: &mut BitBuffer, value: Option<u64>, len: usize) {
         // No optional elements
         if !obit {
@@ -120,6 +155,8 @@ pub mod typed {
             return;
         }
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match value {
             Some(v) => {
                 tracing::trace!("write_type2_generic field_present {}", buffer.dump_bin());
@@ -134,6 +171,8 @@ pub mod typed {
     }
 
     /// Write a Type-2 element from a struct that implements `to_bitbuf`.
+    // Was: Diese Funktion schreibt type2 struct.
+    // Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
     pub fn write_type2_struct<T, F>(obit: bool, buffer: &mut BitBuffer, value: &Option<T>, writer: F) -> Result<(), PduParseErr>
     where
         F: Fn(&T, &mut BitBuffer) -> Result<(), PduParseErr>,
@@ -143,6 +182,8 @@ pub mod typed {
             assert!(value.is_none(), "Type2 element cannot be present when obit is false");
             return Ok(());
         }
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match value {
             Some(v) => {
                 tracing::trace!("write_type2_struct field_present {}", buffer.dump_bin());
@@ -161,8 +202,12 @@ pub mod typed {
     /// Read the m-bit for a type3 or type4 element without advancing the buffer pos
     /// If set, reads the type3/4 field identifier and compares to expected id.
     /// Return true if present, false if not present, or PduParseErr on error
+    // Was: Führt den Arbeitsschritt `peek_type34_mbit_and_id` für peek type34 mbit and Kennung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn peek_type34_mbit_and_id(buffer: &BitBuffer, expected_id: u64) -> Result<bool, PduParseErr> {
         let mbit = buffer.peek_bits(1);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match mbit {
             Some(0) => {
                 // Field not present
@@ -171,6 +216,8 @@ pub mod typed {
             Some(1) => {
                 // Some field is present, read and compare id
                 let id_bits = buffer.peek_bits_posoffset(1, 4);
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 match id_bits {
                     Some(id) if id == expected_id => {
                         // The expected is here; the field exists
@@ -199,6 +246,8 @@ pub mod typed {
     /// Checks whether a given type3 field identifier is present. If not, returns None without advancing
     /// the bitbuffer position. If present, reads the element and returns it as a u64, advancing the buffer position.
     /// to the end of the element.
+    // Was: Diese Funktion liest und prüft type3 generic.
+    // Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     pub fn parse_type3_generic<E>(obit: bool, buffer: &mut BitBuffer, expected_id: E) -> Result<Option<Type3FieldGeneric>, PduParseErr>
     where
         E: Into<u64>,
@@ -217,6 +266,8 @@ pub mod typed {
 
         // Target field is present. Advance buffer position and read field contents
         buffer.seek_rel(5);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let len_bits = match buffer.read_bits(11) {
             Some(x) => x as usize,
             None => {
@@ -230,6 +281,8 @@ pub mod typed {
         // lengths over 64 we split into two reads (high half first, then low half).
         let read_bits = if len_bits > 128 { 128 } else { len_bits };
         let data: u128 = if read_bits <= 64 {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let v = match buffer.read_bits(read_bits) {
                 Some(x) => x,
                 None => {
@@ -241,6 +294,8 @@ pub mod typed {
             v as u128
         } else {
             let hi_bits = read_bits - 64;
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let hi = match buffer.read_bits(hi_bits) {
                 Some(x) => x,
                 None => {
@@ -249,6 +304,8 @@ pub mod typed {
                     });
                 }
             };
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             let lo = match buffer.read_bits(64) {
                 Some(x) => x,
                 None => {
@@ -275,6 +332,8 @@ pub mod typed {
 
     /// Parse a Type-3 element into a struct that implements `from_bitbuf`.
     /// Validates the m-bit and element ID, then calls the parser function directly on the buffer if present.
+    // Was: Diese Funktion liest und prüft type3 struct.
+    // Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     pub fn parse_type3_struct<E, T, F>(obit: bool, buffer: &mut BitBuffer, expected_id: E, parser: F) -> Result<Option<T>, PduParseErr>
     where
         E: Into<u64>,
@@ -297,6 +356,8 @@ pub mod typed {
 
         tracing::trace!("parse_type3_struct got header for {:2}: {}", id, buffer.dump_bin());
 
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let len_bits = match buffer.read_bits(11) {
             Some(x) => x as usize,
             None => {
@@ -335,12 +396,16 @@ pub mod typed {
     }
 
     /// Write the type4 header start (1-bit mbit + 4-bit field type)
+    // Was: Diese Funktion schreibt type34 header generic.
+    // Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
     pub fn write_type34_header_generic(buffer: &mut BitBuffer, field_type: u64) {
         delimiters::write_mbit(buffer, 1);
         buffer.write_bits(field_type, 4);
     }
 
     /// Write an optional Type-3 element using a `to_bitbuf` function.
+    // Was: Diese Funktion schreibt type3 struct.
+    // Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
     pub fn write_type3_struct<E, T, F>(
         obit: bool,
         buffer: &mut BitBuffer,
@@ -391,6 +456,8 @@ pub mod typed {
     }
 
     /// Write an optional Type-3 element using a `to_bitbuf` function.
+    // Was: Diese Funktion schreibt type3 generic.
+    // Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
     pub fn write_type3_generic<E>(
         obit: bool,
         buffer: &mut BitBuffer,
@@ -432,6 +499,8 @@ pub mod typed {
         Ok(())
     }
 
+    // Was: Diese Funktion liest und prüft type4 header.
+    // Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     fn parse_type4_header(buffer: &mut BitBuffer, expected_id: u64) -> Result<Option<(usize, usize)>, PduParseErr> {
         // Check whether the element is present
         let id = expected_id;
@@ -442,6 +511,8 @@ pub mod typed {
 
         // Target field is present. Advance buffer position and read field contents
         buffer.seek_rel(5);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let len_bits = match buffer.read_bits(11) {
             Some(x) => x as usize,
             None => {
@@ -451,6 +522,8 @@ pub mod typed {
             }
         };
         // tracing::debug!("MmType4FieldUl: len_bits: {}", len_bits);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let num_elems = match buffer.read_bits(6) {
             Some(x) => x as usize,
             None => {
@@ -472,6 +545,8 @@ pub mod typed {
     }
 
     /// Parse a Type-4 element into a Vec of structs that implement `from_bitbuf`.
+    // Was: Diese Funktion liest und prüft type4 struct.
+    // Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     pub fn parse_type4_struct<E, T, F>(obit: bool, buffer: &mut BitBuffer, expected_id: E, parser: F) -> Result<Option<Vec<T>>, PduParseErr>
     where
         E: Into<u64>,
@@ -484,6 +559,8 @@ pub mod typed {
 
         // Obit is present, check if mbit present, and check if the elementid is the expected one
         let id = expected_id.into();
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match parse_type4_header(buffer, id)? {
             None => {
                 // Field not present
@@ -495,6 +572,8 @@ pub mod typed {
                 let start_pos = buffer.get_pos();
 
                 // Parse all elements into array structs
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
                 for _ in 0..num_elems {
                     let elem = parser(buffer)?;
                     elems.push(elem);
@@ -522,6 +601,8 @@ pub mod typed {
 
     /// Parse a Type-4 element into a placeholder struct type, pending proper implementation.
     /// Imperfect as we cannot know individual element sizes, besides issues with overflowing the 64-bit read
+    // Was: Diese Funktion liest und prüft type4 generic.
+    // Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
     pub fn parse_type4_generic<E>(obit: bool, buffer: &mut BitBuffer, expected_id: E) -> Result<Option<Type4FieldGeneric>, PduParseErr>
     where
         E: Into<u64>,
@@ -533,6 +614,8 @@ pub mod typed {
 
         // Obit is present, check if mbit present, and check if the elementid is the expected one
         let id = expected_id.into();
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match parse_type4_header(buffer, id)? {
             None => {
                 // Field not present
@@ -564,6 +647,8 @@ pub mod typed {
     }
 
     /// Write a Type-4 element from a Vec of structs using a `to_bitbuf` function.
+    // Was: Diese Funktion schreibt type4 struct.
+    // Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
     pub fn write_type4_struct<E, T, F>(
         obit: bool,
         buffer: &mut BitBuffer,
@@ -598,6 +683,8 @@ pub mod typed {
             buffer.write_bits(0, 11 + 6); // Write instead of space to autoexpand
 
             // Write all elements
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for elem in elems {
                 writer(elem, buffer)?;
             }
@@ -619,6 +706,8 @@ pub mod typed {
     }
 
     /// Write a Type-4 element from a Vec of structs using a `to_bitbuf` function.
+    // Was: Diese Funktion schreibt type4 todo.
+    // Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
     pub fn write_type4_todo<E>(
         obit: bool,
         _buffer: &mut BitBuffer,

@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! Dashboard-side persistence and helpers for Telegram alerts.
 //!
 //! Mirrors `wx_service.rs`: a surgical TOML writer that regenerates only the `[telegram_alerts]`
@@ -8,6 +11,8 @@ use tetra_config::bluestation::TelegramRuntimeOverride;
 
 /// Mask a bot token for display: keep the numeric bot id and the last few chars, hide the rest.
 /// Returns an empty string for an empty token. e.g. "123456:ABCdef...WXYZ" → "123456:AB…WXYZ".
+// Was: Führt den Arbeitsschritt `mask_token` für mask Zugriffsschlüssel aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn mask_token(token: &str) -> String {
     let token = token.trim();
     if token.is_empty() {
@@ -26,9 +31,15 @@ pub fn mask_token(token: &str) -> String {
 /// also escapes control characters (newline, tab, etc.) — Telegram chat titles and reqwest error
 /// strings are external data that can contain them, and a raw control char would make the
 /// hand-assembled JSON response unparseable in the browser.
+// Was: Führt den Arbeitsschritt `json_escape` für JSON-Daten escape aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn json_escape(s: &str) -> String {
     let mut out = String::with_capacity(s.len() + 2);
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for c in s.chars() {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match c {
             '\\' => out.push_str("\\\\"),
             '"' => out.push_str("\\\""),
@@ -48,6 +59,8 @@ pub fn json_escape(s: &str) -> String {
 /// else. The whole section is regenerated from the override values; an existing block (from its
 /// header until the next section header or EOF) is replaced. A `.telegram.bak` backup is made.
 /// Mirrors [`crate::net_dashboard::wx_service::write_wx_to_toml`].
+// Was: Diese Funktion schreibt telegram to toml.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 pub fn write_telegram_to_toml(config_path: &str, ov: &TelegramRuntimeOverride) -> std::io::Result<()> {
     let original = std::fs::read_to_string(config_path)?;
 
@@ -101,6 +114,8 @@ pub fn write_telegram_to_toml(config_path: &str, ov: &TelegramRuntimeOverride) -
     let mut i = 0;
     let mut replaced = false;
 
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while i < lines.len() {
         let trimmed = lines[i].trim_start();
         if trimmed.starts_with("[telegram_alerts]") {
@@ -109,6 +124,8 @@ pub fn write_telegram_to_toml(config_path: &str, ov: &TelegramRuntimeOverride) -
             out.push(section.clone());
             replaced = true;
             i += 1;
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             while i < lines.len() {
                 let t = lines[i].trim_start();
                 if t.starts_with('[') && t.contains(']') {
@@ -140,9 +157,13 @@ pub fn write_telegram_to_toml(config_path: &str, ov: &TelegramRuntimeOverride) -
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
+    // Was: Führt den Arbeitsschritt `ov` für ov aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn ov() -> TelegramRuntimeOverride {
         TelegramRuntimeOverride {
             enabled: true,
@@ -162,6 +183,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `mask_short_and_long` für mask short and long aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn mask_short_and_long() {
         assert_eq!(mask_token(""), "");
         assert_eq!(mask_token("short"), "•••••");
@@ -169,6 +192,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `json_escape_handles_control_chars` für JSON-Daten escape handles Steuerung chars aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn json_escape_handles_control_chars() {
         let out = json_escape("line1\nline2\t\"q\"\\x");
         assert_eq!(out, "line1\\nline2\\t\\\"q\\\"\\\\x");
@@ -181,6 +206,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Diese Funktion schreibt toml replace section.
+    // Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
     fn write_toml_replace_section() {
         let cfg = "[cell]\nfoo = 1\n\n[telegram_alerts]\nenabled = false\nbot_token = \"old\"\n\n[security]\nbar = 2\n";
         let dir = std::env::temp_dir();
@@ -204,6 +231,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Diese Funktion schreibt toml append when missing.
+    // Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
     fn write_toml_append_when_missing() {
         let cfg = "[cell]\nfoo = 1\n";
         let dir = std::env::temp_dir();
@@ -218,6 +247,8 @@ mod tests {
 
     /// The written section must round-trip through the real config parser.
     #[test]
+    // Was: Führt den Arbeitsschritt `written_section_parses_back` für written section parses back aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn written_section_parses_back() {
         let cfg = "config_version = \"0.6\"\nstack_mode = \"Bs\"\n\n[phy_io]\nbackend = \"None\"\n\n[net_info]\nmcc = 901\nmnc = 9999\n\n[cell_info]\nmain_carrier = 1584\nfreq_band = 4\nfreq_offset = 0\nduplex_spacing = 4\nreverse_operation = false\nlocation_area = 1\n";
         let dir = std::env::temp_dir();

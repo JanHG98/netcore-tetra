@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Einlesen und Prüfen der TETRA-Konfiguration.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use std::{collections::HashMap, time::Duration};
 
 use serde::Deserialize;
@@ -8,6 +11,8 @@ use toml::Value;
 /// This is deliberately HTTP/JSON and fire-and-forget: it publishes the BS runtime state
 /// to the local NetCore Directory server without making the RF stack depend on it.
 #[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für cfg directory in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgDirectory {
     /// Master switch for publishing live BS/runtime data to NetCore Directory.
     pub enabled: bool,
@@ -41,6 +46,8 @@ pub struct CfgDirectory {
 }
 
 #[derive(Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für cfg directory dto in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgDirectoryDto {
     #[serde(default)]
     pub enabled: bool,
@@ -75,7 +82,11 @@ pub struct CfgDirectoryDto {
     pub extra: HashMap<String, Value>,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `Default for CfgDirectoryDto`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl Default for CfgDirectoryDto {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn default() -> Self {
         Self {
             enabled: false,
@@ -97,27 +108,39 @@ impl Default for CfgDirectoryDto {
     }
 }
 
+// Was: Führt den Arbeitsschritt `default_true` für default true aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_true() -> bool {
     true
 }
 
+// Was: Führt den Arbeitsschritt `default_directory_base_url` für default directory base url aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_directory_base_url() -> String {
     "http://127.0.0.1:8095".to_string()
 }
 
+// Was: Führt den Arbeitsschritt `default_directory_source` für default directory source aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_directory_source() -> String {
     "bluestation-bs".to_string()
 }
 
+// Was: Führt den Arbeitsschritt `default_directory_bs_issi` für default directory Basisstation Teilnehmerkennung (ISSI) aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_directory_bs_issi() -> u32 {
     // NetCore's current local control / dashboard ISSI convention.
     4010001
 }
 
+// Was: Führt den Arbeitsschritt `default_directory_timeout_ms` für default directory timeout ms aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_directory_timeout_ms() -> u64 {
     1500
 }
 
+// Was: Diese Funktion wendet directory patch.
+// Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
 pub fn apply_directory_patch(src: CfgDirectoryDto) -> Result<CfgDirectory, String> {
     let base_url = if src.base_url.trim().is_empty() {
         default_directory_base_url()

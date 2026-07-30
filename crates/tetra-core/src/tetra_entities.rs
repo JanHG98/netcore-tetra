@@ -1,8 +1,13 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für grundlegende TETRA-Datentypen und Hilfsfunktionen.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
 // Entities as used in the standard
 #[derive(PartialEq, Eq, Hash, Clone, Debug, Copy, Encode, Decode, Serialize, Deserialize)]
+// Was: Listet die möglichen Varianten für TETRA entity auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum TetraEntity {
     /// Physical layer
     Phy,

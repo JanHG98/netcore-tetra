@@ -1,15 +1,24 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! Dashboard-side persistence and helpers for EchoLink settings.
 
 use tetra_config::bluestation::EcholinkRuntimeOverride;
 
+// Was: Führt den Arbeitsschritt `mask_secret` für mask secret aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn mask_secret(secret: &str) -> String {
     crate::net_dashboard::dapnet::mask_secret(secret)
 }
 
+// Was: Führt den Arbeitsschritt `toml_escape` für toml escape aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn toml_escape(s: &str) -> String {
     s.replace('\\', "\\\\").replace('"', "\\\"")
 }
 
+// Was: Führt den Arbeitsschritt `string_array_toml` für string array toml aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn string_array_toml(values: &[String]) -> String {
     values
         .iter()
@@ -18,10 +27,14 @@ fn string_array_toml(values: &[String]) -> String {
         .join(", ")
 }
 
+// Was: Führt den Arbeitsschritt `u32_array_toml` für u32 array toml aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn u32_array_toml(values: &[u32]) -> String {
     values.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(", ")
 }
 
+// Was: Führt den Arbeitsschritt `routes_toml` für routes toml aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn routes_toml(routes: &std::collections::BTreeMap<String, String>) -> String {
     routes
         .iter()
@@ -31,6 +44,8 @@ fn routes_toml(routes: &std::collections::BTreeMap<String, String>) -> String {
 }
 
 /// Rewrite (or insert) the `[echolink]` section in the TOML file. A `.echolink.bak` backup is made.
+// Was: Diese Funktion schreibt echolink to toml.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 pub fn write_echolink_to_toml(config_path: &str, ov: &EcholinkRuntimeOverride) -> std::io::Result<()> {
     let original = std::fs::read_to_string(config_path)?;
     let section = format!(
@@ -90,12 +105,16 @@ pub fn write_echolink_to_toml(config_path: &str, ov: &EcholinkRuntimeOverride) -
     let mut i = 0;
     let mut replaced = false;
 
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while i < lines.len() {
         let trimmed = lines[i].trim_start();
         if trimmed.starts_with("[echolink]") {
             out.push(section.clone());
             replaced = true;
             i += 1;
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             while i < lines.len() {
                 let t = lines[i].trim_start();
                 if t.starts_with('[') && t.contains(']') {

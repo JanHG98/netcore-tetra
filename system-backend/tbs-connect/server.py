@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für server.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 """
 Local BREW server for BlueStation – mit JSON-Konfiguration für Nodes.
 Erweitert um Web-UI, Admin-Login, API, Live-Logging, Gruppengesprächs-Tracking
@@ -60,6 +63,8 @@ stats = {
 
 log_entries: deque = deque(maxlen=MAX_LOG_ENTRIES)
 
+# Was: Diese Funktion fügt log entry.
+# Warum: Das Einfügen wird so einheitlich geprüft und verwaltet.
 def add_log_entry(level: str, issi: str, message: str, details: Optional[dict] = None):
     entry = {
         "timestamp": datetime.now(timezone.utc).isoformat(timespec='microseconds') + "Z",
@@ -72,23 +77,33 @@ def add_log_entry(level: str, issi: str, message: str, details: Optional[dict] =
 
 # ======================================================================
 # Echtzeit-Benachrichtigungen
+# Was: Diese Funktion meldet clients.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 async def notify_clients(event_type: str, data: dict):
     """Sendet ein SSE-Event an alle verbundenen Clients."""
     if not sse_clients:
         return
     message = f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for client in sse_clients[:]:  # Kopie für sichere Iteration
+        # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+        # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
         try:
             await client.write(message.encode())
         except Exception:
             sse_clients.remove(client)
 
+# Was: Diese Funktion meldet update.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 async def notify_update():
     """Sendet ein generisches Update-Event."""
     await notify_clients("update", {
         "timestamp": datetime.now(timezone.utc).isoformat()
     })
 
+# Was: Diese Funktion meldet stats.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 async def notify_stats():
     """Sendet aktuelle Statistiken."""
     total_subscribers = sum(len(conn.subscribers) for conn in active_connections.values())
@@ -107,9 +122,13 @@ async def notify_stats():
         "uptime": int(time.time() - stats["start_time"]),
     })
 
+# Was: Diese Funktion meldet connections.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 async def notify_connections():
     """Sendet aktuelle Verbindungsliste."""
     conns = []
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for uuid_str, state in active_connections.items():
         conns.append({
             "uuid": uuid_str,
@@ -120,10 +139,16 @@ async def notify_connections():
         })
     await notify_clients("connections", conns)
 
+# Was: Diese Funktion meldet Gruppe calls.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 async def notify_group_calls():
     """Sendet aktive Gruppengespräche."""
     calls = []
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for conn in active_connections.values():
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for uuid_str, call in conn.group_calls.items():
             calls.append({
                 "uuid": uuid_str,
@@ -135,11 +160,15 @@ async def notify_group_calls():
             })
     await notify_clients("group_calls", calls)
 
+# Was: Diese Funktion meldet logs.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 async def notify_logs():
     """Sendet die neuesten Log-Einträge."""
     entries = list(log_entries)[-50:][::-1]
     await notify_clients("logs", entries)
 
+# Was: Führt den Arbeitsschritt `broadcast_full_update` für broadcast full update aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 async def broadcast_full_update():
     """Sendet alle Daten für einen vollständigen Refresh."""
     await notify_stats()
@@ -185,30 +214,44 @@ SERVICE_RSSI                 = 16
 
 # ======================================================================
 # Hilfsfunktionen (Pack/Unpack)
+# Was: Führt den Arbeitsschritt `pack_subscriber_data` für pack Teilnehmer data aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def pack_subscriber_data(type_: int, number: int, time_ns: int, fraction: int,
                          groups: List[int] = None) -> bytes:
     groups = groups or []
     data = struct.pack("<BB I Q I", 0xf0, type_, number, time_ns, fraction)
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for g in groups:
         data += struct.pack("<I", g)
     return data
 
+# Was: Führt den Arbeitsschritt `pack_call_control_data` für pack Ruf Steuerung data aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def pack_call_control_data(type_: int, call_uuid: uuid.UUID, extra: bytes = b"") -> bytes:
     return struct.pack("<BB", 0xf1, type_) + call_uuid.bytes + extra
 
+# Was: Führt den Arbeitsschritt `pack_service_message` für pack Dienst Nachricht aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def pack_service_message(type_: int, json_str: str) -> bytes:
     data = json_str.encode("utf-8") + b"\x00"
     return struct.pack("<BB", 0xf4, type_) + data
 
+# Was: Führt den Arbeitsschritt `pack_frame_data` für pack Funkrahmen data aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def pack_frame_data(type_: int, call_uuid: uuid.UUID, data: bytes, bit_len: int = None) -> bytes:
     if bit_len is None:
         bit_len = len(data) * 8
     return (struct.pack("<BB", 0xf2, type_) + call_uuid.bytes +
             struct.pack("<H", bit_len) + data)
 
+# Was: Führt den Arbeitsschritt `pack_error_message` für pack error Nachricht aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def pack_error_message(type_: int, extra: bytes = b"") -> bytes:
     return struct.pack("<BB", 0xf3, type_) + extra
 
+# Was: Führt den Arbeitsschritt `unpack_subscriber_data` für unpack Teilnehmer data aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def unpack_subscriber_data(payload: bytes):
     if len(payload) < 2+4+8+4:
         raise ValueError("Payload too short")
@@ -221,6 +264,8 @@ def unpack_subscriber_data(payload: bytes):
               for i in range(0, len(groups_data), 4)]
     return type_, number, time_ns, fraction, groups
 
+# Was: Führt den Arbeitsschritt `unpack_call_control_data` für unpack Ruf Steuerung data aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def unpack_call_control_data(payload: bytes):
     if len(payload) < 2+16:
         raise ValueError("Payload too short")
@@ -236,6 +281,8 @@ def unpack_call_control_data(payload: bytes):
         dest = struct.unpack_from("<I", extra, 4)[0]
     return type_, call_uuid, extra, source, dest
 
+# Was: Führt den Arbeitsschritt `unpack_frame_data` für unpack Funkrahmen data aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def unpack_frame_data(payload: bytes):
     if len(payload) < 2+16+2:
         raise ValueError("Payload too short")
@@ -246,6 +293,8 @@ def unpack_frame_data(payload: bytes):
     bit_len = struct.unpack_from("<H", payload, 18)[0]
     return type_, call_uuid, bit_len, payload[20:]
 
+# Was: Führt den Arbeitsschritt `unpack_service_data` für unpack Dienst data aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def unpack_service_data(payload: bytes):
     if len(payload) < 2:
         raise ValueError("Payload too short")
@@ -260,7 +309,11 @@ def unpack_service_data(payload: bytes):
 
 # ======================================================================
 # ConnectionState
+# Was: Bündelt Daten und Verhalten für Gruppe Ruf.
+# Warum: Zusammengehöriger Zustand und seine Operationen bleiben dadurch an einer klaren Stelle.
 class GroupCall:
+    # Was: Diese Funktion initialisiert den vorgesehenen Arbeitsschritt.
+    # Warum: Alle benötigten Startwerte werden so in einer festen Reihenfolge eingerichtet.
     def __init__(self, uuid_str: str, source_issi: int, dest_gssi: int):
         self.uuid = uuid_str
         self.source_issi = source_issi
@@ -269,7 +322,11 @@ class GroupCall:
         self.frame_count = 0
         self.active = True
 
+# Was: Bündelt Daten und Verhalten für connection Zustand.
+# Warum: Zusammengehöriger Zustand und seine Operationen bleiben dadurch an einer klaren Stelle.
 class ConnectionState:
+    # Was: Diese Funktion initialisiert den vorgesehenen Arbeitsschritt.
+    # Warum: Alle benötigten Startwerte werden so in einer festen Reihenfolge eingerichtet.
     def __init__(self, websocket: web.WebSocketResponse, uuid_str: str):
         self.websocket = websocket
         self.uuid = uuid_str
@@ -281,6 +338,8 @@ class ConnectionState:
 
 # ======================================================================
 # Nachrichtenbehandlung
+# Was: Diese Funktion verarbeitet Teilnehmer register.
+# Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 async def handle_subscriber_register(state: ConnectionState, number: int):
     logger.info(f"📱 Endgerät REGISTER: ISSI {number}")
     add_log_entry("INFO", str(number), "Endgerät REGISTER")
@@ -313,6 +372,8 @@ async def handle_subscriber_register(state: ConnectionState, number: int):
     await notify_connections()
     await notify_logs()
 
+# Was: Diese Funktion verarbeitet Teilnehmer deregister.
+# Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 async def handle_subscriber_deregister(state: ConnectionState, number: int):
     logger.info(f"Endgerät DEREGISTER: ISSI {number}")
     add_log_entry("INFO", str(number), "Endgerät DEREGISTER")
@@ -321,6 +382,8 @@ async def handle_subscriber_deregister(state: ConnectionState, number: int):
     await notify_connections()
     await notify_logs()
 
+# Was: Diese Funktion verarbeitet Teilnehmer affiliate.
+# Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 async def handle_subscriber_affiliate(state: ConnectionState, number: int, groups: List[int]):
     logger.info(f"Endgerät {number} affiliated groups {groups}")
     add_log_entry("INFO", str(number), f"AFFILIATE groups={groups}")
@@ -335,6 +398,8 @@ async def handle_subscriber_affiliate(state: ConnectionState, number: int, group
     await notify_connections()
     await notify_logs()
 
+# Was: Diese Funktion verarbeitet Gruppe tx.
+# Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 async def handle_group_tx(state: ConnectionState, call_uuid: uuid.UUID, source_issi: int, dest_gssi: int, extra: bytes):
     uuid_str = str(call_uuid)
 
@@ -367,6 +432,8 @@ async def handle_group_tx(state: ConnectionState, call_uuid: uuid.UUID, source_i
     await notify_connections()
     await notify_logs()
 
+# Was: Diese Funktion verarbeitet Gruppe idle.
+# Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 async def handle_group_idle(state: ConnectionState, call_uuid: uuid.UUID, cause: int):
     uuid_str = str(call_uuid)
 
@@ -387,6 +454,8 @@ async def handle_group_idle(state: ConnectionState, call_uuid: uuid.UUID, cause:
     else:
         logger.debug(f"GROUP_IDLE für unbekanntes uuid={uuid_str}")
 
+# Was: Diese Funktion verarbeitet voice Funkrahmen.
+# Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 async def handle_voice_frame(state: ConnectionState, call_uuid: uuid.UUID, bit_len: int, data: bytes):
     uuid_str = str(call_uuid)
 
@@ -401,6 +470,8 @@ async def handle_voice_frame(state: ConnectionState, call_uuid: uuid.UUID, bit_l
     else:
         logger.debug(f"Voice Frame für unbekanntes uuid={uuid_str} (ignoriert)")
 
+# Was: Diese Funktion verarbeitet Ruf setup request.
+# Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 async def handle_call_setup_request(state: ConnectionState, call_uuid: uuid.UUID, extra: bytes):
     logger.info(f"Rufaufbau {call_uuid}")
     stats["total_calls"] += 1
@@ -409,6 +480,8 @@ async def handle_call_setup_request(state: ConnectionState, call_uuid: uuid.UUID
     await notify_stats()
     await notify_logs()
 
+# Was: Diese Funktion verarbeitet connect request.
+# Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 async def handle_connect_request(state: ConnectionState, call_uuid: uuid.UUID, extra: bytes):
     logger.info(f"Connect-Request {call_uuid}")
     add_log_entry("INFO", "", f"CONNECT_REQUEST uuid={call_uuid}")
@@ -419,6 +492,8 @@ async def handle_connect_request(state: ConnectionState, call_uuid: uuid.UUID, e
     await notify_connections()
     await notify_logs()
 
+# Was: Diese Funktion verarbeitet Ruf release.
+# Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 async def handle_call_release(state: ConnectionState, call_uuid: uuid.UUID, extra: bytes):
     logger.info(f"Ruf freigeben {call_uuid}")
     add_log_entry("INFO", "", f"CALL_RELEASE uuid={call_uuid}")
@@ -427,12 +502,20 @@ async def handle_call_release(state: ConnectionState, call_uuid: uuid.UUID, extr
     await notify_connections()
     await notify_logs()
 
+# Was: Diese Funktion verarbeitet Dienst query.
+# Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 async def handle_service_query(state: ConnectionState, json_str: str):
+    # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+    # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
     try:
         issi_list = json.loads(json_str)
         profiles = {}
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for issi in issi_list:
             s = str(issi)
+            # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+            # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
             try:
                 issi_int = int(issi)
             except (ValueError, TypeError):
@@ -454,6 +537,8 @@ async def handle_service_query(state: ConnectionState, json_str: str):
         logger.error(f"Service Query Fehler: {e}")
         add_log_entry("ERROR", "", f"SERVICE_QUERY Fehler: {e}")
 
+# Was: Diese Funktion verarbeitet allowed issis request.
+# Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
 async def handle_allowed_issis_request(state: ConnectionState, json_str: str):
     response = {"allowed_issis": list(state.subscribers.keys())}
     msg = pack_service_message(SERVICE_ALLOWED_ISSIS_RESPONSE, json.dumps(response))
@@ -463,6 +548,8 @@ async def handle_allowed_issis_request(state: ConnectionState, json_str: str):
 
 # ======================================================================
 # Prozess für binäre Nachrichten
+# Was: Diese Funktion verarbeitet binary Nachricht.
+# Warum: Die einzelnen Verarbeitungsschritte bleiben damit gebündelt und leichter testbar.
 async def process_binary_message(state: ConnectionState, data: bytes):
     if len(data) < 2:
         return
@@ -470,6 +557,8 @@ async def process_binary_message(state: ConnectionState, data: bytes):
     msg_type = data[1]
     stats["total_messages"] += 1
 
+    # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+    # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
     try:
         if msg_class == 0xf0:
             type_, number, _, _, groups = unpack_subscriber_data(data)
@@ -551,6 +640,8 @@ async def process_binary_message(state: ConnectionState, data: bytes):
 
 # ======================================================================
 # WebSocket-Handler
+# Was: Führt den Arbeitsschritt `websocket_handler` für websocket handler aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 async def websocket_handler(request: web.Request):
     ws_uuid = request.match_info.get("uuid")
     if not ws_uuid:
@@ -568,7 +659,11 @@ async def websocket_handler(request: web.Request):
     await notify_connections()
     await notify_logs()
 
+    # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+    # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
     try:
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         async for msg in ws:
             if msg.type == WSMsgType.BINARY:
                 await process_binary_message(state, msg.data)
@@ -589,10 +684,14 @@ async def websocket_handler(request: web.Request):
 
 # ======================================================================
 # HTTP-Endpoints für Web-UI
+# Was: Führt den Arbeitsschritt `brew_endpoint` für Brew-Verbindung endpoint aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 async def brew_endpoint(request: web.Request):
     ws_uuid = str(uuid.uuid4())
     return web.Response(text=f"/brew/{ws_uuid}")
 
+# Was: Führt den Arbeitsschritt `login_page` für login page aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 async def login_page(request: web.Request):
     session = await get_session(request)
     if session.get('logged_in'):
@@ -621,6 +720,8 @@ async def login_page(request: web.Request):
     """
     return web.Response(content_type="text/html", text=html)
 
+# Was: Führt den Arbeitsschritt `login_post` für login post aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 async def login_post(request: web.Request):
     data = await request.post()
     username = data.get('username')
@@ -632,11 +733,15 @@ async def login_post(request: web.Request):
     else:
         raise web.HTTPUnauthorized(text="Falsche Anmeldedaten")
 
+# Was: Führt den Arbeitsschritt `logout` für logout aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 async def logout(request: web.Request):
     session = await get_session(request)
     session.clear()
     raise web.HTTPFound('/login')
 
+# Was: Führt den Arbeitsschritt `dashboard_page` für dashboard page aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 async def dashboard_page(request: web.Request):
     session = await get_session(request)
     if not session.get('logged_in'):
@@ -840,6 +945,8 @@ async def dashboard_page(request: web.Request):
 
 # ======================================================================
 # SSE-Endpoint für Echtzeit-Updates
+# Was: Führt den Arbeitsschritt `sse_endpoint` für sse endpoint aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 async def sse_endpoint(request: web.Request):
     """Server-Sent Events für Echtzeit-Updates."""
     session = await get_session(request)
@@ -855,15 +962,21 @@ async def sse_endpoint(request: web.Request):
     sse_clients.append(response)
     logger.info(f"SSE Client verbunden (aktive: {len(sse_clients)})")
 
+    # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+    # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
     try:
         # Initiale Daten senden
         await broadcast_full_update()
 
         # Halte die Verbindung offen
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         while True:
             await asyncio.sleep(1)
             # Keep-Alive (alle 15 Sekunden)
             if int(time.time()) % 15 == 0:
+                # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.
+                # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
                 try:
                     await response.write(b": keep-alive\n\n")
                 except Exception:
@@ -879,6 +992,8 @@ async def sse_endpoint(request: web.Request):
 
 # ======================================================================
 # API-Endpunkte (für initiales Laden und Fallback)
+# Was: Führt den Arbeitsschritt `api_status` für API-Schnittstelle Status aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 async def api_status(request: web.Request):
     session = await get_session(request)
     if not session.get('logged_in'):
@@ -899,12 +1014,18 @@ async def api_status(request: web.Request):
         "uptime": int(time.time() - stats["start_time"]),
     })
 
+# Was: Führt den Arbeitsschritt `api_group_calls` für API-Schnittstelle Gruppe calls aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 async def api_group_calls(request: web.Request):
     session = await get_session(request)
     if not session.get('logged_in'):
         raise web.HTTPUnauthorized()
     calls = []
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for conn in active_connections.values():
+        # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+        # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for uuid_str, call in conn.group_calls.items():
             calls.append({
                 "uuid": uuid_str,
@@ -916,11 +1037,15 @@ async def api_group_calls(request: web.Request):
             })
     return web.json_response(calls)
 
+# Was: Führt den Arbeitsschritt `api_connections` für API-Schnittstelle connections aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 async def api_connections(request: web.Request):
     session = await get_session(request)
     if not session.get('logged_in'):
         raise web.HTTPUnauthorized()
     conns = []
+    # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
+    # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for uuid_str, state in active_connections.items():
         conns.append({
             "uuid": uuid_str,
@@ -931,6 +1056,8 @@ async def api_connections(request: web.Request):
         })
     return web.json_response(conns)
 
+# Was: Führt den Arbeitsschritt `api_logs` für API-Schnittstelle logs aus.
+# Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 async def api_logs(request: web.Request):
     session = await get_session(request)
     if not session.get('logged_in'):
@@ -941,6 +1068,8 @@ async def api_logs(request: web.Request):
 
 # ======================================================================
 # App erstellen
+# Was: Diese Funktion initialisiert app.
+# Warum: Alle benötigten Startwerte werden so in einer festen Reihenfolge eingerichtet.
 async def init_app():
     app = web.Application()
     fernet_key = fernet.Fernet(SESSION_SECRET)
@@ -962,9 +1091,13 @@ async def init_app():
 
     return app
 
+# Was: Startet das Programm, lädt die benötigten Einstellungen und übergibt an den eigentlichen Dienstablauf.
+# Warum: Ein klarer Einstiegspunkt hält Startreihenfolge, Fehlerausgabe und geordnetes Beenden zusammen.
 def main():
     app = asyncio.run(init_app())
     web.run_app(app, host=LISTEN_HOST, port=LISTEN_PORT)
 
+# Was: Startet den Programmablauf nur dann, wenn diese Datei direkt ausgeführt wird.
+# Warum: Beim Import als Modul sollen nur Funktionen bereitstehen und keine Nebenwirkungen automatisch starten.
 if __name__ == "__main__":
     main()

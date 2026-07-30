@@ -1,0 +1,147 @@
+# NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für gespeicherte Aufzeichnungen, TTS- und Mediendateien.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+# Was: Öffnet den Konfigurationsabschnitt `server`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[server]
+# Was: Setzt die Einstellung `bind` für server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+bind = "0.0.0.0:8230"
+# Was: Setzt die Einstellung `public_base_url` für server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+public_base_url = "http://10.0.20.24:8230"
+# Was: Setzt die Einstellung `max_body_bytes` für server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_body_bytes = 100663296
+
+# Was: Öffnet den Konfigurationsabschnitt `security`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[security]
+# Was: Setzt die Einstellung `mode` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+mode = "open_lab"
+# Was: Setzt die Einstellung `token_auth` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+token_auth = false
+# Was: Setzt die Einstellung `tls` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+tls = false
+# Was: Setzt die Einstellung `allow_remote_management` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+allow_remote_management = true
+# Was: Setzt die Einstellung `allow_delete` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+allow_delete = true
+# Was: Setzt die Einstellung `allow_url_import` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+allow_url_import = true
+# Required for imports from the local Application Gateway and Recorder in the lab.
+# Was: Setzt die Einstellung `allow_private_import_urls` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+allow_private_import_urls = true
+
+# Was: Öffnet den Konfigurationsabschnitt `storage`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[storage]
+# Was: Setzt die Einstellung `root` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+root = "/var/lib/netcore-media-library/assets"
+# Was: Setzt die Einstellung `state_file` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+state_file = "/var/lib/netcore-media-library/state.json"
+# Was: Setzt die Einstellung `temp_root` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+temp_root = "/var/lib/netcore-media-library/tmp"
+# Was: Setzt die Einstellung `backup_root` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+backup_root = "/var/lib/netcore-media-library/backups"
+# Mount the NFS share before using Archive in the WebUI. The service never treats
+# the archive as the live playout source.
+# Was: Setzt die Einstellung `archive_root` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+archive_root = "/mnt/nfs-share/Media-Library"
+# Was: Setzt die Einstellung `max_asset_bytes` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_asset_bytes = 67108864
+# Was: Setzt die Einstellung `max_total_bytes` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_total_bytes = 21474836480
+# Was: Setzt die Einstellung `fsync_imports` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+fsync_imports = true
+
+# Was: Öffnet den Konfigurationsabschnitt `runtime`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[runtime]
+# shadow prepares jobs but suppresses Media Switch injection.
+# authoritative injects validated 35-byte frames into an existing media session.
+# Was: Setzt die Einstellung `operating_mode` für Laufzeit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+operating_mode = "shadow"
+# Was: Setzt die Einstellung `worker_interval_ms` für Laufzeit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+worker_interval_ms = 500
+# Was: Setzt die Einstellung `probe_interval_secs` für Laufzeit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+probe_interval_secs = 15
+# Was: Setzt die Einstellung `import_timeout_secs` für Laufzeit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+import_timeout_secs = 20
+# Was: Setzt die Einstellung `max_assets` für Laufzeit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_assets = 10000
+# Was: Setzt die Einstellung `max_jobs` für Laufzeit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_jobs = 2000
+# Was: Setzt die Einstellung `max_events` für Laufzeit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_events = 5000
+# Was: Setzt die Einstellung `max_audit_records` für Laufzeit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_audit_records = 10000
+# Was: Setzt die Einstellung `max_attempts` für Laufzeit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_attempts = 3
+# Was: Setzt die Einstellung `frame_interval_ms` für Laufzeit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+frame_interval_ms = 60
+# Was: Setzt die Einstellung `auto_approve_tts` für Laufzeit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+auto_approve_tts = false
+
+# Was: Öffnet den Konfigurationsabschnitt `codec`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[codec]
+# Was: Setzt die Einstellung `frame_bytes` für codec.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+frame_bytes = 35
+# The command is executed directly without a shell. {input} and {output} are
+# replaced with paths owned by the service.
+# Was: Setzt die Einstellung `ffmpeg_command` für codec.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+ffmpeg_command = [
+  "/usr/bin/ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+  "-i", "{input}", "-ac", "1", "-ar", "8000", "-c:a", "pcm_s16le", "{output}"
+]
+# Optional native helper commands. They must produce/consume packed 35-byte
+# TETRA speech service 0 frames. Empty means WAV/MP3 assets remain preview-only,
+# while imported .tacelp assets remain directly playable.
+# Was: Setzt die Einstellung `encoder_command` für codec.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+encoder_command = []
+# Was: Setzt die Einstellung `decoder_command` für codec.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+decoder_command = []
+
+# Was: Öffnet den Konfigurationsabschnitt `dependencies`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[dependencies]
+# Was: Bindet die Abhängigkeit `media_switch_base_url` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
+media_switch_base_url = "http://10.0.20.15:8130"
+# Was: Bindet die Abhängigkeit `recorder_base_url` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
+recorder_base_url = "http://10.0.20.16:8140"
+# Was: Bindet die Abhängigkeit `application_gateway_base_url` in dieses Rust-Paket ein.
+# Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
+application_gateway_base_url = "http://10.0.20.23:8220"

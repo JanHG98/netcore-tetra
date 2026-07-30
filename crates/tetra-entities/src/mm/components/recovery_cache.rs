@@ -1,3 +1,6 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
 //! On-disk persistence for restart recovery.
 //!
 //! Holds a small JSON snapshot of the terminals the BS knew before a restart — their ISSI,
@@ -16,12 +19,16 @@ use serde::{Deserialize, Serialize};
 
 /// On-disk schema version. Bump if the record shape changes incompatibly; an older/newer file is
 /// then ignored (treated as empty) rather than mis-parsed.
+// Was: Legt den festen Wert `CACHE_VERSION` für Zwischenspeicher version fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const CACHE_VERSION: u32 = 1;
 
 /// One persisted terminal. The L2 handle is deliberately NOT stored: it is inert in this stack
 /// (MLE addresses downlink MM PDUs by ISSI; the handle plumbing is a stub), so the recovery
 /// COMMAND is sent with handle 0 and reaches the camped radio by its ISSI.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für terminal Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TerminalRecord {
     pub issi: u32,
     #[serde(default)]
@@ -33,6 +40,8 @@ pub struct TerminalRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Zwischenspeicher file in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct CacheFile {
     version: u32,
     #[serde(default)]
@@ -41,6 +50,8 @@ struct CacheFile {
 
 /// Owns the cache file path + a dirty/debounce flush gate. Single-threaded: lives inside MM's
 /// entity tick, so it needs no locking.
+// Was: Bündelt die zusammengehörigen Werte für recovery Zwischenspeicher in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct RecoveryCache {
     path: PathBuf,
     dirty: bool,
@@ -48,9 +59,13 @@ pub struct RecoveryCache {
     debounce: Duration,
 }
 
+// Was: Implementiert das zugehörige Verhalten für `RecoveryCache`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl RecoveryCache {
     /// Construct without touching disk. `debounce` coalesces a burst of registry changes into one
     /// write (spares SD-card wear).
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
     pub fn new(path: PathBuf, debounce: Duration) -> Self {
         Self {
             path,
@@ -60,16 +75,22 @@ impl RecoveryCache {
         }
     }
 
+    // Was: Führt den Arbeitsschritt `path` für path aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn path(&self) -> &PathBuf {
         &self.path
     }
 
     /// Load the persisted terminals. Returns an empty list on ANY problem (missing file, bad
     /// JSON, version mismatch) and never panics, so a corrupt cache cannot wedge boot.
+    // Was: Diese Funktion lädt den vorgesehenen Arbeitsschritt.
+    // Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
     pub fn load(&self) -> Vec<TerminalRecord> {
         let Ok(text) = std::fs::read_to_string(&self.path) else {
             return Vec::new();
         };
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match serde_json::from_str::<CacheFile>(&text) {
             Ok(cf) if cf.version == CACHE_VERSION => cf.terminals,
             Ok(cf) => {
@@ -89,16 +110,22 @@ impl RecoveryCache {
     }
 
     /// Mark the in-memory registry as changed since the last flush.
+    // Was: Diese Funktion kennzeichnet dirty.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn mark_dirty(&mut self) {
         self.dirty = true;
     }
 
+    // Was: Prüft, ob dirty zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
     pub fn is_dirty(&self) -> bool {
         self.dirty
     }
 
     /// Flush only if dirty AND the debounce window has elapsed. `snapshot` is invoked lazily, so
     /// callers don't pay to build the record list on ticks where no write is due.
+    // Was: Führt den Arbeitsschritt `maybe_flush` für maybe flush aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn maybe_flush(&mut self, snapshot: impl FnOnce() -> Vec<TerminalRecord>) {
         if !self.dirty || self.last_flush.elapsed() < self.debounce {
             return;
@@ -109,11 +136,15 @@ impl RecoveryCache {
 
     /// Write the given records now. On failure the dirty flag is kept so the next opportunity
     /// retries; on success it is cleared and the debounce timer reset.
+    // Was: Diese Funktion schreibt now.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn flush_now(&mut self, records: Vec<TerminalRecord>) {
         let cf = CacheFile {
             version: CACHE_VERSION,
             terminals: records,
         };
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let text = match serde_json::to_string_pretty(&cf) {
             Ok(t) => t,
             Err(e) => {
@@ -121,6 +152,8 @@ impl RecoveryCache {
                 return;
             }
         };
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match write_atomic(&self.path, &text) {
             Ok(()) => {
                 self.dirty = false;
@@ -145,9 +178,13 @@ impl RecoveryCache {
 /// Write `text` to `path` atomically: serialize to `<path>.tmp` then rename over the target.
 /// The rename is atomic on the same filesystem, so a crash mid-write can never leave a
 /// half-written cache (the old file stays intact until the rename completes).
+// Was: Diese Funktion schreibt atomic.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 fn write_atomic(path: &PathBuf, text: &str) -> std::io::Result<()> {
     let tmp = path.with_extension("json.tmp");
     std::fs::write(&tmp, text)?;
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match std::fs::rename(&tmp, path) {
         Ok(()) => Ok(()),
         Err(e) => {
@@ -159,14 +196,20 @@ fn write_atomic(path: &PathBuf, text: &str) -> std::io::Result<()> {
 }
 
 #[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
 
+    // Was: Führt den Arbeitsschritt `temp_path` für temp path aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn temp_path(name: &str) -> PathBuf {
         std::env::temp_dir().join(name)
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `round_trips_records` für round trips records aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn round_trips_records() {
         let path = temp_path("fs_recovery_roundtrip.json");
         let _ = std::fs::remove_file(&path);
@@ -192,6 +235,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `missing_file_loads_empty` für missing file loads empty aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn missing_file_loads_empty() {
         let path = temp_path("fs_recovery_does_not_exist.json");
         let _ = std::fs::remove_file(&path);
@@ -199,6 +244,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `garbage_loads_empty_without_panic` für garbage loads empty without panic aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn garbage_loads_empty_without_panic() {
         let path = temp_path("fs_recovery_garbage.json");
         std::fs::write(&path, "{ this is not valid json ]").unwrap();
@@ -207,6 +254,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `wrong_version_loads_empty` für wrong version loads empty aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn wrong_version_loads_empty() {
         let path = temp_path("fs_recovery_version.json");
         std::fs::write(&path, r#"{"version":999,"terminals":[{"issi":1}]}"#).unwrap();
@@ -215,6 +264,8 @@ mod tests {
     }
 
     #[test]
+    // Was: Führt den Arbeitsschritt `debounce_blocks_then_allows` für debounce blocks then allows aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn debounce_blocks_then_allows() {
         let path = temp_path("fs_recovery_debounce.json");
         let _ = std::fs::remove_file(&path);

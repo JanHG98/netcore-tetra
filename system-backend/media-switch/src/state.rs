@@ -1,0 +1,2181 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für die Audioverteilung zwischen Basisstationen und Rufen.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
+
+use chrono::Utc;
+use serde::{Deserialize, Serialize};
+use serde_json::{Value, json};
+use tetra_entities::net_media::{
+    MediaCodec, MediaDownlinkFrame, MediaUplinkFrame, TETRA_ACELP_FRAME_BYTES,
+};
+use tetra_entities::net_control_room::NodeToControlRoomMessage;
+
+use crate::config::MediaSwitchConfig;
+use crate::protocol::{
+    BackendEvent, BackendRequest, CallControlCall, GatewaySnapshot,
+    media_frame_from_node_message,
+};
+
+#[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Audio- und Mediendaten switch Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct MediaSwitchStatus {
+    pub service: &'static str,
+    pub started_at: String,
+    pub security_mode: &'static str,
+    pub warning: &'static str,
+    pub node_gateway_connected: bool,
+    pub node_gateway_last_error: Option<String>,
+    pub call_control_connected: bool,
+    pub call_control_last_error: Option<String>,
+    pub nodes_connected: usize,
+    pub nodes_media_capable: usize,
+    pub sessions_total: usize,
+    pub sessions_active: usize,
+    pub streams_active: usize,
+    pub pending_frames: usize,
+    pub frames_received: u64,
+    pub frames_routed: u64,
+    pub frames_sent: u64,
+    pub frames_injected: u64,
+    pub frames_dropped: u64,
+    pub duplicate_frames: u64,
+    pub unknown_stream_frames: u64,
+    pub cold_start_frames_buffered: usize,
+    pub cold_start_frames_replayed: u64,
+    pub cold_start_frames_expired: u64,
+    pub adaptive_jitter_streams: usize,
+    pub adaptive_jitter_max_frames: usize,
+    pub muted_frames: u64,
+    pub buffer_overflows: u64,
+    pub send_failures: u64,
+    pub recorder_taps_buffered: usize,
+    pub recorder_oldest_seq: Option<u64>,
+    pub recorder_newest_seq: Option<u64>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Netzknoten Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct NodeRecord {
+    pub node_id: String,
+    pub station_name: String,
+    pub gateway_session_id: String,
+    pub site: Option<String>,
+    pub connected: bool,
+    pub stale: bool,
+    pub last_seen: String,
+    pub media_bridge: bool,
+    pub media_frame_count: u64,
+    pub mcc: u16,
+    pub mnc: u16,
+    pub location_area: u16,
+    pub colour_code: u8,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Audio- und Mediendaten Rufzweig in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct MediaLeg {
+    pub node_id: String,
+    pub local_call_id: Option<u16>,
+    pub phase: String,
+    pub logical_ts: u8,
+    pub carrier_num: Option<u16>,
+    pub floor_holder: Option<u32>,
+    pub restored: bool,
+    pub muted: bool,
+    pub rx_frames: u64,
+    pub tx_frames: u64,
+    pub dropped_frames: u64,
+    pub last_sequence: Option<u64>,
+    pub last_frame_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Audio- und Mediendaten Sitzung in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct MediaSession {
+    pub logical_call_id: String,
+    pub kind: String,
+    pub phase: String,
+    pub source_issi: Option<u32>,
+    pub gssi: Option<u32>,
+    pub calling_issi: Option<u32>,
+    pub called_issi: Option<u32>,
+    pub priority: u8,
+    pub emergency: bool,
+    pub floor_holder: Option<u32>,
+    pub expected_legs: usize,
+    pub legs: BTreeMap<String, MediaLeg>,
+    pub created_at: String,
+    pub updated_at: String,
+    pub frames_received: u64,
+    pub frames_routed: u64,
+    pub frames_dropped: u64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für stream snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct StreamSnapshot {
+    pub session_id: String,
+    pub stream_id: String,
+    pub node_id: String,
+    pub local_call_id: Option<u16>,
+    pub logical_ts: u8,
+    pub carrier_num: Option<u16>,
+    pub phase: String,
+    pub muted: bool,
+    pub floor_holder: Option<u32>,
+    pub rx_frames: u64,
+    pub tx_frames: u64,
+    pub dropped_frames: u64,
+    pub last_sequence: Option<u64>,
+    pub last_frame_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für buffer snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct BufferSnapshot {
+    pub session_id: String,
+    pub target_node_id: String,
+    pub target_logical_ts: u8,
+    pub queued_frames: usize,
+    pub oldest_due_in_ms: i64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für tap Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct TapRecord {
+    pub seq: u64,
+    pub timestamp: String,
+    pub session_id: String,
+    pub source_node_id: String,
+    pub source_logical_ts: u8,
+    pub source_sequence: u64,
+    pub target_count: usize,
+    pub payload_bytes: usize,
+    pub injected: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Aufzeichnung tap Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct RecorderTapRecord {
+    pub seq: u64,
+    pub timestamp: String,
+    pub session_id: String,
+    pub call_kind: String,
+    pub call_phase: String,
+    pub source_issi: Option<u32>,
+    pub gssi: Option<u32>,
+    pub calling_issi: Option<u32>,
+    pub called_issi: Option<u32>,
+    pub priority: u8,
+    pub emergency: bool,
+    pub speaker_issi: Option<u32>,
+    pub source_node_id: String,
+    pub source_logical_ts: u8,
+    pub source_sequence: u64,
+    pub target_count: usize,
+    pub codec: String,
+    pub payload: Vec<u8>,
+    pub injected: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Aufzeichnung tap batch in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct RecorderTapBatch {
+    pub requested_after: u64,
+    pub oldest_available_seq: Option<u64>,
+    pub newest_available_seq: Option<u64>,
+    pub dropped_before: u64,
+    pub records: Vec<RecorderTapRecord>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für Ereignis Datensatz in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct EventRecord {
+    pub seq: u64,
+    pub timestamp: String,
+    pub kind: String,
+    pub session_id: Option<String>,
+    pub node_id: Option<String>,
+    pub detail: Value,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für mute input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct MuteInput {
+    pub node_id: String,
+    pub logical_ts: u8,
+    pub muted: bool,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für injection input in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct InjectionInput {
+    pub payload: Vec<u8>,
+    pub target_node: Option<String>,
+    pub target_logical_ts: Option<u8>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+// Was: Bündelt die zusammengehörigen Werte für stream key in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+struct StreamKey {
+    session_id: String,
+    target_node_id: String,
+    target_logical_ts: u8,
+}
+
+#[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für buffered Funkrahmen in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+struct BufferedFrame {
+    due_at: Instant,
+    frame: MediaDownlinkFrame,
+    cold_start_replay: bool,
+}
+
+#[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für early Uplink (Funkgerät zum Netz) Funkrahmen in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+struct EarlyUplinkFrame {
+    received_at: Instant,
+    frame: MediaUplinkFrame,
+}
+
+#[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für adaptive Laufzeitschwankung profile in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+struct AdaptiveJitterProfile {
+    target_frames: usize,
+    last_arrival: Option<Instant>,
+    stable_frames: u32,
+}
+
+// Was: Bündelt die zusammengehörigen Werte für Audio- und Mediendaten Zustand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+struct MediaState {
+    config: MediaSwitchConfig,
+    started_at: String,
+    gateway_connected: bool,
+    gateway_last_error: Option<String>,
+    call_control_connected: bool,
+    call_control_last_error: Option<String>,
+    nodes: BTreeMap<String, NodeRecord>,
+    sessions: BTreeMap<String, MediaSession>,
+    route_index: HashMap<(String, u8), String>,
+    buffers: HashMap<StreamKey, VecDeque<BufferedFrame>>,
+    early_uplink: HashMap<(String, u8), VecDeque<EarlyUplinkFrame>>,
+    adaptive_jitter: HashMap<(String, u8), AdaptiveJitterProfile>,
+    pending_frames: usize,
+    taps: VecDeque<TapRecord>,
+    recorder_taps: VecDeque<RecorderTapRecord>,
+    events: VecDeque<EventRecord>,
+    next_event_seq: u64,
+    next_tap_seq: u64,
+    injection_sequence: u64,
+    frames_received: u64,
+    frames_routed: u64,
+    frames_sent: u64,
+    frames_injected: u64,
+    frames_dropped: u64,
+    duplicate_frames: u64,
+    unknown_stream_frames: u64,
+    cold_start_frames_replayed: u64,
+    cold_start_frames_expired: u64,
+    muted_frames: u64,
+    buffer_overflows: u64,
+    send_failures: u64,
+}
+
+#[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für shared Audio- und Mediendaten in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct SharedMedia(Arc<Mutex<MediaState>>);
+
+// Was: Implementiert das zugehörige Verhalten für `SharedMedia`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
+impl SharedMedia {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
+    pub fn new(config: MediaSwitchConfig) -> Self {
+        Self(Arc::new(Mutex::new(MediaState {
+            config,
+            started_at: now_iso(),
+            gateway_connected: false,
+            gateway_last_error: None,
+            call_control_connected: false,
+            call_control_last_error: None,
+            nodes: BTreeMap::new(),
+            sessions: BTreeMap::new(),
+            route_index: HashMap::new(),
+            buffers: HashMap::new(),
+            early_uplink: HashMap::new(),
+            adaptive_jitter: HashMap::new(),
+            pending_frames: 0,
+            taps: VecDeque::new(),
+            recorder_taps: VecDeque::new(),
+            events: VecDeque::new(),
+            next_event_seq: 1,
+            next_tap_seq: 1,
+            injection_sequence: 0,
+            frames_received: 0,
+            frames_routed: 0,
+            frames_sent: 0,
+            frames_injected: 0,
+            frames_dropped: 0,
+            duplicate_frames: 0,
+            unknown_stream_frames: 0,
+            cold_start_frames_replayed: 0,
+            cold_start_frames_expired: 0,
+            muted_frames: 0,
+            buffer_overflows: 0,
+            send_failures: 0,
+        })))
+    }
+
+    // Was: Führt den Arbeitsschritt `status` für Status aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn status(&self) -> MediaSwitchStatus {
+        let state = self.0.lock().expect("media state poisoned");
+        status_locked(&state)
+    }
+
+    // Was: Führt den Arbeitsschritt `nodes` für nodes aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn nodes(&self) -> Vec<NodeRecord> {
+        let state = self.0.lock().expect("media state poisoned");
+        state.nodes.values().cloned().collect()
+    }
+
+    // Was: Führt den Arbeitsschritt `sessions` für sessions aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn sessions(&self) -> Vec<MediaSession> {
+        let state = self.0.lock().expect("media state poisoned");
+        state.sessions.values().cloned().collect()
+    }
+
+    // Was: Diese Funktion leitet ready sessions.
+    // Warum: Nachrichten und Daten gelangen dadurch nachvollziehbar an das richtige Ziel.
+    pub fn route_ready_sessions(&self) -> Vec<String> {
+        let state = self.0.lock().expect("media state poisoned");
+        state
+            .sessions
+            .keys()
+            .filter(|session_id| media_route_ready_locked(&state, session_id.as_str()))
+            .cloned()
+            .collect()
+    }
+
+    // Was: Führt den Arbeitsschritt `session` für Sitzung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn session(&self, session_id: &str) -> Option<MediaSession> {
+        let state = self.0.lock().expect("media state poisoned");
+        state.sessions.get(session_id).cloned()
+    }
+
+    // Was: Führt den Arbeitsschritt `streams` für streams aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn streams(&self) -> Vec<StreamSnapshot> {
+        let state = self.0.lock().expect("media state poisoned");
+        streams_locked(&state)
+    }
+
+    // Was: Führt den Arbeitsschritt `buffers` für buffers aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn buffers(&self) -> Vec<BufferSnapshot> {
+        let state = self.0.lock().expect("media state poisoned");
+        let now = Instant::now();
+        let mut buffers = state
+            .buffers
+            .iter()
+            .filter_map(|(key, queue)| {
+                queue.front().map(|frame| BufferSnapshot {
+                    session_id: key.session_id.clone(),
+                    target_node_id: key.target_node_id.clone(),
+                    target_logical_ts: key.target_logical_ts,
+                    queued_frames: queue.len(),
+                    oldest_due_in_ms: frame
+                        .due_at
+                        .checked_duration_since(now)
+                        .map(|duration| duration.as_millis() as i64)
+                        .unwrap_or(0),
+                })
+            })
+            .collect::<Vec<_>>();
+        buffers.sort_by(|a, b| {
+            (&a.session_id, &a.target_node_id, a.target_logical_ts).cmp(&(
+                &b.session_id,
+                &b.target_node_id,
+                b.target_logical_ts,
+            ))
+        });
+        buffers
+    }
+
+    // Was: Führt den Arbeitsschritt `taps` für taps aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn taps(&self, limit: usize) -> Vec<TapRecord> {
+        let state = self.0.lock().expect("media state poisoned");
+        state
+            .taps
+            .iter()
+            .rev()
+            .take(limit.min(state.taps.len()))
+            .cloned()
+            .collect()
+    }
+
+    // Was: Führt den Arbeitsschritt `recorder_taps` für Aufzeichnung taps aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn recorder_taps(&self, after: u64, limit: usize) -> RecorderTapBatch {
+        let state = self.0.lock().expect("media state poisoned");
+        let oldest = state.recorder_taps.front().map(|record| record.seq);
+        let newest = state.recorder_taps.back().map(|record| record.seq);
+        let dropped_before = oldest
+            .filter(|oldest| after.saturating_add(1) < *oldest)
+            .map(|oldest| oldest.saturating_sub(after.saturating_add(1)))
+            .unwrap_or(0);
+        let records = state
+            .recorder_taps
+            .iter()
+            .filter(|record| record.seq > after)
+            .take(limit.clamp(1, 5_000))
+            .cloned()
+            .collect();
+        RecorderTapBatch {
+            requested_after: after,
+            oldest_available_seq: oldest,
+            newest_available_seq: newest,
+            dropped_before,
+            records,
+        }
+    }
+
+    // Was: Führt den Arbeitsschritt `events` für events aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn events(&self, limit: usize) -> Vec<EventRecord> {
+        let state = self.0.lock().expect("media state poisoned");
+        state
+            .events
+            .iter()
+            .rev()
+            .take(limit.min(state.events.len()))
+            .cloned()
+            .collect()
+    }
+
+    // Was: Führt den Arbeitsschritt `config_view` für Konfiguration view aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn config_view(&self) -> Value {
+        let state = self.0.lock().expect("media state poisoned");
+        json!({
+            "server": &state.config.server,
+            "node_gateway": &state.config.node_gateway,
+            "call_control": &state.config.call_control,
+            "media": &state.config.media,
+            "security": {
+                "mode": &state.config.security.mode,
+                "allow_remote_management": state.config.security.allow_remote_management,
+                "token_auth": false,
+                "tls": false
+            },
+            "limits": &state.config.limits
+        })
+    }
+
+    // Was: Führt den Arbeitsschritt `gateway_connected` für Gateway connected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn gateway_connected(&self) {
+        let mut state = self.0.lock().expect("media state poisoned");
+        state.gateway_connected = true;
+        state.gateway_last_error = None;
+        push_event_locked(
+            &mut state,
+            "node_gateway_connected",
+            None,
+            None,
+            json!({}),
+        );
+    }
+
+    // Was: Führt den Arbeitsschritt `gateway_disconnected` für Gateway disconnected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn gateway_disconnected(&self, error: String) {
+        let mut state = self.0.lock().expect("media state poisoned");
+        let changed = state.gateway_connected
+            || state.gateway_last_error.as_deref() != Some(error.as_str());
+        state.gateway_connected = false;
+        state.gateway_last_error = Some(error.clone());
+        if changed {
+            push_event_locked(
+                &mut state,
+                "node_gateway_disconnected",
+                None,
+                None,
+                json!({"error": error}),
+            );
+        }
+    }
+
+    // Was: Führt den Arbeitsschritt `call_control_failed` für Ruf Steuerung failed aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn call_control_failed(&self, error: String) {
+        let mut state = self.0.lock().expect("media state poisoned");
+        let changed = state.call_control_connected
+            || state.call_control_last_error.as_deref() != Some(error.as_str());
+        state.call_control_connected = false;
+        state.call_control_last_error = Some(error.clone());
+        if changed {
+            push_event_locked(
+                &mut state,
+                "call_control_unavailable",
+                None,
+                None,
+                json!({"error": error}),
+            );
+        }
+    }
+
+    // Was: Diese Funktion verarbeitet Hintergrunddienst Ereignis.
+    // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
+    pub fn handle_backend_event(&self, event: BackendEvent) {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+        match event {
+            BackendEvent::Snapshot { snapshot } => self.apply_gateway_snapshot(snapshot),
+            BackendEvent::NodeMessage { node_id, message } => {
+                if let Some(frame) = media_frame_from_node_message(&node_id, &message) {
+                    self.route_uplink(frame);
+                } else if matches!(message, NodeToControlRoomMessage::MediaFrame { .. }) {
+                    let mut state = self.0.lock().expect("media state poisoned");
+                    state.frames_dropped = state.frames_dropped.wrapping_add(1);
+                    push_event_locked(
+                        &mut state,
+                        "node_id_mismatch",
+                        None,
+                        Some(node_id),
+                        json!({"message":"media frame node_id does not match gateway envelope"}),
+                    );
+                }
+            }
+            BackendEvent::ActionResult {
+                ok,
+                message,
+                request_id,
+                command_id,
+            } => {
+                if !ok {
+                    let mut state = self.0.lock().expect("media state poisoned");
+                    state.send_failures = state.send_failures.wrapping_add(1);
+                    state.frames_dropped = state.frames_dropped.wrapping_add(1);
+                    push_event_locked(
+                        &mut state,
+                        "gateway_media_send_failed",
+                        None,
+                        None,
+                        json!({
+                            "message": message,
+                            "request_id": request_id,
+                            "command_id": command_id
+                        }),
+                    );
+                }
+            }
+            BackendEvent::Event { .. } => {}
+        }
+    }
+
+    // Was: Führt den Arbeitsschritt `reconcile_calls` für reconcile calls aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn reconcile_calls(&self, calls: Vec<CallControlCall>) -> Vec<String> {
+        let mut state = self.0.lock().expect("media state poisoned");
+        state.call_control_connected = true;
+        state.call_control_last_error = None;
+
+        let old_sessions = std::mem::take(&mut state.sessions);
+        let mut sessions = BTreeMap::new();
+        let max_sessions = state.config.limits.max_sessions;
+        let max_streams = state.config.limits.max_streams;
+        let mut stream_count = 0usize;
+
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+        for call in calls.into_iter().filter(is_routable_call).take(max_sessions) {
+            let previous = old_sessions.get(&call.logical_call_id);
+            let created_at = previous
+                .map(|session| session.created_at.clone())
+                .unwrap_or_else(now_iso);
+            let mut legs = BTreeMap::new();
+            let expected_legs = call
+                .legs
+                .values()
+                .filter(|leg| is_expected_leg(&leg.phase))
+                .count();
+
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+            for leg in call.legs.values().filter(|leg| is_routable_leg(&leg.phase)) {
+                let Some(logical_ts) = leg.timeslot.filter(|ts| (1..=7).contains(ts)) else {
+                    continue;
+                };
+                if stream_count >= max_streams {
+                    break;
+                }
+                let stream_id = stream_id(&leg.node_id, logical_ts);
+                let old_leg = previous.and_then(|session| session.legs.get(&stream_id));
+                legs.insert(
+                    stream_id,
+                    MediaLeg {
+                        node_id: leg.node_id.clone(),
+                        local_call_id: leg.local_call_id,
+                        phase: leg.phase.clone(),
+                        logical_ts,
+                        carrier_num: leg.carrier_num,
+                        floor_holder: leg.floor_holder,
+                        restored: leg.restored,
+                        muted: old_leg.is_some_and(|old| old.muted),
+                        rx_frames: old_leg.map_or(0, |old| old.rx_frames),
+                        tx_frames: old_leg.map_or(0, |old| old.tx_frames),
+                        dropped_frames: old_leg.map_or(0, |old| old.dropped_frames),
+                        last_sequence: old_leg.and_then(|old| old.last_sequence),
+                        last_frame_at: old_leg.and_then(|old| old.last_frame_at.clone()),
+                    },
+                );
+                stream_count += 1;
+            }
+
+            if legs.is_empty() {
+                continue;
+            }
+
+            sessions.insert(
+                call.logical_call_id.clone(),
+                MediaSession {
+                    logical_call_id: call.logical_call_id,
+                    kind: call.kind,
+                    phase: call.phase,
+                    source_issi: call.source_issi,
+                    gssi: call.gssi,
+                    calling_issi: call.calling_issi,
+                    called_issi: call.called_issi,
+                    priority: call.priority,
+                    emergency: call.emergency,
+                    floor_holder: call.floor_holder,
+                    expected_legs,
+                    legs,
+                    created_at,
+                    updated_at: now_iso(),
+                    frames_received: previous.map_or(0, |session| session.frames_received),
+                    frames_routed: previous.map_or(0, |session| session.frames_routed),
+                    frames_dropped: previous.map_or(0, |session| session.frames_dropped),
+                },
+            );
+        }
+
+        let removed = old_sessions
+            .keys()
+            .filter(|session_id| !sessions.contains_key(*session_id))
+            .cloned()
+            .collect::<Vec<_>>();
+        state.sessions = sessions;
+        rebuild_route_index_locked(&mut state);
+        prune_buffers_locked(&mut state);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+        for session_id in &removed {
+            flush_session_locked(&mut state, session_id);
+        }
+        if !removed.is_empty() {
+            push_event_locked(
+                &mut state,
+                "media_sessions_removed",
+                None,
+                None,
+                json!({"sessions": removed}),
+            );
+        }
+
+        let replay = take_routable_early_frames_locked(&mut state);
+        if !replay.is_empty() {
+            state.cold_start_frames_replayed = state
+                .cold_start_frames_replayed
+                .wrapping_add(replay.len() as u64);
+            push_event_locked(
+                &mut state,
+                "cold_start_frames_replayed",
+                None,
+                None,
+                json!({"frames": replay.len()}),
+            );
+        }
+        let ready_sessions = state
+            .sessions
+            .keys()
+            .filter(|session_id| media_route_ready_locked(&state, session_id.as_str()))
+            .cloned()
+            .collect::<Vec<_>>();
+        drop(state);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+        for frame in replay {
+            self.route_uplink_internal(frame, false);
+        }
+        ready_sessions
+    }
+
+    // Was: Diese Funktion arbeitet due frames.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn drain_due_frames(&self) -> Vec<BackendRequest> {
+        let replay = {
+            let mut state = self.0.lock().expect("media state poisoned");
+            let replay = take_due_early_frames_locked(&mut state);
+            if !replay.is_empty() {
+                state.cold_start_frames_replayed = state
+                    .cold_start_frames_replayed
+                    .wrapping_add(replay.len() as u64);
+            }
+            replay
+        };
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+        for frame in replay {
+            self.route_uplink_internal(frame, false);
+        }
+
+        let mut state = self.0.lock().expect("media state poisoned");
+        let now = Instant::now();
+        let max_frames = state.config.media.max_frames_per_tick;
+        let keys = state.buffers.keys().cloned().collect::<Vec<_>>();
+        let mut output = Vec::new();
+        let mut empty_keys = Vec::new();
+
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+        for key in keys {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+            while output.len() < max_frames {
+                let frame = state
+                    .buffers
+                    .get_mut(&key)
+                    .and_then(|queue| {
+                        if queue.front().is_some_and(|front| front.due_at <= now) {
+                            queue.pop_front()
+                        } else {
+                            None
+                        }
+                    });
+                let Some(buffered) = frame else {
+                    break;
+                };
+                state.pending_frames = state.pending_frames.saturating_sub(1);
+                state.frames_sent = state.frames_sent.wrapping_add(1);
+                if let Some(session) = state.sessions.get_mut(&key.session_id) {
+                    if let Some(leg) = session
+                        .legs
+                        .get_mut(&stream_id(&key.target_node_id, key.target_logical_ts))
+                    {
+                        leg.tx_frames = leg.tx_frames.wrapping_add(1);
+                        leg.last_frame_at = Some(now_iso());
+                    }
+                }
+                output.push(BackendRequest::MediaFrame {
+                    node_id: key.target_node_id.clone(),
+                    frame: buffered.frame,
+                });
+            }
+            if state.buffers.get(&key).is_some_and(VecDeque::is_empty) {
+                empty_keys.push(key);
+            }
+            if output.len() >= max_frames {
+                break;
+            }
+        }
+
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+        for key in empty_keys {
+            state.buffers.remove(&key);
+        }
+        output
+    }
+
+    // Was: Führt den Arbeitsschritt `mute_stream` für mute stream aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn mute_stream(&self, session_id: &str, input: MuteInput) -> Result<(), String> {
+        let mut state = self.0.lock().expect("media state poisoned");
+        if !state.config.security.allow_remote_management {
+            return Err("remote management is disabled by configuration".to_string());
+        }
+        if !(1..=7).contains(&input.logical_ts) {
+            return Err("logical_ts must be in 1..=7".to_string());
+        }
+        let key = stream_id(&input.node_id, input.logical_ts);
+        let session = state
+            .sessions
+            .get_mut(session_id)
+            .ok_or_else(|| "media session not found".to_string())?;
+        let leg = session
+            .legs
+            .get_mut(&key)
+            .ok_or_else(|| "media stream not found".to_string())?;
+        leg.muted = input.muted;
+        let muted = leg.muted;
+        push_event_locked(
+            &mut state,
+            if muted { "stream_muted" } else { "stream_unmuted" },
+            Some(session_id.to_string()),
+            Some(input.node_id),
+            json!({"logical_ts": input.logical_ts}),
+        );
+        Ok(())
+    }
+
+    // Was: Diese Funktion schreibt Sitzung.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn flush_session(&self, session_id: &str) -> Result<usize, String> {
+        let mut state = self.0.lock().expect("media state poisoned");
+        if !state.config.security.allow_remote_management {
+            return Err("remote management is disabled by configuration".to_string());
+        }
+        if !state.sessions.contains_key(session_id) {
+            return Err("media session not found".to_string());
+        }
+        let removed = flush_session_locked(&mut state, session_id);
+        push_event_locked(
+            &mut state,
+            "session_buffer_flushed",
+            Some(session_id.to_string()),
+            None,
+            json!({"frames": removed}),
+        );
+        Ok(removed)
+    }
+
+    // Was: Führt den Arbeitsschritt `inject` für inject aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn inject(&self, session_id: &str, input: InjectionInput) -> Result<usize, String> {
+        let mut state = self.0.lock().expect("media state poisoned");
+        if !state.config.security.allow_remote_management {
+            return Err("remote management is disabled by configuration".to_string());
+        }
+        if input.payload.len() != TETRA_ACELP_FRAME_BYTES {
+            return Err(format!(
+                "payload must contain exactly {TETRA_ACELP_FRAME_BYTES} packed bytes"
+            ));
+        }
+        if input
+            .target_logical_ts
+            .is_some_and(|logical_ts| !(1..=7).contains(&logical_ts))
+        {
+            return Err("target_logical_ts must be in 1..=7".to_string());
+        }
+
+        let targets = state
+            .sessions
+            .get(session_id)
+            .ok_or_else(|| "media session not found".to_string())?
+            .legs
+            .values()
+            .filter(|leg| !leg.muted)
+            .filter(|leg| node_can_receive(&state, &leg.node_id))
+            .filter(|leg| {
+                input
+                    .target_node
+                    .as_ref()
+                    .is_none_or(|node| node == &leg.node_id)
+            })
+            .filter(|leg| {
+                input
+                    .target_logical_ts
+                    .is_none_or(|logical_ts| logical_ts == leg.logical_ts)
+            })
+            .map(|leg| (leg.node_id.clone(), leg.logical_ts))
+            .collect::<Vec<_>>();
+
+        if targets.is_empty() {
+            return Err("no matching active destination stream".to_string());
+        }
+
+        state.injection_sequence = state.injection_sequence.wrapping_add(1);
+        let sequence = state.injection_sequence;
+        let due_at = Instant::now() + jitter_delay(&state.config);
+        let mut queued = 0usize;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+        for (node_id, logical_ts) in targets {
+            let frame = MediaDownlinkFrame {
+                session_id: session_id.to_string(),
+                source_node_id: "media-switch:injection".to_string(),
+                sequence,
+                logical_ts,
+                codec: MediaCodec::TetraAcelp0,
+                payload: input.payload.clone(),
+            };
+            if enqueue_locked(
+                &mut state,
+                StreamKey {
+                    session_id: session_id.to_string(),
+                    target_node_id: node_id,
+                    target_logical_ts: logical_ts,
+                },
+                BufferedFrame {
+                    due_at,
+                    frame,
+                    cold_start_replay: false,
+                },
+            ) {
+                queued += 1;
+            }
+        }
+        state.frames_injected = state.frames_injected.wrapping_add(1);
+        state.frames_routed = state.frames_routed.wrapping_add(queued as u64);
+        push_tap_locked(
+            &mut state,
+            session_id,
+            "media-switch:injection",
+            0,
+            sequence,
+            queued,
+            &input.payload,
+            true,
+            true,
+        );
+        push_event_locked(
+            &mut state,
+            "media_injected",
+            Some(session_id.to_string()),
+            None,
+            json!({"sequence": sequence, "targets": queued}),
+        );
+        Ok(queued)
+    }
+
+    // Was: Führt den Arbeitsschritt `metrics` für Messwerte aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn metrics(&self) -> String {
+        let status = self.status();
+        format!(
+            concat!(
+                "# HELP netcore_media_switch_up Service liveness.\n",
+                "# TYPE netcore_media_switch_up gauge\n",
+                "netcore_media_switch_up 1\n",
+                "# TYPE netcore_media_switch_sessions gauge\n",
+                "netcore_media_switch_sessions {}\n",
+                "# TYPE netcore_media_switch_streams gauge\n",
+                "netcore_media_switch_streams {}\n",
+                "# TYPE netcore_media_switch_pending_frames gauge\n",
+                "netcore_media_switch_pending_frames {}\n",
+                "# TYPE netcore_media_switch_frames_received counter\n",
+                "netcore_media_switch_frames_received {}\n",
+                "# TYPE netcore_media_switch_frames_routed counter\n",
+                "netcore_media_switch_frames_routed {}\n",
+                "# TYPE netcore_media_switch_frames_sent counter\n",
+                "netcore_media_switch_frames_sent {}\n",
+                "# TYPE netcore_media_switch_frames_dropped counter\n",
+                "netcore_media_switch_frames_dropped {}\n",
+                "# TYPE netcore_media_switch_duplicate_frames counter\n",
+                "netcore_media_switch_duplicate_frames {}\n"
+            ),
+            status.sessions_active,
+            status.streams_active,
+            status.pending_frames,
+            status.frames_received,
+            status.frames_routed,
+            status.frames_sent,
+            status.frames_dropped,
+            status.duplicate_frames,
+        )
+    }
+
+    // Was: Diese Funktion wendet Gateway snapshot.
+    // Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
+    fn apply_gateway_snapshot(&self, snapshot: GatewaySnapshot) {
+        let mut state = self.0.lock().expect("media state poisoned");
+        state.gateway_connected = true;
+        state.gateway_last_error = None;
+        let previous_sessions = state
+            .nodes
+            .iter()
+            .map(|(node_id, node)| (node_id.clone(), node.gateway_session_id.clone()))
+            .collect::<HashMap<_, _>>();
+        let nodes = snapshot
+            .nodes
+            .into_iter()
+            .map(|node| {
+                let record = NodeRecord {
+                    node_id: node.node_id.clone(),
+                    station_name: node.identity.station_name,
+                    gateway_session_id: node.session_id,
+                    site: node.identity.site,
+                    connected: node.connected,
+                    stale: node.stale,
+                    last_seen: node.last_seen,
+                    media_bridge: node.capabilities.media_bridge,
+                    media_frame_count: node.media_frame_count,
+                    mcc: node.identity.mcc,
+                    mnc: node.identity.mnc,
+                    location_area: node.identity.location_area,
+                    colour_code: node.identity.colour_code,
+                };
+                (node.node_id, record)
+            })
+            .collect::<BTreeMap<_, _>>();
+        let restarted_nodes = nodes
+            .iter()
+            .filter_map(|(node_id, node)| {
+                previous_sessions
+                    .get(node_id)
+                    .filter(|previous| *previous != &node.gateway_session_id)
+                    .map(|_| node_id.clone())
+            })
+            .collect::<Vec<_>>();
+        state.nodes = nodes;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+        for node_id in restarted_nodes {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+            for session in state.sessions.values_mut() {
+                // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+                // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+                for leg in session.legs.values_mut().filter(|leg| leg.node_id == node_id) {
+                    leg.last_sequence = None;
+                }
+            }
+            push_event_locked(
+                &mut state,
+                "node_media_sequence_reset",
+                None,
+                Some(node_id),
+                json!({"reason":"new Node Gateway session"}),
+            );
+        }
+    }
+
+    // Was: Diese Funktion leitet Uplink (Funkgerät zum Netz).
+    // Warum: Nachrichten und Daten gelangen dadurch nachvollziehbar an das richtige Ziel.
+    fn route_uplink(&self, frame: MediaUplinkFrame) {
+        self.route_uplink_internal(frame, true);
+    }
+
+    // Was: Diese Funktion leitet Uplink (Funkgerät zum Netz) internal.
+    // Warum: Nachrichten und Daten gelangen dadurch nachvollziehbar an das richtige Ziel.
+    fn route_uplink_internal(&self, frame: MediaUplinkFrame, count_received: bool) {
+        let mut state = self.0.lock().expect("media state poisoned");
+        if count_received {
+            state.frames_received = state.frames_received.wrapping_add(1);
+        }
+
+        if frame.codec != MediaCodec::TetraAcelp0
+            || frame.payload.len() != TETRA_ACELP_FRAME_BYTES
+            || !(1..=7).contains(&frame.logical_ts)
+        {
+            state.frames_dropped = state.frames_dropped.wrapping_add(1);
+            push_event_locked(
+                &mut state,
+                "invalid_uplink_media",
+                None,
+                Some(frame.node_id),
+                json!({
+                    "logical_ts": frame.logical_ts,
+                    "payload_bytes": frame.payload.len()
+                }),
+            );
+            return;
+        }
+
+        let Some(session_id) = state
+            .route_index
+            .get(&(frame.node_id.clone(), frame.logical_ts))
+            .cloned()
+        else {
+            state.unknown_stream_frames = state.unknown_stream_frames.wrapping_add(1);
+            buffer_early_uplink_locked(&mut state, frame);
+            return;
+        };
+
+        if count_received && !media_route_ready_locked(&state, &session_id) {
+            push_tap_locked(
+                &mut state,
+                &session_id,
+                &frame.node_id,
+                frame.logical_ts,
+                frame.sequence,
+                0,
+                &frame.payload,
+                false,
+                true,
+            );
+            buffer_early_uplink_locked(&mut state, frame);
+            return;
+        }
+
+        let source_stream_id = stream_id(&frame.node_id, frame.logical_ts);
+        let duplicate = state
+            .sessions
+            .get(&session_id)
+            .and_then(|session| session.legs.get(&source_stream_id))
+            .and_then(|leg| leg.last_sequence)
+            .is_some_and(|last| frame.sequence <= last);
+        if count_received && duplicate {
+            state.duplicate_frames = state.duplicate_frames.wrapping_add(1);
+            state.frames_dropped = state.frames_dropped.wrapping_add(1);
+            if let Some(session) = state.sessions.get_mut(&session_id) {
+                session.frames_dropped = session.frames_dropped.wrapping_add(1);
+                if let Some(leg) = session.legs.get_mut(&source_stream_id) {
+                    leg.dropped_frames = leg.dropped_frames.wrapping_add(1);
+                }
+            }
+            return;
+        }
+
+        let targets = state
+            .sessions
+            .get(&session_id)
+            .map(|session| {
+                session
+                    .legs
+                    .values()
+                    .filter(|leg| is_routable_leg(&leg.phase))
+                    .filter(|leg| {
+                        state.config.media.allow_same_leg_loopback
+                            || leg.node_id != frame.node_id
+                            || leg.logical_ts != frame.logical_ts
+                    })
+                    .map(|leg| {
+                        (
+                            leg.node_id.clone(),
+                            leg.logical_ts,
+                            leg.muted,
+                            node_can_receive(&state, &leg.node_id),
+                        )
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+
+        if let Some(session) = state.sessions.get_mut(&session_id) {
+            session.frames_received = session.frames_received.wrapping_add(1);
+            session.updated_at = now_iso();
+            if let Some(leg) = session.legs.get_mut(&source_stream_id) {
+                leg.rx_frames = leg.rx_frames.wrapping_add(1);
+                leg.last_sequence = Some(
+                    leg.last_sequence
+                        .map_or(frame.sequence, |last| last.max(frame.sequence)),
+                );
+                leg.last_frame_at = Some(now_iso());
+            }
+        }
+
+        let media_delay = if count_received {
+            jitter_delay_for_source_locked(&mut state, &frame.node_id, frame.logical_ts)
+        } else {
+            jitter_delay(&state.config)
+        };
+        let mut routed = 0usize;
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+        for (node_id, logical_ts, muted, online) in targets {
+            if muted {
+                state.muted_frames = state.muted_frames.wrapping_add(1);
+                continue;
+            }
+            if !online {
+                state.frames_dropped = state.frames_dropped.wrapping_add(1);
+                if let Some(session) = state.sessions.get_mut(&session_id) {
+                    session.frames_dropped = session.frames_dropped.wrapping_add(1);
+                    if let Some(leg) = session.legs.get_mut(&stream_id(&node_id, logical_ts)) {
+                        leg.dropped_frames = leg.dropped_frames.wrapping_add(1);
+                    }
+                }
+                continue;
+            }
+            let downlink = MediaDownlinkFrame {
+                session_id: session_id.clone(),
+                source_node_id: frame.node_id.clone(),
+                sequence: frame.sequence,
+                logical_ts,
+                codec: frame.codec,
+                payload: frame.payload.clone(),
+            };
+            let key = StreamKey {
+                session_id: session_id.clone(),
+                target_node_id: node_id,
+                target_logical_ts: logical_ts,
+            };
+            let replay_offset = if count_received {
+                Duration::ZERO
+            } else {
+                Duration::from_millis(
+                    state
+                        .config
+                        .media
+                        .frame_duration_ms
+                        .saturating_mul(
+                            state.buffers.get(&key).map_or(0, |queue| {
+                                queue
+                                    .iter()
+                                    .filter(|queued| queued.cold_start_replay)
+                                    .count()
+                            }) as u64,
+                        ),
+                )
+            };
+            let due_at = Instant::now() + media_delay + replay_offset;
+            if enqueue_locked(
+                &mut state,
+                key,
+                BufferedFrame {
+                    due_at,
+                    frame: downlink,
+                    cold_start_replay: !count_received,
+                },
+            ) {
+                routed += 1;
+            }
+        }
+
+        state.frames_routed = state.frames_routed.wrapping_add(routed as u64);
+        if let Some(session) = state.sessions.get_mut(&session_id) {
+            session.frames_routed = session.frames_routed.wrapping_add(routed as u64);
+        }
+        push_tap_locked(
+            &mut state,
+            &session_id,
+            &frame.node_id,
+            frame.logical_ts,
+            frame.sequence,
+            routed,
+            &frame.payload,
+            false,
+            count_received,
+        );
+    }
+}
+
+// Was: Führt den Arbeitsschritt `status_locked` für Status locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn status_locked(state: &MediaState) -> MediaSwitchStatus {
+    MediaSwitchStatus {
+        service: "netcore-media-switch",
+        started_at: state.started_at.clone(),
+        security_mode: "open_lab",
+        warning: "OPEN LAB: no authentication, no tokens and no TLS; isolated test network only",
+        node_gateway_connected: state.gateway_connected,
+        node_gateway_last_error: state.gateway_last_error.clone(),
+        call_control_connected: state.call_control_connected,
+        call_control_last_error: state.call_control_last_error.clone(),
+        nodes_connected: state
+            .nodes
+            .values()
+            .filter(|node| node.connected && !node.stale)
+            .count(),
+        nodes_media_capable: state
+            .nodes
+            .values()
+            .filter(|node| node.connected && !node.stale && node.media_bridge)
+            .count(),
+        sessions_total: state.sessions.len(),
+        sessions_active: state.sessions.values().filter(|session| is_routable_call_phase(&session.phase)).count(),
+        streams_active: state.sessions.values().map(|session| session.legs.len()).sum(),
+        pending_frames: state.pending_frames,
+        frames_received: state.frames_received,
+        frames_routed: state.frames_routed,
+        frames_sent: state.frames_sent,
+        frames_injected: state.frames_injected,
+        frames_dropped: state.frames_dropped,
+        duplicate_frames: state.duplicate_frames,
+        unknown_stream_frames: state.unknown_stream_frames,
+        cold_start_frames_buffered: state.early_uplink.values().map(VecDeque::len).sum(),
+        cold_start_frames_replayed: state.cold_start_frames_replayed,
+        cold_start_frames_expired: state.cold_start_frames_expired,
+        adaptive_jitter_streams: state.adaptive_jitter.len(),
+        adaptive_jitter_max_frames: state
+            .adaptive_jitter
+            .values()
+            .map(|profile| profile.target_frames)
+            .max()
+            .unwrap_or(state.config.media.jitter_buffer_frames),
+        muted_frames: state.muted_frames,
+        buffer_overflows: state.buffer_overflows,
+        send_failures: state.send_failures,
+        recorder_taps_buffered: state.recorder_taps.len(),
+        recorder_oldest_seq: state.recorder_taps.front().map(|record| record.seq),
+        recorder_newest_seq: state.recorder_taps.back().map(|record| record.seq),
+    }
+}
+
+// Was: Führt den Arbeitsschritt `streams_locked` für streams locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn streams_locked(state: &MediaState) -> Vec<StreamSnapshot> {
+    state
+        .sessions
+        .values()
+        .flat_map(|session| {
+            session.legs.iter().map(|(stream_id, leg)| StreamSnapshot {
+                session_id: session.logical_call_id.clone(),
+                stream_id: stream_id.clone(),
+                node_id: leg.node_id.clone(),
+                local_call_id: leg.local_call_id,
+                logical_ts: leg.logical_ts,
+                carrier_num: leg.carrier_num,
+                phase: leg.phase.clone(),
+                muted: leg.muted,
+                floor_holder: leg.floor_holder,
+                rx_frames: leg.rx_frames,
+                tx_frames: leg.tx_frames,
+                dropped_frames: leg.dropped_frames,
+                last_sequence: leg.last_sequence,
+                last_frame_at: leg.last_frame_at.clone(),
+            })
+        })
+        .collect()
+}
+
+// Was: Führt den Arbeitsschritt `rebuild_route_index_locked` für rebuild Weiterleitung index locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn rebuild_route_index_locked(state: &mut MediaState) {
+    state.route_index.clear();
+    let mut collisions = Vec::new();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+    for session in state.sessions.values() {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+        for leg in session.legs.values() {
+            let key = (leg.node_id.clone(), leg.logical_ts);
+            if let Some(previous) = state
+                .route_index
+                .insert(key.clone(), session.logical_call_id.clone())
+            {
+                collisions.push((key, previous, session.logical_call_id.clone()));
+            }
+        }
+    }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+    for ((node_id, logical_ts), previous, replacement) in collisions {
+        push_event_locked(
+            state,
+            "route_collision",
+            Some(replacement.clone()),
+            Some(node_id),
+            json!({
+                "logical_ts": logical_ts,
+                "previous_session": previous,
+                "selected_session": replacement
+            }),
+        );
+    }
+}
+
+// Was: Führt den Arbeitsschritt `buffer_early_uplink_locked` für buffer early Uplink (Funkgerät zum Netz) locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn buffer_early_uplink_locked(state: &mut MediaState, frame: MediaUplinkFrame) {
+    let key = (frame.node_id.clone(), frame.logical_ts);
+    let now = Instant::now();
+    let max_age = Duration::from_millis(state.config.media.cold_start_buffer_max_age_ms);
+    let max_frames = state.config.media.cold_start_buffer_frames;
+
+    if state.early_uplink.len() >= state.config.limits.max_streams
+        && !state.early_uplink.contains_key(&key)
+    {
+        state.frames_dropped = state.frames_dropped.wrapping_add(1);
+        state.cold_start_frames_expired = state.cold_start_frames_expired.wrapping_add(1);
+        return;
+    }
+
+    let queue = state.early_uplink.entry(key.clone()).or_default();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+    while queue
+        .front()
+        .is_some_and(|entry| now.duration_since(entry.received_at) > max_age)
+    {
+        queue.pop_front();
+        state.frames_dropped = state.frames_dropped.wrapping_add(1);
+        state.cold_start_frames_expired = state.cold_start_frames_expired.wrapping_add(1);
+    }
+    if queue.len() >= max_frames {
+        // The cold-start buffer protects the first spoken words. Once it is full,
+        // discard newer input rather than evicting the oldest preserved frame.
+        state.frames_dropped = state.frames_dropped.wrapping_add(1);
+        state.cold_start_frames_expired = state.cold_start_frames_expired.wrapping_add(1);
+        return;
+    }
+    let first = queue.is_empty();
+    queue.push_back(EarlyUplinkFrame {
+        received_at: now,
+        frame,
+    });
+    if first {
+        push_event_locked(
+            state,
+            "cold_start_stream_buffering",
+            None,
+            Some(key.0),
+            json!({"logical_ts": key.1, "max_frames": max_frames}),
+        );
+    }
+}
+
+// Was: Führt den Arbeitsschritt `take_routable_early_frames_locked` für take routable early frames locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn take_routable_early_frames_locked(state: &mut MediaState) -> Vec<MediaUplinkFrame> {
+    let now = Instant::now();
+    let max_age = Duration::from_millis(state.config.media.cold_start_buffer_max_age_ms);
+    let keys = state.early_uplink.keys().cloned().collect::<Vec<_>>();
+    let mut replay = Vec::new();
+
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+    for key in keys {
+        let Some(mut queue) = state.early_uplink.remove(&key) else {
+            continue;
+        };
+        let route_ready = state
+            .route_index
+            .get(&key)
+            .is_some_and(|session_id| media_route_ready_locked(state, session_id));
+        let mut retained = VecDeque::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+        while let Some(entry) = queue.pop_front() {
+            if now.duration_since(entry.received_at) > max_age {
+                state.frames_dropped = state.frames_dropped.wrapping_add(1);
+                state.cold_start_frames_expired =
+                    state.cold_start_frames_expired.wrapping_add(1);
+            } else if route_ready {
+                replay.push((entry.received_at, entry.frame));
+            } else {
+                retained.push_back(entry);
+            }
+        }
+        if !retained.is_empty() {
+            state.early_uplink.insert(key, retained);
+        }
+    }
+
+    let valid_jitter_keys = state
+        .route_index
+        .keys()
+        .chain(state.early_uplink.keys())
+        .cloned()
+        .collect::<std::collections::HashSet<_>>();
+    state
+        .adaptive_jitter
+        .retain(|key, _| valid_jitter_keys.contains(key));
+    replay.sort_by_key(|(received_at, _)| *received_at);
+    replay.into_iter().map(|(_, frame)| frame).collect()
+}
+
+// Was: Führt den Arbeitsschritt `take_due_early_frames_locked` für take due early frames locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn take_due_early_frames_locked(state: &mut MediaState) -> Vec<MediaUplinkFrame> {
+    let now = Instant::now();
+    let max_age = Duration::from_millis(state.config.media.cold_start_buffer_max_age_ms);
+    let keys = state.early_uplink.keys().cloned().collect::<Vec<_>>();
+    let mut replay = Vec::new();
+
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+    for key in keys {
+        let route_ready = state
+            .route_index
+            .get(&key)
+            .is_some_and(|session_id| media_route_ready_locked(state, session_id));
+        let Some(mut queue) = state.early_uplink.remove(&key) else {
+            continue;
+        };
+        let mut retained = VecDeque::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+        while let Some(entry) = queue.pop_front() {
+            if now.duration_since(entry.received_at) > max_age {
+                state.frames_dropped = state.frames_dropped.wrapping_add(1);
+                state.cold_start_frames_expired =
+                    state.cold_start_frames_expired.wrapping_add(1);
+            } else if route_ready {
+                replay.push((entry.received_at, entry.frame));
+            } else {
+                retained.push_back(entry);
+            }
+        }
+        if !retained.is_empty() {
+            state.early_uplink.insert(key, retained);
+        }
+    }
+
+    replay.sort_by_key(|(received_at, _)| *received_at);
+    replay.into_iter().map(|(_, frame)| frame).collect()
+}
+
+// Was: Führt den Arbeitsschritt `jitter_delay_for_source_locked` für Laufzeitschwankung delay for source locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn jitter_delay_for_source_locked(
+    state: &mut MediaState,
+    node_id: &str,
+    logical_ts: u8,
+) -> Duration {
+    let base = state.config.media.jitter_buffer_frames;
+    if !state.config.media.adaptive_jitter {
+        return Duration::from_millis(
+            state
+                .config
+                .media
+                .frame_duration_ms
+                .saturating_mul(base as u64),
+        );
+    }
+
+    let now = Instant::now();
+    let frame_duration_ms = state.config.media.frame_duration_ms;
+    let min_frames = state.config.media.min_jitter_buffer_frames;
+    let max_frames = state.config.media.max_jitter_buffer_frames;
+    let up_threshold_ms = state.config.media.adaptive_jitter_up_threshold_ms;
+    let down_stable_frames = state.config.media.adaptive_jitter_down_stable_frames;
+    let profile = state
+        .adaptive_jitter
+        .entry((node_id.to_string(), logical_ts))
+        .or_insert(AdaptiveJitterProfile {
+            target_frames: base,
+            last_arrival: None,
+            stable_frames: 0,
+        });
+
+    if let Some(last_arrival) = profile.last_arrival {
+        let observed_ms = now.duration_since(last_arrival).as_millis() as u64;
+        let deviation_ms = observed_ms.abs_diff(frame_duration_ms);
+        if observed_ms > frame_duration_ms.saturating_add(up_threshold_ms)
+            || deviation_ms > up_threshold_ms
+        {
+            profile.target_frames = profile.target_frames.saturating_add(1).min(max_frames);
+            profile.stable_frames = 0;
+        } else {
+            profile.stable_frames = profile.stable_frames.saturating_add(1);
+            if profile.stable_frames >= down_stable_frames
+                && profile.target_frames > min_frames
+            {
+                profile.target_frames -= 1;
+                profile.stable_frames = 0;
+            }
+        }
+    }
+    profile.last_arrival = Some(now);
+
+    Duration::from_millis(frame_duration_ms.saturating_mul(profile.target_frames as u64))
+}
+
+// Was: Führt den Arbeitsschritt `enqueue_locked` für enqueue locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn enqueue_locked(state: &mut MediaState, key: StreamKey, frame: BufferedFrame) -> bool {
+    if state.pending_frames >= state.config.limits.max_pending_frames {
+        state.buffer_overflows = state.buffer_overflows.wrapping_add(1);
+        state.frames_dropped = state.frames_dropped.wrapping_add(1);
+        return false;
+    }
+
+    let max_per_stream = state.config.media.max_jitter_buffer_frames;
+    let mut replaced_frame = false;
+    let accepted = {
+        let queue = state.buffers.entry(key.clone()).or_default();
+        let accepted = if queue.len() >= max_per_stream {
+            // Never sacrifice the preserved first words for a newer live frame.
+            // When possible, replace the oldest non-replay frame instead.
+            if let Some(index) = queue.iter().position(|queued| !queued.cold_start_replay) {
+                queue.remove(index);
+                replaced_frame = true;
+                true
+            } else {
+                false
+            }
+        } else {
+            true
+        };
+        if accepted {
+            if frame.cold_start_replay {
+                let index = queue
+                    .iter()
+                    .position(|queued| !queued.cold_start_replay)
+                    .unwrap_or(queue.len());
+                queue.insert(index, frame);
+            } else {
+                queue.push_back(frame);
+            }
+        }
+        accepted
+    };
+
+    if !accepted {
+        state.buffer_overflows = state.buffer_overflows.wrapping_add(1);
+        state.frames_dropped = state.frames_dropped.wrapping_add(1);
+        if let Some(session) = state.sessions.get_mut(&key.session_id) {
+            session.frames_dropped = session.frames_dropped.wrapping_add(1);
+            if let Some(leg) = session
+                .legs
+                .get_mut(&stream_id(&key.target_node_id, key.target_logical_ts))
+            {
+                leg.dropped_frames = leg.dropped_frames.wrapping_add(1);
+            }
+        }
+        return false;
+    }
+
+    if replaced_frame {
+        state.pending_frames = state.pending_frames.saturating_sub(1);
+        state.buffer_overflows = state.buffer_overflows.wrapping_add(1);
+        state.frames_dropped = state.frames_dropped.wrapping_add(1);
+        if let Some(session) = state.sessions.get_mut(&key.session_id) {
+            session.frames_dropped = session.frames_dropped.wrapping_add(1);
+            if let Some(leg) = session
+                .legs
+                .get_mut(&stream_id(&key.target_node_id, key.target_logical_ts))
+            {
+                leg.dropped_frames = leg.dropped_frames.wrapping_add(1);
+            }
+        }
+    }
+    state.pending_frames += 1;
+    true
+}
+
+// Was: Führt den Arbeitsschritt `prune_buffers_locked` für prune buffers locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn prune_buffers_locked(state: &mut MediaState) {
+    let valid = state
+        .sessions
+        .values()
+        .flat_map(|session| {
+            session.legs.values().map(|leg| StreamKey {
+                session_id: session.logical_call_id.clone(),
+                target_node_id: leg.node_id.clone(),
+                target_logical_ts: leg.logical_ts,
+            })
+        })
+        .collect::<std::collections::HashSet<_>>();
+    let stale = state
+        .buffers
+        .keys()
+        .filter(|key| !valid.contains(*key))
+        .cloned()
+        .collect::<Vec<_>>();
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+    for key in stale {
+        if let Some(queue) = state.buffers.remove(&key) {
+            state.pending_frames = state.pending_frames.saturating_sub(queue.len());
+        }
+    }
+}
+
+// Was: Diese Funktion schreibt Sitzung locked.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn flush_session_locked(state: &mut MediaState, session_id: &str) -> usize {
+    let keys = state
+        .buffers
+        .keys()
+        .filter(|key| key.session_id == session_id)
+        .cloned()
+        .collect::<Vec<_>>();
+    let mut removed = 0usize;
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+    for key in keys {
+        if let Some(queue) = state.buffers.remove(&key) {
+            removed += queue.len();
+        }
+    }
+    state.pending_frames = state.pending_frames.saturating_sub(removed);
+    removed
+}
+
+// Was: Diese Funktion legt tap locked.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn push_tap_locked(
+    state: &mut MediaState,
+    session_id: &str,
+    source_node_id: &str,
+    source_logical_ts: u8,
+    source_sequence: u64,
+    target_count: usize,
+    payload: &[u8],
+    injected: bool,
+    record_for_recorder: bool,
+) {
+    let seq = state.next_tap_seq;
+    let timestamp = now_iso();
+    state.next_tap_seq = state.next_tap_seq.wrapping_add(1);
+
+    state.taps.push_back(TapRecord {
+        seq,
+        timestamp: timestamp.clone(),
+        session_id: session_id.to_string(),
+        source_node_id: source_node_id.to_string(),
+        source_logical_ts,
+        source_sequence,
+        target_count,
+        payload_bytes: payload.len(),
+        injected,
+    });
+
+    if record_for_recorder {
+        let session = state.sessions.get(session_id);
+        state.recorder_taps.push_back(RecorderTapRecord {
+            seq,
+            timestamp,
+            session_id: session_id.to_string(),
+            call_kind: session.map_or_else(|| "unknown".to_string(), |value| value.kind.clone()),
+            call_phase: session.map_or_else(|| "unknown".to_string(), |value| value.phase.clone()),
+            source_issi: session.and_then(|value| value.source_issi),
+            gssi: session.and_then(|value| value.gssi),
+            calling_issi: session.and_then(|value| value.calling_issi),
+            called_issi: session.and_then(|value| value.called_issi),
+            priority: session.map_or(0, |value| value.priority),
+            emergency: session.is_some_and(|value| value.emergency),
+            speaker_issi: session.and_then(|value| value.floor_holder),
+            source_node_id: source_node_id.to_string(),
+            source_logical_ts,
+            source_sequence,
+            target_count,
+            codec: "tetra_acelp0".to_string(),
+            payload: payload.to_vec(),
+            injected,
+        });
+    }
+
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+    while state.taps.len() > state.config.media.tap_history_frames {
+        state.taps.pop_front();
+    }
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+    while state.recorder_taps.len() > state.config.media.recorder_tap_history_frames {
+        state.recorder_taps.pop_front();
+    }
+}
+
+// Was: Diese Funktion legt Ereignis locked.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn push_event_locked(
+    state: &mut MediaState,
+    kind: &str,
+    session_id: Option<String>,
+    node_id: Option<String>,
+    detail: Value,
+) {
+    let event = EventRecord {
+        seq: state.next_event_seq,
+        timestamp: now_iso(),
+        kind: kind.to_string(),
+        session_id,
+        node_id,
+        detail,
+    };
+    state.next_event_seq = state.next_event_seq.wrapping_add(1);
+    state.events.push_back(event);
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+    while state.events.len() > state.config.server.history_limit {
+        state.events.pop_front();
+    }
+}
+
+// Was: Führt den Arbeitsschritt `jitter_delay` für Laufzeitschwankung delay aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn jitter_delay(config: &MediaSwitchConfig) -> Duration {
+    Duration::from_millis(
+        config
+            .media
+            .frame_duration_ms
+            .saturating_mul(config.media.jitter_buffer_frames as u64),
+    )
+}
+
+// Was: Führt den Arbeitsschritt `node_can_receive` für Netzknoten can receive aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn node_can_receive(state: &MediaState, node_id: &str) -> bool {
+    state.nodes.get(node_id).is_some_and(|node| {
+        node.connected && !node.stale && node.media_bridge
+    })
+}
+
+// Was: Führt den Arbeitsschritt `stream_id` für stream Kennung aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn stream_id(node_id: &str, logical_ts: u8) -> String {
+    format!("{node_id}:ts{logical_ts}")
+}
+
+// Was: Prüft, ob routable Ruf zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
+fn is_routable_call(call: &CallControlCall) -> bool {
+    is_routable_call_phase(&call.phase)
+}
+
+// Was: Prüft, ob routable Ruf phase zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
+fn is_routable_call_phase(phase: &str) -> bool {
+    matches!(phase, "starting" | "partial" | "active" | "releasing")
+}
+
+// Was: Prüft, ob routable Rufzweig zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
+fn is_routable_leg(phase: &str) -> bool {
+    matches!(phase, "starting" | "active" | "releasing")
+}
+
+// Was: Prüft, ob expected Rufzweig zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
+fn is_expected_leg(phase: &str) -> bool {
+    matches!(phase, "requested" | "starting" | "active" | "releasing")
+}
+
+// Was: Führt den Arbeitsschritt `media_route_ready_locked` für Audio- und Mediendaten Weiterleitung ready locked aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn media_route_ready_locked(state: &MediaState, session_id: &str) -> bool {
+    state.sessions.get(session_id).is_some_and(|session| {
+        session.expected_legs > 0
+            && session.expected_legs <= session.legs.len()
+            && session.legs.values().all(|leg| {
+                leg.phase == "active"
+                    && leg.local_call_id.is_some()
+                    && node_can_receive(state, &leg.node_id)
+            })
+    })
+}
+
+
+// Was: Führt den Arbeitsschritt `now_iso` für now iso aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+pub fn now_iso() -> String {
+    Utc::now().to_rfc3339()
+}
+
+#[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
+mod tests {
+    use super::*;
+    use crate::config::MediaSwitchConfig;
+    use crate::protocol::{CallControlCall, CallControlLeg};
+
+    // Was: Führt den Arbeitsschritt `sample_call` für sample Ruf aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn sample_call() -> CallControlCall {
+        CallControlCall {
+            logical_call_id: "call-1".to_string(),
+            kind: "group".to_string(),
+            phase: "active".to_string(),
+            source_issi: Some(1001),
+            gssi: Some(2000),
+            calling_issi: None,
+            called_issi: None,
+            floor_holder: Some(1001),
+            priority: 5,
+            emergency: false,
+            legs: BTreeMap::from([
+                (
+                    "a".to_string(),
+                    CallControlLeg {
+                        node_id: "tbs-a".to_string(),
+                        local_call_id: Some(1),
+                        phase: "active".to_string(),
+                        timeslot: Some(2),
+                        carrier_num: Some(720),
+                        floor_holder: Some(1001),
+                        restored: false,
+                    },
+                ),
+                (
+                    "b".to_string(),
+                    CallControlLeg {
+                        node_id: "tbs-b".to_string(),
+                        local_call_id: Some(2),
+                        phase: "active".to_string(),
+                        timeslot: Some(3),
+                        carrier_num: Some(721),
+                        floor_holder: Some(1001),
+                        restored: false,
+                    },
+                ),
+            ]),
+        }
+    }
+
+    #[test]
+    // Was: Führt den Arbeitsschritt `reconciliation_creates_two_stream_session` für reconciliation creates two stream Sitzung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn reconciliation_creates_two_stream_session() {
+        let media = SharedMedia::new(MediaSwitchConfig::default());
+        let ready = media.reconcile_calls(vec![sample_call()]);
+        assert!(ready.is_empty(), "transport nodes are not connected yet");
+        assert_eq!(media.sessions().len(), 1);
+        assert_eq!(media.streams().len(), 2);
+    }
+
+    #[test]
+    // Was: Führt den Arbeitsschritt `mute_and_flush_are_operator_actions` für mute and flush are operator actions aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn mute_and_flush_are_operator_actions() {
+        let media = SharedMedia::new(MediaSwitchConfig::default());
+        let _ = media.reconcile_calls(vec![sample_call()]);
+        media
+            .mute_stream(
+                "call-1",
+                MuteInput {
+                    node_id: "tbs-b".to_string(),
+                    logical_ts: 3,
+                    muted: true,
+                },
+            )
+            .expect("mute succeeds");
+        assert!(
+            media
+                .streams()
+                .into_iter()
+                .any(|stream| stream.node_id == "tbs-b" && stream.muted)
+        );
+        assert_eq!(media.flush_session("call-1").expect("flush succeeds"), 0);
+    }
+
+    #[test]
+    // Was: Führt den Arbeitsschritt `uplink_routes_to_other_active_leg_and_rejects_duplicate` für Uplink (Funkgerät zum Netz) routes to other active Rufzweig and und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn uplink_routes_to_other_active_leg_and_rejects_duplicate() {
+        let mut config = MediaSwitchConfig::default();
+        config.media.jitter_buffer_frames = 0;
+        let media = SharedMedia::new(config);
+        {
+            let mut state = media.0.lock().expect("media state");
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+            for (node_id, session_id) in [("tbs-a", "session-a"), ("tbs-b", "session-b")] {
+                state.nodes.insert(
+                    node_id.to_string(),
+                    NodeRecord {
+                        node_id: node_id.to_string(),
+                        station_name: node_id.to_string(),
+                        gateway_session_id: session_id.to_string(),
+                        site: None,
+                        connected: true,
+                        stale: false,
+                        last_seen: now_iso(),
+                        media_bridge: true,
+                        media_frame_count: 0,
+                        mcc: 262,
+                        mnc: 42,
+                        location_area: 1,
+                        colour_code: 1,
+                    },
+                );
+            }
+        }
+        let _ = media.reconcile_calls(vec![sample_call()]);
+        let frame = MediaUplinkFrame {
+            node_id: "tbs-a".to_string(),
+            sequence: 1,
+            timestamp: now_iso(),
+            carrier_num: 720,
+            logical_ts: 2,
+            codec: MediaCodec::TetraAcelp0,
+            payload: vec![0x55; TETRA_ACELP_FRAME_BYTES],
+        };
+        media.route_uplink(frame.clone());
+        let routed = media.drain_due_frames();
+        assert_eq!(routed.len(), 1);
+        assert!(matches!(
+            &routed[0],
+            BackendRequest::MediaFrame { node_id, frame }
+                if node_id == "tbs-b" && frame.logical_ts == 3
+        ));
+
+        media.route_uplink(frame);
+        assert_eq!(media.status().duplicate_frames, 1);
+    }
+
+    #[test]
+    // Was: Führt den Arbeitsschritt `cold_start_frames_wait_for_all_expected_legs_and_replay` für cold start frames wait for all expected und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn cold_start_frames_wait_for_all_expected_legs_and_replay() {
+        let mut config = MediaSwitchConfig::default();
+        config.media.jitter_buffer_frames = 0;
+        config.media.adaptive_jitter = false;
+        let media = SharedMedia::new(config);
+        {
+            let mut state = media.0.lock().expect("media state");
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+            for (node_id, session_id) in [("tbs-a", "session-a"), ("tbs-b", "session-b")] {
+                state.nodes.insert(
+                    node_id.to_string(),
+                    NodeRecord {
+                        node_id: node_id.to_string(),
+                        station_name: node_id.to_string(),
+                        gateway_session_id: session_id.to_string(),
+                        site: None,
+                        connected: true,
+                        stale: false,
+                        last_seen: now_iso(),
+                        media_bridge: true,
+                        media_frame_count: 0,
+                        mcc: 262,
+                        mnc: 42,
+                        location_area: 1,
+                        colour_code: 1,
+                    },
+                );
+            }
+        }
+
+        let mut starting = sample_call();
+        starting.phase = "starting".to_string();
+        let target = starting.legs.get_mut("b").expect("target leg");
+        target.local_call_id = None;
+        target.phase = "requested".to_string();
+        target.timeslot = None;
+        target.carrier_num = None;
+        let _ = media.reconcile_calls(vec![starting]);
+
+        media.route_uplink(MediaUplinkFrame {
+            node_id: "tbs-a".to_string(),
+            sequence: 1,
+            timestamp: now_iso(),
+            carrier_num: 720,
+            logical_ts: 2,
+            codec: MediaCodec::TetraAcelp0,
+            payload: vec![0x42; TETRA_ACELP_FRAME_BYTES],
+        });
+        assert_eq!(media.status().cold_start_frames_buffered, 1);
+        assert!(media.drain_due_frames().is_empty());
+
+        let _ = media.reconcile_calls(vec![sample_call()]);
+        assert_eq!(media.status().cold_start_frames_buffered, 0);
+        assert_eq!(media.status().cold_start_frames_replayed, 1);
+        let routed = media.drain_due_frames();
+        assert_eq!(routed.len(), 1);
+        assert!(matches!(
+            &routed[0],
+            BackendRequest::MediaFrame { node_id, frame }
+                if node_id == "tbs-b" && frame.sequence == 1 && frame.logical_ts == 3
+        ));
+    }
+
+
+    #[test]
+    // Was: Führt den Arbeitsschritt `cold_start_replay_is_queued_before_interleaved_live_audio` für cold start replay is queued before interleaved und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn cold_start_replay_is_queued_before_interleaved_live_audio() {
+        let media = SharedMedia::new(MediaSwitchConfig::default());
+        let key = StreamKey {
+            session_id: "call-1".to_string(),
+            target_node_id: "tbs-b".to_string(),
+            target_logical_ts: 3,
+        };
+        let mut state = media.0.lock().expect("media state");
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+        for (sequence, cold_start_replay) in [(6, false), (1, true), (2, true)] {
+            assert!(enqueue_locked(
+                &mut state,
+                key.clone(),
+                BufferedFrame {
+                    due_at: Instant::now(),
+                    frame: MediaDownlinkFrame {
+                        session_id: "call-1".to_string(),
+                        source_node_id: "tbs-a".to_string(),
+                        sequence,
+                        logical_ts: 3,
+                        codec: MediaCodec::TetraAcelp0,
+                        payload: vec![0x22; TETRA_ACELP_FRAME_BYTES],
+                    },
+                    cold_start_replay,
+                },
+            ));
+        }
+        let sequences = state
+            .buffers
+            .get(&key)
+            .expect("target buffer")
+            .iter()
+            .map(|buffered| buffered.frame.sequence)
+            .collect::<Vec<_>>();
+        assert_eq!(sequences, vec![1, 2, 6]);
+    }
+
+    #[test]
+    // Was: Führt den Arbeitsschritt `injection_requires_exact_packed_frame_size` für injection requires exact packed Funkrahmen size aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn injection_requires_exact_packed_frame_size() {
+        let media = SharedMedia::new(MediaSwitchConfig::default());
+        let _ = media.reconcile_calls(vec![sample_call()]);
+        let result = media.inject(
+            "call-1",
+            InjectionInput {
+                payload: vec![0; TETRA_ACELP_FRAME_BYTES - 1],
+                target_node: None,
+                target_logical_ts: None,
+            },
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    // Was: Führt den Arbeitsschritt `recorder_tap_contains_payload_and_call_metadata` für Aufzeichnung tap contains payload and Ruf metadata aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn recorder_tap_contains_payload_and_call_metadata() {
+        let mut config = MediaSwitchConfig::default();
+        config.media.jitter_buffer_frames = 0;
+        let media = SharedMedia::new(config);
+        {
+            let mut state = media.0.lock().expect("media state");
+            state.nodes.insert(
+                "tbs-a".to_string(),
+                NodeRecord {
+                    node_id: "tbs-a".to_string(),
+                    station_name: "TBS A".to_string(),
+                    gateway_session_id: "session-a".to_string(),
+                    site: None,
+                    connected: true,
+                    stale: false,
+                    last_seen: now_iso(),
+                    media_bridge: true,
+                    media_frame_count: 0,
+                    mcc: 262,
+                    mnc: 42,
+                    location_area: 1,
+                    colour_code: 1,
+                },
+            );
+        }
+        let _ = media.reconcile_calls(vec![sample_call()]);
+        media.route_uplink(MediaUplinkFrame {
+            node_id: "tbs-a".to_string(),
+            sequence: 7,
+            timestamp: now_iso(),
+            carrier_num: 720,
+            logical_ts: 2,
+            codec: MediaCodec::TetraAcelp0,
+            payload: vec![0x5a; TETRA_ACELP_FRAME_BYTES],
+        });
+        let batch = media.recorder_taps(0, 10);
+        assert_eq!(batch.records.len(), 1);
+        assert_eq!(batch.records[0].gssi, Some(2000));
+        assert_eq!(batch.records[0].speaker_issi, Some(1001));
+        assert_eq!(batch.records[0].payload, vec![0x5a; TETRA_ACELP_FRAME_BYTES]);
+    }
+}
