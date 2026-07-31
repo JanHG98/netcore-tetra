@@ -112,6 +112,13 @@ fn route(
             }
         }
         ("GET", "/api/v1/transfers") => json_response(200, &mobility.transfers()),
+        ("GET", "/api/v1/events/netcore") => {
+            let limit = request.query.get("limit")
+                .and_then(|value| value.parse::<usize>().ok())
+                .unwrap_or(100)
+                .min(1_000);
+            json_response(200, &mobility.recent_netcore_events(limit))
+        }
         ("GET", "/api/v1/events") => {
             let limit = request.query.get("limit")
                 .and_then(|value| value.parse::<usize>().ok())
@@ -179,7 +186,8 @@ fn openapi() -> serde_json::Value {
             "/api/v1/subscribers/{issi}/route": { "get": { "description": "Canonical serving-TBS route for one ISSI" } },
             "/api/v1/transfers": { "get": {}, "post": {} },
             "/api/v1/transfers/{id}/cancel": { "post": {} },
-            "/api/v1/events": { "get": {} },
+            "/api/v1/events": { "get": { "description": "Legacy event records with embedded canonical event" } },
+            "/api/v1/events/netcore": { "get": { "description": "Canonical netcore-event-v1 records" } },
             "/health/live": { "get": {} },
             "/health/ready": { "get": {} },
             "/metrics": { "get": {} }

@@ -3,7 +3,10 @@
 
 //! Process-level helpers shared by independently deployable NetCore services.
 
-use netcore_contracts::{ApiVersion, BuildInfo, OperatingMode, SecurityMode, ServiceCapability, ServiceDescriptor};
+use netcore_contracts::{
+    ApiVersion, BuildInfo, EventSource, OperatingMode, SecurityMode, ServiceCapability,
+    ServiceDescriptor,
+};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -99,6 +102,32 @@ pub fn request_id(provided: Option<&str>) -> String {
         .unwrap_or_else(|| Uuid::new_v4().to_string())
 }
 
+/// Erzeugt eine Ereignisquelle mit einer pro LXC/Prozess stabilen Instanzkennung.
+/// `NETCORE_INSTANCE_ID` hat Vorrang; andernfalls wird der Hostname verwendet.
+pub fn event_source(service: &str) -> EventSource {
+    EventSource::new(service, runtime_instance_id(service))
+}
+
+pub fn runtime_instance_id(service: &str) -> String {
+    let environment = ["NETCORE_INSTANCE_ID", "HOSTNAME"]
+        .into_iter()
+        .filter_map(|name| std::env::var(name).ok());
+    let hostname_file = std::fs::read_to_string("/etc/hostname").ok().into_iter();
+    environment
+        .chain(hostname_file)
+        .map(|value| value.trim().to_owned())
+        .find(|value| is_safe_instance_id(value))
+        .unwrap_or_else(|| service.to_owned())
+}
+
+fn is_safe_instance_id(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 128
+        && value.bytes().all(|byte| {
+            byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b':')
+        })
+}
+
 // Was: Prüft, ob safe request Kennung zutrifft.
 // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
 fn is_safe_request_id(value: &str) -> bool {
@@ -132,5 +161,13 @@ mod tests {
     fn preserves_safe_request_id_only() {
         assert_eq!(request_id(Some("abc-123")), "abc-123");
         assert_ne!(request_id(Some("bad request id")), "bad request id");
+    }
+
+
+    #[test]
+    fn instance_id_validator_rejects_unsafe_values() {
+        assert!(is_safe_instance_id("mobility-core-01"));
+        assert!(!is_safe_instance_id("mobility core 01"));
+        assert!(!is_safe_instance_id(""));
     }
 }

@@ -31,7 +31,10 @@ mod service;
 
 pub use address::{AddressError, Gssi, Issi, Ssi};
 pub use envelope::{ApiVersion, DeliverySemantics, Envelope, EnvelopeMeta, MessageKind, TraceContext};
-pub use event::{AuditRecord, EventRecord, Severity};
+pub use event::{
+    AuditRecord, EventRecord, EventSource, EventSubject, EventValidationError, NetCoreEvent,
+    NETCORE_EVENT_SCHEMA_V1, Severity, event_types, is_event_type, subject_types,
+};
 pub use health::{BuildInfo, DependencyHealth, HealthDocument, HealthStatus};
 pub use pagination::{Page, PageRequest};
 pub use problem::ProblemDetails;

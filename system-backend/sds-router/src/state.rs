@@ -8,6 +8,10 @@ use std::io::Write;
 use std::sync::{Arc, Mutex};
 
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
+use netcore_contracts::{
+    EventSubject, NetCoreEvent, Severity, event_types, subject_types,
+};
+use netcore_service_common::event_source;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use tetra_entities::net_control::{ControlCommand, ControlResponse};
@@ -277,6 +281,7 @@ pub struct SdsEventRecord {
     pub message_id: Option<String>,
     pub node_id: Option<String>,
     pub detail: Value,
+    pub canonical: NetCoreEvent,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -522,6 +527,19 @@ impl SharedSdsRouter {
             .rev()
             .take(limit.min(2_000))
             .cloned()
+            .collect()
+    }
+
+    /// Liefert die Ereignisse im gemeinsamen `netcore-event-v1`-Format.
+    pub fn recent_netcore_events(&self, limit: usize) -> Vec<NetCoreEvent> {
+        self.0
+            .lock()
+            .expect("SDS router state poisoned")
+            .events
+            .iter()
+            .rev()
+            .take(limit.min(2_000))
+            .map(|event| event.canonical.clone())
             .collect()
     }
 
@@ -2073,6 +2091,80 @@ fn push_trace(message: &mut SdsMessageRecord, kind: &str, detail: &str) {
 
 // Was: Diese Funktion legt Ereignis locked.
 // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn canonical_sds_event(
+    seq: u64,
+    kind: &str,
+    message_id: Option<&str>,
+    node_id: Option<&str>,
+    detail: &Value,
+) -> NetCoreEvent {
+    let (event_type, severity) = match kind {
+        "gateway_connected" => (event_types::SERVICE_DEPENDENCY_CONNECTED, Severity::Info),
+        "gateway_disconnected" => (event_types::SERVICE_DEPENDENCY_DISCONNECTED, Severity::Warning),
+        "subscriber_registered" => (event_types::SUBSCRIBER_REGISTERED, Severity::Info),
+        "subscriber_deregistered" => (event_types::SUBSCRIBER_DETACHED, Severity::Notice),
+        "message_created" => (event_types::SDS_CREATED, Severity::Info),
+        "message_ingress" => (event_types::SDS_RECEIVED, Severity::Info),
+        "message_retry" => (event_types::SDS_RETRY_SCHEDULED, Severity::Notice),
+        "delivery_accepted" => (event_types::SDS_DELIVERY_ACCEPTED, Severity::Info),
+        "delivery_retry" => (event_types::SDS_DELIVERY_RETRY, Severity::Warning),
+        "message_cancelled" => (event_types::SDS_CANCELLED, Severity::Notice),
+        "message_expired" => (event_types::SDS_EXPIRED, Severity::Warning),
+        "message_duplicate" => (event_types::SDS_DUPLICATE, Severity::Notice),
+        "message_requeued" => (event_types::SDS_REQUEUED, Severity::Info),
+        "message_deleted" => (event_types::SDS_DELETED, Severity::Notice),
+        "application_acknowledged" => (event_types::SDS_ACKNOWLEDGED, Severity::Info),
+        "route_created" => (event_types::SDS_ROUTE_CREATED, Severity::Info),
+        "route_updated" => (event_types::SDS_ROUTE_UPDATED, Severity::Info),
+        "route_deleted" => (event_types::SDS_ROUTE_DELETED, Severity::Notice),
+        _ => (event_types::SERVICE_STATE_CHANGED, Severity::Debug),
+    };
+
+    let subject = if kind.starts_with("subscriber_") {
+        detail
+            .get("issi")
+            .and_then(Value::as_u64)
+            .map(|value| EventSubject::new(subject_types::SUBSCRIBER, value.to_string()))
+    } else if kind.starts_with("route_") {
+        detail
+            .get("route_id")
+            .and_then(Value::as_str)
+            .map(|value| EventSubject::new(subject_types::SDS_ROUTE, value))
+    } else if let Some(value) = message_id {
+        Some(EventSubject::new(subject_types::SDS_MESSAGE, value))
+    } else if let Some(value) = node_id {
+        Some(EventSubject::new(subject_types::NODE, value))
+    } else {
+        Some(EventSubject::new(subject_types::SERVICE, "netcore-sds-router"))
+    };
+
+    let mut payload = detail.clone();
+    if !payload.is_object() {
+        payload = json!({ "detail": payload });
+    }
+    if let Some(object) = payload.as_object_mut() {
+        object.entry("legacy_kind".to_string()).or_insert_with(|| json!(kind));
+        if let Some(value) = message_id {
+            object.entry("message_id".to_string()).or_insert_with(|| json!(value));
+        }
+        if let Some(value) = node_id {
+            object.entry("node_id".to_string()).or_insert_with(|| json!(value));
+        }
+    }
+
+    let mut source = event_source("netcore-sds-router");
+    if let Some(value) = node_id {
+        source = source.with_node_id(value);
+    }
+    let mut event = NetCoreEvent::new(event_type, source, severity, subject, payload)
+        .with_sequence(seq)
+        .with_label("legacy_kind", kind);
+    if let Some(value) = message_id.and_then(|value| Uuid::parse_str(value).ok()) {
+        event = event.with_correlation_id(value);
+    }
+    event
+}
+
 fn push_event_locked(
     state: &mut RouterState,
     kind: &str,
@@ -2080,13 +2172,23 @@ fn push_event_locked(
     node_id: Option<String>,
     detail: Value,
 ) {
+    let seq = state.next_event_seq;
+    let timestamp = now_iso();
+    let canonical = canonical_sds_event(
+        seq,
+        kind,
+        message_id.as_deref(),
+        node_id.as_deref(),
+        &detail,
+    );
     state.events.push_back(SdsEventRecord {
-        seq: state.next_event_seq,
-        timestamp: now_iso(),
+        seq,
+        timestamp,
         kind: kind.to_string(),
         message_id,
         node_id,
         detail,
+        canonical,
     });
     state.next_event_seq = state.next_event_seq.wrapping_add(1);
     // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.

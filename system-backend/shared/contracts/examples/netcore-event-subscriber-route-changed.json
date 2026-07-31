@@ -1,0 +1,25 @@
+{
+  "schema": "netcore-event-v1",
+  "event_id": "d8e7bbf1-49e2-48d4-b64f-287566b79d90",
+  "event_type": "subscriber.route_changed",
+  "source": {
+    "service": "netcore-mobility-core",
+    "instance": "mobility-core-01"
+  },
+  "timestamp": "2026-07-31T19:30:00.000Z",
+  "sequence": 14,
+  "severity": "info",
+  "subject": {
+    "type": "subscriber",
+    "id": "4010001"
+  },
+  "payload": {
+    "previous_node": "TBS-01",
+    "serving_node": "TBS-02",
+    "route_generation": 14
+  },
+  "deduplication_key": "netcore-mobility-core:mobility-core-01:14",
+  "labels": {
+    "legacy_kind": "subscriber_route_changed"
+  }
+}

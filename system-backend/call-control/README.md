@@ -60,3 +60,7 @@ ersten Sprachframes, während die restlichen Ziel-Legs aufgebaut werden.
 ## Mobility-Core-Routing
 
 Individualrufe ohne explizite Ziel-TBS werden über den Mobility Core aufgelöst. Die Einstellungen befinden sich im Abschnitt `[mobility_core]`. Im Normalbetrieb bleiben lokaler Fallback und stale Routen deaktiviert.
+
+## Gemeinsames Ereignismodell (MQTT Phase 2)
+
+Der Dienst behält `GET /api/v1/events` für die bestehende WebUI bei. Jeder lokale Datensatz enthält zusätzlich `canonical`. Für neue Verbraucher steht ausschließlich das gemeinsame Format unter `GET /api/v1/events/netcore?limit=100` bereit. Das Wire-Schema ist `netcore-event-v1`; MQTT-spezifische Topic-, QoS- und Retain-Regeln folgen erst im IoT Gateway.

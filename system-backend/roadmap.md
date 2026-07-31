@@ -38,6 +38,23 @@ Die bisher umgesetzten LXC-Dienste starten im ausdrücklich markierten `open_lab
 
 ---
 
+## MQTT-Branch – aktuelle Integrationsreihenfolge
+
+1. Mobility Core als Routing-Wahrheit – umgesetzt
+2. Gemeinsames `netcore-event-v1`-Ereignismodell – umgesetzt
+3. IoT Gateway mit MQTT – nächster Baustein
+4. Command/Ack- und Policy-System
+5. Homematic IP / Home Assistant
+6. Hardware-I/O, Rack- und RF-Monitoring
+7. SDS-, Status-, Alarm- und WAP-Workflows
+8. zentraler SIP-Switch – bewusst nach hinten gestellt
+9. Zello, FRN und weitere Voice-Gateways
+10. aktive LIP-Abfrage und danach Kartendienste
+
+Details zu Phase 2 stehen in `Docs/MQTT_PHASE2_COMMON_EVENT_MODEL.md`.
+
+---
+
 ## Aktueller LXC-Ausbaustand
 
 - `node-gateway`: umgesetzt, offene TBS-/Backend-Vermittlung mit WebUI

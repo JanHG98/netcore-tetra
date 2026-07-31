@@ -87,3 +87,7 @@ target/release/netcore-node-gateway \
 - kein Media-Transport
 - noch keine abgesicherte Produktivbetriebsart
 - der bestehende TBS-Node-Protocol-Datentyp wird zunächst wiederverwendet; die spätere Versionierung erfolgt unter `system-backend/shared/edge-protocol`
+
+## Gemeinsames Ereignismodell (MQTT Phase 2)
+
+Der Dienst behält `GET /api/v1/events` für die bestehende WebUI bei. Jeder lokale Datensatz enthält zusätzlich `canonical`. Für neue Verbraucher steht ausschließlich das gemeinsame Format unter `GET /api/v1/events/netcore?limit=100` bereit. Das Wire-Schema ist `netcore-event-v1`; MQTT-spezifische Topic-, QoS- und Retain-Regeln folgen erst im IoT Gateway.

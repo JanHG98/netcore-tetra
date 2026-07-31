@@ -111,6 +111,10 @@ fn route(
         ("GET", "/api/v1/subscribers") => json_response(200, &router.subscribers()),
         ("GET", "/api/v1/groups") => json_response(200, &router.groups()),
         ("GET", "/api/v1/routes") => json_response(200, &router.routes()),
+        ("GET", "/api/v1/events/netcore") => {
+            let limit = query_usize(&request, "limit", 100, 2_000);
+            json_response(200, &router.recent_netcore_events(limit))
+        }
         ("GET", "/api/v1/events") => {
             let limit = query_usize(&request, "limit", 100, 2_000);
             json_response(200, &router.recent_events(limit))
@@ -320,6 +324,8 @@ fn openapi() -> serde_json::Value {
             "/api/v1/nodes":{"get":{}},
             "/api/v1/subscribers":{"get":{}},
             "/api/v1/groups":{"get":{}},
+            "/api/v1/events":{"get":{"description":"Legacy event records with embedded canonical event"}},
+            "/api/v1/events/netcore":{"get":{"description":"Canonical netcore-event-v1 records"}},
             "/health/live":{"get":{}},
             "/health/ready":{"get":{}},
             "/metrics":{"get":{}}

@@ -4,6 +4,10 @@
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::sync::{Arc, Mutex, mpsc};
 
+use netcore_contracts::{
+    EventSubject, NetCoreEvent, Severity, event_types, subject_types,
+};
+use netcore_service_common::event_source;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use tetra_entities::net_control::ControlCommand;
@@ -94,6 +98,7 @@ pub struct EventRecord {
     pub kind: String,
     pub node_id: Option<String>,
     pub detail: Value,
+    pub canonical: NetCoreEvent,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -285,6 +290,18 @@ impl SharedGateway {
     pub fn recent_events(&self, limit: usize) -> Vec<EventRecord> {
         let state = self.0.lock().expect("gateway state poisoned");
         state.events.iter().rev().take(limit.min(state.events.len())).cloned().collect()
+    }
+
+    /// Liefert ausschließlich kanonische `netcore-event-v1`-Datensätze.
+    pub fn recent_netcore_events(&self, limit: usize) -> Vec<NetCoreEvent> {
+        let state = self.0.lock().expect("gateway state poisoned");
+        state
+            .events
+            .iter()
+            .rev()
+            .take(limit.min(state.events.len()))
+            .map(|event| event.canonical.clone())
+            .collect()
     }
 
     // Was: Diese Funktion registriert Netzknoten.
@@ -805,13 +822,61 @@ fn snapshot_node(node: &NodeRuntime, stale_after_secs: u64) -> NodeSnapshot {
 
 // Was: Diese Funktion legt Ereignis locked.
 // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn canonical_gateway_event(
+    seq: u64,
+    kind: &str,
+    node_id: Option<&str>,
+    detail: &Value,
+) -> NetCoreEvent {
+    let (event_type, severity) = match kind {
+        "node_connected" => (event_types::NODE_CONNECTED, Severity::Info),
+        "node_disconnected" => (event_types::NODE_DISCONNECTED, Severity::Warning),
+        "core_service_state_changed" => (event_types::SERVICE_STATE_CHANGED, Severity::Notice),
+        "node_message" => (event_types::NODE_MESSAGE_RECEIVED, Severity::Debug),
+        "node_ping_requested" | "node_disconnect_requested" | "command_queued" => {
+            (event_types::NODE_COMMAND_QUEUED, Severity::Info)
+        }
+        "backend_connected" => (event_types::SERVICE_DEPENDENCY_CONNECTED, Severity::Info),
+        "backend_disconnected" => {
+            (event_types::SERVICE_DEPENDENCY_DISCONNECTED, Severity::Warning)
+        }
+        "backend_subscription_changed" => (event_types::SERVICE_STATE_CHANGED, Severity::Info),
+        _ => (event_types::SERVICE_STATE_CHANGED, Severity::Debug),
+    };
+
+    let subject = node_id
+        .map(|value| EventSubject::new(subject_types::NODE, value))
+        .or_else(|| Some(EventSubject::new(subject_types::SERVICE, "netcore-node-gateway")));
+    let mut payload = detail.clone();
+    if !payload.is_object() {
+        payload = json!({ "detail": payload });
+    }
+    if let Some(object) = payload.as_object_mut() {
+        object.entry("legacy_kind".to_string()).or_insert_with(|| json!(kind));
+        if let Some(value) = node_id {
+            object.entry("node_id".to_string()).or_insert_with(|| json!(value));
+        }
+    }
+    let mut source = event_source("netcore-node-gateway");
+    if let Some(value) = node_id {
+        source = source.with_node_id(value);
+    }
+    NetCoreEvent::new(event_type, source, severity, subject, payload)
+        .with_sequence(seq)
+        .with_label("legacy_kind", kind)
+}
+
 fn push_event_locked(state: &mut GatewayState, kind: &str, node_id: Option<String>, detail: Value) {
+    let seq = state.next_event_seq;
+    let timestamp = now_iso();
+    let canonical = canonical_gateway_event(seq, kind, node_id.as_deref(), &detail);
     let event = EventRecord {
-        seq: state.next_event_seq,
-        timestamp: now_iso(),
+        seq,
+        timestamp,
         kind: kind.to_string(),
         node_id,
         detail,
+        canonical,
     };
     state.next_event_seq = state.next_event_seq.wrapping_add(1);
     state.events.push_back(event.clone());

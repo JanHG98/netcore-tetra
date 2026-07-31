@@ -8,6 +8,10 @@ use std::sync::{Arc, Mutex, mpsc};
 use std::time::{Duration, Instant};
 
 use chrono::Utc;
+use netcore_contracts::{
+    EventSubject, NetCoreEvent, Severity, event_types, subject_types,
+};
+use netcore_service_common::event_source;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use tetra_entities::net_control::{
@@ -294,6 +298,7 @@ pub struct EventRecord {
     pub logical_call_id: Option<String>,
     pub local_call_id: Option<u16>,
     pub detail: Value,
+    pub canonical: NetCoreEvent,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -730,6 +735,19 @@ impl SharedCalls {
             .rev()
             .take(limit.max(1))
             .cloned()
+            .collect()
+    }
+
+    /// Liefert die Ereignisse im gemeinsamen `netcore-event-v1`-Format.
+    pub fn netcore_events(&self, limit: usize) -> Vec<NetCoreEvent> {
+        self.0
+            .lock()
+            .expect("call state poisoned")
+            .events
+            .iter()
+            .rev()
+            .take(limit.max(1))
+            .map(|event| event.canonical.clone())
             .collect()
     }
 
@@ -2653,14 +2671,25 @@ impl CallState {
         local_call_id: Option<u16>,
         detail: Value,
     ) {
+        let seq = self.next_event_seq;
+        let timestamp = now();
+        let canonical = canonical_call_event(
+            seq,
+            kind,
+            node_id.as_deref(),
+            logical_call_id.as_deref(),
+            local_call_id,
+            &detail,
+        );
         let event = EventRecord {
-            seq: self.next_event_seq,
-            timestamp: now(),
+            seq,
+            timestamp,
             kind: kind.to_string(),
             node_id,
             logical_call_id: logical_call_id.clone(),
             local_call_id,
             detail,
+            canonical,
         };
         self.next_event_seq = self.next_event_seq.saturating_add(1);
         self.events.push_back(event);
@@ -2782,6 +2811,89 @@ impl CallState {
 
 // Was: Führt den Arbeitsschritt `media_event_kind` für Audio- und Mediendaten Ereignis kind aus.
 // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn canonical_call_event(
+    seq: u64,
+    kind: &str,
+    node_id: Option<&str>,
+    logical_call_id: Option<&str>,
+    local_call_id: Option<u16>,
+    detail: &Value,
+) -> NetCoreEvent {
+    let (event_type, severity) = match kind {
+        "gateway_connected" => (event_types::SERVICE_DEPENDENCY_CONNECTED, Severity::Info),
+        "gateway_disconnected" => (event_types::SERVICE_DEPENDENCY_DISCONNECTED, Severity::Warning),
+        "media_route_ready" => (event_types::CALL_MEDIA_ROUTE_READY, Severity::Info),
+        "group_call_requested" | "individual_call_requested" => {
+            (event_types::CALL_REQUESTED, Severity::Info)
+        }
+        "group_call_started" | "individual_call_started" => {
+            (event_types::CALL_STARTED, Severity::Info)
+        }
+        "call_release_requested" => (event_types::CALL_RELEASE_REQUESTED, Severity::Notice),
+        "call_leg_ended" | "call_leg_release_response" => {
+            (event_types::CALL_RELEASED, Severity::Info)
+        }
+        "call_command_failed" => (event_types::CALL_FAILED, Severity::Error),
+        "floor_requested" => (event_types::FLOOR_REQUESTED, Severity::Info),
+        "floor_release_requested" => (event_types::FLOOR_RELEASE_REQUESTED, Severity::Info),
+        "floor_changed" | "floor_response" => (event_types::FLOOR_CHANGED, Severity::Info),
+        "restore_requested" => (event_types::CALL_RESTORE_REQUESTED, Severity::Info),
+        "restore_completed" => (event_types::CALL_RESTORED, Severity::Info),
+        "restore_failed" | "restore_context_cleanup_failed" => {
+            (event_types::CALL_RESTORE_FAILED, Severity::Error)
+        }
+        "restore_timed_out" => (event_types::CALL_RESTORE_FAILED, Severity::Warning),
+        "restore_cancelled" => (event_types::CALL_RESTORE_FAILED, Severity::Notice),
+        "node_error" => (event_types::NODE_DEGRADED, Severity::Error),
+        _ => (event_types::SERVICE_STATE_CHANGED, Severity::Debug),
+    };
+
+    let subject = if kind.starts_with("floor_") {
+        logical_call_id.map(|value| EventSubject::new(subject_types::FLOOR, value))
+    } else if kind.starts_with("restore_") {
+        logical_call_id.map(|value| EventSubject::new(subject_types::RESTORE, value))
+    } else if let Some(value) = logical_call_id {
+        Some(EventSubject::new(subject_types::CALL, value))
+    } else if let Some(value) = node_id {
+        Some(EventSubject::new(subject_types::NODE, value))
+    } else {
+        Some(EventSubject::new(subject_types::SERVICE, "netcore-call-control"))
+    };
+
+    let mut payload = detail.clone();
+    if !payload.is_object() {
+        payload = json!({ "detail": payload });
+    }
+    if let Some(object) = payload.as_object_mut() {
+        object.entry("legacy_kind".to_string()).or_insert_with(|| json!(kind));
+        if let Some(value) = node_id {
+            object.entry("node_id".to_string()).or_insert_with(|| json!(value));
+        }
+        if let Some(value) = logical_call_id {
+            object
+                .entry("logical_call_id".to_string())
+                .or_insert_with(|| json!(value));
+        }
+        if let Some(value) = local_call_id {
+            object
+                .entry("local_call_id".to_string())
+                .or_insert_with(|| json!(value));
+        }
+    }
+
+    let mut source = event_source("netcore-call-control");
+    if let Some(value) = node_id {
+        source = source.with_node_id(value);
+    }
+    let mut event = NetCoreEvent::new(event_type, source, severity, subject, payload)
+        .with_sequence(seq)
+        .with_label("legacy_kind", kind);
+    if let Some(value) = logical_call_id.and_then(|value| Uuid::parse_str(value).ok()) {
+        event = event.with_correlation_id(value);
+    }
+    event
+}
+
 fn media_event_kind(reason: &str) -> Option<&'static str> {
     // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
     // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.

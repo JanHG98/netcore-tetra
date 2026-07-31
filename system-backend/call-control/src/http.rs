@@ -153,6 +153,15 @@ fn route(
         ("GET", "/api/v1/participants") => json_response(200, &calls.participants()),
         ("GET", "/api/v1/calls") => json_response(200, &calls.calls()),
         ("GET", "/api/v1/restores") => json_response(200, &calls.restores()),
+        ("GET", "/api/v1/events/netcore") => {
+            let limit = request
+                .query
+                .get("limit")
+                .and_then(|value| value.parse::<usize>().ok())
+                .unwrap_or(100)
+                .min(1000);
+            json_response(200, &calls.netcore_events(limit))
+        }
         ("GET", "/api/v1/events") => {
             let limit = request
                 .query
@@ -337,6 +346,8 @@ fn openapi() -> serde_json::Value {
             "/api/v1/calls/{logical_call_id}/floor":{"post":{}},
             "/api/v1/calls/{logical_call_id}/floor/release":{"post":{}},
             "/api/v1/restores":{"get":{},"post":{}},
+            "/api/v1/events":{"get":{"description":"Legacy event records with embedded canonical event"}},
+            "/api/v1/events/netcore":{"get":{"description":"Canonical netcore-event-v1 records"}},
             "/api/v1/restores/{restore_id}/cancel":{"post":{}},
             "/health/live":{"get":{}},
             "/health/ready":{"get":{}},

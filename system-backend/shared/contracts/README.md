@@ -13,3 +13,14 @@ problem details, events, audit records and pagination shapes.
 - Raw TETRA key material and unredacted connector secrets are never valid generic-envelope payloads.
 
 JSON Schemas are documentation and integration-test assets. The Rust types remain the compile-time source of truth.
+
+## Gemeinsames Ereignismodell
+
+Das kanonische Runtime-Format ist `netcore-event-v1`. Rust-Typ, JSON-Schema, Katalog und Beispiel liegen in:
+
+- `src/event.rs`
+- `schemas/netcore-event-v1.schema.json`
+- `examples/netcore-event-subscriber-route-changed.json`
+- `EVENT_MODEL_V1.md`
+
+Lokale Dienstereignisse dürfen aus Kompatibilitätsgründen Zusatzfelder behalten, müssen für neue Integrationen aber ein gültiges `NetCoreEvent` bereitstellen.

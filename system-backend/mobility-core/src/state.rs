@@ -5,6 +5,10 @@ use std::collections::{BTreeSet, HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use netcore_contracts::{
+    EventSubject, NetCoreEvent, Severity, event_types, subject_types,
+};
+use netcore_service_common::event_source;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use tetra_entities::net_control::{
@@ -170,6 +174,7 @@ pub struct CoreEventRecord {
     pub node_id: Option<String>,
     pub issi: Option<u32>,
     pub detail: Value,
+    pub canonical: NetCoreEvent,
 }
 
 // Was: Bündelt die zusammengehörigen Werte für Mobilität Zustand in einem Datentyp.
@@ -319,6 +324,18 @@ impl SharedMobility {
     pub fn recent_events(&self, limit: usize) -> Vec<CoreEventRecord> {
         let state = self.0.lock().expect("mobility state poisoned");
         state.events.iter().rev().take(limit.min(state.events.len())).cloned().collect()
+    }
+
+    /// Liefert ausschließlich das gemeinsame `netcore-event-v1`-Format.
+    pub fn recent_netcore_events(&self, limit: usize) -> Vec<NetCoreEvent> {
+        let state = self.0.lock().expect("mobility state poisoned");
+        state
+            .events
+            .iter()
+            .rev()
+            .take(limit.min(state.events.len()))
+            .map(|event| event.canonical.clone())
+            .collect()
     }
 
     // Was: Führt den Arbeitsschritt `gateway_connected` für Gateway connected aus.
@@ -743,7 +760,7 @@ fn apply_telemetry(state: &mut MobilityState, node_id: &str, event: TelemetryEve
             }
             let subscriber = state.subscribers.entry(issi).or_insert_with(|| SubscriberRecord {
                 issi,
-                route_generation: 1,
+                route_generation: 0,
                 serving_node: None,
                 registered: false,
                 groups: BTreeSet::new(),
@@ -752,27 +769,61 @@ fn apply_telemetry(state: &mut MobilityState, node_id: &str, event: TelemetryEve
                 first_seen: now.clone(),
                 last_seen: now.clone(),
             });
-            let changed = subscriber.serving_node.as_deref() != Some(node_id) || !subscriber.registered;
-            if changed {
+            let previous_node = subscriber.serving_node.clone();
+            let was_registered = subscriber.registered;
+            let route_changed = previous_node.as_deref().is_some_and(|value| value != node_id);
+            let state_changed = route_changed || !was_registered;
+            if state_changed {
                 subscriber.route_generation = subscriber.route_generation.saturating_add(1);
             }
             subscriber.serving_node = Some(node_id.to_string());
             subscriber.registered = true;
             subscriber.last_seen = now.clone();
-            let event_kind = if changed { "subscriber_route_changed" } else { "subscriber_registered" };
-            push_event(state, event_kind, None, Some(node_id.to_string()), Some(issi), json!({"serving_node": node_id}));
+            let route_generation = subscriber.route_generation;
+            let event_kind = if route_changed {
+                "subscriber_route_changed"
+            } else {
+                "subscriber_registered"
+            };
+            push_event(
+                state,
+                event_kind,
+                None,
+                Some(node_id.to_string()),
+                Some(issi),
+                json!({
+                    "previous_node": previous_node,
+                    "serving_node": node_id,
+                    "route_generation": route_generation,
+                    "was_registered": was_registered
+                }),
+            );
         }
         TelemetryEvent::MsDeregistration { issi } | TelemetryEvent::MsTimeoutDrop { issi } => {
-            let detached = if let Some(subscriber) = state.subscribers.get_mut(&issi) {
+            let route_generation = if let Some(subscriber) = state.subscribers.get_mut(&issi) {
                 if subscriber.serving_node.as_deref() == Some(node_id) {
                     subscriber.registered = false;
                     subscriber.route_generation = subscriber.route_generation.saturating_add(1);
                     subscriber.last_seen = now.clone();
-                    true
-                } else { false }
-            } else { false };
-            if detached {
-                push_event(state, "subscriber_detached", None, Some(node_id.to_string()), Some(issi), json!({"serving_node": node_id}));
+                    Some(subscriber.route_generation)
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+            if let Some(route_generation) = route_generation {
+                push_event(
+                    state,
+                    "subscriber_detached",
+                    None,
+                    Some(node_id.to_string()),
+                    Some(issi),
+                    json!({
+                        "serving_node": node_id,
+                        "route_generation": route_generation
+                    }),
+                );
             }
         }
         TelemetryEvent::MsGroupAttach { issi, gssis } => {
@@ -1012,22 +1063,95 @@ fn push_event(
     issi: Option<u32>,
     detail: Value,
 ) {
+    let seq = state.next_event_seq;
+    let timestamp = now_iso();
+    let canonical = canonical_mobility_event(
+        seq,
+        kind,
+        transfer_id.as_deref(),
+        node_id.as_deref(),
+        issi,
+        &detail,
+    );
     let event = CoreEventRecord {
-        seq: state.next_event_seq,
-        timestamp: now_iso(),
+        seq,
+        timestamp,
         kind: kind.to_string(),
         transfer_id,
         node_id,
         issi,
         detail,
+        canonical,
     };
     state.next_event_seq = state.next_event_seq.wrapping_add(1);
     state.events.push_back(event);
-    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     while state.events.len() > state.config.server.history_limit {
         state.events.pop_front();
     }
+}
+
+fn canonical_mobility_event(
+    seq: u64,
+    kind: &str,
+    transfer_id: Option<&str>,
+    node_id: Option<&str>,
+    issi: Option<u32>,
+    detail: &Value,
+) -> NetCoreEvent {
+    let (event_type, severity) = match kind {
+        "gateway_connected" => (event_types::SERVICE_DEPENDENCY_CONNECTED, Severity::Info),
+        "gateway_disconnected" => (event_types::SERVICE_DEPENDENCY_DISCONNECTED, Severity::Warning),
+        "subscriber_registered" => (event_types::SUBSCRIBER_REGISTERED, Severity::Info),
+        "subscriber_route_changed" => (event_types::SUBSCRIBER_ROUTE_CHANGED, Severity::Info),
+        "subscriber_detached" => (event_types::SUBSCRIBER_DETACHED, Severity::Notice),
+        "transfer_created" => (event_types::MOBILITY_TRANSFER_CREATED, Severity::Info),
+        "transfer_cancelled" => (event_types::MOBILITY_TRANSFER_CANCELLED, Severity::Notice),
+        "transfer_completed" => (event_types::MOBILITY_TRANSFER_COMPLETED, Severity::Info),
+        "transfer_timed_out" => (event_types::MOBILITY_TRANSFER_TIMED_OUT, Severity::Warning),
+        "transfer_failed" | "transfer_command_rejected" => {
+            (event_types::MOBILITY_TRANSFER_FAILED, Severity::Error)
+        }
+        _ => (event_types::SERVICE_STATE_CHANGED, Severity::Debug),
+    };
+
+    let subject = if kind.starts_with("subscriber_") {
+        issi.map(|value| EventSubject::new(subject_types::SUBSCRIBER, value.to_string()))
+    } else if let Some(value) = transfer_id {
+        Some(EventSubject::new(subject_types::MOBILITY_TRANSFER, value))
+    } else if let Some(value) = node_id {
+        Some(EventSubject::new(subject_types::NODE, value))
+    } else {
+        Some(EventSubject::new(subject_types::SERVICE, "netcore-mobility-core"))
+    };
+
+    let mut payload = detail.clone();
+    if !payload.is_object() {
+        payload = json!({ "detail": payload });
+    }
+    if let Some(object) = payload.as_object_mut() {
+        object.entry("legacy_kind".to_string()).or_insert_with(|| json!(kind));
+        if let Some(value) = transfer_id {
+            object.entry("transfer_id".to_string()).or_insert_with(|| json!(value));
+        }
+        if let Some(value) = node_id {
+            object.entry("node_id".to_string()).or_insert_with(|| json!(value));
+        }
+        if let Some(value) = issi {
+            object.entry("issi".to_string()).or_insert_with(|| json!(value));
+        }
+    }
+
+    let mut source = event_source("netcore-mobility-core");
+    if let Some(value) = node_id {
+        source = source.with_node_id(value);
+    }
+    let mut event = NetCoreEvent::new(event_type, source, severity, subject, payload)
+        .with_sequence(seq)
+        .with_label("legacy_kind", kind);
+    if let Some(value) = transfer_id.and_then(|value| Uuid::parse_str(value).ok()) {
+        event = event.with_correlation_id(value);
+    }
+    event
 }
 
 // Was: Führt den Arbeitsschritt `now_iso` für now iso aus.

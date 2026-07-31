@@ -1121,6 +1121,9 @@ version = "1.3.0"
 dependencies = [
  "chrono",
  "clap",
+ "netcore-contracts",
+ "netcore-service-common",
+ "reqwest",
  "serde",
  "serde_json",
  "tetra-entities",
@@ -1184,6 +1187,8 @@ version = "1.3.0"
 dependencies = [
  "chrono",
  "clap",
+ "netcore-contracts",
+ "netcore-service-common",
  "serde",
  "serde_json",
  "tetra-entities",
@@ -1337,6 +1342,8 @@ version = "1.3.0"
 dependencies = [
  "chrono",
  "clap",
+ "netcore-contracts",
+ "netcore-service-common",
  "serde",
  "serde_json",
  "tetra-entities",
@@ -1383,6 +1390,8 @@ version = "1.3.0"
 dependencies = [
  "chrono",
  "clap",
+ "netcore-contracts",
+ "netcore-service-common",
  "serde",
  "serde_json",
  "tetra-entities",

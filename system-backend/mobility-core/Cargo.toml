@@ -30,6 +30,8 @@ path = "src/main.rs"
 # Was: Öffnet den Konfigurationsabschnitt `dependencies`.
 # Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [dependencies]
+netcore-contracts = { path = "../shared/contracts" }
+netcore-service-common = { path = "../shared/service-common" }
 # Was: Bindet die Abhängigkeit `tetra-entities` in dieses Rust-Paket ein.
 # Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 tetra-entities = { path = "../../crates/tetra-entities", default-features = false }

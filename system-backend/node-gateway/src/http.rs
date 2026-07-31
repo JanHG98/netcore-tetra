@@ -104,6 +104,10 @@ fn route(request: HttpRequest, gateway: &SharedGateway, config: &NodeGatewayConf
         ("GET", "/api/v1/status") => HttpResponse::json(200, &gateway.status()),
         ("GET", "/api/v1/core-services") => HttpResponse::json(200, &gateway.core_services()),
         ("GET", "/api/v1/nodes") => HttpResponse::json(200, &gateway.nodes()),
+        ("GET", "/api/v1/events/netcore") => {
+            let limit = request.query.get("limit").and_then(|value| value.parse::<usize>().ok()).unwrap_or(100).min(1_000);
+            HttpResponse::json(200, &gateway.recent_netcore_events(limit))
+        }
         ("GET", "/api/v1/events") => {
             let limit = request.query.get("limit").and_then(|value| value.parse::<usize>().ok()).unwrap_or(100).min(1_000);
             HttpResponse::json(200, &gateway.recent_events(limit))
@@ -206,7 +210,8 @@ fn openapi(config: &NodeGatewayConfig) -> Value {
             "/api/v1/nodes/{node_id}/ping": { "post": { "summary": "Queue application ping" } },
             "/api/v1/nodes/{node_id}/disconnect": { "post": { "summary": "Disconnect node" } },
             "/api/v1/nodes/{node_id}/commands": { "post": { "summary": "Queue ControlCommand" } },
-            "/api/v1/events": { "get": { "summary": "Recent gateway events" } },
+            "/api/v1/events": { "get": { "summary": "Legacy gateway events with embedded canonical event" } },
+            "/api/v1/events/netcore": { "get": { "summary": "Canonical netcore-event-v1 records" } },
             "/metrics": { "get": { "summary": "Prometheus metrics" } }
         }
     })

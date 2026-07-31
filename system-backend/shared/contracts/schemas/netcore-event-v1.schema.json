@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:netcore:schema:event:v1",
+  "title": "NetCore Event v1",
+  "description": "Transport-neutral canonical event contract used before MQTT/topic mapping.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "event_id",
+    "event_type",
+    "source",
+    "timestamp",
+    "severity",
+    "payload"
+  ],
+  "properties": {
+    "schema": {"const": "netcore-event-v1"},
+    "event_id": {"type": "string", "format": "uuid"},
+    "event_type": {
+      "type": "string",
+      "maxLength": 160,
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["service", "instance"],
+      "properties": {
+        "service": {"type": "string", "minLength": 1, "maxLength": 128},
+        "instance": {"type": "string", "minLength": 1, "maxLength": 128},
+        "node_id": {"type": "string", "minLength": 1, "maxLength": 160}
+      }
+    },
+    "timestamp": {"type": "string", "format": "date-time"},
+    "sequence": {"type": "integer", "minimum": 0},
+    "correlation_id": {"type": "string", "format": "uuid"},
+    "causation_id": {"type": "string", "format": "uuid"},
+    "severity": {
+      "enum": ["debug", "info", "notice", "warning", "error", "critical"]
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "id": {"type": "string", "minLength": 1, "maxLength": 256}
+      }
+    },
+    "payload": true,
+    "deduplication_key": {"type": "string", "minLength": 1, "maxLength": 320},
+    "labels": {
+      "type": "object",
+      "maxProperties": 64,
+      "propertyNames": {"pattern": "^[a-z0-9_.-]{1,96}$"},
+      "additionalProperties": {"type": "string", "maxLength": 256}
+    }
+  }
+}
