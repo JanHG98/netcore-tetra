@@ -1410,15 +1410,25 @@ fn ingest_edge_message_locked(
     };
     push_trace(&mut record, "ingress", &format!("received from TBS {node_id}"));
     correlate_terminal_report_locked(state, &record);
+    let event_text = record.text_preview.clone();
     state.messages.insert(message_id.clone(), record);
     state.revision = state.revision.saturating_add(1);
     plan_message_locked(state, &message_id, &[]);
     push_event_locked(
         state,
         "message_ingress",
-        Some(message_id),
+        Some(message_id.clone()),
         Some(node_id.to_string()),
-        json!({"source_issi": source_issi, "dest_issi": dest_issi, "group": is_group}),
+        json!({
+            "source_issi": source_issi,
+            "dest_issi": dest_issi,
+            "group": is_group,
+            "sds_type": sds_type,
+            "protocol_id": protocol_id,
+            "status_code": status_code,
+            "len_bits": len_bits,
+            "text": event_text,
+        }),
     );
 }
 

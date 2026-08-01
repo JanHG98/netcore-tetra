@@ -67,9 +67,30 @@ class App:
         with self.lock:
             old=self.devices.get(did); self.devices[did]={'device_id':did,'name':payload.get('name',did),'kind':payload.get('kind','edge_io'),'location':payload.get('location'),'firmware':payload.get('firmware'),'last_seen':ts,'online':True,'source':source,'metrics':metrics,'inputs':inputs,'outputs':outputs,'alarms':alarms}
             self.persist()
-        if old is None: self.add_event('hardware.device_registered',did,'info',{'kind':payload.get('kind','edge_io')})
+        if old is None:
+            self.add_event('hardware.device_registered',did,'info',{'kind':payload.get('kind','edge_io')})
+        elif not old.get('online',True):
+            self.add_event('hardware.device_online',did,'info',{'previous_last_seen':old.get('last_seen')})
+        old_alarms={str(a.get('metric')):a for a in (old or {}).get('alarms',[]) if isinstance(a,dict)}
+        new_alarms={str(a.get('metric')):a for a in alarms if isinstance(a,dict)}
+        for metric,alarm in new_alarms.items():
+            previous=old_alarms.get(metric)
+            if previous is None or previous.get('severity')!=alarm.get('severity') or previous.get('reason')!=alarm.get('reason'):
+                self.add_event('hardware.threshold_exceeded',did,alarm['severity'],alarm)
+        for metric,alarm in old_alarms.items():
+            if metric not in new_alarms:
+                detail=dict(alarm); detail['cleared_value']=metrics.get(metric)
+                self.add_event('hardware.threshold_cleared',did,'info',detail)
+        old_inputs=(old or {}).get('inputs',{}) if isinstance((old or {}).get('inputs',{}),dict) else {}
+        for key,value in inputs.items():
+            if not isinstance(value,bool): continue
+            previous=bool(old_inputs.get(key,False))
+            if value and not previous:
+                severity='critical' if key in ('water_alarm','smoke_alarm','fire_alarm') else ('warning' if key in ('door_open','tamper') else 'notice')
+                self.add_event('hardware.input_activated',did,severity,{'input':key,'value':True})
+            elif previous and not value:
+                self.add_event('hardware.input_cleared',did,'info',{'input':key,'value':False})
         self.publish(f"{self.cfg.mqtt['topic_prefix']}/state/hardware/{did}",self.devices[did],True)
-        for alarm in alarms: self.add_event('hardware.threshold_exceeded',did,alarm['severity'],alarm)
         return self.devices[did]
     def watchdog(self):
         while not self.stop:

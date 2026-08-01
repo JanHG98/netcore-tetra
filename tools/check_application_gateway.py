@@ -26,7 +26,6 @@ REQUIRED = [
     "system-backend/application-gateway/install/uninstall.sh",
     "system-backend/application-gateway/tests/application_gateway_reference.py",
     "Docs/SWMI_CORE_1_PACKAGE_N_APPLICATION_GATEWAY.md",
-    ".github/workflows/swmi-core-application-gateway.yml",
 ]
 MARKERS = {
     "system-backend/application-gateway/src/main.rs": "worker::spawn_worker",

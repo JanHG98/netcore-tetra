@@ -1,0 +1,20 @@
+[Unit]
+Description=NetCore-TETRA SDS/Status/Alarm Workflow (OPEN LAB MODE)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/netcore-alarm-workflow --config /etc/netcore/alarm-workflow.toml
+Restart=on-failure
+RestartSec=3
+User=root
+Group=root
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/netcore-alarm-workflow
+
+[Install]
+WantedBy=multi-user.target

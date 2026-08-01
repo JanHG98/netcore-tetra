@@ -828,6 +828,9 @@ observability = "local_logs_and_health_continue"
 application-gateway = "local_integrations_only"
 media-library = "local_media_cache_and_playout"
 iot-gateway = "mqtt_bridge_unavailable_local_core_continues"
+hardware-gateway = "rack_telemetry_unavailable_local_radio_continues"
+rf-monitor = "rf_monitoring_unavailable_radio_service_continues"
+alarm-workflow = "central_alarm_escalation_unavailable_local_radio_and_sds_continue"
 
 ###############################################################################
 

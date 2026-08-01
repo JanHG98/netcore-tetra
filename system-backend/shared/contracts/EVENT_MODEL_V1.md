@@ -37,3 +37,8 @@ Die lokalen Ereignisdatensätze enthalten außerdem das Feld `canonical`, das da
 ## Spätere Nutzung
 
 Der IoT Gateway wird diese Ereignisse in Phase 3 auf MQTT-Topics abbilden. Command/Ack-Nachrichten erhalten in Phase 4 eigene Verträge und werden nicht als beliebige Ereignis-Payloads missbraucht.
+
+
+## Phase 8: Alarm- und Hardwareereignisse
+
+Der gemeinsame Katalog umfasst nun zusätzlich `hardware.*`, `rf.*` und `alarm.*`. Der Alarm Workflow nutzt `correlation_id` für die Alarmakte, `causation_id` für das auslösende Ereignis und retained MQTT-Zustände ausschließlich als Transportabbildung außerhalb dieses Vertrags.

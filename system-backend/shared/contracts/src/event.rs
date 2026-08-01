@@ -22,6 +22,7 @@ pub enum Severity {
     Warning,
     Error,
     Critical,
+    Emergency,
 }
 
 impl Default for Severity {
@@ -361,6 +362,39 @@ pub mod event_types {
     pub const SDS_ROUTE_UPDATED: &str = "sds.route_updated";
     pub const SDS_ROUTE_DELETED: &str = "sds.route_deleted";
 
+    pub const HARDWARE_DEVICE_REGISTERED: &str = "hardware.device_registered";
+    pub const HARDWARE_DEVICE_ONLINE: &str = "hardware.device_online";
+    pub const HARDWARE_DEVICE_OFFLINE: &str = "hardware.device_offline";
+    pub const HARDWARE_THRESHOLD_EXCEEDED: &str = "hardware.threshold_exceeded";
+    pub const HARDWARE_THRESHOLD_CLEARED: &str = "hardware.threshold_cleared";
+    pub const HARDWARE_INPUT_ACTIVATED: &str = "hardware.input_activated";
+    pub const HARDWARE_INPUT_CLEARED: &str = "hardware.input_cleared";
+
+    pub const RF_STATION_REGISTERED: &str = "rf.station_registered";
+    pub const RF_STATION_ONLINE: &str = "rf.station_online";
+    pub const RF_STATION_OFFLINE: &str = "rf.station_offline";
+    pub const RF_TX_STATE_CHANGED: &str = "rf.tx_state_changed";
+    pub const RF_ALARM_RAISED: &str = "rf.alarm_raised";
+    pub const RF_ALARM_CLEARED: &str = "rf.alarm_cleared";
+    pub const RF_TELEMETRY_INVALID: &str = "rf.telemetry_invalid";
+
+    pub const ALARM_MANUAL_REQUEST: &str = "alarm.manual_request";
+    pub const ALARM_CREATED: &str = "alarm.created";
+    pub const ALARM_OCCURRENCE_ADDED: &str = "alarm.occurrence_added";
+    pub const ALARM_NOTIFICATION_STARTED: &str = "alarm.notification_started";
+    pub const ALARM_NOTIFICATION_QUEUED: &str = "alarm.notification_queued";
+    pub const ALARM_NOTIFICATION_FAILED: &str = "alarm.notification_failed";
+    pub const ALARM_ESCALATED: &str = "alarm.escalated";
+    pub const ALARM_ACKNOWLEDGED: &str = "alarm.acknowledged";
+    pub const ALARM_ASSIGNED: &str = "alarm.assigned";
+    pub const ALARM_IN_PROGRESS: &str = "alarm.in_progress";
+    pub const ALARM_RESOLVED: &str = "alarm.resolved";
+    pub const ALARM_CLOSED: &str = "alarm.closed";
+    pub const ALARM_CANCELLED: &str = "alarm.cancelled";
+    pub const ALARM_REOPENED: &str = "alarm.reopened";
+    pub const ALARM_STATUS_ACTION_APPLIED: &str = "alarm.status_action_applied";
+    pub const ALARM_TEXT_ACTION_APPLIED: &str = "alarm.text_action_applied";
+
     pub const ALL: &[&str] = &[
         SERVICE_DEPENDENCY_CONNECTED,
         SERVICE_DEPENDENCY_DISCONNECTED,
@@ -408,6 +442,36 @@ pub mod event_types {
         SDS_ROUTE_CREATED,
         SDS_ROUTE_UPDATED,
         SDS_ROUTE_DELETED,
+        HARDWARE_DEVICE_REGISTERED,
+        HARDWARE_DEVICE_ONLINE,
+        HARDWARE_DEVICE_OFFLINE,
+        HARDWARE_THRESHOLD_EXCEEDED,
+        HARDWARE_THRESHOLD_CLEARED,
+        HARDWARE_INPUT_ACTIVATED,
+        HARDWARE_INPUT_CLEARED,
+        RF_STATION_REGISTERED,
+        RF_STATION_ONLINE,
+        RF_STATION_OFFLINE,
+        RF_TX_STATE_CHANGED,
+        RF_ALARM_RAISED,
+        RF_ALARM_CLEARED,
+        RF_TELEMETRY_INVALID,
+        ALARM_MANUAL_REQUEST,
+        ALARM_CREATED,
+        ALARM_OCCURRENCE_ADDED,
+        ALARM_NOTIFICATION_STARTED,
+        ALARM_NOTIFICATION_QUEUED,
+        ALARM_NOTIFICATION_FAILED,
+        ALARM_ESCALATED,
+        ALARM_ACKNOWLEDGED,
+        ALARM_ASSIGNED,
+        ALARM_IN_PROGRESS,
+        ALARM_RESOLVED,
+        ALARM_CLOSED,
+        ALARM_CANCELLED,
+        ALARM_REOPENED,
+        ALARM_STATUS_ACTION_APPLIED,
+        ALARM_TEXT_ACTION_APPLIED,
     ];
 }
 
@@ -422,6 +486,9 @@ pub mod subject_types {
     pub const SDS_MESSAGE: &str = "sds_message";
     pub const SDS_ROUTE: &str = "sds_route";
     pub const MOBILITY_TRANSFER: &str = "mobility_transfer";
+    pub const HARDWARE_DEVICE: &str = "hardware_device";
+    pub const RF_STATION: &str = "rf_station";
+    pub const ALARM: &str = "alarm";
 }
 
 /// Bestehender einfacher Datensatz bleibt für Quellkompatibilität erhalten.

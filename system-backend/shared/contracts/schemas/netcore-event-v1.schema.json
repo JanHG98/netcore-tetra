@@ -37,7 +37,7 @@
     "correlation_id": {"type": "string", "format": "uuid"},
     "causation_id": {"type": "string", "format": "uuid"},
     "severity": {
-      "enum": ["debug", "info", "notice", "warning", "error", "critical"]
+      "enum": ["debug", "info", "notice", "warning", "error", "critical", "emergency"]
     },
     "subject": {
       "type": "object",

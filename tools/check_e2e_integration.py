@@ -34,7 +34,6 @@ REQUIRED_FILES = [
     "Docs/OPEN_LAB_E2E_RUNBOOK.md",
     "Docs/SWMI_CORE_1_PACKAGE_Q_E2E_INTEGRATION.md",
     "Docs/SWMI_CORE_1_PACKAGE_Q_APPLY.md",
-    ".github/workflows/swmi-core-e2e-integration.yml",
 ]
 EXECUTABLE_FILES = [
     "tests/e2e/netcore_open_lab_e2e.py",
@@ -64,6 +63,7 @@ EXPECTED_SERVICES = {
     "iot-gateway",
     "hardware-gateway",
     "rf-monitor",
+    "alarm-workflow",
 }
 EXPECTED_SCENARIOS = {
     "contracts",

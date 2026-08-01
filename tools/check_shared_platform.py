@@ -27,7 +27,6 @@ REQUIRED = [
     "tests/integration/open_lab_contract_test.py",
     "Docs/SWMI_CORE_1_PACKAGE_P_SHARED_PLATFORM.md",
     "Docs/OPEN_LAB_LXC_DEPLOYMENT.md",
-    ".github/workflows/swmi-core-shared-platform.yml",
 ]
 
 

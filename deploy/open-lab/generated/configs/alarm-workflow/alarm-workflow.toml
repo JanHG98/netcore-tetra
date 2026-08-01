@@ -1,0 +1,272 @@
+# NetCore Alarm Workflow – Phase 8 OPEN LAB
+# Keine Anmeldung, keine Tokens und kein TLS. Nur in einem isolierten Testnetz verwenden.
+
+[server]
+bind = "0.0.0.0:8270"
+
+[security]
+mode = "open_lab"
+
+[storage]
+state_file = "/var/lib/netcore-alarm-workflow/state.json"
+event_log = "/var/lib/netcore-alarm-workflow/events.ndjson"
+audit_log = "/var/lib/netcore-alarm-workflow/audit.ndjson"
+
+[mqtt]
+enabled = true
+host = "10.0.20.27"
+port = 1883
+qos = 1
+topic_prefix = "netcore/v1"
+client_id = "netcore-alarm-workflow"
+reconnect_secs = 3
+subscribe_topics = ["netcore/v1/events/#"]
+
+[sds_router]
+base_url = "http://10.0.20.17:8150"
+timeout_secs = 3
+poll_interval_secs = 2
+process_existing_events = false
+source_issi = 9999
+protocol_id = 130
+default_ttl_secs = 300
+
+[workflow]
+scheduler_interval_secs = 2
+event_history_limit = 2000
+seen_event_limit = 10000
+stop_escalation_on_ack = true
+stop_escalation_on_assignment = true
+auto_close_on_clear = false
+
+[limits]
+max_body_bytes = 2097152
+
+# Empfänger werden über den vorhandenen SDS Router angesprochen.
+# Ziele und Gruppen bitte an das eigene ISSI-/GSSI-Schema anpassen.
+[[recipients]]
+id = "technik-gruppe"
+name = "Technikgruppe"
+enabled = true
+kind = "group_sds"
+destination = 15201
+source_issi = 9999
+protocol_id = 130
+priority = 7
+ttl_secs = 300
+max_text_chars = 180
+message_template = "ALARM {severity} {token} {title}. ACK {token}"
+
+[[recipients]]
+id = "leitstelle-test"
+name = "Leitstelle Testteilnehmer"
+enabled = false
+kind = "individual_sds"
+destination = 4010001
+source_issi = 9999
+protocol_id = 130
+priority = 10
+ttl_secs = 300
+max_text_chars = 180
+message_template = "ESK {severity} {token} {title}. TAKE {token}"
+
+# Die Schritte sind relativ zur Alarm-Eröffnung. ACK/Übernahme stoppt standardmäßig die Eskalation.
+[[escalation_profiles]]
+id = "technical-default"
+name = "Technische Standardeskalation"
+steps = [
+  { after_secs = 0, recipients = ["technik-gruppe"] },
+  { after_secs = 60, recipients = ["technik-gruppe"] },
+  { after_secs = 180, recipients = ["technik-gruppe", "leitstelle-test"] }
+]
+
+[[escalation_profiles]]
+id = "urgent"
+name = "Dringende Eskalation"
+steps = [
+  { after_secs = 0, recipients = ["technik-gruppe", "leitstelle-test"] },
+  { after_secs = 30, recipients = ["technik-gruppe", "leitstelle-test"] },
+  { after_secs = 90, recipients = ["technik-gruppe", "leitstelle-test"] }
+]
+
+# RF-Alarme. Raise und Clear verwenden dieselben Dedup-Felder.
+[[rules]]
+id = "rf-alarm-raised"
+enabled = true
+action = "raise"
+event_type = "rf.alarm_raised"
+alarm_type = "rf_fault"
+title = "RF {subject_id}: {payload_alarm_key}"
+description = "HF-Alarm {payload_alarm_key}; Wert {payload_value}"
+severity = "inherit"
+priority = 8
+requires_ack = true
+recipients = ["technik-gruppe"]
+escalation_profile = "technical-default"
+dedup_fields = ["subject.id", "payload.alarm_key"]
+
+[[rules]]
+id = "rf-alarm-cleared"
+enabled = true
+action = "clear"
+event_type = "rf.alarm_cleared"
+alarm_type = "rf_fault"
+title = "RF {subject_id}: {payload_alarm_key}"
+description = "HF-Alarm aufgehoben"
+dedup_fields = ["subject.id", "payload.alarm_key"]
+auto_close = false
+
+[[rules]]
+id = "rf-station-offline"
+enabled = true
+action = "raise"
+event_type = "rf.station_offline"
+alarm_type = "rf_station_offline"
+title = "RF-Monitoring {subject_id} offline"
+description = "Keine RF-Telemetrie mehr empfangen"
+severity = "warning"
+priority = 7
+requires_ack = true
+recipients = ["technik-gruppe"]
+escalation_profile = "technical-default"
+dedup_fields = ["subject.id"]
+
+[[rules]]
+id = "rf-station-online"
+enabled = true
+action = "clear"
+event_type = "rf.station_online"
+alarm_type = "rf_station_offline"
+title = "RF-Monitoring {subject_id} wieder online"
+dedup_fields = ["subject.id"]
+
+# Rack-/Hardware-Grenzwerte und Eingänge.
+[[rules]]
+id = "hardware-threshold-raised"
+enabled = true
+action = "raise"
+event_type = "hardware.threshold_exceeded"
+alarm_type = "hardware_threshold"
+title = "{subject_id}: {payload_metric} außerhalb Grenzwert"
+description = "Messwert {payload_metric} = {payload_value} ({payload_reason})"
+severity = "inherit"
+priority = 7
+requires_ack = true
+recipients = ["technik-gruppe"]
+escalation_profile = "technical-default"
+dedup_fields = ["subject.id", "payload.metric"]
+
+[[rules]]
+id = "hardware-threshold-cleared"
+enabled = true
+action = "clear"
+event_type = "hardware.threshold_cleared"
+alarm_type = "hardware_threshold"
+title = "{subject_id}: {payload_metric} wieder normal"
+dedup_fields = ["subject.id", "payload.metric"]
+
+[[rules]]
+id = "hardware-input-raised"
+enabled = true
+action = "raise"
+event_type = "hardware.input_activated"
+alarm_type = "hardware_input"
+title = "{subject_id}: Eingang {payload_input} aktiv"
+description = "Hardware-Eingang {payload_input} wurde aktiv"
+severity = "inherit"
+priority = 10
+requires_ack = true
+recipients = ["technik-gruppe", "leitstelle-test"]
+escalation_profile = "urgent"
+dedup_fields = ["subject.id", "payload.input"]
+
+[[rules]]
+id = "hardware-input-cleared"
+enabled = true
+action = "clear"
+event_type = "hardware.input_cleared"
+alarm_type = "hardware_input"
+title = "{subject_id}: Eingang {payload_input} wieder inaktiv"
+dedup_fields = ["subject.id", "payload.input"]
+
+[[rules]]
+id = "hardware-device-offline"
+enabled = true
+action = "raise"
+event_type = "hardware.device_offline"
+alarm_type = "hardware_offline"
+title = "Hardware-Node {subject_id} offline"
+description = "Heartbeat des Hardware-Nodes fehlt"
+severity = "warning"
+priority = 6
+requires_ack = true
+recipients = ["technik-gruppe"]
+escalation_profile = "technical-default"
+dedup_fields = ["subject.id"]
+
+[[rules]]
+id = "hardware-device-online"
+enabled = true
+action = "clear"
+event_type = "hardware.device_online"
+alarm_type = "hardware_offline"
+title = "Hardware-Node {subject_id} wieder online"
+dedup_fields = ["subject.id"]
+
+# Zentrale TBS-/Node-Verbindungsereignisse.
+[[rules]]
+id = "node-disconnected"
+enabled = true
+action = "raise"
+event_type = "node.disconnected"
+alarm_type = "node_offline"
+title = "TBS/Node {subject_id} getrennt"
+description = "Node Gateway meldet Verbindungsverlust"
+severity = "critical"
+priority = 10
+requires_ack = true
+recipients = ["technik-gruppe", "leitstelle-test"]
+escalation_profile = "urgent"
+dedup_fields = ["subject.id"]
+
+[[rules]]
+id = "node-connected"
+enabled = true
+action = "clear"
+event_type = "node.connected"
+alarm_type = "node_offline"
+title = "TBS/Node {subject_id} wieder verbunden"
+dedup_fields = ["subject.id"]
+
+# Pre-coded Status vom Funkgerät an die System-ISSI 9999.
+# Ohne Alarmreferenz wirkt ein Status auf den neuesten passenden aktiven Alarm.
+[[status_actions]]
+enabled = true
+status_code = 5201
+action = "ack"
+states = ["open"]
+requires_ack_only = true
+
+[[status_actions]]
+enabled = true
+status_code = 5202
+action = "take"
+states = ["open", "acknowledged"]
+
+[[status_actions]]
+enabled = true
+status_code = 5203
+action = "start"
+states = ["open", "acknowledged", "assigned"]
+
+[[status_actions]]
+enabled = true
+status_code = 5204
+action = "resolve"
+states = ["open", "acknowledged", "assigned", "in_progress"]
+
+[[status_actions]]
+enabled = true
+status_code = 5205
+action = "close"
+states = ["resolved"]

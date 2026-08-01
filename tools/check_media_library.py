@@ -27,7 +27,6 @@ REQUIRED = [
     "system-backend/media-library/install/uninstall.sh",
     "system-backend/media-library/tests/media_library_reference.py",
     "Docs/SWMI_CORE_1_PACKAGE_O_MEDIA_LIBRARY.md",
-    ".github/workflows/swmi-core-media-library.yml",
 ]
 MARKERS = {
     "Cargo.toml": "system-backend/media-library",

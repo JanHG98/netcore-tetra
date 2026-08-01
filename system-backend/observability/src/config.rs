@@ -428,6 +428,9 @@ fn default_targets() -> Vec<TargetConfig> {
         target("application-gateway", "Application Gateway", "application-gateway", 8220),
         target("media-library", "Media Library", "media-library", 8230),
         target("iot-gateway", "IoT Gateway / MQTT", "iot-gateway", 8240),
+        target("hardware-gateway", "Hardware Gateway", "hardware-gateway", 8250),
+        target("rf-monitor", "RF Monitor", "rf-monitor", 8260),
+        target("alarm-workflow", "Alarm Workflow", "alarm-workflow", 8270),
         target("control-room", "Control Room", "control-room", 9010),
     ]
 }

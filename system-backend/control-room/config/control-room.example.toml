@@ -428,3 +428,18 @@ url = "http://10.0.20.29:8260/health/ready"
 critical_for_edge = false
 fallback_mode = "rf_monitoring_unavailable_radio_service_continues"
 depends_on = ["iot-gateway"]
+
+
+[[services]]
+name = "alarm-workflow"
+display_name = "Alarm Workflow"
+kind = "alarm"
+base_url = "http://10.0.20.30:8270"
+critical = false
+
+[[service_monitor.targets]]
+name = "alarm-workflow"
+url = "http://10.0.20.30:8270/health/ready"
+critical_for_edge = false
+fallback_mode = "central_alarm_escalation_unavailable_local_radio_and_sds_continue"
+depends_on = ["iot-gateway", "sds-router"]

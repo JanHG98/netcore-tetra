@@ -751,3 +751,15 @@ live_path = "/health/live"
 ready_path = "/health/ready"
 enabled = true
 labels = { environment = "open-lab", component = "iot-gateway" }
+
+
+[[targets]]
+target_id = "alarm-workflow"
+display_name = "Alarm Workflow"
+service = "alarm-workflow"
+base_url = "http://10.0.20.30:8270"
+metrics_path = "/metrics"
+live_path = "/health/live"
+ready_path = "/health/ready"
+enabled = true
+labels = { environment = "open-lab", component = "alarm-workflow" }

@@ -28,9 +28,9 @@ EXPECTED = {
     "node-gateway", "mobility-core", "subscriber-core", "group-core", "call-control",
     "media-switch", "recorder", "sds-router", "packet-core", "ip-gateway",
     "security-core", "kmf", "transit", "application-gateway", "media-library",
-    "control-room", "observability", "iot-gateway", "hardware-gateway", "rf-monitor",
+    "control-room", "observability", "iot-gateway", "hardware-gateway", "rf-monitor", "alarm-workflow",
 }
-EDGE_FALLBACK_SERVICES = EXPECTED - {"hardware-gateway", "rf-monitor"}
+EDGE_FALLBACK_SERVICES = EXPECTED
 REQUIRED_EDGE = {
     "subscriber-core", "group-core", "mobility-core", "call-control", "media-switch", "sds-router"
 }

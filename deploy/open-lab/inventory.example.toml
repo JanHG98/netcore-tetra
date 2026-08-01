@@ -520,7 +520,7 @@ config_template = "system-backend/control-room/config/control-room.example.toml"
 config_target = "/etc/netcore/control-room.toml"
 # Was: Setzt die Einstellung `depends_on` für services.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-depends_on = ["node-gateway", "subscriber-core", "group-core", "mobility-core", "call-control", "media-switch", "recorder", "sds-router", "packet-core", "ip-gateway", "security-core", "kmf", "transit", "application-gateway", "media-library", "iot-gateway", "hardware-gateway", "rf-monitor"]
+depends_on = ["node-gateway", "subscriber-core", "group-core", "mobility-core", "call-control", "media-switch", "recorder", "sds-router", "packet-core", "ip-gateway", "security-core", "kmf", "transit", "application-gateway", "media-library", "iot-gateway", "hardware-gateway", "rf-monitor", "alarm-workflow"]
 
 # Was: Öffnet den Konfigurationsabschnitt `services`.
 # Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
@@ -590,3 +590,16 @@ install = "system-backend/rf-monitor/install/install.sh"
 config_template = "system-backend/rf-monitor/config/rf-monitor.example.toml"
 config_target = "/etc/netcore/rf-monitor.toml"
 depends_on = ["iot-gateway"]
+
+
+# Phase 8 Alarm Workflow. Python service; MQTT event intake and SDS/status escalation.
+[[services]]
+name = "alarm-workflow"
+host = "10.0.20.30"
+port = 8270
+unit = "netcore-alarm-workflow.service"
+user = "root"
+install = "system-backend/alarm-workflow/install/install.sh"
+config_template = "system-backend/alarm-workflow/config/alarm-workflow.example.toml"
+config_target = "/etc/netcore/alarm-workflow.toml"
+depends_on = ["iot-gateway", "sds-router", "hardware-gateway", "rf-monitor"]
