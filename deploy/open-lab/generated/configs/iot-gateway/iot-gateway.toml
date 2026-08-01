@@ -1,0 +1,61 @@
+# NetCore IoT Gateway – Phase 3 / OPEN LAB
+# Keine Anmeldung, keine Tokens, kein TLS. Nur im isolierten Testnetz verwenden.
+
+[server]
+bind = "0.0.0.0:8240"
+history_limit = 1000
+max_body_bytes = 1048576
+
+[security]
+mode = "open_lab"
+allow_remote_management = true
+
+[mqtt]
+host = "127.0.0.1"
+port = 1883
+client_id = "netcore-iot-gateway"
+topic_prefix = "netcore/v1"
+keep_alive_secs = 30
+clean_session = false
+reconnect_secs = 3
+publish_timeout_secs = 8
+qos = 1
+event_retain = false
+state_retain = true
+observe_commands = true
+execute_commands = false
+
+[storage]
+state_dir = "/var/lib/netcore-iot-gateway"
+outbox_dir = "outbox"
+dedup_file = "dedup.json"
+command_inbox_file = "command-inbox.ndjson"
+dedup_limit = 50000
+outbox_limit = 20000
+
+[polling]
+interval_ms = 2000
+batch_limit = 500
+request_timeout_ms = 2500
+
+# Die vier Phase-2-Produzenten. Hostnamen durch LXC-IP ersetzen, falls im Netz
+# keine passenden DNS-/Hosts-Einträge existieren.
+[[sources]]
+id = "node-gateway"
+url = "http://10.0.20.10:8080/api/v1/events/netcore"
+enabled = true
+
+[[sources]]
+id = "mobility-core"
+url = "http://10.0.20.11:8090/api/v1/events/netcore"
+enabled = true
+
+[[sources]]
+id = "call-control"
+url = "http://10.0.20.14:8120/api/v1/events/netcore"
+enabled = true
+
+[[sources]]
+id = "sds-router"
+url = "http://10.0.20.17:8150/api/v1/events/netcore"
+enabled = true

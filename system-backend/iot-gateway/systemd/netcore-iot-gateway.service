@@ -1,0 +1,21 @@
+[Unit]
+Description=NetCore-Tetra IoT Gateway and MQTT Bridge (OPEN LAB MODE)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=netcore-iot-gateway
+Group=netcore-iot-gateway
+ExecStart=/usr/local/bin/netcore-iot-gateway --config /etc/netcore/iot-gateway.toml
+Restart=on-failure
+RestartSec=3
+Environment=RUST_LOG=info
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/netcore-iot-gateway
+
+[Install]
+WantedBy=multi-user.target
