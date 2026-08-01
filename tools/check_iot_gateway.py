@@ -10,11 +10,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = ROOT / "system-backend/iot-gateway"
+CONTRACTS = ROOT / "system-backend/shared/contracts"
 REQUIRED = [
     "Cargo.toml",
     "README.md",
     "src/main.rs",
     "src/config.rs",
+    "src/command.rs",
     "src/model.rs",
     "src/state.rs",
     "src/mqtt.rs",
@@ -23,10 +25,20 @@ REQUIRED = [
     "config/iot-gateway.example.toml",
     "install/install.sh",
     "install/update.sh",
+    "install/migrate-phase4-config.sh",
     "install/uninstall.sh",
     "systemd/netcore-iot-gateway.service",
     "docs/architecture.md",
     "docs/mqtt-contract.md",
+    "docs/open-lab-mode.md",
+]
+CONTRACT_REQUIRED = [
+    "src/command.rs",
+    "COMMAND_MODEL_V1.md",
+    "schemas/netcore-command-v1.schema.json",
+    "schemas/netcore-command-ack-v1.schema.json",
+    "examples/netcore-command-virtual-relay-set.json",
+    "examples/netcore-command-ack-succeeded.json",
 ]
 
 
@@ -39,6 +51,9 @@ def main() -> int:
     for relative in REQUIRED:
         if not (BASE / relative).is_file():
             fail(f"missing {BASE.relative_to(ROOT) / relative}")
+    for relative in CONTRACT_REQUIRED:
+        if not (CONTRACTS / relative).is_file():
+            fail(f"missing {CONTRACTS.relative_to(ROOT) / relative}")
 
     cargo = tomllib.loads((BASE / "Cargo.toml").read_text(encoding="utf-8"))
     if cargo.get("package", {}).get("name") != "netcore-iot-gateway":
@@ -46,15 +61,42 @@ def main() -> int:
 
     config = tomllib.loads((BASE / "config/iot-gateway.example.toml").read_text(encoding="utf-8"))
     if config["security"]["mode"] != "open_lab":
-        fail("IoT Gateway must remain explicit open_lab in Phase 3")
+        fail("IoT Gateway must remain explicit open_lab in Phase 4")
     if config["mqtt"]["execute_commands"] is not False:
-        fail("Phase 3 must refuse command execution")
+        fail("deprecated mqtt.execute_commands must stay false")
+    commands = config.get("commands", {})
+    if commands.get("enabled") is not True:
+        fail("Phase 4 command processing must be enabled")
+    if commands.get("mode") != "open_lab_sandbox":
+        fail("Phase 4 must use the open_lab_sandbox executor")
+    if commands.get("default_deny") is not True:
+        fail("Phase 4 must be default deny")
+    if commands.get("allow_retained") is not False:
+        fail("retained commands must be rejected by default")
     if config["server"]["bind"].split(":")[-1] != "8240":
         fail("IoT Gateway management port must be 8240")
+
     source_ids = {item["id"] for item in config.get("sources", [])}
     expected_sources = {"node-gateway", "mobility-core", "call-control", "sds-router"}
     if source_ids != expected_sources:
         fail(f"event sources differ: {sorted(source_ids)}")
+
+    policies = config.get("command_policies", [])
+    expected_commands = {
+        "virtual.relay.set",
+        "virtual.light.set",
+        "virtual.button.press",
+    }
+    policy_commands = {
+        command_type
+        for policy in policies
+        if policy.get("effect") == "allow"
+        for command_type in policy.get("command_types", [])
+    }
+    if policy_commands != expected_commands:
+        fail(f"sandbox allow policies differ: {sorted(policy_commands)}")
+    if any(prefix != "lab-" for p in policies for prefix in p.get("target_prefixes", [])):
+        fail("default sandbox policies must stay below the lab- target prefix")
 
     workspace = tomllib.loads((ROOT / "Cargo.toml").read_text(encoding="utf-8"))
     if "system-backend/iot-gateway" not in workspace["workspace"]["members"]:
@@ -71,18 +113,38 @@ def main() -> int:
     )
     markers = [
         "netcore-event-v1",
+        "netcore-command-v1",
+        "netcore-command-ack-v1",
         "/commands/#",
-        "execute_commands",
-        "write_connect",
-        "write_publish",
-        "persist_dedup",
-        "/api/v1/outbox",
+        "/acks/",
+        "open_lab_sandbox",
+        "default_deny",
+        "allow_retained",
+        "duplicate_command_id",
+        "execute_sandbox",
+        "persist_command_ledger",
+        "persist_virtual_devices",
+        "/api/v1/policies",
+        "/api/v1/virtual-devices",
         "/health/ready",
         "INDEX_HTML",
     ]
+    docs = (BASE / "README.md").read_text(encoding="utf-8")
     for marker in markers:
-        if marker not in source and marker not in (BASE / "README.md").read_text(encoding="utf-8"):
+        if marker not in source and marker not in docs:
             fail(f"implementation marker missing: {marker}")
+
+    contract_source = (CONTRACTS / "src/command.rs").read_text(encoding="utf-8")
+    for marker in [
+        "NETCORE_COMMAND_SCHEMA_V1",
+        "NETCORE_COMMAND_ACK_SCHEMA_V1",
+        "CommandAckStatus",
+        "CommandPolicyDecision",
+        "NetCoreCommand",
+        "CommandAck",
+    ]:
+        if marker not in contract_source:
+            fail(f"command contract marker missing: {marker}")
 
     for script in (BASE / "install").glob("*.sh"):
         if not script.stat().st_mode & stat.S_IXUSR:
@@ -93,14 +155,17 @@ def main() -> int:
             continue
         try:
             json.loads(path.read_text(encoding="utf-8"))
-        except (UnicodeDecodeError, json.JSONDecodeError):
+        except UnicodeDecodeError:
             continue
+        except json.JSONDecodeError as error:
+            fail(f"invalid JSON {path.relative_to(ROOT)}: {error}")
 
-    print("IoT Gateway Phase 3 static package check: OK")
+    print("IoT Gateway Phase 4 static package check: OK")
     print("- OPEN LAB without login/tokens/TLS")
-    print("- four netcore-event-v1 producers")
-    print("- MQTT 3.1.1 QoS 0/1, Last Will and durable outbox")
-    print("- command observation only; execution hard-disabled")
+    print("- netcore-command-v1 and netcore-command-ack-v1")
+    print("- persistent command ledger, audit and duplicate suppression")
+    print("- default-deny policy engine; retained commands rejected")
+    print("- virtual relay/light/button sandbox only")
     return 0
 
 

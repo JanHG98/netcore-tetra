@@ -111,7 +111,14 @@ fn run_connection_loop(
 ) {
     loop {
         control.force_reconnect.store(false, Ordering::SeqCst);
-        let result = run_one_connection(&config.mqtt, &state, &publisher, &control);
+        let result = run_one_connection(
+            &config.mqtt,
+            config.commands.enabled,
+            &config.commands.mode,
+            &state,
+            &publisher,
+            &control,
+        );
         publisher.clear_sender();
         state.mark_mqtt_disconnected(result.err().unwrap_or_else(|| "connection closed".to_string()));
         thread::sleep(Duration::from_secs(config.mqtt.reconnect_secs.max(1)));
@@ -120,6 +127,8 @@ fn run_connection_loop(
 
 fn run_one_connection(
     config: &MqttConfig,
+    command_execution_enabled: bool,
+    command_execution_mode: &str,
     state: &SharedGateway,
     publisher: &MqttPublisher,
     control: &MqttControl,
@@ -157,13 +166,19 @@ fn run_one_connection(
     );
 
     let mut next_packet_id = 1_u16;
-    publish_gateway_online(&mut stream, config, &mut next_packet_id)?;
+    publish_gateway_online(
+        &mut stream,
+        config,
+        command_execution_enabled,
+        command_execution_mode,
+        &mut next_packet_id,
+    )?;
     if config.observe_commands {
         let subscription = format!("{}/commands/#", config.topic_prefix.trim_matches('/'));
         write_subscribe(&mut stream, next_id(&mut next_packet_id), &subscription, config.qos)?;
         tracing::warn!(
-            "OPEN LAB command observation subscribed to {}; commands are stored but never executed",
-            subscription
+            "OPEN LAB command processing subscribed to {}; policy-controlled sandbox execution={}",
+            subscription, command_execution_enabled
         );
     }
 
@@ -232,8 +247,18 @@ fn handle_packet(
             }
             let command_prefix = format!("{}/commands/", config.topic_prefix.trim_matches('/'));
             if config.observe_commands && incoming.topic.starts_with(&command_prefix) {
-                if let Err(error) = state.observe_command(incoming.topic, incoming.payload) {
-                    tracing::warn!("failed to store observed MQTT command: {}", error);
+                match state.process_command(
+                    incoming.topic,
+                    incoming.payload,
+                    incoming.qos,
+                    incoming.retain,
+                ) {
+                    Ok(record) => tracing::info!(
+                        "MQTT command {} completed with status {:?}",
+                        record.command_id,
+                        record.status
+                    ),
+                    Err(error) => tracing::warn!("failed to process MQTT command: {}", error),
                 }
             }
         }
@@ -278,6 +303,8 @@ fn run_outbox_loop(state: SharedGateway, publisher: MqttPublisher) {
 fn publish_gateway_online(
     stream: &mut TcpStream,
     config: &MqttConfig,
+    command_execution_enabled: bool,
+    command_execution_mode: &str,
     next_packet_id: &mut u16,
 ) -> Result<(), String> {
     let prefix = config.topic_prefix.trim_matches('/');
@@ -292,7 +319,9 @@ fn publish_gateway_online(
             "status":"online",
             "service":"netcore-iot-gateway",
             "security_mode":"open_lab",
-            "command_execution":false,
+            "command_execution":command_execution_enabled,
+            "command_execution_mode":command_execution_mode,
+            "phase":4,
             "timestamp":chrono::Utc::now().to_rfc3339()
         })
         .to_string(),
@@ -493,6 +522,7 @@ struct IncomingPublish {
     topic: String,
     payload: Vec<u8>,
     qos: u8,
+    retain: bool,
     packet_id: Option<u16>,
 }
 
@@ -509,7 +539,7 @@ fn parse_publish(packet: &Packet) -> Result<IncomingPublish, String> {
         .to_string();
     let qos = (packet.header >> 1) & 0x03;
     if qos > 1 {
-        return Err("Phase 3 does not support inbound MQTT QoS 2".to_string());
+        return Err("Phase 4 does not support inbound MQTT QoS 2".to_string());
     }
     let mut offset = 2 + topic_length;
     let packet_id = if qos == 1 {
@@ -526,6 +556,7 @@ fn parse_publish(packet: &Packet) -> Result<IncomingPublish, String> {
         topic,
         payload: packet.body[offset..].to_vec(),
         qos,
+        retain: packet.header & 0x01 != 0,
         packet_id,
     })
 }
@@ -547,5 +578,23 @@ mod tests {
         assert_eq!(next_id(&mut value), u16::MAX);
         assert_eq!(value, 1);
         assert_eq!(next_id(&mut value), 1);
+    }
+
+    #[test]
+    fn inbound_publish_preserves_retain_and_qos() {
+        let topic = "netcore/v1/commands/test";
+        let mut body = Vec::new();
+        push_utf8(&mut body, topic).unwrap();
+        body.extend_from_slice(&7_u16.to_be_bytes());
+        body.extend_from_slice(br#"{"command_id":"demo"}"#);
+        let packet = Packet {
+            header: 0x33, // PUBLISH, QoS 1, RETAIN
+            body,
+        };
+        let incoming = parse_publish(&packet).unwrap();
+        assert_eq!(incoming.topic, topic);
+        assert_eq!(incoming.qos, 1);
+        assert!(incoming.retain);
+        assert_eq!(incoming.packet_id, Some(7));
     }
 }

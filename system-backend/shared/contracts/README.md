@@ -24,3 +24,14 @@ Das kanonische Runtime-Format ist `netcore-event-v1`. Rust-Typ, JSON-Schema, Kat
 - `EVENT_MODEL_V1.md`
 
 Lokale Dienstereignisse dürfen aus Kompatibilitätsgründen Zusatzfelder behalten, müssen für neue Integrationen aber ein gültiges `NetCoreEvent` bereitstellen.
+
+## Gemeinsames Command-/Ack-Modell
+
+Phase 4 ergänzt die transportneutralen Verträge `netcore-command-v1` und `netcore-command-ack-v1`. Rust-Typen, JSON-Schemas, Beispiele und Regeln liegen in:
+
+- `src/command.rs`
+- `schemas/netcore-command-v1.schema.json`
+- `schemas/netcore-command-ack-v1.schema.json`
+- `examples/netcore-command-virtual-relay-set.json`
+- `examples/netcore-command-ack-succeeded.json`
+- `COMMAND_MODEL_V1.md`

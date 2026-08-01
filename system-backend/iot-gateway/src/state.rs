@@ -1,17 +1,21 @@
-use std::collections::{BTreeMap, HashSet, VecDeque};
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use chrono::Utc;
-use netcore_contracts::NetCoreEvent;
+use chrono::{SecondsFormat, Utc};
+use netcore_contracts::{
+    CommandAck, CommandAckStatus, CommandPolicyDecision, CommandSource, CommandTarget,
+    NetCoreCommand, NetCoreEvent, NETCORE_COMMAND_ACK_SCHEMA_V1, NETCORE_COMMAND_SCHEMA_V1,
+};
 use serde_json::{json, Value};
 use uuid::Uuid;
 
-use crate::config::IotGatewayConfig;
+use crate::command::{VirtualDeviceState, evaluate_policy, execute_sandbox};
+use crate::config::{CommandPolicyConfig, IotGatewayConfig};
 use crate::model::{
-    BridgeEventRecord, GatewayStatus, ObservedCommand, OutboundMessage, OutboxEntrySummary,
+    BridgeEventRecord, CommandRecord, GatewayStatus, OutboundMessage, OutboxEntrySummary,
     SourceStatus, TopicRegistry,
 };
 
@@ -32,7 +36,10 @@ struct GatewayState {
     broker_publish_acks: u64,
     sources: BTreeMap<String, SourceStatus>,
     recent_events: VecDeque<BridgeEventRecord>,
-    commands: VecDeque<ObservedCommand>,
+    commands: VecDeque<CommandRecord>,
+    command_ledger: HashMap<Uuid, CommandRecord>,
+    command_order: VecDeque<Uuid>,
+    virtual_devices: BTreeMap<String, VirtualDeviceState>,
     dedup: HashSet<Uuid>,
     dedup_order: VecDeque<Uuid>,
     events_seen: u64,
@@ -40,8 +47,15 @@ struct GatewayState {
     events_published: u64,
     duplicates_skipped: u64,
     invalid_events: u64,
-    commands_observed: u64,
+    commands_received: u64,
+    commands_accepted: u64,
+    commands_rejected: u64,
     commands_executed: u64,
+    commands_failed: u64,
+    command_duplicates: u64,
+    commands_expired: u64,
+    retained_commands_rejected: u64,
+    command_dry_runs: u64,
     last_poll_at: Option<String>,
 }
 
@@ -53,6 +67,15 @@ impl SharedGateway {
         fs::create_dir_all(config.state_dir())?;
         fs::create_dir_all(config.outbox_dir())?;
         let (dedup, dedup_order) = load_dedup(&config.dedup_path(), config.storage.dedup_limit)?;
+        let (command_ledger, command_order) = load_command_ledger(
+            &config.command_ledger_path(),
+            config.storage.command_ledger_limit,
+        )?;
+        let virtual_devices = load_virtual_devices(&config.virtual_state_path())?;
+        let commands = command_order
+            .iter()
+            .filter_map(|command_id| command_ledger.get(command_id).cloned())
+            .collect();
         let sources = config
             .sources
             .iter()
@@ -74,7 +97,10 @@ impl SharedGateway {
             broker_publish_acks: 0,
             sources,
             recent_events: VecDeque::new(),
-            commands: VecDeque::new(),
+            commands,
+            command_ledger,
+            command_order,
+            virtual_devices,
             dedup,
             dedup_order,
             events_seen: 0,
@@ -82,20 +108,37 @@ impl SharedGateway {
             events_published: 0,
             duplicates_skipped: 0,
             invalid_events: 0,
-            commands_observed: 0,
+            commands_received: 0,
+            commands_accepted: 0,
+            commands_rejected: 0,
             commands_executed: 0,
+            commands_failed: 0,
+            command_duplicates: 0,
+            commands_expired: 0,
+            retained_commands_rejected: 0,
+            command_dry_runs: 0,
             last_poll_at: None,
         };
         let gateway = Self(Arc::new(Mutex::new(state)));
         gateway.record_bridge_event(
             "iot_gateway.started",
-            json!({"phase":3,"command_execution":false,"security_mode":"open_lab"}),
+            json!({
+                "phase":4,
+                "command_execution":gateway.config().commands.enabled,
+                "execution_mode":gateway.config().commands.mode,
+                "security_mode":"open_lab",
+                "default_deny":gateway.config().commands.default_deny
+            }),
         );
         Ok(gateway)
     }
 
     pub fn config(&self) -> IotGatewayConfig {
-        self.0.lock().expect("IoT Gateway state poisoned").config.clone()
+        self.0
+            .lock()
+            .expect("IoT Gateway state poisoned")
+            .config
+            .clone()
     }
 
     pub fn status(&self) -> GatewayStatus {
@@ -109,9 +152,10 @@ impl SharedGateway {
         GatewayStatus {
             service: "netcore-iot-gateway",
             version: env!("CARGO_PKG_VERSION"),
+            phase: 4,
             started_at: state.started_at.clone(),
             security_mode: "open_lab",
-            warning: "No login, no tokens and no TLS; isolated test network only",
+            warning: "No login, no tokens and no TLS; commands are restricted to the OPEN-LAB sandbox",
             mqtt_host: state.config.mqtt.host.clone(),
             mqtt_port: state.config.mqtt.port,
             mqtt_client_id: state.config.mqtt.client_id.clone(),
@@ -130,9 +174,25 @@ impl SharedGateway {
             events_published: state.events_published,
             duplicates_skipped: state.duplicates_skipped,
             invalid_events: state.invalid_events,
-            commands_observed: state.commands_observed,
+            commands_observed: state.commands_received,
+            commands_received: state.commands_received,
+            commands_accepted: state.commands_accepted,
+            commands_rejected: state.commands_rejected,
             commands_executed: state.commands_executed,
-            command_execution_enabled: state.config.mqtt.execute_commands,
+            commands_failed: state.commands_failed,
+            command_duplicates: state.command_duplicates,
+            commands_expired: state.commands_expired,
+            retained_commands_rejected: state.retained_commands_rejected,
+            command_dry_runs: state.command_dry_runs,
+            command_execution_enabled: state.config.commands.enabled,
+            command_execution_mode: state.config.commands.mode.clone(),
+            command_policy_count: state
+                .config
+                .command_policies
+                .iter()
+                .filter(|policy| policy.enabled)
+                .count(),
+            virtual_devices: state.virtual_devices.len(),
             last_poll_at: state.last_poll_at.clone(),
         }
     }
@@ -158,13 +218,41 @@ impl SharedGateway {
             .collect()
     }
 
-    pub fn commands(&self, limit: usize) -> Vec<ObservedCommand> {
+    pub fn commands(&self, limit: usize) -> Vec<CommandRecord> {
         let state = self.0.lock().expect("IoT Gateway state poisoned");
         state
             .commands
             .iter()
             .rev()
             .take(limit.min(state.commands.len()))
+            .cloned()
+            .collect()
+    }
+
+    pub fn command(&self, command_id: Uuid) -> Option<CommandRecord> {
+        self.0
+            .lock()
+            .expect("IoT Gateway state poisoned")
+            .command_ledger
+            .get(&command_id)
+            .cloned()
+    }
+
+    pub fn command_policies(&self) -> Vec<CommandPolicyConfig> {
+        self.0
+            .lock()
+            .expect("IoT Gateway state poisoned")
+            .config
+            .command_policies
+            .clone()
+    }
+
+    pub fn virtual_devices(&self) -> Vec<VirtualDeviceState> {
+        self.0
+            .lock()
+            .expect("IoT Gateway state poisoned")
+            .virtual_devices
+            .values()
             .cloned()
             .collect()
     }
@@ -182,12 +270,16 @@ impl SharedGateway {
             format!("{prefix}/state/subscribers/4010001"),
         );
         examples.insert(
-            "node_state".to_string(),
-            format!("{prefix}/state/nodes/TBS-01"),
+            "virtual_relay_command".to_string(),
+            format!("{prefix}/commands/virtual_relay/lab-relay-01/set"),
         );
         examples.insert(
-            "gateway_state".to_string(),
-            format!("{prefix}/state/services/iot-gateway"),
+            "command_ack".to_string(),
+            format!("{prefix}/acks/<command-id>"),
+        );
+        examples.insert(
+            "virtual_relay_state".to_string(),
+            format!("{prefix}/state/virtual_relays/lab-relay-01"),
         );
         TopicRegistry {
             prefix: prefix.clone(),
@@ -199,7 +291,17 @@ impl SharedGateway {
                 .mqtt
                 .observe_commands
                 .then(|| format!("{prefix}/commands/#")),
-            command_execution_enabled: state.config.mqtt.execute_commands,
+            command_schema: NETCORE_COMMAND_SCHEMA_V1,
+            acknowledgement_pattern: format!("{prefix}/acks/<command-id>"),
+            acknowledgement_schema: NETCORE_COMMAND_ACK_SCHEMA_V1,
+            command_execution_enabled: state.config.commands.enabled,
+            command_execution_mode: state.config.commands.mode.clone(),
+            policy_count: state
+                .config
+                .command_policies
+                .iter()
+                .filter(|policy| policy.enabled)
+                .count(),
             qos: state.config.mqtt.qos,
             event_retain: state.config.mqtt.event_retain,
             state_retain: state.config.mqtt.state_retain,
@@ -208,7 +310,10 @@ impl SharedGateway {
     }
 
     pub fn mqtt_connected(&self) -> bool {
-        self.0.lock().expect("IoT Gateway state poisoned").mqtt_connected
+        self.0
+            .lock()
+            .expect("IoT Gateway state poisoned")
+            .mqtt_connected
     }
 
     pub fn mark_mqtt_connected(&self) {
@@ -283,11 +388,7 @@ impl SharedGateway {
             false
         };
         if recovered {
-            push_event_locked(
-                &mut state,
-                "source.recovered",
-                json!({"source":source_id}),
-            );
+            push_event_locked(&mut state, "source.recovered", json!({"source":source_id}));
         }
     }
 
@@ -333,18 +434,10 @@ impl SharedGateway {
             state.duplicates_skipped = state.duplicates_skipped.saturating_add(1);
             return Ok(EnqueueOutcome::Duplicate);
         }
-        if count_outbox(&state.config.outbox_dir()) >= state.config.storage.outbox_limit {
-            return Err(format!(
-                "outbox limit {} reached",
-                state.config.storage.outbox_limit
-            ));
-        }
+        ensure_outbox_capacity(&state, if event.subject.is_some() { 2 } else { 1 })?;
 
         let prefix = state.config.mqtt.topic_prefix.trim_matches('/');
-        let event_topic = format!(
-            "{prefix}/events/{}",
-            event.event_type.replace('.', "/")
-        );
+        let event_topic = format!("{prefix}/events/{}", event.event_type.replace('.', "/"));
         let payload = serde_json::to_string(event).map_err(|error| error.to_string())?;
         let event_message = OutboundMessage {
             id: Uuid::new_v4(),
@@ -420,15 +513,16 @@ impl SharedGateway {
         if !below_prefix {
             return Err(format!("test topic must stay below {prefix}/"));
         }
-        if topic.chars().any(|character| matches!(character, '#' | '+' | '\0')) {
+        if topic
+            .chars()
+            .any(|character| matches!(character, '#' | '+' | '\0'))
+        {
             return Err("test publish topic must not contain MQTT wildcards or NUL".to_string());
         }
         if qos > 1 {
-            return Err("Phase 3 supports QoS 0 or 1 only".to_string());
+            return Err("Phase 4 supports QoS 0 or 1 only".to_string());
         }
-        if count_outbox(&state.config.outbox_dir()) >= state.config.storage.outbox_limit {
-            return Err("outbox limit reached".to_string());
-        }
+        ensure_outbox_capacity(&state, 1)?;
         let message = OutboundMessage {
             id: Uuid::new_v4(),
             created_at: now_iso(),
@@ -448,33 +542,345 @@ impl SharedGateway {
         Ok(message)
     }
 
-    pub fn observe_command(&self, topic: String, payload: Vec<u8>) -> Result<ObservedCommand, String> {
+    pub fn process_command(
+        &self,
+        topic: String,
+        payload: Vec<u8>,
+        qos: u8,
+        retained: bool,
+    ) -> Result<CommandRecord, String> {
+        let config = self.config();
         let payload_text = String::from_utf8_lossy(&payload).to_string();
-        let parsed = serde_json::from_slice::<Value>(&payload).ok();
-        let command = ObservedCommand {
-            command_id: Uuid::new_v4(),
-            received_at: now_iso(),
-            topic,
-            payload: payload_text,
-            valid_json: parsed.is_some(),
-            parsed,
-            status: "observed_only".to_string(),
-            warning: "Phase 3 stores commands but never executes them; policy and acknowledgements follow in Phase 4"
-                .to_string(),
-        };
+        let parsed_value = serde_json::from_slice::<Value>(&payload).ok();
+        let candidate_id = parsed_value
+            .as_ref()
+            .and_then(|value| value.get("command_id"))
+            .and_then(Value::as_str)
+            .and_then(|value| Uuid::parse_str(value).ok())
+            .unwrap_or_else(Uuid::new_v4);
+        let parsed_command = parsed_value
+            .clone()
+            .and_then(|value| serde_json::from_value::<NetCoreCommand>(value).ok());
+
+        append_json_line(
+            &config.command_inbox_path(),
+            &json!({
+                "received_at":now_iso(),
+                "topic":topic,
+                "qos":qos,
+                "retained":retained,
+                "payload":payload_text
+            }),
+        )?;
+
         let mut state = self.0.lock().expect("IoT Gateway state poisoned");
-        append_json_line(&state.config.command_inbox_path(), &command)?;
-        state.commands_observed = state.commands_observed.saturating_add(1);
-        state.commands.push_back(command.clone());
-        while state.commands.len() > state.config.server.history_limit {
-            state.commands.pop_front();
+        state.commands_received = state.commands_received.saturating_add(1);
+
+        if let Some(original) = state.command_ledger.get(&candidate_id).cloned() {
+            state.command_duplicates = state.command_duplicates.saturating_add(1);
+            let command = parsed_command
+                .clone()
+                .or_else(|| original.command.clone())
+                .unwrap_or_else(|| synthetic_command(candidate_id, &topic));
+            let record = CommandRecord {
+                command_id: candidate_id,
+                received_at: now_iso(),
+                completed_at: Some(now_iso()),
+                topic: topic.clone(),
+                qos,
+                retained,
+                valid_json: parsed_value.is_some(),
+                command: Some(command.clone()),
+                status: CommandAckStatus::Duplicate,
+                policy_id: original.policy_id.clone(),
+                reason_code: Some("duplicate_command_id".to_string()),
+                message: "command_id was already processed; command was not executed again"
+                    .to_string(),
+                result: json!({"original_status":original.status,"original_completed_at":original.completed_at}),
+                duplicate_of: Some(candidate_id),
+            };
+            ensure_outbox_capacity(&state, 1)?;
+            let mut ack = CommandAck::new(
+                &command,
+                CommandAckStatus::Duplicate,
+                gateway_source(),
+                record.message.clone(),
+            )
+            .with_reason("duplicate_command_id")
+            .with_result(record.result.clone());
+            if let Some(policy_id) = &record.policy_id {
+                ack = ack.with_policy(policy_id.clone());
+            }
+            enqueue_ack_locked(&state, &ack)?;
+            push_recent_command_locked(&mut state, record.clone());
+            append_json_line(&state.config.command_audit_path(), &record)?;
+            push_event_locked(
+                &mut state,
+                "command.duplicate",
+                json!({"command_id":candidate_id,"topic":topic}),
+            );
+            return Ok(record);
         }
-        push_event_locked(
-            &mut state,
-            "command.observed",
-            json!({"command_id":command.command_id,"topic":command.topic,"executed":false}),
-        );
-        Ok(command)
+
+        let command = match parsed_command {
+            Some(command) => command,
+            None => {
+                let reason = if parsed_value.is_some() {
+                    "JSON does not match netcore-command-v1"
+                } else {
+                    "payload is not valid JSON"
+                };
+                return reject_command_locked(
+                    &mut state,
+                    synthetic_command(candidate_id, &topic),
+                    topic,
+                    qos,
+                    retained,
+                    parsed_value.is_some(),
+                    "invalid_command",
+                    reason,
+                    None,
+                    false,
+                );
+            }
+        };
+
+        if let Err(error) = command.validate() {
+            return reject_command_locked(
+                &mut state,
+                command,
+                topic,
+                qos,
+                retained,
+                true,
+                "schema_validation_failed",
+                &error.to_string(),
+                None,
+                false,
+            );
+        }
+
+        if !state.config.commands.enabled {
+            return reject_command_locked(
+                &mut state,
+                command,
+                topic,
+                qos,
+                retained,
+                true,
+                "command_execution_disabled",
+                "commands.enabled is false",
+                None,
+                false,
+            );
+        }
+
+        if retained && !state.config.commands.allow_retained {
+            state.retained_commands_rejected =
+                state.retained_commands_rejected.saturating_add(1);
+            return reject_command_locked(
+                &mut state,
+                command,
+                topic,
+                qos,
+                retained,
+                true,
+                "retained_command_rejected",
+                "retained MQTT commands are disabled to prevent replay after reconnect",
+                None,
+                false,
+            );
+        }
+
+        let now = Utc::now();
+        if command.expires_at <= now {
+            state.commands_expired = state.commands_expired.saturating_add(1);
+            return reject_command_locked(
+                &mut state,
+                command,
+                topic,
+                qos,
+                retained,
+                true,
+                "command_expired",
+                "expires_at is in the past",
+                None,
+                false,
+            );
+        }
+        let future_skew = command.requested_at.signed_duration_since(now).num_seconds();
+        if future_skew > state.config.commands.max_future_skew_secs as i64 {
+            return reject_command_locked(
+                &mut state,
+                command,
+                topic,
+                qos,
+                retained,
+                true,
+                "requested_at_in_future",
+                "requested_at exceeds the configured future clock-skew tolerance",
+                None,
+                false,
+            );
+        }
+
+        let evaluation = evaluate_policy(&state.config, &command);
+        if evaluation.decision == CommandPolicyDecision::Deny {
+            return reject_command_locked(
+                &mut state,
+                command,
+                topic,
+                qos,
+                retained,
+                true,
+                &evaluation.reason_code,
+                &evaluation.message,
+                evaluation.policy_id.clone(),
+                false,
+            );
+        }
+
+        let lifecycle_acks = if state.config.commands.publish_lifecycle_acks { 2 } else { 0 };
+        // accepted + executing + terminal + optional retained virtual state
+        ensure_outbox_capacity(&state, lifecycle_acks + 2)?;
+        state.commands_accepted = state.commands_accepted.saturating_add(1);
+        if command.dry_run {
+            state.command_dry_runs = state.command_dry_runs.saturating_add(1);
+        }
+        if state.config.commands.publish_lifecycle_acks {
+            let mut accepted = CommandAck::new(
+                &command,
+                CommandAckStatus::Accepted,
+                gateway_source(),
+                "command passed schema, replay and policy checks",
+            )
+            .with_reason("accepted");
+            if let Some(policy_id) = &evaluation.policy_id {
+                accepted = accepted.with_policy(policy_id.clone());
+            }
+            enqueue_ack_locked(&state, &accepted)?;
+
+            let mut executing = CommandAck::new(
+                &command,
+                CommandAckStatus::Executing,
+                gateway_source(),
+                if command.dry_run {
+                    "validating sandbox execution in dry-run mode"
+                } else {
+                    "executing command in OPEN-LAB sandbox"
+                },
+            )
+            .with_reason("executing");
+            if let Some(policy_id) = &evaluation.policy_id {
+                executing = executing.with_policy(policy_id.clone());
+            }
+            enqueue_ack_locked(&state, &executing)?;
+        }
+
+        let execution = execute_sandbox(&command, &mut state.virtual_devices);
+        let completed_at = now_iso();
+        match execution {
+            Ok(execution) => {
+                if let Some(update) = &execution.state_update {
+                    persist_virtual_devices(
+                        &state.config.virtual_state_path(),
+                        &state.virtual_devices,
+                    )?;
+                    enqueue_virtual_state_locked(&state, update)?;
+                }
+                if !command.dry_run {
+                    state.commands_executed = state.commands_executed.saturating_add(1);
+                }
+                let message = if command.dry_run {
+                    "command passed sandbox dry-run validation"
+                } else {
+                    "command completed in OPEN-LAB sandbox"
+                };
+                let record = CommandRecord {
+                    command_id: command.command_id,
+                    received_at: now_iso(),
+                    completed_at: Some(completed_at),
+                    topic,
+                    qos,
+                    retained,
+                    valid_json: true,
+                    command: Some(command.clone()),
+                    status: CommandAckStatus::Succeeded,
+                    policy_id: evaluation.policy_id.clone(),
+                    reason_code: Some(if command.dry_run {
+                        "dry_run_succeeded"
+                    } else {
+                        "executed"
+                    }
+                    .to_string()),
+                    message: message.to_string(),
+                    result: execution.result.clone(),
+                    duplicate_of: None,
+                };
+                let mut ack = CommandAck::new(
+                    &command,
+                    CommandAckStatus::Succeeded,
+                    gateway_source(),
+                    message,
+                )
+                .with_reason(record.reason_code.clone().unwrap_or_default())
+                .with_result(execution.result);
+                if let Some(policy_id) = &evaluation.policy_id {
+                    ack = ack.with_policy(policy_id.clone());
+                }
+                enqueue_ack_locked(&state, &ack)?;
+                store_terminal_command_locked(&mut state, record.clone())?;
+                push_event_locked(
+                    &mut state,
+                    "command.succeeded",
+                    json!({
+                        "command_id":record.command_id,
+                        "command_type":command.command_type,
+                        "target":command.target,
+                        "dry_run":command.dry_run,
+                        "policy_id":record.policy_id
+                    }),
+                );
+                Ok(record)
+            }
+            Err(error) => {
+                state.commands_failed = state.commands_failed.saturating_add(1);
+                let record = CommandRecord {
+                    command_id: command.command_id,
+                    received_at: now_iso(),
+                    completed_at: Some(completed_at),
+                    topic,
+                    qos,
+                    retained,
+                    valid_json: true,
+                    command: Some(command.clone()),
+                    status: CommandAckStatus::Failed,
+                    policy_id: evaluation.policy_id.clone(),
+                    reason_code: Some("executor_failed".to_string()),
+                    message: error.clone(),
+                    result: Value::Null,
+                    duplicate_of: None,
+                };
+                let mut ack = CommandAck::new(
+                    &command,
+                    CommandAckStatus::Failed,
+                    gateway_source(),
+                    error,
+                )
+                .with_reason("executor_failed");
+                if let Some(policy_id) = &evaluation.policy_id {
+                    ack = ack.with_policy(policy_id.clone());
+                }
+                enqueue_ack_locked(&state, &ack)?;
+                store_terminal_command_locked(&mut state, record.clone())?;
+                push_event_locked(
+                    &mut state,
+                    "command.failed",
+                    json!({"command_id":record.command_id,"reason":"executor_failed"}),
+                );
+                Ok(record)
+            }
+        }
     }
 
     pub fn outbox_entries(&self, limit: usize) -> Vec<OutboxEntrySummary> {
@@ -531,16 +937,32 @@ impl SharedGateway {
                 "# HELP netcore_iot_gateway_events_published MQTT messages acknowledged by the broker.\n",
                 "# TYPE netcore_iot_gateway_events_published counter\n",
                 "netcore_iot_gateway_events_published {}\n",
-                "# HELP netcore_iot_gateway_commands_observed MQTT commands stored but not executed.\n",
-                "# TYPE netcore_iot_gateway_commands_observed counter\n",
-                "netcore_iot_gateway_commands_observed {}\n"
+                "# HELP netcore_iot_gateway_commands_received MQTT commands received.\n",
+                "# TYPE netcore_iot_gateway_commands_received counter\n",
+                "netcore_iot_gateway_commands_received {}\n",
+                "# HELP netcore_iot_gateway_commands_rejected Commands rejected by validation, replay or policy checks.\n",
+                "# TYPE netcore_iot_gateway_commands_rejected counter\n",
+                "netcore_iot_gateway_commands_rejected {}\n",
+                "# HELP netcore_iot_gateway_commands_executed Commands completed by the OPEN-LAB sandbox executor.\n",
+                "# TYPE netcore_iot_gateway_commands_executed counter\n",
+                "netcore_iot_gateway_commands_executed {}\n",
+                "# HELP netcore_iot_gateway_command_duplicates Duplicate command identifiers suppressed.\n",
+                "# TYPE netcore_iot_gateway_command_duplicates counter\n",
+                "netcore_iot_gateway_command_duplicates {}\n",
+                "# HELP netcore_iot_gateway_virtual_devices Persistent virtual sandbox devices.\n",
+                "# TYPE netcore_iot_gateway_virtual_devices gauge\n",
+                "netcore_iot_gateway_virtual_devices {}\n"
             ),
             u8::from(status.mqtt_connected),
             status.outbox_pending,
             status.sources_healthy,
             status.events_enqueued,
             status.events_published,
-            status.commands_observed,
+            status.commands_received,
+            status.commands_rejected,
+            status.commands_executed,
+            status.command_duplicates,
+            status.virtual_devices,
         )
     }
 
@@ -548,6 +970,162 @@ impl SharedGateway {
         let mut state = self.0.lock().expect("IoT Gateway state poisoned");
         push_event_locked(&mut state, kind, detail);
     }
+}
+
+fn reject_command_locked(
+    state: &mut GatewayState,
+    command: NetCoreCommand,
+    topic: String,
+    qos: u8,
+    retained: bool,
+    valid_json: bool,
+    reason_code: &str,
+    message: &str,
+    policy_id: Option<String>,
+    duplicate: bool,
+) -> Result<CommandRecord, String> {
+    ensure_outbox_capacity(state, 1)?;
+    state.commands_rejected = state.commands_rejected.saturating_add(1);
+    let record = CommandRecord {
+        command_id: command.command_id,
+        received_at: now_iso(),
+        completed_at: Some(now_iso()),
+        topic,
+        qos,
+        retained,
+        valid_json,
+        command: Some(command.clone()),
+        status: if duplicate {
+            CommandAckStatus::Duplicate
+        } else {
+            CommandAckStatus::Rejected
+        },
+        policy_id: policy_id.clone(),
+        reason_code: Some(reason_code.to_string()),
+        message: message.to_string(),
+        result: Value::Null,
+        duplicate_of: duplicate.then_some(command.command_id),
+    };
+    let mut ack = CommandAck::new(
+        &command,
+        record.status,
+        gateway_source(),
+        message.to_string(),
+    )
+    .with_reason(reason_code);
+    if let Some(policy_id) = &policy_id {
+        ack = ack.with_policy(policy_id.clone());
+    }
+    enqueue_ack_locked(state, &ack)?;
+    store_terminal_command_locked(state, record.clone())?;
+    push_event_locked(
+        state,
+        "command.rejected",
+        json!({
+            "command_id":command.command_id,
+            "command_type":command.command_type,
+            "reason_code":reason_code,
+            "policy_id":policy_id
+        }),
+    );
+    Ok(record)
+}
+
+fn store_terminal_command_locked(
+    state: &mut GatewayState,
+    record: CommandRecord,
+) -> Result<(), String> {
+    state.command_ledger.insert(record.command_id, record.clone());
+    state.command_order.push_back(record.command_id);
+    while state.command_order.len() > state.config.storage.command_ledger_limit {
+        if let Some(oldest) = state.command_order.pop_front() {
+            state.command_ledger.remove(&oldest);
+        }
+    }
+    push_recent_command_locked(state, record.clone());
+    persist_command_ledger(
+        &state.config.command_ledger_path(),
+        &state.command_ledger,
+        &state.command_order,
+    )?;
+    append_json_line(&state.config.command_audit_path(), &record)
+}
+
+fn push_recent_command_locked(state: &mut GatewayState, record: CommandRecord) {
+    state.commands.push_back(record);
+    while state.commands.len() > state.config.server.history_limit {
+        state.commands.pop_front();
+    }
+}
+
+fn enqueue_ack_locked(state: &GatewayState, ack: &CommandAck) -> Result<PathBuf, String> {
+    let prefix = state.config.mqtt.topic_prefix.trim_matches('/');
+    let message = OutboundMessage {
+        id: Uuid::new_v4(),
+        created_at: now_iso(),
+        kind: "command_ack".to_string(),
+        topic: format!("{prefix}/acks/{}", ack.command_id),
+        qos: state.config.commands.ack_qos,
+        retain: state.config.commands.ack_retain,
+        payload: serde_json::to_string(ack).map_err(|error| error.to_string())?,
+        source_event_id: None,
+    };
+    write_outbox_message(&state.config.outbox_dir(), &message)
+}
+
+fn enqueue_virtual_state_locked(
+    state: &GatewayState,
+    update: &VirtualDeviceState,
+) -> Result<PathBuf, String> {
+    let prefix = state.config.mqtt.topic_prefix.trim_matches('/');
+    let message = OutboundMessage {
+        id: Uuid::new_v4(),
+        created_at: now_iso(),
+        kind: "virtual_device_state".to_string(),
+        topic: format!(
+            "{prefix}/state/{}/{}",
+            plural_subject(&update.device_type),
+            topic_segment(&update.id)
+        ),
+        qos: state.config.mqtt.qos,
+        retain: true,
+        payload: serde_json::to_string(update).map_err(|error| error.to_string())?,
+        source_event_id: None,
+    };
+    write_outbox_message(&state.config.outbox_dir(), &message)
+}
+
+fn ensure_outbox_capacity(state: &GatewayState, additional: usize) -> Result<(), String> {
+    let pending = count_outbox(&state.config.outbox_dir());
+    if pending.saturating_add(additional) > state.config.storage.outbox_limit {
+        Err(format!(
+            "outbox limit {} would be exceeded",
+            state.config.storage.outbox_limit
+        ))
+    } else {
+        Ok(())
+    }
+}
+
+fn synthetic_command(command_id: Uuid, topic: &str) -> NetCoreCommand {
+    let mut command = NetCoreCommand::new(
+        "command.invalid",
+        CommandSource::new("mqtt-openlab", "unparsed-publisher"),
+        CommandTarget::new("command", topic_segment(topic)),
+        Value::Null,
+        30,
+    );
+    command.command_id = command_id;
+    command
+}
+
+fn gateway_source() -> CommandSource {
+    let instance = fs::read_to_string("/etc/hostname")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| "iot-gateway".to_string());
+    CommandSource::new("netcore-iot-gateway", instance)
 }
 
 fn push_event_locked(state: &mut GatewayState, kind: &str, detail: Value) {
@@ -562,7 +1140,7 @@ fn push_event_locked(state: &mut GatewayState, kind: &str, detail: Value) {
 }
 
 fn now_iso() -> String {
-    Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
+    Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true)
 }
 
 fn plural_subject(value: &str) -> String {
@@ -575,6 +1153,9 @@ fn plural_subject(value: &str) -> String {
         "transfer" => "transfers".to_string(),
         "command" => "commands".to_string(),
         "sds" => "sds".to_string(),
+        "virtual_relay" => "virtual_relays".to_string(),
+        "virtual_light" => "virtual_lights".to_string(),
+        "virtual_button" => "virtual_buttons".to_string(),
         other if other.ends_with('s') => other.to_string(),
         other => format!("{other}s"),
     }
@@ -632,8 +1213,10 @@ fn list_outbox(directory: &Path, limit: usize) -> Vec<OutboxEntrySummary> {
                 .to_string();
             match fs::read_to_string(&path)
                 .map_err(|error| error.to_string())
-                .and_then(|raw| serde_json::from_str::<OutboundMessage>(&raw).map_err(|error| error.to_string()))
-            {
+                .and_then(|raw| {
+                    serde_json::from_str::<OutboundMessage>(&raw)
+                        .map_err(|error| error.to_string())
+                }) {
                 Ok(message) => OutboxEntrySummary {
                     file_name,
                     id: Some(message.id),
@@ -663,13 +1246,23 @@ fn list_outbox(directory: &Path, limit: usize) -> Vec<OutboxEntrySummary> {
         .collect()
 }
 
-fn load_dedup(path: &Path, limit: usize) -> Result<(HashSet<Uuid>, VecDeque<Uuid>), Box<dyn std::error::Error>> {
+fn load_dedup(
+    path: &Path,
+    limit: usize,
+) -> Result<(HashSet<Uuid>, VecDeque<Uuid>), Box<dyn std::error::Error>> {
     if !path.exists() {
         return Ok((HashSet::new(), VecDeque::new()));
     }
     let raw = fs::read_to_string(path)?;
     let values = serde_json::from_str::<Vec<Uuid>>(&raw)?;
-    let order: VecDeque<_> = values.into_iter().rev().take(limit).collect::<Vec<_>>().into_iter().rev().collect();
+    let order: VecDeque<_> = values
+        .into_iter()
+        .rev()
+        .take(limit)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .collect();
     let set = order.iter().copied().collect();
     Ok((set, order))
 }
@@ -678,6 +1271,66 @@ fn persist_dedup(path: &Path, order: &VecDeque<Uuid>) -> Result<(), String> {
     let temporary = path.with_extension("json.tmp");
     let values: Vec<_> = order.iter().copied().collect();
     let raw = serde_json::to_vec(&values).map_err(|error| error.to_string())?;
+    fs::write(&temporary, raw).map_err(|error| error.to_string())?;
+    fs::rename(&temporary, path).map_err(|error| error.to_string())
+}
+
+fn load_command_ledger(
+    path: &Path,
+    limit: usize,
+) -> Result<(HashMap<Uuid, CommandRecord>, VecDeque<Uuid>), Box<dyn std::error::Error>> {
+    if !path.exists() {
+        return Ok((HashMap::new(), VecDeque::new()));
+    }
+    let raw = fs::read_to_string(path)?;
+    let records = serde_json::from_str::<Vec<CommandRecord>>(&raw)?;
+    let records = records
+        .into_iter()
+        .rev()
+        .take(limit)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .collect::<Vec<_>>();
+    let order = records.iter().map(|record| record.command_id).collect();
+    let ledger = records
+        .into_iter()
+        .map(|record| (record.command_id, record))
+        .collect();
+    Ok((ledger, order))
+}
+
+fn persist_command_ledger(
+    path: &Path,
+    ledger: &HashMap<Uuid, CommandRecord>,
+    order: &VecDeque<Uuid>,
+) -> Result<(), String> {
+    let temporary = path.with_extension("json.tmp");
+    let records = order
+        .iter()
+        .filter_map(|command_id| ledger.get(command_id))
+        .collect::<Vec<_>>();
+    let raw = serde_json::to_vec_pretty(&records).map_err(|error| error.to_string())?;
+    fs::write(&temporary, raw).map_err(|error| error.to_string())?;
+    fs::rename(&temporary, path).map_err(|error| error.to_string())
+}
+
+fn load_virtual_devices(
+    path: &Path,
+) -> Result<BTreeMap<String, VirtualDeviceState>, Box<dyn std::error::Error>> {
+    if !path.exists() {
+        return Ok(BTreeMap::new());
+    }
+    let raw = fs::read_to_string(path)?;
+    Ok(serde_json::from_str(&raw)?)
+}
+
+fn persist_virtual_devices(
+    path: &Path,
+    devices: &BTreeMap<String, VirtualDeviceState>,
+) -> Result<(), String> {
+    let temporary = path.with_extension("json.tmp");
+    let raw = serde_json::to_vec_pretty(devices).map_err(|error| error.to_string())?;
     fs::write(&temporary, raw).map_err(|error| error.to_string())?;
     fs::rename(&temporary, path).map_err(|error| error.to_string())
 }
@@ -704,5 +1357,14 @@ mod tests {
         assert_eq!(topic_segment("rack/01+#"), "rack_01__");
         assert_eq!(plural_subject("subscriber"), "subscribers");
         assert_eq!(plural_subject("sds"), "sds");
+        assert_eq!(plural_subject("virtual_relay"), "virtual_relays");
+    }
+
+    #[test]
+    fn synthetic_command_uses_the_candidate_id() {
+        let command_id = Uuid::new_v4();
+        let command = synthetic_command(command_id, "netcore/v1/commands/broken");
+        assert_eq!(command.command_id, command_id);
+        command.validate().unwrap();
     }
 }

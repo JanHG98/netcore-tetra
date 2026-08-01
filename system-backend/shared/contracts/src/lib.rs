@@ -10,6 +10,7 @@
 // Was: Bindet das Untermodul address in diesen Bereich ein.
 // Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod address;
+mod command;
 // Was: Bindet das Untermodul envelope in diesen Bereich ein.
 // Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod envelope;
@@ -30,6 +31,11 @@ mod problem;
 mod service;
 
 pub use address::{AddressError, Gssi, Issi, Ssi};
+pub use command::{
+    CommandAck, CommandAckStatus, CommandPolicyDecision, CommandSource, CommandTarget,
+    CommandValidationError, NETCORE_COMMAND_ACK_SCHEMA_V1, NETCORE_COMMAND_SCHEMA_V1,
+    NetCoreCommand, is_command_type,
+};
 pub use envelope::{ApiVersion, DeliverySemantics, Envelope, EnvelopeMeta, MessageKind, TraceContext};
 pub use event::{
     AuditRecord, EventRecord, EventSource, EventSubject, EventValidationError, NetCoreEvent,

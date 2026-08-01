@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:netcore:schema:command-ack:v1",
+  "title": "NetCore Command Ack v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "ack_id",
+    "command_id",
+    "command_type",
+    "status",
+    "source",
+    "timestamp",
+    "target",
+    "message",
+    "result"
+  ],
+  "properties": {
+    "schema": {"const": "netcore-command-ack-v1"},
+    "ack_id": {"type": "string", "format": "uuid"},
+    "command_id": {"type": "string", "format": "uuid"},
+    "command_type": {
+      "type": "string",
+      "maxLength": 160,
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"
+    },
+    "status": {
+      "enum": ["received", "accepted", "rejected", "executing", "succeeded", "failed", "duplicate"]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["service", "instance"],
+      "properties": {
+        "service": {"type": "string", "minLength": 1, "maxLength": 128},
+        "instance": {"type": "string", "minLength": 1, "maxLength": 128},
+        "actor": {"type": "string", "minLength": 1, "maxLength": 160}
+      }
+    },
+    "timestamp": {"type": "string", "format": "date-time"},
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id"],
+      "properties": {
+        "type": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+        "id": {"type": "string", "minLength": 1, "maxLength": 256}
+      }
+    },
+    "policy_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "reason_code": {"type": "string", "minLength": 1, "maxLength": 128},
+    "message": {"type": "string", "maxLength": 1024},
+    "result": true,
+    "correlation_id": {"type": "string", "format": "uuid"},
+    "labels": {
+      "type": "object",
+      "maxProperties": 64,
+      "propertyNames": {"pattern": "^[a-z0-9_.-]{1,96}$"},
+      "additionalProperties": {"type": "string", "maxLength": 256}
+    }
+  }
+}

@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use netcore_contracts::{CommandAckStatus, NetCoreCommand};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
@@ -74,15 +75,22 @@ pub struct BridgeEventRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ObservedCommand {
+pub struct CommandRecord {
     pub command_id: Uuid,
     pub received_at: String,
+    pub completed_at: Option<String>,
     pub topic: String,
-    pub payload: String,
+    pub qos: u8,
+    pub retained: bool,
     pub valid_json: bool,
-    pub parsed: Option<Value>,
-    pub status: String,
-    pub warning: String,
+    pub command: Option<NetCoreCommand>,
+    pub status: CommandAckStatus,
+    pub policy_id: Option<String>,
+    pub reason_code: Option<String>,
+    pub message: String,
+    #[serde(default)]
+    pub result: Value,
+    pub duplicate_of: Option<Uuid>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -92,7 +100,12 @@ pub struct TopicRegistry {
     pub state_pattern: String,
     pub service_state_topic: String,
     pub command_subscription: Option<String>,
+    pub command_schema: &'static str,
+    pub acknowledgement_pattern: String,
+    pub acknowledgement_schema: &'static str,
     pub command_execution_enabled: bool,
+    pub command_execution_mode: String,
+    pub policy_count: usize,
     pub qos: u8,
     pub event_retain: bool,
     pub state_retain: bool,
@@ -103,6 +116,7 @@ pub struct TopicRegistry {
 pub struct GatewayStatus {
     pub service: &'static str,
     pub version: &'static str,
+    pub phase: u8,
     pub started_at: String,
     pub security_mode: &'static str,
     pub warning: &'static str,
@@ -124,9 +138,21 @@ pub struct GatewayStatus {
     pub events_published: u64,
     pub duplicates_skipped: u64,
     pub invalid_events: u64,
+    /// Compatibility alias for the Phase-3 status field.
     pub commands_observed: u64,
+    pub commands_received: u64,
+    pub commands_accepted: u64,
+    pub commands_rejected: u64,
     pub commands_executed: u64,
+    pub commands_failed: u64,
+    pub command_duplicates: u64,
+    pub commands_expired: u64,
+    pub retained_commands_rejected: u64,
+    pub command_dry_runs: u64,
     pub command_execution_enabled: bool,
+    pub command_execution_mode: String,
+    pub command_policy_count: usize,
+    pub virtual_devices: usize,
     pub last_poll_at: Option<String>,
 }
 

@@ -1,16 +1,16 @@
-# OPEN LAB
+# OPEN-LAB-Modus Phase 4
 
-Der Dienst besitzt in Phase 3 absichtlich keine Authentisierung und keine
-Transportverschlüsselung. Jeder Client mit Netzwerkkontakt kann:
+Der IoT Gateway besitzt weiterhin keine Authentisierung und keine Verschlüsselung. Jeder Teilnehmer im erreichbaren Netzwerk kann MQTT-Nachrichten publizieren und Management-Endpunkte aufrufen.
 
-- Status und Events lesen;
-- Polling und Reconnect auslösen;
-- Testnachrichten unterhalb des NetCore-Präfixes veröffentlichen;
-- MQTT-Commands einspeisen, die protokolliert, aber nicht ausgeführt werden.
+Die Schutzgrenze liegt deshalb bewusst innerhalb der Fachlogik:
 
-Der lokale Mosquitto-Broker akzeptiert anonyme Clients. Diese Konfiguration darf
-nicht ins Internet, in ein Gastnetz oder in ein fremd administriertes VLAN
-exponiert werden.
+- `default_deny = true`;
+- nur explizite Allow-Policies;
+- Deny gewinnt;
+- nur virtuelle Sandbox-Executor;
+- Standardpolicies nur für Ziel-IDs unter `lab-`;
+- keine GPIO-, Homematic-, Modbus-, Tür-, Tor- oder Stromschalt-Adapter;
+- Retained Commands verboten;
+- TTL und Dublettensperre verpflichtend.
 
-Die harte Schutzgrenze der Phase 3 ist `execute_commands = false`. Der Dienst
-verweigert den Start, wenn diese Option aktiviert wird.
+Das ist kein Ersatz für spätere Authentisierung. Die Angaben `source.service`, `source.instance` und `source.actor` sind im OPEN LAB nicht beweiskräftig.

@@ -1,34 +1,34 @@
-# Architektur
+# Architektur des IoT Gateways – Phase 4
+
+## Komponenten
+
+- Event-Poller für vier `netcore-event-v1`-Quellen
+- MQTT-3.1.1-Client mit QoS 0/1 und Last Will
+- persistente Publish-Outbox
+- Event-Deduplizierung
+- Command-Parser und Contract-Validierung
+- Zeitfenster- und Retain-Prüfung
+- persistente Command-Deduplizierung
+- Policy-Engine mit Default Deny und Deny-Vorrang
+- OPEN-LAB-Sandbox-Executor
+- Command-Ack-Publisher
+- persistenter virtueller Gerätezustand
+- WebUI/API/Metrics
+
+## Command-Sequenz
 
 ```text
-Node Gateway ───────┐
-Mobility Core ──────┤ GET /api/v1/events/netcore
-Call Control ───────┤
-SDS Router ─────────┘
-         │
-         ▼
- NetCore IoT Gateway
- ├─ Vertrag prüfen
- ├─ event_id deduplizieren
- ├─ Topic ableiten
- ├─ Datei-Outbox
- ├─ MQTT 3.1.1 / QoS 0-1
- ├─ retained Subject-State
- ├─ Command-Inbox (nur Beobachtung)
- └─ WebUI/API/Metrics
-         │
-         ▼
-       Broker
-         ├─ Home Assistant (spätere Phase)
-         ├─ Homematic-Adapter (spätere Phase)
-         ├─ Edge-I/O
-         └─ Automationen
+MQTT PUBLISH command
+  → MQTT-PUBACK an Publisher
+  → JSON/Schema prüfen
+  → command_id gegen Ledger prüfen
+  → Retain und Zeitfenster prüfen
+  → Policy auswerten
+  → accepted/executing Ack in Outbox
+  → Sandbox-Executor
+  → virtuellen Zustand persistieren
+  → succeeded/failed Ack in Outbox
+  → terminales Ledger und Audit persistieren
 ```
 
-Der Gateway verändert Eventpayloads nicht. MQTT ist ein Transportadapter und
-keine zweite fachliche Datenbank. Die Phase-2-Produzenten bleiben Besitzer der
-jeweiligen Wahrheit.
-
-Die aktuelle Polling-Schnittstelle ist bewusst einfach und mit den bestehenden
-Diensten kompatibel. Ein späterer interner Eventbus kann denselben Vertrag
-verwenden, ohne Topics oder Verbraucher zu ändern.
+Transport-PUBACK und Fach-Ack sind absichtlich getrennt.

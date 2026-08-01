@@ -1,3 +1,4 @@
+mod command;
 mod config;
 mod http;
 mod model;
@@ -46,15 +47,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "IoT Gateway starts in OPEN LAB mode: no login, no tokens, no MQTT credentials and no TLS"
     );
     tracing::warn!(
-        "Phase 3 observes MQTT command topics but never executes commands; policy and acknowledgements follow in Phase 4"
+        "Phase 4 command execution is enabled only inside the policy-controlled OPEN-LAB sandbox"
     );
     tracing::info!(
-        "IoT Gateway WebUI/API={} MQTT={}:{} prefix={} sources={}",
+        "IoT Gateway WebUI/API={} MQTT={}:{} prefix={} sources={} command_mode={} policies={}",
         config.server.bind,
         config.mqtt.host,
         config.mqtt.port,
         config.mqtt.topic_prefix,
-        config.sources.iter().filter(|source| source.enabled).count()
+        config.sources.iter().filter(|source| source.enabled).count(),
+        config.commands.mode,
+        config.command_policies.iter().filter(|policy| policy.enabled).count()
     );
 
     let state = SharedGateway::new(config.clone())?;

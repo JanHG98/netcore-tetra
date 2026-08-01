@@ -1,5 +1,6 @@
-# NetCore IoT Gateway – Phase 3 / OPEN LAB
+# NetCore IoT Gateway – Phase 4 / OPEN LAB
 # Keine Anmeldung, keine Tokens, kein TLS. Nur im isolierten Testnetz verwenden.
+# Reale Aktoren sind nicht enthalten; die mitgelieferten Policies erlauben nur lab-* Sandbox-Geräte.
 
 [server]
 bind = "0.0.0.0:8240"
@@ -23,20 +24,69 @@ qos = 1
 event_retain = false
 state_retain = true
 observe_commands = true
+# Alt-Switch aus Phase 3. Muss false bleiben; Phase 4 nutzt [commands].enabled.
 execute_commands = false
+
+[commands]
+enabled = true
+mode = "open_lab_sandbox"
+default_deny = true
+allow_retained = false
+default_ttl_secs = 30
+max_ttl_secs = 300
+max_future_skew_secs = 30
+publish_lifecycle_acks = true
+ack_qos = 1
+ack_retain = false
 
 [storage]
 state_dir = "/var/lib/netcore-iot-gateway"
 outbox_dir = "outbox"
 dedup_file = "dedup.json"
 command_inbox_file = "command-inbox.ndjson"
+command_ledger_file = "command-ledger.json"
+command_audit_file = "command-audit.ndjson"
+virtual_state_file = "virtual-device-state.json"
 dedup_limit = 50000
 outbox_limit = 20000
+command_ledger_limit = 50000
 
 [polling]
 interval_ms = 2000
 batch_limit = 500
 request_timeout_ms = 2500
+
+# Default Deny: Nur Commands, die eine Allow-Policy treffen, werden ausgeführt.
+# Eine passende Deny-Policy würde jede Allow-Policy überstimmen.
+[[command_policies]]
+id = "allow-openlab-virtual-relays"
+enabled = true
+effect = "allow"
+command_types = ["virtual.relay.set"]
+target_types = ["virtual_relay"]
+target_prefixes = ["lab-"]
+max_ttl_secs = 120
+allow_dry_run = true
+
+[[command_policies]]
+id = "allow-openlab-virtual-lights"
+enabled = true
+effect = "allow"
+command_types = ["virtual.light.set"]
+target_types = ["virtual_light"]
+target_prefixes = ["lab-"]
+max_ttl_secs = 120
+allow_dry_run = true
+
+[[command_policies]]
+id = "allow-openlab-virtual-buttons"
+enabled = true
+effect = "allow"
+command_types = ["virtual.button.press"]
+target_types = ["virtual_button"]
+target_prefixes = ["lab-"]
+max_ttl_secs = 60
+allow_dry_run = true
 
 # Die vier Phase-2-Produzenten. Hostnamen durch LXC-IP ersetzen, falls im Netz
 # keine passenden DNS-/Hosts-Einträge existieren.

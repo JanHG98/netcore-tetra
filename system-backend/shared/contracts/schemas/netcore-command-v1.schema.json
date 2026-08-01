@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:netcore:schema:command:v1",
+  "title": "NetCore Command v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "command_id",
+    "command_type",
+    "source",
+    "requested_at",
+    "expires_at",
+    "target",
+    "payload"
+  ],
+  "properties": {
+    "schema": {"const": "netcore-command-v1"},
+    "command_id": {"type": "string", "format": "uuid"},
+    "command_type": {
+      "type": "string",
+      "maxLength": 160,
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["service", "instance"],
+      "properties": {
+        "service": {"type": "string", "minLength": 1, "maxLength": 128},
+        "instance": {"type": "string", "minLength": 1, "maxLength": 128},
+        "actor": {"type": "string", "minLength": 1, "maxLength": 160}
+      }
+    },
+    "requested_at": {"type": "string", "format": "date-time"},
+    "expires_at": {"type": "string", "format": "date-time"},
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "id": {"type": "string", "minLength": 1, "maxLength": 256}
+      }
+    },
+    "payload": true,
+    "dry_run": {"type": "boolean", "default": false},
+    "correlation_id": {"type": "string", "format": "uuid"},
+    "causation_id": {"type": "string", "format": "uuid"},
+    "idempotency_key": {"type": "string", "minLength": 1, "maxLength": 320},
+    "labels": {
+      "type": "object",
+      "maxProperties": 64,
+      "propertyNames": {"pattern": "^[a-z0-9_.-]{1,96}$"},
+      "additionalProperties": {"type": "string", "maxLength": 256}
+    }
+  }
+}

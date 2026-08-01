@@ -70,4 +70,4 @@ Prüft die gemeinsamen Rust-Crates, JSON-Schemas, build-freien WebUI-Assets, Ope
 `check_iot_gateway.py` prüft den Phase-3-IoT-Gateway statisch: Workspace- und
 Servicekatalog-Einbindung, OPEN-LAB-Konfiguration, vier Eventproduzenten,
 Port 8240, persistente Outbox, MQTT-Protokollpfad, WebUI/API sowie die harte
-Sperre gegen Command-Ausführung vor Phase 4.
+Prüft ab Phase 4 den Default-Deny-Command/Ack-Pfad, Retain-Sperre, Ledger und ausschließlich virtuelle OPEN-LAB-Executor.

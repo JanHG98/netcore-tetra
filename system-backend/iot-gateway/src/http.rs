@@ -5,6 +5,7 @@ use std::thread;
 
 use serde::Serialize;
 use serde_json::json;
+use uuid::Uuid;
 
 use crate::config::IotGatewayConfig;
 use crate::model::{ActionResult, TestPublishInput};
@@ -81,6 +82,17 @@ fn route(
     if request.method == "OPTIONS" {
         return empty(204);
     }
+    if request.method == "GET" {
+        if let Some(raw_id) = request.path.strip_prefix("/api/v1/commands/") {
+            return match Uuid::parse_str(raw_id) {
+                Ok(command_id) => match state.command(command_id) {
+                    Some(record) => json_response(200, &record),
+                    None => json_response(404, &json!({"error":"command not found"})),
+                },
+                Err(error) => json_response(400, &json!({"error":format!("invalid command UUID: {error}")})),
+            };
+        }
+    }
     match (request.method.as_str(), request.path.as_str()) {
         ("GET", "/") => html(INDEX_HTML),
         ("GET", "/health/live") => json_response(200, &json!({"status":"live"})),
@@ -104,6 +116,8 @@ fn route(
             let limit = query_limit(&request.query, 100, 2_000);
             json_response(200, &state.commands(limit))
         }
+        ("GET", "/api/v1/policies") => json_response(200, &state.command_policies()),
+        ("GET", "/api/v1/virtual-devices") => json_response(200, &state.virtual_devices()),
         ("GET", "/api/v1/outbox") => {
             let limit = query_limit(&request.query, 100, 2_000);
             json_response(200, &state.outbox_entries(limit))
@@ -127,6 +141,19 @@ fn route(
                     message: "MQTT reconnect requested".to_string(),
                 },
             )
+        }
+        ("POST", "/api/v1/test/command") => {
+            if request.body.is_empty() {
+                return json_response(400, &json!({"error":"netcore-command-v1 JSON body is required"}));
+            }
+            let topic = format!(
+                "{}/commands/http-test",
+                config.mqtt.topic_prefix.trim_matches('/')
+            );
+            match state.process_command(topic, request.body, 0, false) {
+                Ok(record) => json_response(200, &record),
+                Err(error) => json_response(409, &json!({"error":error})),
+            }
         }
         ("POST", "/api/v1/test/publish") => {
             let input = if request.body.is_empty() {
@@ -180,7 +207,7 @@ fn openapi() -> serde_json::Value {
         "info":{
             "title":"NetCore IoT Gateway",
             "version":env!("CARGO_PKG_VERSION"),
-            "description":"Phase 3 MQTT bridge in OPEN LAB mode. No login, no tokens and no TLS. MQTT commands are observed but never executed."
+            "description":"Phase 4 MQTT bridge and policy-controlled Command/Ack sandbox in OPEN LAB mode. No login, no tokens and no TLS."
         },
         "paths":{
             "/api/v1/status":{"get":{}},
@@ -188,9 +215,13 @@ fn openapi() -> serde_json::Value {
             "/api/v1/topics":{"get":{}},
             "/api/v1/events":{"get":{}},
             "/api/v1/commands":{"get":{}},
+            "/api/v1/commands/{command_id}":{"get":{}},
+            "/api/v1/policies":{"get":{}},
+            "/api/v1/virtual-devices":{"get":{}},
             "/api/v1/outbox":{"get":{}},
             "/api/v1/actions/poll-now":{"post":{}},
             "/api/v1/actions/reconnect":{"post":{}},
+            "/api/v1/test/command":{"post":{}},
             "/api/v1/test/publish":{"post":{}},
             "/health/live":{"get":{}},
             "/health/ready":{"get":{}},
@@ -368,27 +399,33 @@ fn reason_phrase(status: u16) -> &'static str {
     }
 }
 
-const INDEX_HTML: &str = r#"<!doctype html>
+const INDEX_HTML: &str = r##"<!doctype html>
 <html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>NetCore IoT Gateway</title>
 <style>
-:root{color-scheme:dark;--bg:#08111f;--panel:#101d31;--line:#263a59;--text:#edf4ff;--muted:#93a8c8;--ok:#4ade80;--warn:#facc15;--bad:#fb7185;--accent:#38bdf8}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif}.wrap{max-width:1550px;margin:auto;padding:20px}.lab{background:#7f1d1d;border:2px solid var(--bad);padding:14px 18px;border-radius:12px;font-weight:850}.sub{color:var(--muted);margin-top:-10px}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px;margin:18px 0}.card,.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}.value{font-size:1.85rem;font-weight:850}.label,.small{color:var(--muted)}.panel{margin-top:14px;overflow:auto}table{width:100%;border-collapse:collapse;min-width:880px}th,td{text-align:left;padding:9px;border-bottom:1px solid var(--line);vertical-align:top}button{border:0;border-radius:8px;padding:9px 12px;background:var(--accent);font-weight:850;cursor:pointer;margin-right:7px}.danger{background:var(--bad)}.pill{padding:3px 8px;border-radius:99px;font-size:.8rem;font-weight:800}.online{background:#14532d}.offline{background:#4c0519}.warn{background:#713f12}pre{white-space:pre-wrap;font-size:.82rem;color:#cbd9ef;max-height:380px;overflow:auto}code{color:#bae6fd}.toolbar{display:flex;flex-wrap:wrap;gap:8px}.mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.83rem}
+:root{color-scheme:dark;--bg:#08111f;--panel:#101d31;--line:#263a59;--text:#edf4ff;--muted:#93a8c8;--ok:#4ade80;--warn:#facc15;--bad:#fb7185;--accent:#38bdf8}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif}.wrap{max-width:1650px;margin:auto;padding:20px}.lab{background:#7f1d1d;border:2px solid var(--bad);padding:14px 18px;border-radius:12px;font-weight:850}.sub{color:var(--muted);margin-top:-10px}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;margin:18px 0}.card,.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}.value{font-size:1.75rem;font-weight:850}.label,.small{color:var(--muted)}.panel{margin-top:14px;overflow:auto}table{width:100%;border-collapse:collapse;min-width:900px}th,td{text-align:left;padding:9px;border-bottom:1px solid var(--line);vertical-align:top}button{border:0;border-radius:8px;padding:9px 12px;background:var(--accent);font-weight:850;cursor:pointer;margin:3px}.danger{background:var(--bad)}.safe{background:var(--ok)}.pill{padding:3px 8px;border-radius:99px;font-size:.8rem;font-weight:800}.online,.succeeded{background:#14532d}.offline,.rejected,.failed{background:#4c0519}.warn,.duplicate,.accepted,.executing{background:#713f12}pre{white-space:pre-wrap;font-size:.82rem;color:#cbd9ef;max-height:380px;overflow:auto}code{color:#bae6fd}.toolbar{display:flex;flex-wrap:wrap;gap:5px}.mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.83rem}
 </style></head><body><div class="wrap">
-<div class="lab">⚠ OPEN LAB: KEIN LOGIN, KEINE TOKENS, KEIN TLS. MQTT ist anonym. Eingehende Commands werden nur protokolliert und in Phase 3 niemals ausgeführt.</div>
-<h1>NetCore IoT Gateway</h1><p class="sub">netcore-event-v1 → MQTT, persistente Outbox, Retained States und Command-Beobachtung</p>
-<div class="toolbar"><button onclick="post('/api/v1/actions/poll-now')">Jetzt pollen</button><button onclick="post('/api/v1/actions/reconnect')">MQTT neu verbinden</button><button onclick="testPublish()">Testnachricht senden</button></div>
+<div class="lab">⚠ OPEN LAB: KEIN LOGIN, KEINE TOKENS, KEIN TLS. MQTT ist anonym. Phase 4 führt ausschließlich policy-erlaubte virtuelle Lab-Aktoren aus; reale Hardware bleibt gesperrt.</div>
+<h1>NetCore IoT Gateway – Phase 4</h1><p class="sub">netcore-event-v1 → MQTT · netcore-command-v1 → Policy → Sandbox-Executor → netcore-command-ack-v1</p>
+<div class="toolbar"><button onclick="post('/api/v1/actions/poll-now')">Jetzt pollen</button><button onclick="post('/api/v1/actions/reconnect')">MQTT neu verbinden</button><button onclick="testRelay(true)">Lab-Relais EIN</button><button onclick="testRelay(false)">Lab-Relais AUS</button><button onclick="testLight()">Lab-Licht 42 %</button><button onclick="testDryRun()">Dry-Run</button></div>
 <div id="cards" class="cards"></div>
+<div class="panel"><h2>Command Policies – Default Deny</h2><table><thead><tr><th>Effekt</th><th>ID</th><th>Command Types</th><th>Target Types</th><th>Target Prefix</th><th>TTL</th></tr></thead><tbody id="policies"></tbody></table></div>
+<div class="panel"><h2>Virtuelle OPEN-LAB-Geräte</h2><table><thead><tr><th>Typ</th><th>ID</th><th>Zustand</th><th>Aktualisiert</th><th>Command</th></tr></thead><tbody id="devices"></tbody></table></div>
+<div class="panel"><h2>Commands und terminale Acks</h2><table><thead><tr><th>Zeit</th><th>Status</th><th>Command</th><th>Ziel</th><th>Policy / Grund</th><th>Ergebnis</th></tr></thead><tbody id="commands"></tbody></table></div>
 <div class="panel"><h2>Event-Quellen</h2><table><thead><tr><th>Status</th><th>Quelle</th><th>URL</th><th>Letzter Erfolg</th><th>Zähler</th><th>Fehler</th></tr></thead><tbody id="sources"></tbody></table></div>
 <div class="panel"><h2>Topic Registry</h2><pre id="topics"></pre></div>
 <div class="panel"><h2>Persistente MQTT-Outbox</h2><table><thead><tr><th>Zeit</th><th>Art</th><th>Topic</th><th>QoS</th><th>Retain</th><th>Datei</th></tr></thead><tbody id="outbox"></tbody></table></div>
-<div class="panel"><h2>Beobachtete Commands – keine Ausführung</h2><table><thead><tr><th>Zeit</th><th>Topic</th><th>Status</th><th>Payload</th></tr></thead><tbody id="commands"></tbody></table></div>
 <div class="panel"><h2>Gateway-Ereignisse</h2><pre id="events"></pre></div>
 </div><script>
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 async function getj(u){const r=await fetch(u);const t=await r.text();if(!r.ok)throw new Error(t);return t?JSON.parse(t):{}}
 async function post(u,b){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:b?JSON.stringify(b):''});const t=await r.text();if(!r.ok)throw new Error(t);await refresh();return t?JSON.parse(t):{}}
 const card=(l,v)=>`<div class="card"><div class="value">${esc(v)}</div><div class="label">${esc(l)}</div></div>`;
-async function testPublish(){try{await post('/api/v1/test/publish',{payload:{message:'Hallo aus der IoT-Gateway-WebUI',timestamp:new Date().toISOString()},retain:false})}catch(e){alert(e.message)}}
-async function refresh(){try{const [s,src,top,out,cmd,ev]=await Promise.all([getj('/api/v1/status'),getj('/api/v1/sources'),getj('/api/v1/topics'),getj('/api/v1/outbox?limit=100'),getj('/api/v1/commands?limit=50'),getj('/api/v1/events?limit=100')]);document.querySelector('#cards').innerHTML=[card('MQTT',s.mqtt_connected?'ONLINE':'OFFLINE'),card('Quellen gesund',`${s.sources_healthy}/${s.sources_enabled}`),card('Outbox',s.outbox_pending),card('Events erkannt',s.events_seen),card('MQTT bestätigt',s.events_published),card('Duplikate',s.duplicates_skipped),card('Commands beobachtet',s.commands_observed),card('Commands ausgeführt',s.commands_executed)].join('');document.querySelector('#sources').innerHTML=src.map(x=>`<tr><td><span class="pill ${x.healthy?'online':'offline'}">${x.healthy?'ONLINE':'FEHLER'}</span></td><td><b>${esc(x.id)}</b></td><td class="mono">${esc(x.url)}</td><td>${esc(x.last_success_at||'-')}</td><td>gesehen ${x.events_seen}<br>queued ${x.events_enqueued}<br>doppelt ${x.duplicates_skipped}</td><td>${esc(x.last_error||'-')}</td></tr>`).join('')||'<tr><td colspan="6">Keine Quellen konfiguriert.</td></tr>';document.querySelector('#topics').textContent=JSON.stringify(top,null,2);document.querySelector('#outbox').innerHTML=out.map(x=>`<tr><td>${esc(x.created_at||'-')}</td><td>${esc(x.kind||'unlesbar')}</td><td class="mono">${esc(x.topic||x.error||'-')}</td><td>${esc(x.qos??'-')}</td><td>${esc(x.retain??'-')}</td><td class="mono">${esc(x.file_name)}</td></tr>`).join('')||'<tr><td colspan="6">Outbox leer.</td></tr>';document.querySelector('#commands').innerHTML=cmd.map(x=>`<tr><td>${esc(x.received_at)}</td><td class="mono">${esc(x.topic)}</td><td><span class="pill warn">NICHT AUSGEFÜHRT</span></td><td><pre>${esc(x.payload)}</pre></td></tr>`).join('')||'<tr><td colspan="4">Noch keine Commands beobachtet.</td></tr>';document.querySelector('#events').textContent=ev.map(x=>`${x.timestamp} ${x.kind} ${JSON.stringify(x.detail)}`).join('\n')}catch(e){document.querySelector('#events').textContent='Fehler: '+e.message}}
+function command(type,targetType,targetId,payload,dryRun=false){const now=new Date();const expires=new Date(now.getTime()+30000);return {schema:'netcore-command-v1',command_id:crypto.randomUUID(),command_type:type,source:{service:'iot-gateway-webui',instance:'browser-openlab',actor:'webui-user'},requested_at:now.toISOString(),expires_at:expires.toISOString(),target:{type:targetType,id:targetId},payload,dry_run:dryRun,idempotency_key:crypto.randomUUID(),labels:{environment:'open_lab'}}}
+async function runCommand(c){try{const r=await post('/api/v1/test/command',c);alert(`${r.status}: ${r.message}`)}catch(e){alert(e.message)}}
+const testRelay=state=>runCommand(command('virtual.relay.set','virtual_relay','lab-relay-01',{state}));
+const testLight=()=>runCommand(command('virtual.light.set','virtual_light','lab-light-01',{on:true,brightness:42}));
+const testDryRun=()=>runCommand(command('virtual.relay.set','virtual_relay','lab-relay-dry-run',{state:true},true));
+async function refresh(){try{const [s,src,top,out,cmd,ev,pol,dev]=await Promise.all([getj('/api/v1/status'),getj('/api/v1/sources'),getj('/api/v1/topics'),getj('/api/v1/outbox?limit=100'),getj('/api/v1/commands?limit=100'),getj('/api/v1/events?limit=100'),getj('/api/v1/policies'),getj('/api/v1/virtual-devices')]);document.querySelector('#cards').innerHTML=[card('MQTT',s.mqtt_connected?'ONLINE':'OFFLINE'),card('Quellen gesund',`${s.sources_healthy}/${s.sources_enabled}`),card('Outbox',s.outbox_pending),card('Commands empfangen',s.commands_received),card('Akzeptiert',s.commands_accepted),card('Ausgeführt',s.commands_executed),card('Abgewiesen',s.commands_rejected),card('Dublettensperre',s.command_duplicates),card('Virtuelle Geräte',s.virtual_devices)].join('');document.querySelector('#policies').innerHTML=pol.map(x=>`<tr><td><span class="pill ${x.effect==='allow'?'online':'offline'}">${esc(x.effect.toUpperCase())}</span></td><td><b>${esc(x.id)}</b></td><td class="mono">${esc(x.command_types.join(', '))}</td><td class="mono">${esc(x.target_types.join(', '))}</td><td class="mono">${esc(x.target_prefixes.join(', ')||'*')}</td><td>${esc(x.max_ttl_secs??'global')} s</td></tr>`).join('')||'<tr><td colspan="6">Keine Policy – damit greift Default Deny.</td></tr>';document.querySelector('#devices').innerHTML=dev.map(x=>`<tr><td>${esc(x.device_type)}</td><td><b>${esc(x.id)}</b></td><td><pre>${esc(JSON.stringify(x.state))}</pre></td><td>${esc(x.updated_at)}</td><td class="mono">${esc(x.command_id)}</td></tr>`).join('')||'<tr><td colspan="5">Noch keine virtuellen Geräte.</td></tr>';document.querySelector('#commands').innerHTML=cmd.map(x=>{const c=x.command||{};const t=c.target||{};return `<tr><td>${esc(x.completed_at||x.received_at)}</td><td><span class="pill ${esc(x.status)}">${esc(x.status)}</span></td><td><b>${esc(c.command_type||'invalid')}</b><br><span class="mono">${esc(x.command_id)}</span></td><td>${esc(t.type||'-')}<br><b>${esc(t.id||'-')}</b></td><td>${esc(x.policy_id||'-')}<br>${esc(x.reason_code||'-')}</td><td><pre>${esc(JSON.stringify(x.result))}</pre></td></tr>`}).join('')||'<tr><td colspan="6">Noch keine Commands.</td></tr>';document.querySelector('#sources').innerHTML=src.map(x=>`<tr><td><span class="pill ${x.healthy?'online':'offline'}">${x.healthy?'ONLINE':'FEHLER'}</span></td><td><b>${esc(x.id)}</b></td><td class="mono">${esc(x.url)}</td><td>${esc(x.last_success_at||'-')}</td><td>gesehen ${x.events_seen}<br>queued ${x.events_enqueued}<br>doppelt ${x.duplicates_skipped}</td><td>${esc(x.last_error||'-')}</td></tr>`).join('')||'<tr><td colspan="6">Keine Quellen konfiguriert.</td></tr>';document.querySelector('#topics').textContent=JSON.stringify(top,null,2);document.querySelector('#outbox').innerHTML=out.map(x=>`<tr><td>${esc(x.created_at||'-')}</td><td>${esc(x.kind||'unlesbar')}</td><td class="mono">${esc(x.topic||x.error||'-')}</td><td>${esc(x.qos??'-')}</td><td>${esc(x.retain??'-')}</td><td class="mono">${esc(x.file_name)}</td></tr>`).join('')||'<tr><td colspan="6">Outbox leer.</td></tr>';document.querySelector('#events').textContent=ev.map(x=>`${x.timestamp} ${x.kind} ${JSON.stringify(x.detail)}`).join('\n')}catch(e){document.querySelector('#events').textContent='Fehler: '+e.message}}
 refresh();setInterval(refresh,3000);
-</script></body></html>"#;
+</script></body></html>"##;
