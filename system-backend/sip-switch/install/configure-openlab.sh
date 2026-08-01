@@ -7,7 +7,7 @@ fi
 PBX_HOST="$1"
 MOBILITY_HOST="$2"
 MQTT_HOST="$3"
-PBX_MODE="${4:-ip_trunk}"
+PBX_MODE="${4:-registration}"
 CONFIG=/etc/netcore/sip-switch.toml
 python3 - "$CONFIG" "$PBX_HOST" "$MOBILITY_HOST" "$MQTT_HOST" "$PBX_MODE" <<'PY'
 from pathlib import Path
