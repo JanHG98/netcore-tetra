@@ -1,0 +1,35 @@
+[server]
+bind = "0.0.0.0:8250"
+
+[security]
+mode = "open_lab"
+
+[mqtt]
+host = "127.0.0.1"
+port = 1883
+topic_prefix = "netcore/v1"
+client_id = "netcore-hardware-gateway"
+
+[storage]
+state_file = "/var/lib/netcore-hardware-gateway/state.json"
+event_log = "/var/lib/netcore-hardware-gateway/events.ndjson"
+
+[monitoring]
+heartbeat_timeout_secs = 30
+stale_after_secs = 20
+outputs_enabled = false
+
+[[thresholds]]
+metric = "temperature_c"
+warning_above = 40.0
+critical_above = 55.0
+
+[[thresholds]]
+metric = "humidity_percent"
+warning_above = 75.0
+critical_above = 90.0
+
+[[thresholds]]
+metric = "supply_voltage_v"
+warning_below = 11.5
+critical_below = 10.8

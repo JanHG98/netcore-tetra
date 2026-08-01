@@ -1,0 +1,14 @@
+[Unit]
+Description=NetCore-Tetra Hardware Gateway (OPEN LAB MODE)
+After=network-online.target mosquitto.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/netcore-hardware-gateway --config /etc/netcore/hardware-gateway.toml
+Restart=always
+RestartSec=3
+User=root
+
+[Install]
+WantedBy=multi-user.target
