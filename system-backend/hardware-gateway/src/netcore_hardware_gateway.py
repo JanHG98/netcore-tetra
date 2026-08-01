@@ -87,6 +87,17 @@ class App:
                 self.add_event('hardware.device_offline',did,'warning',{'heartbeat_timeout_secs':self.cfg.mon['heartbeat_timeout_secs']})
                 self.publish(f"{self.cfg.mqtt['topic_prefix']}/state/hardware/{did}",self.devices[did],True)
             time.sleep(2)
+    def prometheus(self):
+        lines=['# HELP netcore_hardware_device_up Hardware device heartbeat state','# TYPE netcore_hardware_device_up gauge']
+        with self.lock: devices=list(self.devices.values())
+        for d in devices:
+            did=str(d.get('device_id','unknown')).replace('"','')
+            lines.append(f'netcore_hardware_device_up{{device_id="{did}"}} {1 if d.get("online") else 0}')
+            for key,value in d.get('metrics',{}).items():
+                if isinstance(value,(int,float)) and not isinstance(value,bool):
+                    metric=''.join(c if c.isalnum() or c=='_' else '_' for c in str(key))
+                    lines.append(f'netcore_hardware_{metric}{{device_id="{did}"}} {value}')
+        return '\n'.join(lines)+'\n'
     def mqtt_loop(self):
         m=self.cfg.mqtt; topic=f"{m['topic_prefix']}/hardware/+/telemetry"
         while not self.stop:
@@ -110,6 +121,9 @@ class H(BaseHTTPRequestHandler):
         if p=='/':
             b=HTML.encode(); self.send_response(200); self.send_header('Content-Type','text/html; charset=utf-8'); self.send_header('Content-Length',str(len(b))); self.end_headers(); self.wfile.write(b); return
         if p in ('/health/live','/health/ready'): return self.sendj({'status':'ok','mode':'open_lab'})
+        if p=='/metrics':
+            b=self.app.prometheus().encode(); self.send_response(200); self.send_header('Content-Type','text/plain; version=0.0.4; charset=utf-8'); self.send_header('Content-Length',str(len(b))); self.end_headers(); self.wfile.write(b); return
+        if p=='/openapi.json': return self.sendj({'openapi':'3.0.3','info':{'title':'NetCore Hardware Gateway','version':'1.0.0-openlab'},'paths':{'/api/v1/status':{'get':{}},'/api/v1/devices':{'get':{}},'/api/v1/events':{'get':{}},'/api/v1/telemetry':{'post':{}},'/health/live':{'get':{}},'/health/ready':{'get':{}},'/metrics':{'get':{}}}})
         if p=='/api/v1/status':
             with self.app.lock:
                 ds=list(self.app.devices.values())

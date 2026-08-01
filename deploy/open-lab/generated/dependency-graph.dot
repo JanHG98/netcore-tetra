@@ -62,6 +62,8 @@ digraph netcore_open_lab {
   "application-gateway" -> "control-room";
   "media-library" -> "control-room";
   "iot-gateway" -> "control-room";
+  "hardware-gateway" -> "control-room";
+  "rf-monitor" -> "control-room";
   "observability" [label="observability\n10.0.20.26:8210"];
   "node-gateway" -> "observability";
   "subscriber-core" -> "observability";
@@ -79,10 +81,16 @@ digraph netcore_open_lab {
   "application-gateway" -> "observability";
   "media-library" -> "observability";
   "iot-gateway" -> "observability";
+  "hardware-gateway" -> "observability";
+  "rf-monitor" -> "observability";
   "control-room" -> "observability";
   "iot-gateway" [label="iot-gateway\n10.0.20.27:8240"];
   "node-gateway" -> "iot-gateway";
   "mobility-core" -> "iot-gateway";
   "call-control" -> "iot-gateway";
   "sds-router" -> "iot-gateway";
+  "hardware-gateway" [label="hardware-gateway\n10.0.20.28:8250"];
+  "iot-gateway" -> "hardware-gateway";
+  "rf-monitor" [label="rf-monitor\n10.0.20.29:8260"];
+  "iot-gateway" -> "rf-monitor";
 }

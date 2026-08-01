@@ -71,3 +71,5 @@ Prüft die gemeinsamen Rust-Crates, JSON-Schemas, build-freien WebUI-Assets, Ope
 Servicekatalog-Einbindung, OPEN-LAB-Konfiguration, vier Eventproduzenten,
 Port 8240, persistente Outbox, MQTT-Protokollpfad, WebUI/API sowie die harte
 Prüft ab Phase 4 den Default-Deny-Command/Ack-Pfad, Retain-Sperre, Ledger und ausschließlich virtuelle OPEN-LAB-Executor.
+
+- `check_rf_monitor_phase7.py`: prüft RF-Monitor, TBS-Export-Endpunkt, Agent, Probe-Adapter, OPEN-LAB-Konfiguration und Installer.

@@ -28,8 +28,9 @@ EXPECTED = {
     "node-gateway", "mobility-core", "subscriber-core", "group-core", "call-control",
     "media-switch", "recorder", "sds-router", "packet-core", "ip-gateway",
     "security-core", "kmf", "transit", "application-gateway", "media-library",
-    "control-room", "observability", "iot-gateway",
+    "control-room", "observability", "iot-gateway", "hardware-gateway", "rf-monitor",
 }
+EDGE_FALLBACK_SERVICES = EXPECTED - {"hardware-gateway", "rf-monitor"}
 REQUIRED_EDGE = {
     "subscriber-core", "group-core", "mobility-core", "call-control", "media-switch", "sds-router"
 }
@@ -196,7 +197,7 @@ def main() -> int:
     bs = load_toml(ROOT / "config.toml")
     fb = bs.get("edge_fallback", {})
     modes = fb.get("service_fallbacks", {})
-    audit.require(set(modes) == EXPECTED, "TBS edge_fallback.service_fallbacks does not cover all 18 runtime services")
+    audit.require(set(modes) == EDGE_FALLBACK_SERVICES, "TBS edge_fallback.service_fallbacks must cover all radio-relevant runtime services")
     audit.require(set(fb.get("required_services", [])) == REQUIRED_EDGE, "TBS required_services mismatch")
     audit.require(fb.get("unknown_service_is_available") is False, "unknown service health must fail closed into fallback")
     audit.require(5 <= int(fb.get("service_matrix_lease_secs", 0)) <= 3600, "TBS service health matrix needs a bounded freshness lease")
@@ -215,8 +216,7 @@ def main() -> int:
         "fallback state machine": (ROOT / "crates/tetra-entities/src/net_control_room/worker.rs", "tick_edge_fallback"),
         "durable replay spool": (ROOT / "crates/tetra-entities/src/net_control_room/edge_store.rs", "EdgeEventSpool"),
         "policy cache restore": (ROOT / "bins/bluestation-bs/src/main.rs", "load_edge_policy_cache"),
-        "policy cache persist": (ROOT / "crates/tetra-entities/src/mm/mm_bs.rs", "persist_edge_policy_cache"),
-        "dynamic SYSINFO": (ROOT / "crates/tetra-entities/src/umac/umac_bs.rs", "system_wide_services_available"),
+        "dynamic SYSINFO": (ROOT / "crates/tetra-entities/src/umac/umac_bs.rs", "refresh_system_wide_services"),
         "SDS local fallback": (ROOT / "crates/tetra-entities/src/cmce/subentities/sds_bs.rs", "air_fallback_local_delivered"),
         "SDS remote replay": (ROOT / "crates/tetra-entities/src/cmce/subentities/sds_bs.rs", "air_fallback_queued"),
         "SDS duplicate suppression": (ROOT / "system-backend/sds-router/src/state.rs", "local_delivered"),

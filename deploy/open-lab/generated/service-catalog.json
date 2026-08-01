@@ -254,7 +254,9 @@
         "transit",
         "application-gateway",
         "media-library",
-        "iot-gateway"
+        "iot-gateway",
+        "hardware-gateway",
+        "rf-monitor"
       ]
     },
     {
@@ -284,6 +286,8 @@
         "application-gateway",
         "media-library",
         "iot-gateway",
+        "hardware-gateway",
+        "rf-monitor",
         "control-room"
       ]
     },
@@ -302,6 +306,34 @@
         "mobility-core",
         "call-control",
         "sds-router"
+      ]
+    },
+    {
+      "name": "hardware-gateway",
+      "host": "10.0.20.28",
+      "port": 8250,
+      "base_url": "http://10.0.20.28:8250",
+      "webui": "http://10.0.20.28:8250/",
+      "health_live": "http://10.0.20.28:8250/health/live",
+      "health_ready": "http://10.0.20.28:8250/health/ready",
+      "metrics": "http://10.0.20.28:8250/metrics",
+      "unit": "netcore-hardware-gateway.service",
+      "depends_on": [
+        "iot-gateway"
+      ]
+    },
+    {
+      "name": "rf-monitor",
+      "host": "10.0.20.29",
+      "port": 8260,
+      "base_url": "http://10.0.20.29:8260",
+      "webui": "http://10.0.20.29:8260/",
+      "health_live": "http://10.0.20.29:8260/health/live",
+      "health_ready": "http://10.0.20.29:8260/health/ready",
+      "metrics": "http://10.0.20.29:8260/metrics",
+      "unit": "netcore-rf-monitor.service",
+      "depends_on": [
+        "iot-gateway"
       ]
     }
   ]

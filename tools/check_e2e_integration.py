@@ -62,6 +62,8 @@ EXPECTED_SERVICES = {
     "control-room",
     "observability",
     "iot-gateway",
+    "hardware-gateway",
+    "rf-monitor",
 }
 EXPECTED_SCENARIOS = {
     "contracts",

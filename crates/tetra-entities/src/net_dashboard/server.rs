@@ -3276,6 +3276,9 @@ fn handle_connection(
 
     if req_line.contains("/ws") {
         handle_ws(stream, state, clients, cmd_tx, update_state, auth);
+    } else if request_route(&req_line) == "/api/rf-monitor" && req_line.starts_with("GET ") {
+        drain_http_headers(&mut stream);
+        serve_rf_monitor_snapshot(stream, &state);
     } else if req_line.contains("GET /api/packet-data ") {
         drain_http_headers(&mut stream);
         serve_packet_data_snapshot(stream, &state);
@@ -7909,6 +7912,40 @@ fn serve_public_snapshot(stream: TcpStream, state: &DashboardState) {
             .to_string()
         }
         Err(_) => "{}".to_string(),
+    };
+    http_json_response(stream, 200, &body);
+}
+
+/// GET /api/rf-monitor — narrow machine-readable RF snapshot for the Phase-7 TBS agent.
+/// The route stays behind the existing dashboard session when dashboard credentials are enabled.
+/// It exposes software-side modulation/SDR health only; forward/reflected power and VSWR require
+/// an external calibrated RF probe and are merged by the agent.
+fn serve_rf_monitor_snapshot(stream: TcpStream, state: &DashboardState) {
+    let captured_at_unix_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_millis())
+        .unwrap_or(0);
+    let station_id = std::env::var("HOSTNAME").unwrap_or_else(|_| "netcore-tbs".to_string());
+    let body = match state.read() {
+        Ok(s) => serde_json::json!({
+            "schema": "netcore-rf-tbs-v1",
+            "station_id": station_id,
+            "captured_at_unix_ms": captured_at_unix_ms,
+            "tx_active": !s.calls.is_empty(),
+            "active_calls": s.calls.len(),
+            "tx_visual": s.last_tx_visual.clone(),
+            "tx_quality": s.last_tx_quality.clone(),
+            "sdr_health": s.last_sdr_health.clone(),
+            "system_health": s.last_sys_health.clone(),
+        })
+        .to_string(),
+        Err(_) => serde_json::json!({
+            "schema": "netcore-rf-tbs-v1",
+            "station_id": station_id,
+            "captured_at_unix_ms": captured_at_unix_ms,
+            "error": "dashboard_state_unavailable"
+        })
+        .to_string(),
     };
     http_json_response(stream, 200, &body);
 }

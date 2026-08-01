@@ -1,0 +1,26 @@
+[security]
+mode = "open_lab"
+
+[agent]
+station_id = "TBS-01"
+node_id = "TBS-01"
+name = "NetCore TBS 01"
+location = "Technikraum"
+interval_secs = 5
+include_spectrum = true
+
+[dashboard]
+base_url = "http://127.0.0.1:8080"
+username = "admin"
+password = "admin"
+timeout_secs = 4
+
+[rf_monitor]
+telemetry_url = "http://10.0.20.29:8260/api/v1/telemetry"
+timeout_secs = 4
+
+[external_probe]
+enabled = false
+# Das Kommando muss ein JSON-Objekt mit metrics/inputs/metadata/spectrum ausgeben.
+command = "/usr/local/bin/netcore-rf-probe"
+timeout_secs = 2
