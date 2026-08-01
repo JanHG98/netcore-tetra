@@ -1474,3 +1474,13 @@ Der IoT Gateway ist als eigenständiger LXC-Dienst auf Port 8240 umgesetzt. Er p
 Phase 5 ergänzt Home Assistant MQTT Discovery, erneute Discovery nach dem HA-Birth-Topic, einen normalisierten State-Ingress für ausgewählte Home-Assistant-/Homematic-IP-Entitäten und optionales direktes CCU3-/RaspberryMatic-Polling per XML-RPC. Reale Home-Assistant- und Homematic-Schreibpfade sind vorbereitet, aber standardmäßig mehrfach gesperrt.
 
 Die aktuelle Stufe bleibt bewusst `open_lab`: keine Anmeldung, keine Tokens, keine MQTT-Credentials und kein TLS.
+
+---
+
+## Package S – Hardware-I/O, RF und Alarm-Workflows ✅ Phasen 6–8 umgesetzt
+
+Hardware Gateway (`8250`), RF Monitor (`8260`) und Alarm Workflow (`8270`) bilden die Telemetrie-, Zustands- und Eskalationsschicht. Physische Ausgänge bleiben in der Open-Lab-Stufe deaktiviert; Alarme können über MQTT und den SDS Router zugestellt und per SDS oder pre-coded Status bearbeitet werden.
+
+## Package T – WAP-Formulare und strukturierte Aufträge ✅ Phase 9 umgesetzt
+
+Der Task Workflow läuft als eigener LXC-Dienst auf Port `8280`. Er verwaltet `netcore-task-v1`, bietet REST/WebUI, XHTML Basic und WML 1.1, versendet Aufgaben über den SDS Router und verarbeitet SDS-Kommandos sowie pre-coded Status 5301–5305. Die kompakte lokale TBS-WAP-Navigation enthält zusätzliche Informationsseiten für Aufgaben und Formulare. Der zentrale Dienst ist direkt über Paketdaten erreichbar; der lokale WSP-Pfad ist noch kein Reverse Proxy zum Task-LXC.

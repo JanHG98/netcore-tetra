@@ -75,3 +75,5 @@ Prüft ab Phase 4 den Default-Deny-Command/Ack-Pfad, Retain-Sperre, Ledger und a
 - `check_rf_monitor_phase7.py`: prüft RF-Monitor, TBS-Export-Endpunkt, Agent, Probe-Adapter, OPEN-LAB-Konfiguration und Installer.
 
 - `check_alarm_workflow_phase8.py`: prüft Alarm-State-Machine, Regeln, Eskalation, SDS-/Statusanbindung, OPEN-LAB-Konfiguration und Installer.
+
+- `check_task_workflow_phase9.py`: prüft Phase 9 einschließlich echtem REST-/XHTML-/WML-Laufzeittest.

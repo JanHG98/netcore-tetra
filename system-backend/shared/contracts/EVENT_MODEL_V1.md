@@ -42,3 +42,7 @@ Der IoT Gateway wird diese Ereignisse in Phase 3 auf MQTT-Topics abbilden. Comma
 ## Phase 8: Alarm- und Hardwareereignisse
 
 Der gemeinsame Katalog umfasst nun zusätzlich `hardware.*`, `rf.*` und `alarm.*`. Der Alarm Workflow nutzt `correlation_id` für die Alarmakte, `causation_id` für das auslösende Ereignis und retained MQTT-Zustände ausschließlich als Transportabbildung außerhalb dieses Vertrags.
+
+## Phase 9: Strukturierte Aufträge
+
+Der Ereigniskatalog enthält zusätzlich `task.*`. Das primäre Fachobjekt verwendet `subject.type = "task"`; der aktuelle Auftrag wird separat als retained Zustand veröffentlicht.

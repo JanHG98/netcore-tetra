@@ -763,3 +763,15 @@ live_path = "/health/live"
 ready_path = "/health/ready"
 enabled = true
 labels = { environment = "open-lab", component = "alarm-workflow" }
+
+
+[[targets]]
+target_id = "task-workflow"
+display_name = "Task Workflow / WAP"
+service = "task-workflow"
+base_url = "http://10.0.20.31:8280"
+metrics_path = "/metrics"
+live_path = "/health/live"
+ready_path = "/health/ready"
+enabled = true
+labels = { environment = "open-lab", component = "task-workflow" }

@@ -1,6 +1,6 @@
 # NetCore-Tetra WAP-Portal
 
-Dieses Verzeichnis enthaelt ein statisches Referenzportal mit 19 Seiten in zwei Formaten:
+Dieses Verzeichnis enthaelt ein statisches Referenzportal mit 21 Seiten in zwei Formaten:
 
 - `xhtml/`: XHTML Basic 1.1
 - `wml/`: WML 1.1
@@ -18,3 +18,5 @@ Die Basisstation verwendet fuer den echten WSP/Openwave-Pfad zusaetzlich extrem 
 .xhtml  application/vnd.wap.xhtml+xml; charset=UTF-8
 .wml    text/vnd.wap.wml; charset=UTF-8
 ```
+
+Phase 9 ergänzt die Referenzseiten `tasks` und `task-form`. Die dynamischen Formulare liegen im zentralen Task Workflow auf Port 8280.

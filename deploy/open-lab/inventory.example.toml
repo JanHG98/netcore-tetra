@@ -520,7 +520,7 @@ config_template = "system-backend/control-room/config/control-room.example.toml"
 config_target = "/etc/netcore/control-room.toml"
 # Was: Setzt die Einstellung `depends_on` für services.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-depends_on = ["node-gateway", "subscriber-core", "group-core", "mobility-core", "call-control", "media-switch", "recorder", "sds-router", "packet-core", "ip-gateway", "security-core", "kmf", "transit", "application-gateway", "media-library", "iot-gateway", "hardware-gateway", "rf-monitor", "alarm-workflow"]
+depends_on = ["node-gateway", "subscriber-core", "group-core", "mobility-core", "call-control", "media-switch", "recorder", "sds-router", "packet-core", "ip-gateway", "security-core", "kmf", "transit", "application-gateway", "media-library", "iot-gateway", "hardware-gateway", "rf-monitor", "alarm-workflow", "task-workflow"]
 
 # Was: Öffnet den Konfigurationsabschnitt `services`.
 # Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
@@ -551,7 +551,7 @@ config_template = "system-backend/observability/config/observability.example.tom
 config_target = "/etc/netcore/observability.toml"
 # Was: Setzt die Einstellung `depends_on` für services.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-depends_on = ["node-gateway", "subscriber-core", "group-core", "mobility-core", "call-control", "media-switch", "recorder", "sds-router", "packet-core", "ip-gateway", "security-core", "kmf", "transit", "application-gateway", "media-library", "iot-gateway", "hardware-gateway", "rf-monitor", "control-room"]
+depends_on = ["node-gateway", "subscriber-core", "group-core", "mobility-core", "call-control", "media-switch", "recorder", "sds-router", "packet-core", "ip-gateway", "security-core", "kmf", "transit", "application-gateway", "media-library", "iot-gateway", "hardware-gateway", "rf-monitor", "alarm-workflow", "task-workflow", "control-room"]
 
 
 # Phase 5 IoT/MQTT, Home Assistant and Homematic bridge. OPEN LAB; no credentials and no TLS.
@@ -603,3 +603,17 @@ install = "system-backend/alarm-workflow/install/install.sh"
 config_template = "system-backend/alarm-workflow/config/alarm-workflow.example.toml"
 config_target = "/etc/netcore/alarm-workflow.toml"
 depends_on = ["iot-gateway", "sds-router", "hardware-gateway", "rf-monitor"]
+
+
+# Phase 9 WAP-Formulare und strukturierte Aufträge.
+[[services]]
+name = "task-workflow"
+host = "10.0.20.31"
+port = 8280
+unit = "netcore-task-workflow.service"
+user = "root"
+install = "system-backend/task-workflow/install/install.sh"
+config_template = "system-backend/task-workflow/config/task-workflow.example.toml"
+config_target = "/etc/netcore/task-workflow.toml"
+depends_on = ["iot-gateway", "sds-router"]
+health_path = "/health/ready"

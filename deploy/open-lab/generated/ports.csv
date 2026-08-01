@@ -20,3 +20,4 @@ iot-gateway,10.0.20.27,8240,http://10.0.20.27:8240/,netcore-iot-gateway.service
 hardware-gateway,10.0.20.28,8250,http://10.0.20.28:8250/,netcore-hardware-gateway.service
 rf-monitor,10.0.20.29,8260,http://10.0.20.29:8260/,netcore-rf-monitor.service
 alarm-workflow,10.0.20.30,8270,http://10.0.20.30:8270/,netcore-alarm-workflow.service
+task-workflow,10.0.20.31,8280,http://10.0.20.31:8280/,netcore-task-workflow.service

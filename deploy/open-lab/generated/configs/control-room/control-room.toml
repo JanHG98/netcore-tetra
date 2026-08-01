@@ -443,3 +443,18 @@ url = "http://10.0.20.30:8270/health/ready"
 critical_for_edge = false
 fallback_mode = "central_alarm_escalation_unavailable_local_radio_and_sds_continue"
 depends_on = ["iot-gateway", "sds-router"]
+
+
+[[services]]
+name = "task-workflow"
+display_name = "Task Workflow / WAP"
+kind = "workflow"
+base_url = "http://10.0.20.31:8280"
+critical = false
+
+[[service_monitor.targets]]
+name = "task-workflow"
+url = "http://10.0.20.31:8280/health/ready"
+critical_for_edge = false
+fallback_mode = "central_task_workflow_unavailable_local_radio_sds_and_cached_forms_continue"
+depends_on = ["iot-gateway", "sds-router"]

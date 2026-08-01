@@ -7,7 +7,8 @@
 Startportal fuer NetCore-Tetra.<br/>
 <a href="status.wml">Betrieb</a><br/>
 <a href="radio.wml">Netz</a><br/>
-<a href="media-library.wml">Info</a>
+<a href="media-library.wml">Info</a><br/>
+<a href="tasks.wml">Auftraege</a>
 </p>
 </card>
 </wml>

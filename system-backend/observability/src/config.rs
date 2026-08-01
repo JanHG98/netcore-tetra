@@ -431,6 +431,7 @@ fn default_targets() -> Vec<TargetConfig> {
         target("hardware-gateway", "Hardware Gateway", "hardware-gateway", 8250),
         target("rf-monitor", "RF Monitor", "rf-monitor", 8260),
         target("alarm-workflow", "Alarm Workflow", "alarm-workflow", 8270),
+        target("task-workflow", "Task Workflow / WAP", "task-workflow", 8280),
         target("control-room", "Control Room", "control-room", 9010),
     ]
 }

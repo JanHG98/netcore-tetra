@@ -640,3 +640,16 @@ token_auth = false
 tls = false
 depends_on = ["iot-gateway", "sds-router", "hardware-gateway", "rf-monitor"]
 warning = "OPEN LAB: no login, tokens or TLS; every reachable client may create, acknowledge, resolve and close alarms"
+
+
+# Phase 9 WAP-Formulare und strukturierte Aufträge. OPEN LAB ohne Authentisierung.
+[[services]]
+name = "task-workflow"
+webui = true
+scheme = "http"
+management_port = 8280
+security_mode = "open_lab"
+token_auth = false
+tls = false
+depends_on = ["iot-gateway", "sds-router"]
+warning = "OPEN LAB: no login, tokens or TLS; every reachable client may create and transition tasks; ?issi is test identity only"

@@ -10,7 +10,7 @@ import sys
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parent
-EXPECTED_PAGES = 19
+EXPECTED_PAGES = 21
 
 
 def validate_family(directory: str, extension: str) -> list[str]:
@@ -63,7 +63,7 @@ def main() -> int:
             print(f"- {error}", file=sys.stderr)
         return 1
     print(
-        "WAP portal validation OK: 19 XHTML + 19 WML pages, valid XML, "
+        "WAP portal validation OK: 21 XHTML + 21 WML pages, valid XML, "
         "same-format links, all pages reachable."
     )
     return 0

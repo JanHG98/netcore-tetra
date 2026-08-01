@@ -35,3 +35,11 @@ Phase 4 ergänzt die transportneutralen Verträge `netcore-command-v1` und `netc
 - `examples/netcore-command-virtual-relay-set.json`
 - `examples/netcore-command-ack-succeeded.json`
 - `COMMAND_MODEL_V1.md`
+
+## Gemeinsames Task-Modell
+
+Phase 9 ergänzt `netcore-task-v1` für strukturierte Aufträge und WAP-Formulare:
+
+- `schemas/netcore-task-v1.schema.json`
+- `TASK_MODEL_V1.md`
+- Ereignisse `task.*` in `src/event.rs`

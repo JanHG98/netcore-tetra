@@ -395,6 +395,19 @@ pub mod event_types {
     pub const ALARM_STATUS_ACTION_APPLIED: &str = "alarm.status_action_applied";
     pub const ALARM_TEXT_ACTION_APPLIED: &str = "alarm.text_action_applied";
 
+    pub const TASK_CREATED: &str = "task.created";
+    pub const TASK_ASSIGNED: &str = "task.assigned";
+    pub const TASK_ACCEPTED: &str = "task.accepted";
+    pub const TASK_IN_PROGRESS: &str = "task.in_progress";
+    pub const TASK_BLOCKED: &str = "task.blocked";
+    pub const TASK_COMPLETED: &str = "task.completed";
+    pub const TASK_CANCELLED: &str = "task.cancelled";
+    pub const TASK_EXPIRED: &str = "task.expired";
+    pub const TASK_REOPENED: &str = "task.reopened";
+    pub const TASK_COMMENT_ADDED: &str = "task.comment_added";
+    pub const TASK_NOTIFICATION_QUEUED: &str = "task.notification_queued";
+    pub const TASK_NOTIFICATION_FAILED: &str = "task.notification_failed";
+
     pub const ALL: &[&str] = &[
         SERVICE_DEPENDENCY_CONNECTED,
         SERVICE_DEPENDENCY_DISCONNECTED,
@@ -472,6 +485,18 @@ pub mod event_types {
         ALARM_REOPENED,
         ALARM_STATUS_ACTION_APPLIED,
         ALARM_TEXT_ACTION_APPLIED,
+        TASK_CREATED,
+        TASK_ASSIGNED,
+        TASK_ACCEPTED,
+        TASK_IN_PROGRESS,
+        TASK_BLOCKED,
+        TASK_COMPLETED,
+        TASK_CANCELLED,
+        TASK_EXPIRED,
+        TASK_REOPENED,
+        TASK_COMMENT_ADDED,
+        TASK_NOTIFICATION_QUEUED,
+        TASK_NOTIFICATION_FAILED,
     ];
 }
 
@@ -489,6 +514,7 @@ pub mod subject_types {
     pub const HARDWARE_DEVICE: &str = "hardware_device";
     pub const RF_STATION: &str = "rf_station";
     pub const ALARM: &str = "alarm";
+    pub const TASK: &str = "task";
 }
 
 /// Bestehender einfacher Datensatz bleibt für Quellkompatibilität erhalten.

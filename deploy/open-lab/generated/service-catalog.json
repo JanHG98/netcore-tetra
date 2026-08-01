@@ -257,7 +257,8 @@
         "iot-gateway",
         "hardware-gateway",
         "rf-monitor",
-        "alarm-workflow"
+        "alarm-workflow",
+        "task-workflow"
       ]
     },
     {
@@ -289,6 +290,8 @@
         "iot-gateway",
         "hardware-gateway",
         "rf-monitor",
+        "alarm-workflow",
+        "task-workflow",
         "control-room"
       ]
     },
@@ -352,6 +355,21 @@
         "sds-router",
         "hardware-gateway",
         "rf-monitor"
+      ]
+    },
+    {
+      "name": "task-workflow",
+      "host": "10.0.20.31",
+      "port": 8280,
+      "base_url": "http://10.0.20.31:8280",
+      "webui": "http://10.0.20.31:8280/",
+      "health_live": "http://10.0.20.31:8280/health/live",
+      "health_ready": "http://10.0.20.31:8280/health/ready",
+      "metrics": "http://10.0.20.31:8280/metrics",
+      "unit": "netcore-task-workflow.service",
+      "depends_on": [
+        "iot-gateway",
+        "sds-router"
       ]
     }
   ]

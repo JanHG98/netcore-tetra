@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://netcore-tetra.local/schemas/netcore-task-v1.schema.json",
+  "title": "NetCore Structured Task v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema",
+    "task_id",
+    "token",
+    "template_id",
+    "task_type",
+    "title",
+    "priority",
+    "severity",
+    "state",
+    "created_at",
+    "updated_at",
+    "created_by",
+    "form_data",
+    "timeline",
+    "notifications"
+  ],
+  "properties": {
+    "schema": {
+      "const": "netcore-task-v1"
+    },
+    "task_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "token": {
+      "type": "string",
+      "pattern": "^T[0-9A-F]{7}$"
+    },
+    "template_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "task_type": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000
+    },
+    "priority": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 15
+    },
+    "severity": {
+      "enum": [
+        "debug",
+        "info",
+        "notice",
+        "warning",
+        "error",
+        "critical",
+        "emergency"
+      ]
+    },
+    "state": {
+      "enum": [
+        "open",
+        "assigned",
+        "accepted",
+        "in_progress",
+        "blocked",
+        "completed",
+        "cancelled",
+        "expired"
+      ]
+    },
+    "requires_ack": {
+      "type": "boolean"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "created_by": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "assigned_issi": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1,
+      "maximum": 16777215
+    },
+    "assigned_gssi": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1,
+      "maximum": 16777215
+    },
+    "accepted_by_issi": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1,
+      "maximum": 16777215
+    },
+    "owner": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 160
+    },
+    "due_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "location": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "form_data": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "maxLength": 500
+      }
+    },
+    "comments": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "timeline": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "notifications": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "source_alarm_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}

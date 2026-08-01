@@ -5,7 +5,7 @@
 <p>
 <b>Control Room</b><br/>
 Leitstellensteuerung und Betriebsstatus.<br/>
-<a href="sds.wml">P</a> <a href="health.wml">N</a> <a href="index.wml">H</a>
+<a href="task-form.wml">P</a> <a href="health.wml">N</a> <a href="index.wml">H</a>
 </p>
 </card>
 </wml>
