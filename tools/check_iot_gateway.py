@@ -25,7 +25,11 @@ REQUIRED = [
     "config/iot-gateway.example.toml",
     "install/install.sh",
     "install/update.sh",
-    "install/migrate-phase4-config.sh",
+    "install/migrate-phase5-config.sh",
+    "src/home_assistant.rs",
+    "src/homematic.rs",
+    "docs/home-assistant.md",
+    "docs/homematic-ip.md",
     "install/uninstall.sh",
     "systemd/netcore-iot-gateway.service",
     "docs/architecture.md",
@@ -61,16 +65,16 @@ def main() -> int:
 
     config = tomllib.loads((BASE / "config/iot-gateway.example.toml").read_text(encoding="utf-8"))
     if config["security"]["mode"] != "open_lab":
-        fail("IoT Gateway must remain explicit open_lab in Phase 4")
+        fail("IoT Gateway must remain explicit open_lab in Phase 5")
     if config["mqtt"]["execute_commands"] is not False:
         fail("deprecated mqtt.execute_commands must stay false")
     commands = config.get("commands", {})
     if commands.get("enabled") is not True:
-        fail("Phase 4 command processing must be enabled")
+        fail("Phase 5 command processing must be enabled")
     if commands.get("mode") != "open_lab_sandbox":
-        fail("Phase 4 must use the open_lab_sandbox executor")
+        fail("Phase 5 must use the open_lab_sandbox executor")
     if commands.get("default_deny") is not True:
-        fail("Phase 4 must be default deny")
+        fail("Phase 5 must be default deny")
     if commands.get("allow_retained") is not False:
         fail("retained commands must be rejected by default")
     if config["server"]["bind"].split(":")[-1] != "8240":
@@ -90,13 +94,22 @@ def main() -> int:
     policy_commands = {
         command_type
         for policy in policies
-        if policy.get("effect") == "allow"
+        if policy.get("effect") == "allow" and policy.get("enabled") is True
         for command_type in policy.get("command_types", [])
     }
     if policy_commands != expected_commands:
-        fail(f"sandbox allow policies differ: {sorted(policy_commands)}")
-    if any(prefix != "lab-" for p in policies for prefix in p.get("target_prefixes", [])):
-        fail("default sandbox policies must stay below the lab- target prefix")
+        fail(f"enabled sandbox allow policies differ: {sorted(policy_commands)}")
+    enabled_policies = [policy for policy in policies if policy.get("enabled") is True]
+    if any(prefix != "lab-" for p in enabled_policies for prefix in p.get("target_prefixes", [])):
+        fail("enabled sandbox policies must stay below the lab- target prefix")
+    if config.get("home_assistant", {}).get("discovery_enabled") is not True:
+        fail("Home Assistant discovery must be enabled")
+    if config.get("home_assistant", {}).get("allow_command_egress") is not False:
+        fail("Home Assistant command egress must default to false")
+    if config.get("homematic", {}).get("enabled") is not False:
+        fail("direct Homematic XML-RPC must default to disabled")
+    if config.get("homematic", {}).get("allow_writes") is not False:
+        fail("Homematic writes must default to false")
 
     workspace = tomllib.loads((ROOT / "Cargo.toml").read_text(encoding="utf-8"))
     if "system-backend/iot-gateway" not in workspace["workspace"]["members"]:
@@ -121,7 +134,10 @@ def main() -> int:
         "default_deny",
         "allow_retained",
         "duplicate_command_id",
-        "execute_sandbox",
+        "execute_command",
+        "discovery_messages",
+        "ingest_home_assistant_state",
+        "ccu_xml_rpc",
         "persist_command_ledger",
         "persist_virtual_devices",
         "/api/v1/policies",
@@ -160,12 +176,14 @@ def main() -> int:
         except json.JSONDecodeError as error:
             fail(f"invalid JSON {path.relative_to(ROOT)}: {error}")
 
-    print("IoT Gateway Phase 4 static package check: OK")
+    print("IoT Gateway Phase 5 static package check: OK")
     print("- OPEN LAB without login/tokens/TLS")
     print("- netcore-command-v1 and netcore-command-ack-v1")
     print("- persistent command ledger, audit and duplicate suppression")
     print("- default-deny policy engine; retained commands rejected")
-    print("- virtual relay/light/button sandbox only")
+    print("- virtual relay/light/button OPEN-LAB sandbox")
+    print("- Home Assistant MQTT Discovery and state ingress")
+    print("- optional Homematic CCU XML-RPC; writes disabled by default")
     return 0
 
 

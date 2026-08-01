@@ -14,10 +14,13 @@ pub struct IotGatewayConfig {
     pub server: ServerConfig,
     pub security: SecurityConfig,
     pub mqtt: MqttConfig,
+    pub home_assistant: HomeAssistantConfig,
+    pub homematic: HomematicConfig,
     pub commands: CommandConfig,
     pub storage: StorageConfig,
     pub polling: PollingConfig,
     pub sources: Vec<EventSourceConfig>,
+    pub homematic_datapoints: Vec<HomematicDatapointConfig>,
     pub command_policies: Vec<CommandPolicyConfig>,
 }
 
@@ -27,10 +30,13 @@ impl Default for IotGatewayConfig {
             server: ServerConfig::default(),
             security: SecurityConfig::default(),
             mqtt: MqttConfig::default(),
+            home_assistant: HomeAssistantConfig::default(),
+            homematic: HomematicConfig::default(),
             commands: CommandConfig::default(),
             storage: StorageConfig::default(),
             polling: PollingConfig::default(),
             sources: default_sources(),
+            homematic_datapoints: default_homematic_datapoints(),
             command_policies: default_command_policies(),
         }
     }
@@ -58,7 +64,7 @@ impl IotGatewayConfig {
 
     pub fn validate(&self) -> Result<(), String> {
         if self.security.mode != OPEN_LAB_MODE {
-            return Err("Phase 4 supports only security.mode = open_lab".to_string());
+            return Err("Phase 5 supports only security.mode = open_lab".to_string());
         }
         if self.mqtt.host.trim().is_empty() {
             return Err("mqtt.host must not be empty".to_string());
@@ -79,7 +85,7 @@ impl IotGatewayConfig {
             return Err("mqtt.publish_timeout_secs must be greater than zero".to_string());
         }
         if self.mqtt.qos > 1 {
-            return Err("Phase 4 supports MQTT QoS 0 or 1 only".to_string());
+            return Err("Phase 5 supports MQTT QoS 0 or 1 only".to_string());
         }
         if self.mqtt.execute_commands {
             return Err(
@@ -89,9 +95,55 @@ impl IotGatewayConfig {
         }
         validate_topic_prefix(&self.mqtt.topic_prefix)?;
 
+        if self.home_assistant.discovery_qos > 1 {
+            return Err("home_assistant.discovery_qos must be 0 or 1".to_string());
+        }
+        validate_topic_prefix(&self.home_assistant.discovery_prefix)?;
+        validate_exact_topic(&self.home_assistant.status_topic, "home_assistant.status_topic")?;
+        if !self.home_assistant.node_id.bytes().all(|byte| {
+            byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-'
+        }) || self.home_assistant.node_id.is_empty() || self.home_assistant.node_id.len() > 96 {
+            return Err("home_assistant.node_id must match [A-Za-z0-9_-]{1,96}".to_string());
+        }
+        if !self.home_assistant.state_ingress_topic.is_empty() {
+            validate_exact_topic(
+                &self.home_assistant.state_ingress_topic,
+                "home_assistant.state_ingress_topic",
+            )?;
+        }
+        if !self.home_assistant.command_egress_topic.is_empty() {
+            validate_exact_topic(
+                &self.home_assistant.command_egress_topic,
+                "home_assistant.command_egress_topic",
+            )?;
+        }
+
+        if !matches!(
+            self.homematic.mode.as_str(),
+            "home_assistant_mqtt" | "ccu_xml_rpc"
+        ) {
+            return Err(
+                "homematic.mode must be home_assistant_mqtt or ccu_xml_rpc".to_string(),
+            );
+        }
+        if self.homematic.poll_interval_ms < 500 {
+            return Err("homematic.poll_interval_ms must be at least 500".to_string());
+        }
+        if self.homematic.request_timeout_ms == 0 {
+            return Err("homematic.request_timeout_ms must be greater than zero".to_string());
+        }
+        if self.homematic.enabled && self.homematic.mode == "ccu_xml_rpc" {
+            if self.homematic.ccu_host.trim().is_empty() {
+                return Err("homematic.ccu_host must not be empty in ccu_xml_rpc mode".to_string());
+            }
+            if self.homematic.ccu_port == 0 {
+                return Err("homematic.ccu_port must be greater than zero".to_string());
+            }
+        }
+
         if self.commands.mode != OPEN_LAB_SANDBOX_MODE {
             return Err(format!(
-                "Phase 4 supports only commands.mode = {OPEN_LAB_SANDBOX_MODE}"
+                "Phase 5 supports only commands.mode = {OPEN_LAB_SANDBOX_MODE}"
             ));
         }
         if self.commands.default_ttl_secs == 0 {
@@ -144,6 +196,48 @@ impl IotGatewayConfig {
                 return Err(format!(
                     "source {} must use an http:// or https:// URL",
                     source.id
+                ));
+            }
+        }
+
+        let mut datapoint_ids = HashSet::new();
+        for datapoint in &self.homematic_datapoints {
+            if datapoint.id.is_empty()
+                || datapoint.id.len() > 128
+                || !datapoint.id.bytes().all(|byte| {
+                    byte.is_ascii_lowercase()
+                        || byte.is_ascii_digit()
+                        || byte == b'_'
+                        || byte == b'-'
+                })
+            {
+                return Err("homematic datapoint id must match [a-z0-9_-]{1,128}".to_string());
+            }
+            if !datapoint_ids.insert(datapoint.id.as_str()) {
+                return Err(format!("duplicate homematic datapoint id: {}", datapoint.id));
+            }
+            if datapoint.address.trim().is_empty() || datapoint.parameter.trim().is_empty() {
+                return Err(format!(
+                    "homematic datapoint {} requires address and parameter",
+                    datapoint.id
+                ));
+            }
+            if !matches!(
+                datapoint.value_type.as_str(),
+                "bool" | "integer" | "float" | "string"
+            ) {
+                return Err(format!(
+                    "homematic datapoint {} has unsupported value_type",
+                    datapoint.id
+                ));
+            }
+            if !matches!(
+                datapoint.platform.as_str(),
+                "sensor" | "binary_sensor" | "switch"
+            ) {
+                return Err(format!(
+                    "homematic datapoint {} has unsupported Home Assistant platform",
+                    datapoint.id
                 ));
             }
         }
@@ -236,6 +330,43 @@ impl IotGatewayConfig {
     pub fn virtual_state_path(&self) -> PathBuf {
         self.state_dir().join(&self.storage.virtual_state_file)
     }
+
+    pub fn external_state_path(&self) -> PathBuf {
+        self.state_dir().join(&self.storage.external_state_file)
+    }
+
+    pub fn homematic_state_path(&self) -> PathBuf {
+        self.state_dir().join(&self.storage.homematic_state_file)
+    }
+
+    pub fn home_assistant_state_ingress_topic(&self) -> String {
+        if self.home_assistant.state_ingress_topic.trim().is_empty() {
+            format!(
+                "{}/integrations/homeassistant/state",
+                self.mqtt.topic_prefix.trim_matches('/')
+            )
+        } else {
+            self.home_assistant.state_ingress_topic.clone()
+        }
+    }
+
+    pub fn home_assistant_command_prefix(&self) -> String {
+        format!(
+            "{}/integrations/homeassistant/commands",
+            self.mqtt.topic_prefix.trim_matches('/')
+        )
+    }
+
+    pub fn home_assistant_command_egress_topic(&self) -> String {
+        if self.home_assistant.command_egress_topic.trim().is_empty() {
+            format!(
+                "{}/integrations/homeassistant/command-egress",
+                self.mqtt.topic_prefix.trim_matches('/')
+            )
+        } else {
+            self.home_assistant.command_egress_topic.clone()
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -287,7 +418,7 @@ pub struct MqttConfig {
     pub event_retain: bool,
     pub state_retain: bool,
     pub observe_commands: bool,
-    /// Deprecated Phase-3 compatibility switch. Phase 4 uses `commands.enabled`.
+    /// Deprecated Phase-3 compatibility switch. Phase 5 uses `commands.enabled`.
     pub execute_commands: bool,
 }
 
@@ -307,6 +438,104 @@ impl Default for MqttConfig {
             state_retain: true,
             observe_commands: true,
             execute_commands: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct HomeAssistantConfig {
+    pub enabled: bool,
+    pub discovery_enabled: bool,
+    pub discovery_prefix: String,
+    pub status_topic: String,
+    pub node_id: String,
+    pub discovery_qos: u8,
+    pub discovery_retain: bool,
+    pub expose_gateway: bool,
+    pub expose_sources: bool,
+    pub expose_virtual_devices: bool,
+    pub accept_state_ingress: bool,
+    pub state_ingress_topic: String,
+    pub allow_command_egress: bool,
+    pub command_egress_topic: String,
+}
+
+impl Default for HomeAssistantConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            discovery_enabled: true,
+            discovery_prefix: "homeassistant".to_string(),
+            status_topic: "homeassistant/status".to_string(),
+            node_id: "netcore_tetra".to_string(),
+            discovery_qos: 1,
+            discovery_retain: true,
+            expose_gateway: true,
+            expose_sources: true,
+            expose_virtual_devices: true,
+            accept_state_ingress: true,
+            state_ingress_topic: String::new(),
+            allow_command_egress: false,
+            command_egress_topic: String::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct HomematicConfig {
+    pub enabled: bool,
+    pub mode: String,
+    pub ccu_host: String,
+    pub ccu_port: u16,
+    pub poll_interval_ms: u64,
+    pub request_timeout_ms: u64,
+    pub allow_writes: bool,
+}
+
+impl Default for HomematicConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            mode: "home_assistant_mqtt".to_string(),
+            ccu_host: "127.0.0.1".to_string(),
+            ccu_port: 2010,
+            poll_interval_ms: 2_000,
+            request_timeout_ms: 2_500,
+            allow_writes: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct HomematicDatapointConfig {
+    pub id: String,
+    pub name: String,
+    pub enabled: bool,
+    pub address: String,
+    pub parameter: String,
+    pub value_type: String,
+    pub platform: String,
+    pub device_class: Option<String>,
+    pub unit: Option<String>,
+    pub writable: bool,
+}
+
+impl Default for HomematicDatapointConfig {
+    fn default() -> Self {
+        Self {
+            id: String::new(),
+            name: String::new(),
+            enabled: true,
+            address: String::new(),
+            parameter: String::new(),
+            value_type: "string".to_string(),
+            platform: "sensor".to_string(),
+            device_class: None,
+            unit: None,
+            writable: false,
         }
     }
 }
@@ -394,6 +623,8 @@ pub struct StorageConfig {
     pub command_ledger_file: String,
     pub command_audit_file: String,
     pub virtual_state_file: String,
+    pub external_state_file: String,
+    pub homematic_state_file: String,
     pub dedup_limit: usize,
     pub outbox_limit: usize,
     pub command_ledger_limit: usize,
@@ -409,6 +640,8 @@ impl Default for StorageConfig {
             command_ledger_file: "command-ledger.json".to_string(),
             command_audit_file: "command-audit.ndjson".to_string(),
             virtual_state_file: "virtual-device-state.json".to_string(),
+            external_state_file: "external-entity-state.json".to_string(),
+            homematic_state_file: "homematic-datapoint-state.json".to_string(),
             dedup_limit: 50_000,
             outbox_limit: 20_000,
             command_ledger_limit: 50_000,
@@ -480,6 +713,10 @@ fn default_sources() -> Vec<EventSourceConfig> {
     .collect()
 }
 
+fn default_homematic_datapoints() -> Vec<HomematicDatapointConfig> {
+    Vec::new()
+}
+
 fn default_command_policies() -> Vec<CommandPolicyConfig> {
     vec![
         CommandPolicyConfig {
@@ -512,7 +749,39 @@ fn default_command_policies() -> Vec<CommandPolicyConfig> {
             max_ttl_secs: Some(60),
             allow_dry_run: true,
         },
+        CommandPolicyConfig {
+            id: "allow-openlab-homeassistant-lab-bridge".to_string(),
+            enabled: false,
+            effect: PolicyEffect::Allow,
+            command_types: vec!["homeassistant.entity.command".to_string()],
+            target_types: vec!["home_assistant_entity".to_string()],
+            target_prefixes: vec!["input_boolean.netcore_lab_".to_string()],
+            max_ttl_secs: Some(60),
+            allow_dry_run: true,
+        },
+        CommandPolicyConfig {
+            id: "allow-openlab-homematic-lab-writes".to_string(),
+            enabled: false,
+            effect: PolicyEffect::Allow,
+            command_types: vec!["homematic.datapoint.set".to_string()],
+            target_types: vec!["homematic_datapoint".to_string()],
+            target_prefixes: vec!["lab-".to_string()],
+            max_ttl_secs: Some(60),
+            allow_dry_run: true,
+        },
     ]
+}
+
+fn validate_exact_topic(value: &str, field: &str) -> Result<(), String> {
+    if value.trim_matches('/').is_empty()
+        || value.len() > 512
+        || value.contains('#')
+        || value.contains('+')
+        || value.contains('\0')
+    {
+        return Err(format!("{field} contains invalid MQTT topic characters"));
+    }
+    Ok(())
 }
 
 fn validate_topic_prefix(value: &str) -> Result<(), String> {
@@ -535,7 +804,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn phase_four_enables_only_the_open_lab_sandbox() {
+    fn phase_five_keeps_the_open_lab_sandbox() {
         let config = IotGatewayConfig::default();
         assert!(config.commands.enabled);
         assert_eq!(config.commands.mode, "open_lab_sandbox");
@@ -557,6 +826,8 @@ mod tests {
         let config = IotGatewayConfig::default();
         assert_eq!(config.security.mode, "open_lab");
         assert_eq!(config.server.bind.port(), 8240);
-        assert_eq!(config.command_policies.len(), 3);
+        assert_eq!(config.command_policies.len(), 5);
+        assert!(config.home_assistant.enabled);
+        assert!(!config.homematic.enabled);
     }
 }

@@ -1,63 +1,64 @@
-# NetCore IoT Gateway – Phase 4
+# NetCore IoT Gateway – Phase 5
 
-Der IoT Gateway verbindet die kanonischen `netcore-event-v1`-Ereignisse mit MQTT und ergänzt in Phase 4 einen persistierten Command-/Ack-/Policy-Pfad.
+Der IoT Gateway verbindet `netcore-event-v1` mit MQTT, verarbeitet `netcore-command-v1` über Default-Deny-Policies, quittiert mit `netcore-command-ack-v1` und ergänzt jetzt Home Assistant sowie Homematic IP.
 
 ## OPEN LAB
 
-Diese Stufe ist weiterhin ausschließlich für ein isoliertes Testnetz gedacht:
-
 - keine WebUI-Anmeldung;
 - keine API-Tokens;
-- keine MQTT-Benutzer oder Passwörter;
+- keine MQTT-Credentials;
 - kein TLS;
-- `source.actor` ist nur selbst deklarierte Metadaten;
-- reale Hardware-Executor sind nicht enthalten.
+- Home Assistant MQTT Discovery ist standardmäßig aktiv;
+- Zustände ausgewählter Home-Assistant-Entitäten dürfen importiert werden;
+- reale Home-Assistant- und Homematic-Schreibzugriffe bleiben standardmäßig aus;
+- virtuelle `lab-*`-Aktoren bleiben der sofort nutzbare Testpfad.
 
-Trotz offener Transportebene ist die Command-Ausführung nicht beliebig: Die Konfiguration arbeitet mit `default_deny = true`. Mitgeliefert werden nur Allow-Policies für virtuelle `lab-*`-Aktoren.
-
-## Datenpfade
+## Architektur
 
 ```text
-Node Gateway ─────┐
-Mobility Core ────┤
-Call Control ─────┼─ netcore-event-v1 ─► IoT Gateway ─► MQTT events/state
-SDS Router ───────┘
+NetCore-Dienste ── netcore-event-v1 ──► IoT Gateway ──► MQTT
+                                                ├────► Home Assistant Discovery
+Home Assistant / HmIP Access Point ── MQTT ─────┤
+CCU3 / RaspberryMatic ── XML-RPC (optional) ────┘
 
-MQTT commands/#
-       │
-       ▼
-netcore-command-v1
-       │ Schema / Zeit / Retain / Dublette / Policy
-       ▼
-OPEN-LAB Sandbox Executor
-       │
-       ├─ persistenter virtueller Zustand
-       └─ netcore-command-ack-v1 → MQTT acks/<command-id>
+Home Assistant Command Topics
+        └─► netcore-command-v1 ─► Policy ─► virtueller Aktor
+
+Direkte CCU-Schreibbefehle
+        └─► Policy + allow_writes + writable ─► XML-RPC setValue
 ```
 
-## Mitgelieferte Sandbox-Commands
+## Home Assistant
 
-| Command | Target-Typ | Payload |
-|---|---|---|
-| `virtual.relay.set` | `virtual_relay` | `{"state":true}` |
-| `virtual.light.set` | `virtual_light` | `{"on":true,"brightness":42}` |
-| `virtual.button.press` | `virtual_button` | `{}` |
+Der Gateway veröffentlicht Discovery-Konfigurationen für:
 
-Die Standardpolicies erlauben nur Ziel-IDs, die mit `lab-` beginnen.
+- Gateway-Verfügbarkeit;
+- Gesundheit der Eventquellen;
+- virtuelle Lab-Relais, -Lichter und -Taster;
+- explizit konfigurierte Homematic-Datenpunkte.
 
-## Schutzmechanismen
+Er hört auf `homeassistant/status` und veröffentlicht die Discovery-Daten nach einem Home-Assistant-Neustart erneut.
 
-- stabiles `command_id`;
-- persistente Dublettensperre über Neustarts;
-- `requested_at` und `expires_at`;
-- globale und policy-spezifische TTL-Grenzen;
-- Retained Commands standardmäßig verboten;
-- Deny überstimmt Allow;
-- Default Deny;
-- Dry-Run ohne Zustandsänderung;
-- persistentes Inbox-, Ledger- und Audit-Log;
-- Acks über persistente MQTT-Outbox;
-- virtuelle Zustände werden retained publiziert.
+## Homematic IP
+
+### Access Point
+
+Der Access Point wird über Home Assistant angebunden. Ausgewählte Entitäten werden per Automation an den State-Ingress gesendet:
+
+```text
+netcore/v1/integrations/homeassistant/state
+```
+
+### CCU3 / RaspberryMatic
+
+Optional kann der Gateway explizit konfigurierte Datenpunkte direkt über XML-RPC pollen. Der Modus ist standardmäßig deaktiviert. HmIP-Datenpunkte nutzen in der Beispielkonfiguration Port 2010.
+
+Direkte Schreibzugriffe benötigen gleichzeitig:
+
+1. `homematic.allow_writes = true`;
+2. `writable = true` am Datenpunkt;
+3. eine aktive Allow-Policy;
+4. ein Ziel, das die Policy tatsächlich trifft.
 
 ## Ports
 
@@ -72,28 +73,19 @@ chmod 755 install/*.sh
 ./install/update.sh
 ```
 
-Der Installer migriert eine vorhandene Phase-3-Konfiguration, ohne die eingetragenen Backend- oder Broker-Adressen zu überschreiben.
+Der Installer ergänzt fehlende Phase-5-Konfigurationsblöcke und überschreibt bestehende Broker-, Backend- oder CCU-Adressen nicht.
 
 ## Wichtige Endpunkte
 
 ```text
 GET  /api/v1/status
-GET  /api/v1/topics
+GET  /api/v1/home-assistant
+GET  /api/v1/home-assistant/entities
+GET  /api/v1/homematic/datapoints
 GET  /api/v1/policies
-GET  /api/v1/commands
-GET  /api/v1/commands/<uuid>
-GET  /api/v1/virtual-devices
-GET  /api/v1/outbox
-POST /api/v1/test/command
-```
-
-## MQTT Topics
-
-```text
-netcore/v1/events/<domain>/<action>
-netcore/v1/state/<subject-type>/<subject-id>
-netcore/v1/commands/#
-netcore/v1/acks/<command-id>
+POST /api/v1/actions/home-assistant-discovery
+POST /api/v1/actions/homematic-poll-now
+POST /api/v1/test/homeassistant-state
 ```
 
 ## Persistenz
@@ -105,8 +97,6 @@ netcore/v1/acks/<command-id>
 /var/lib/netcore-iot-gateway/command-ledger.json
 /var/lib/netcore-iot-gateway/command-audit.ndjson
 /var/lib/netcore-iot-gateway/virtual-device-state.json
+/var/lib/netcore-iot-gateway/external-entity-state.json
+/var/lib/netcore-iot-gateway/homematic-datapoint-state.json
 ```
-
-## Nächste Phase
-
-Phase 5 ergänzt Home Assistant beziehungsweise Homematic IP als Adapter. Reale Aktionen dürfen erst nach expliziter Adapter- und Policy-Konfiguration entstehen; die OPEN-LAB-Sandbox wird nicht stillschweigend zu einem Hardware-Executor umgebaut.

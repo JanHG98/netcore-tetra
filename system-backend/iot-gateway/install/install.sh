@@ -19,7 +19,7 @@ if [[ "${INSTALL_LOCAL_MQTT_BROKER}" == "1" ]]; then
   install -d -m 0755 /etc/mosquitto/conf.d
   if [[ ! -e /etc/mosquitto/conf.d/netcore-openlab.conf ]]; then
     cat > /etc/mosquitto/conf.d/netcore-openlab.conf <<'MOSQUITTO'
-# NetCore Phase 4 OPEN LAB – nur in einem isolierten Testnetz verwenden.
+# NetCore Phase 5 OPEN LAB – nur in einem isolierten Testnetz verwenden.
 listener 1883 0.0.0.0
 allow_anonymous true
 persistence true
@@ -58,7 +58,7 @@ if [[ ! -f "${CONFIG}" ]]; then
 fi
 
 CONFIG="${CONFIG}" EXAMPLE="${REPO_ROOT}/system-backend/iot-gateway/config/iot-gateway.example.toml" \
-  "${REPO_ROOT}/system-backend/iot-gateway/install/migrate-phase4-config.sh"
+  "${REPO_ROOT}/system-backend/iot-gateway/install/migrate-phase5-config.sh"
 
 install -m 0644 \
   system-backend/iot-gateway/systemd/netcore-iot-gateway.service \
@@ -74,7 +74,8 @@ systemctl --no-pager --full status netcore-iot-gateway.service
 
 echo
 echo "OPEN LAB: keine Anmeldung, keine Tokens, kein TLS und anonymer MQTT-Zugriff."
-echo "Phase 4: Command/Ack/Policy ist aktiv, aber ausschließlich für virtuelle lab-* Sandbox-Aktoren."
+echo "Phase 5: Home Assistant MQTT Discovery ist aktiv; reale HA-/Homematic-Schreibzugriffe bleiben standardmäßig gesperrt."
 echo "WebUI: http://<LXC-IP>:8240/"
 echo "MQTT:  <LXC-IP>:1883 (wenn lokaler Broker installiert wurde)"
-echo "Vor dem Quelltest die vier source.url-Einträge in ${CONFIG} auf die echten LXC-Adressen setzen."
+echo "Vor dem Quelltest die vier source.url-Einträge in ${CONFIG} auf die echten LXC-Adressen setzen.
+echo "Home Assistant verbindet sich testweise anonym mit diesem MQTT-Broker und übernimmt die Discovery-Topics automatisch.""

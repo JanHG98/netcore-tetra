@@ -26,9 +26,19 @@ pub struct VirtualDeviceState {
 }
 
 #[derive(Debug, Clone)]
+pub struct IntegrationOutbound {
+    pub kind: String,
+    pub topic: String,
+    pub qos: u8,
+    pub retain: bool,
+    pub payload: String,
+}
+
+#[derive(Debug, Clone)]
 pub struct ExecutionResult {
     pub result: Value,
     pub state_update: Option<VirtualDeviceState>,
+    pub outbound: Vec<IntegrationOutbound>,
 }
 
 pub fn evaluate_policy(config: &IotGatewayConfig, command: &NetCoreCommand) -> PolicyEvaluation {
@@ -151,7 +161,8 @@ fn list_matches(values: &[String], candidate: &str) -> bool {
     values.is_empty() || values.iter().any(|value| value == "*" || value == candidate)
 }
 
-pub fn execute_sandbox(
+pub fn execute_command(
+    config: &IotGatewayConfig,
     command: &NetCoreCommand,
     virtual_devices: &mut BTreeMap<String, VirtualDeviceState>,
 ) -> Result<ExecutionResult, String> {
@@ -159,8 +170,88 @@ pub fn execute_sandbox(
         "virtual.relay.set" => execute_virtual_relay(command, virtual_devices),
         "virtual.light.set" => execute_virtual_light(command, virtual_devices),
         "virtual.button.press" => execute_virtual_button(command, virtual_devices),
-        other => Err(format!("no OPEN-LAB sandbox executor exists for {other}")),
+        "homeassistant.entity.command" => execute_home_assistant_command(config, command),
+        "homematic.datapoint.set" => {
+            let result = crate::homematic::execute_datapoint_command(config, command)?;
+            Ok(ExecutionResult {
+                result,
+                state_update: None,
+                outbound: Vec::new(),
+            })
+        }
+        other => Err(format!("no Phase-5 OPEN-LAB executor exists for {other}")),
     }
+}
+
+pub fn execute_sandbox(
+    command: &NetCoreCommand,
+    virtual_devices: &mut BTreeMap<String, VirtualDeviceState>,
+) -> Result<ExecutionResult, String> {
+    execute_command(&IotGatewayConfig::default(), command, virtual_devices)
+}
+
+fn execute_home_assistant_command(
+    config: &IotGatewayConfig,
+    command: &NetCoreCommand,
+) -> Result<ExecutionResult, String> {
+    require_target_type(command, "home_assistant_entity")?;
+    if !config.home_assistant.enabled {
+        return Err("Home Assistant integration is disabled".to_string());
+    }
+    if !config.home_assistant.allow_command_egress {
+        return Err("home_assistant.allow_command_egress is false".to_string());
+    }
+    let action = command
+        .payload
+        .get("action")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "payload.action is required".to_string())?;
+    if action.is_empty() || action.len() > 128 {
+        return Err("payload.action must contain 1..128 characters".to_string());
+    }
+    let data = command
+        .payload
+        .get("data")
+        .cloned()
+        .unwrap_or_else(|| json!({}));
+    if !data.is_object() {
+        return Err("payload.data must be an object".to_string());
+    }
+    let result = json!({
+        "entity_id":command.target.id,
+        "action":action,
+        "data":data,
+        "transport":"mqtt_to_home_assistant",
+        "dry_run":command.dry_run
+    });
+    if command.dry_run {
+        return Ok(ExecutionResult {
+            result,
+            state_update: None,
+            outbound: Vec::new(),
+        });
+    }
+    let payload = json!({
+        "schema":"netcore-home-assistant-command-v1",
+        "command_id":command.command_id,
+        "entity_id":command.target.id,
+        "action":action,
+        "data":data,
+        "requested_at":command.requested_at,
+        "expires_at":command.expires_at
+    })
+    .to_string();
+    Ok(ExecutionResult {
+        result,
+        state_update: None,
+        outbound: vec![IntegrationOutbound {
+            kind: "home_assistant_command".to_string(),
+            topic: config.home_assistant_command_egress_topic(),
+            qos: config.mqtt.qos,
+            retain: false,
+            payload,
+        }],
+    })
 }
 
 fn execute_virtual_relay(
@@ -178,6 +269,7 @@ fn execute_virtual_relay(
         return Ok(ExecutionResult {
             result,
             state_update: None,
+            outbound: Vec::new(),
         });
     }
     let update = VirtualDeviceState {
@@ -191,6 +283,7 @@ fn execute_virtual_relay(
     Ok(ExecutionResult {
         result,
         state_update: Some(update),
+        outbound: Vec::new(),
     })
 }
 
@@ -219,6 +312,7 @@ fn execute_virtual_light(
         return Ok(ExecutionResult {
             result,
             state_update: None,
+            outbound: Vec::new(),
         });
     }
     let update = VirtualDeviceState {
@@ -232,6 +326,7 @@ fn execute_virtual_light(
     Ok(ExecutionResult {
         result,
         state_update: Some(update),
+        outbound: Vec::new(),
     })
 }
 
@@ -252,6 +347,7 @@ fn execute_virtual_button(
         return Ok(ExecutionResult {
             result,
             state_update: None,
+            outbound: Vec::new(),
         });
     }
     let update = VirtualDeviceState {
@@ -265,6 +361,7 @@ fn execute_virtual_button(
     Ok(ExecutionResult {
         result,
         state_update: Some(update),
+        outbound: Vec::new(),
     })
 }
 

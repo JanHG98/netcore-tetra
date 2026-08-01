@@ -1,16 +1,12 @@
-# OPEN-LAB-Modus Phase 4
+# OPEN-LAB-Modus Phase 5
 
-Der IoT Gateway besitzt weiterhin keine Authentisierung und keine Verschlüsselung. Jeder Teilnehmer im erreichbaren Netzwerk kann MQTT-Nachrichten publizieren und Management-Endpunkte aufrufen.
+Der Transport ist absichtlich offen: kein Login, keine Tokens, keine MQTT-Credentials und kein TLS. Der Betrieb gehört ausschließlich in ein isoliertes Testnetz.
 
-Die Schutzgrenze liegt deshalb bewusst innerhalb der Fachlogik:
+Trotzdem bleiben Aktorpfade geschlossen:
 
-- `default_deny = true`;
-- nur explizite Allow-Policies;
-- Deny gewinnt;
-- nur virtuelle Sandbox-Executor;
-- Standardpolicies nur für Ziel-IDs unter `lab-`;
-- keine GPIO-, Homematic-, Modbus-, Tür-, Tor- oder Stromschalt-Adapter;
-- Retained Commands verboten;
-- TTL und Dublettensperre verpflichtend.
-
-Das ist kein Ersatz für spätere Authentisierung. Die Angaben `source.service`, `source.instance` und `source.actor` sind im OPEN LAB nicht beweiskräftig.
+- Default Deny;
+- retained Commands gesperrt;
+- virtuelle Ziele nur mit `lab-`;
+- Home-Assistant-Egress aus;
+- Homematic-Schreibzugriffe aus;
+- direkte CCU-Datenpunkte explizit statt automatischer Vollinventur.

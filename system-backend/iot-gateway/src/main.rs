@@ -1,5 +1,7 @@
 mod command;
 mod config;
+mod home_assistant;
+mod homematic;
 mod http;
 mod model;
 mod mqtt;
@@ -47,24 +49,34 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "IoT Gateway starts in OPEN LAB mode: no login, no tokens, no MQTT credentials and no TLS"
     );
     tracing::warn!(
-        "Phase 4 command execution is enabled only inside the policy-controlled OPEN-LAB sandbox"
+        "Phase 5 keeps command execution policy-controlled; real Home Assistant/Homematic writes are opt-in"
     );
     tracing::info!(
-        "IoT Gateway WebUI/API={} MQTT={}:{} prefix={} sources={} command_mode={} policies={}",
+        "IoT Gateway WebUI/API={} MQTT={}:{} prefix={} sources={} command_mode={} policies={} home_assistant={} homematic_mode={}",
         config.server.bind,
         config.mqtt.host,
         config.mqtt.port,
         config.mqtt.topic_prefix,
         config.sources.iter().filter(|source| source.enabled).count(),
         config.commands.mode,
-        config.command_policies.iter().filter(|policy| policy.enabled).count()
+        config.command_policies.iter().filter(|policy| policy.enabled).count(),
+        config.home_assistant.enabled,
+        config.homematic.mode
     );
 
     let state = SharedGateway::new(config.clone())?;
     let (poll_control, _poller) = poller::spawn_poller(config.clone(), state.clone())
         .map_err(std::io::Error::other)?;
     let (_publisher, mqtt_control, _mqtt_workers) = mqtt::spawn_mqtt(config.clone(), state.clone());
-    let http = http::spawn_http_server(config, state, poll_control, mqtt_control)?;
+    let (homematic_control, _homematic_worker) =
+        homematic::spawn_homematic(config.clone(), state.clone());
+    let http = http::spawn_http_server(
+        config,
+        state,
+        poll_control,
+        mqtt_control,
+        homematic_control,
+    )?;
     http.join()
         .map_err(|_| -> Box<dyn std::error::Error> {
             "IoT Gateway HTTP server thread panicked".into()

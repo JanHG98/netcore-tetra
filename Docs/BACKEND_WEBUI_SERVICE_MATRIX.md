@@ -17,6 +17,7 @@
 | Control Room | Operatoren, Arbeitsplätze, Backend-Verknüpfung | Rollen, Tokens, Leitstellenkonfiguration |
 | Application Gateway | Connectoren, Webhooks, Routing, Vorlagen, Delivery-/Dead-Letter-Queues und TTS | Connector aktivieren, Secrets ersetzen, Fremdzustellung auslösen und TTS veröffentlichen; im Testpaket bewusst offen ohne Management-Tokens |
 | Media Library | Audio-Assets, TTS-/Recorder-Import, Vorschau, Freigabe, TETRA-Cache, Archiv und Playout-Jobs | Upload/Import, Metadaten, Freigabe/Sperre, Vorschau, Archivkopie sowie kontrollierte Einspeisung in bestehende Media-Switch-Sessions |
+| IoT Gateway | MQTT-Events, Commands/Acks, Home Assistant Discovery, importierte HA-Entitäten und Homematic-Datenpunkte | Reale Home-Assistant-/Homematic-Aktionen; in Phase 5 standardmäßig gesperrt, OPEN LAB ohne Management-Tokens |
 | Recorder | Aufnahmen, Suche, Retention, Integrität | Export, Retention, Hold und Löschung; im Testpaket bewusst offen ohne Tokens |
 | Observability | Metriken, Logs, Traces, Alarme und Diagnose | Alarmregeln, Retention, Stummschaltung und Diagnoseexport; im Testpaket bewusst offen ohne Tokens |
 | Shared | kein Container; gemeinsames UI-Kit, API-Verträge und Service-Grundbausteine | nicht zutreffend |

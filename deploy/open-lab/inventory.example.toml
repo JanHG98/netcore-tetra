@@ -554,7 +554,7 @@ config_target = "/etc/netcore/observability.toml"
 depends_on = ["node-gateway", "subscriber-core", "group-core", "mobility-core", "call-control", "media-switch", "recorder", "sds-router", "packet-core", "ip-gateway", "security-core", "kmf", "transit", "application-gateway", "media-library", "iot-gateway", "control-room"]
 
 
-# Phase 3 IoT/MQTT bridge. OPEN LAB; no credentials and no TLS.
+# Phase 5 IoT/MQTT, Home Assistant and Homematic bridge. OPEN LAB; no credentials and no TLS.
 [[services]]
 name = "iot-gateway"
 host = "10.0.20.27"

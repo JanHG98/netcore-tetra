@@ -93,6 +93,52 @@ pub struct CommandRecord {
     pub duplicate_of: Option<Uuid>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExternalEntityState {
+    pub integration: String,
+    pub entity_id: String,
+    pub state: String,
+    #[serde(default)]
+    pub attributes: Value,
+    #[serde(default)]
+    pub device: Value,
+    pub observed_at: String,
+    pub received_at: String,
+    pub source_topic: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HomematicDatapointState {
+    pub id: String,
+    pub name: String,
+    pub address: String,
+    pub parameter: String,
+    pub value: Value,
+    pub value_type: String,
+    pub writable: bool,
+    pub updated_at: String,
+    pub healthy: bool,
+    pub last_error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct HomeAssistantStatus {
+    pub enabled: bool,
+    pub discovery_enabled: bool,
+    pub discovery_prefix: String,
+    pub status_topic: String,
+    pub state_ingress_topic: String,
+    pub command_prefix: String,
+    pub command_egress_topic: String,
+    pub allow_command_egress: bool,
+    pub discovery_runs: u64,
+    pub discovery_messages_enqueued: u64,
+    pub state_messages_received: u64,
+    pub command_messages_received: u64,
+    pub external_entities: usize,
+    pub last_birth_at: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct TopicRegistry {
     pub prefix: String,
@@ -109,6 +155,10 @@ pub struct TopicRegistry {
     pub qos: u8,
     pub event_retain: bool,
     pub state_retain: bool,
+    pub home_assistant_discovery_prefix: Option<String>,
+    pub home_assistant_status_topic: Option<String>,
+    pub home_assistant_state_ingress_topic: Option<String>,
+    pub home_assistant_command_prefix: Option<String>,
     pub examples: BTreeMap<String, String>,
 }
 
@@ -153,7 +203,25 @@ pub struct GatewayStatus {
     pub command_execution_mode: String,
     pub command_policy_count: usize,
     pub virtual_devices: usize,
+    pub home_assistant_enabled: bool,
+    pub home_assistant_discovery_runs: u64,
+    pub home_assistant_external_entities: usize,
+    pub homematic_enabled: bool,
+    pub homematic_mode: String,
+    pub homematic_datapoints_configured: usize,
+    pub homematic_datapoints_healthy: usize,
     pub last_poll_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HomeAssistantStateInput {
+    pub entity_id: String,
+    pub state: String,
+    #[serde(default)]
+    pub attributes: Value,
+    #[serde(default)]
+    pub device: Value,
+    pub observed_at: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

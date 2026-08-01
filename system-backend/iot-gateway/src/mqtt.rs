@@ -112,9 +112,7 @@ fn run_connection_loop(
     loop {
         control.force_reconnect.store(false, Ordering::SeqCst);
         let result = run_one_connection(
-            &config.mqtt,
-            config.commands.enabled,
-            &config.commands.mode,
+            &config,
             &state,
             &publisher,
             &control,
@@ -126,14 +124,13 @@ fn run_connection_loop(
 }
 
 fn run_one_connection(
-    config: &MqttConfig,
-    command_execution_enabled: bool,
-    command_execution_mode: &str,
+    config: &IotGatewayConfig,
     state: &SharedGateway,
     publisher: &MqttPublisher,
     control: &MqttControl,
 ) -> Result<(), String> {
-    let address = (config.host.as_str(), config.port)
+    let mqtt = &config.mqtt;
+    let address = (mqtt.host.as_str(), mqtt.port)
         .to_socket_addrs()
         .map_err(|error| format!("MQTT DNS lookup failed: {error}"))?
         .next()
@@ -148,7 +145,7 @@ fn run_one_connection(
         .map_err(|error| error.to_string())?;
     stream.set_nodelay(true).map_err(|error| error.to_string())?;
 
-    write_connect(&mut stream, config)?;
+    write_connect(&mut stream, mqtt)?;
     let connack = read_packet(&mut stream).map_err(packet_error)?;
     validate_connack(&connack)?;
     stream
@@ -160,25 +157,57 @@ fn run_one_connection(
     state.mark_mqtt_connected();
     tracing::info!(
         "MQTT connected to {}:{} as {}",
-        config.host,
-        config.port,
-        config.client_id
+        mqtt.host,
+        mqtt.port,
+        mqtt.client_id
     );
 
     let mut next_packet_id = 1_u16;
     publish_gateway_online(
         &mut stream,
-        config,
-        command_execution_enabled,
-        command_execution_mode,
+        mqtt,
+        config.commands.enabled,
+        &config.commands.mode,
         &mut next_packet_id,
     )?;
-    if config.observe_commands {
-        let subscription = format!("{}/commands/#", config.topic_prefix.trim_matches('/'));
-        write_subscribe(&mut stream, next_id(&mut next_packet_id), &subscription, config.qos)?;
+    if mqtt.observe_commands {
+        let subscription = format!("{}/commands/#", mqtt.topic_prefix.trim_matches('/'));
+        write_subscribe(&mut stream, next_id(&mut next_packet_id), &subscription, mqtt.qos)?;
         tracing::warn!(
             "OPEN LAB command processing subscribed to {}; policy-controlled sandbox execution={}",
-            subscription, command_execution_enabled
+            subscription, config.commands.enabled
+        );
+    }
+    if config.home_assistant.enabled {
+        write_subscribe(
+            &mut stream,
+            next_id(&mut next_packet_id),
+            &config.home_assistant.status_topic,
+            config.home_assistant.discovery_qos,
+        )?;
+        if config.home_assistant.accept_state_ingress {
+            write_subscribe(
+                &mut stream,
+                next_id(&mut next_packet_id),
+                &config.home_assistant_state_ingress_topic(),
+                mqtt.qos,
+            )?;
+        }
+        let command_subscription = format!(
+            "{}/#",
+            config.home_assistant_command_prefix()
+        );
+        write_subscribe(
+            &mut stream,
+            next_id(&mut next_packet_id),
+            &command_subscription,
+            mqtt.qos,
+        )?;
+        tracing::info!(
+            "Home Assistant MQTT adapter subscribed to status={}, state={}, commands={}",
+            config.home_assistant.status_topic,
+            config.home_assistant_state_ingress_topic(),
+            command_subscription
         );
     }
 
@@ -207,7 +236,7 @@ fn run_one_connection(
                 handle_packet(&mut stream, packet, config, state, &mut pending)?;
             }
             Err(PacketReadError::Timeout) => {
-                let ping_after = Duration::from_secs((u64::from(config.keep_alive_secs) / 2).max(5));
+                let ping_after = Duration::from_secs((u64::from(mqtt.keep_alive_secs) / 2).max(5));
                 if last_io.elapsed() >= ping_after {
                     write_packet(&mut stream, 0xC0, &[])?;
                     last_io = Instant::now();
@@ -232,7 +261,7 @@ fn run_one_connection(
 fn handle_packet(
     stream: &mut TcpStream,
     packet: Packet,
-    config: &MqttConfig,
+    config: &IotGatewayConfig,
     state: &SharedGateway,
     pending: &mut HashMap<u16, mpsc::Sender<Result<(), String>>>,
 ) -> Result<(), String> {
@@ -245,8 +274,12 @@ fn handle_packet(
                     write_packet(stream, 0x40, &packet_id.to_be_bytes())?;
                 }
             }
-            let command_prefix = format!("{}/commands/", config.topic_prefix.trim_matches('/'));
-            if config.observe_commands && incoming.topic.starts_with(&command_prefix) {
+            let command_prefix = format!(
+                "{}/commands/",
+                config.mqtt.topic_prefix.trim_matches('/')
+            );
+            let ha_command_prefix = format!("{}/", config.home_assistant_command_prefix());
+            if config.mqtt.observe_commands && incoming.topic.starts_with(&command_prefix) {
                 match state.process_command(
                     incoming.topic,
                     incoming.payload,
@@ -259,6 +292,39 @@ fn handle_packet(
                         record.status
                     ),
                     Err(error) => tracing::warn!("failed to process MQTT command: {}", error),
+                }
+            } else if config.home_assistant.enabled
+                && incoming.topic == config.home_assistant.status_topic
+            {
+                state.record_home_assistant_birth(&incoming.payload);
+            } else if config.home_assistant.enabled
+                && config.home_assistant.accept_state_ingress
+                && incoming.topic == config.home_assistant_state_ingress_topic()
+            {
+                if let Err(error) = state.ingest_home_assistant_state(
+                    incoming.topic,
+                    incoming.payload,
+                ) {
+                    tracing::warn!("failed to ingest Home Assistant state: {}", error);
+                }
+            } else if config.home_assistant.enabled
+                && incoming.topic.starts_with(&ha_command_prefix)
+            {
+                match state.process_home_assistant_command(
+                    incoming.topic,
+                    incoming.payload,
+                    incoming.qos,
+                    incoming.retain,
+                ) {
+                    Ok(record) => tracing::info!(
+                        "Home Assistant command {} completed with status {:?}",
+                        record.command_id,
+                        record.status
+                    ),
+                    Err(error) => tracing::warn!(
+                        "failed to process Home Assistant command: {}",
+                        error
+                    ),
                 }
             }
         }
@@ -321,7 +387,7 @@ fn publish_gateway_online(
             "security_mode":"open_lab",
             "command_execution":command_execution_enabled,
             "command_execution_mode":command_execution_mode,
-            "phase":4,
+            "phase":5,
             "timestamp":chrono::Utc::now().to_rfc3339()
         })
         .to_string(),
@@ -539,7 +605,7 @@ fn parse_publish(packet: &Packet) -> Result<IncomingPublish, String> {
         .to_string();
     let qos = (packet.header >> 1) & 0x03;
     if qos > 1 {
-        return Err("Phase 4 does not support inbound MQTT QoS 2".to_string());
+        return Err("Phase 5 does not support inbound MQTT QoS 2".to_string());
     }
     let mut offset = 2 + topic_length;
     let packet_id = if qos == 1 {

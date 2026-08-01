@@ -12,11 +12,12 @@ use netcore_contracts::{
 use serde_json::{json, Value};
 use uuid::Uuid;
 
-use crate::command::{VirtualDeviceState, evaluate_policy, execute_sandbox};
-use crate::config::{CommandPolicyConfig, IotGatewayConfig};
+use crate::command::{VirtualDeviceState, evaluate_policy, execute_command};
+use crate::config::{CommandPolicyConfig, HomematicDatapointConfig, IotGatewayConfig};
 use crate::model::{
-    BridgeEventRecord, CommandRecord, GatewayStatus, OutboundMessage, OutboxEntrySummary,
-    SourceStatus, TopicRegistry,
+    BridgeEventRecord, CommandRecord, ExternalEntityState, GatewayStatus,
+    HomeAssistantStateInput, HomeAssistantStatus, HomematicDatapointState, OutboundMessage,
+    OutboxEntrySummary, SourceStatus, TopicRegistry,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -40,6 +41,13 @@ struct GatewayState {
     command_ledger: HashMap<Uuid, CommandRecord>,
     command_order: VecDeque<Uuid>,
     virtual_devices: BTreeMap<String, VirtualDeviceState>,
+    external_entities: BTreeMap<String, ExternalEntityState>,
+    homematic_states: BTreeMap<String, HomematicDatapointState>,
+    home_assistant_discovery_runs: u64,
+    home_assistant_discovery_messages_enqueued: u64,
+    home_assistant_state_messages_received: u64,
+    home_assistant_command_messages_received: u64,
+    home_assistant_last_birth_at: Option<String>,
     dedup: HashSet<Uuid>,
     dedup_order: VecDeque<Uuid>,
     events_seen: u64,
@@ -71,7 +79,12 @@ impl SharedGateway {
             &config.command_ledger_path(),
             config.storage.command_ledger_limit,
         )?;
-        let virtual_devices = load_virtual_devices(&config.virtual_state_path())?;
+        let mut virtual_devices = load_virtual_devices(&config.virtual_state_path())?;
+        ensure_default_virtual_devices(&mut virtual_devices);
+        persist_virtual_devices(&config.virtual_state_path(), &virtual_devices)
+            .map_err(std::io::Error::other)?;
+        let external_entities = load_external_entities(&config.external_state_path())?;
+        let homematic_states = load_homematic_states(&config.homematic_state_path())?;
         let commands = command_order
             .iter()
             .filter_map(|command_id| command_ledger.get(command_id).cloned())
@@ -101,6 +114,13 @@ impl SharedGateway {
             command_ledger,
             command_order,
             virtual_devices,
+            external_entities,
+            homematic_states,
+            home_assistant_discovery_runs: 0,
+            home_assistant_discovery_messages_enqueued: 0,
+            home_assistant_state_messages_received: 0,
+            home_assistant_command_messages_received: 0,
+            home_assistant_last_birth_at: None,
             dedup,
             dedup_order,
             events_seen: 0,
@@ -123,13 +143,24 @@ impl SharedGateway {
         gateway.record_bridge_event(
             "iot_gateway.started",
             json!({
-                "phase":4,
+                "phase":5,
                 "command_execution":gateway.config().commands.enabled,
                 "execution_mode":gateway.config().commands.mode,
                 "security_mode":"open_lab",
-                "default_deny":gateway.config().commands.default_deny
+                "default_deny":gateway.config().commands.default_deny,
+                "home_assistant":gateway.config().home_assistant.enabled,
+                "homematic_mode":gateway.config().homematic.mode
             }),
         );
+        {
+            let state = gateway.0.lock().expect("IoT Gateway state poisoned");
+            ensure_outbox_capacity(&state, state.virtual_devices.len())
+                .map_err(std::io::Error::other)?;
+            for device in state.virtual_devices.values() {
+                enqueue_virtual_state_locked(&state, device)
+                    .map_err(std::io::Error::other)?;
+            }
+        }
         Ok(gateway)
     }
 
@@ -152,10 +183,10 @@ impl SharedGateway {
         GatewayStatus {
             service: "netcore-iot-gateway",
             version: env!("CARGO_PKG_VERSION"),
-            phase: 4,
+            phase: 5,
             started_at: state.started_at.clone(),
             security_mode: "open_lab",
-            warning: "No login, no tokens and no TLS; commands are restricted to the OPEN-LAB sandbox",
+            warning: "No login, no tokens and no TLS; real Home Assistant/Homematic writes remain explicit opt-in",
             mqtt_host: state.config.mqtt.host.clone(),
             mqtt_port: state.config.mqtt.port,
             mqtt_client_id: state.config.mqtt.client_id.clone(),
@@ -193,6 +224,22 @@ impl SharedGateway {
                 .filter(|policy| policy.enabled)
                 .count(),
             virtual_devices: state.virtual_devices.len(),
+            home_assistant_enabled: state.config.home_assistant.enabled,
+            home_assistant_discovery_runs: state.home_assistant_discovery_runs,
+            home_assistant_external_entities: state.external_entities.len(),
+            homematic_enabled: state.config.homematic.enabled,
+            homematic_mode: state.config.homematic.mode.clone(),
+            homematic_datapoints_configured: state
+                .config
+                .homematic_datapoints
+                .iter()
+                .filter(|datapoint| datapoint.enabled)
+                .count(),
+            homematic_datapoints_healthy: state
+                .homematic_states
+                .values()
+                .filter(|datapoint| datapoint.healthy)
+                .count(),
             last_poll_at: state.last_poll_at.clone(),
         }
     }
@@ -257,6 +304,46 @@ impl SharedGateway {
             .collect()
     }
 
+    pub fn external_entities(&self) -> Vec<ExternalEntityState> {
+        self.0
+            .lock()
+            .expect("IoT Gateway state poisoned")
+            .external_entities
+            .values()
+            .cloned()
+            .collect()
+    }
+
+    pub fn homematic_datapoints(&self) -> Vec<HomematicDatapointState> {
+        self.0
+            .lock()
+            .expect("IoT Gateway state poisoned")
+            .homematic_states
+            .values()
+            .cloned()
+            .collect()
+    }
+
+    pub fn home_assistant_status(&self) -> HomeAssistantStatus {
+        let state = self.0.lock().expect("IoT Gateway state poisoned");
+        HomeAssistantStatus {
+            enabled: state.config.home_assistant.enabled,
+            discovery_enabled: state.config.home_assistant.discovery_enabled,
+            discovery_prefix: state.config.home_assistant.discovery_prefix.clone(),
+            status_topic: state.config.home_assistant.status_topic.clone(),
+            state_ingress_topic: state.config.home_assistant_state_ingress_topic(),
+            command_prefix: state.config.home_assistant_command_prefix(),
+            command_egress_topic: state.config.home_assistant_command_egress_topic(),
+            allow_command_egress: state.config.home_assistant.allow_command_egress,
+            discovery_runs: state.home_assistant_discovery_runs,
+            discovery_messages_enqueued: state.home_assistant_discovery_messages_enqueued,
+            state_messages_received: state.home_assistant_state_messages_received,
+            command_messages_received: state.home_assistant_command_messages_received,
+            external_entities: state.external_entities.len(),
+            last_birth_at: state.home_assistant_last_birth_at.clone(),
+        }
+    }
+
     pub fn topic_registry(&self) -> TopicRegistry {
         let state = self.0.lock().expect("IoT Gateway state poisoned");
         let prefix = state.config.mqtt.topic_prefix.trim_matches('/').to_string();
@@ -280,6 +367,21 @@ impl SharedGateway {
         examples.insert(
             "virtual_relay_state".to_string(),
             format!("{prefix}/state/virtual_relays/lab-relay-01"),
+        );
+        examples.insert(
+            "home_assistant_state_ingress".to_string(),
+            state.config.home_assistant_state_ingress_topic(),
+        );
+        examples.insert(
+            "home_assistant_virtual_relay".to_string(),
+            format!(
+                "{}/virtual_relay/lab-relay-01/set",
+                state.config.home_assistant_command_prefix()
+            ),
+        );
+        examples.insert(
+            "homematic_state".to_string(),
+            format!("{prefix}/state/homematic/<datapoint-id>"),
         );
         TopicRegistry {
             prefix: prefix.clone(),
@@ -305,8 +407,355 @@ impl SharedGateway {
             qos: state.config.mqtt.qos,
             event_retain: state.config.mqtt.event_retain,
             state_retain: state.config.mqtt.state_retain,
+            home_assistant_discovery_prefix: state
+                .config
+                .home_assistant
+                .enabled
+                .then(|| state.config.home_assistant.discovery_prefix.clone()),
+            home_assistant_status_topic: state
+                .config
+                .home_assistant
+                .enabled
+                .then(|| state.config.home_assistant.status_topic.clone()),
+            home_assistant_state_ingress_topic: state
+                .config
+                .home_assistant
+                .enabled
+                .then(|| state.config.home_assistant_state_ingress_topic()),
+            home_assistant_command_prefix: state
+                .config
+                .home_assistant
+                .enabled
+                .then(|| state.config.home_assistant_command_prefix()),
             examples,
         }
+    }
+
+    pub fn enqueue_home_assistant_discovery(&self, reason: &str) -> Result<usize, String> {
+        let mut state = self.0.lock().expect("IoT Gateway state poisoned");
+        let sources = state.sources.values().cloned().collect::<Vec<_>>();
+        let virtual_devices = state.virtual_devices.values().cloned().collect::<Vec<_>>();
+        let messages = crate::home_assistant::discovery_messages(
+            &state.config,
+            &sources,
+            &virtual_devices,
+        );
+        if messages.is_empty() {
+            return Ok(0);
+        }
+        ensure_outbox_capacity(&state, messages.len())?;
+        for message in &messages {
+            write_outbox_message(&state.config.outbox_dir(), message)?;
+        }
+        state.home_assistant_discovery_runs =
+            state.home_assistant_discovery_runs.saturating_add(1);
+        state.home_assistant_discovery_messages_enqueued = state
+            .home_assistant_discovery_messages_enqueued
+            .saturating_add(messages.len() as u64);
+        push_event_locked(
+            &mut state,
+            "home_assistant.discovery_enqueued",
+            json!({"reason":reason,"messages":messages.len()}),
+        );
+        Ok(messages.len())
+    }
+
+    pub fn record_home_assistant_birth(&self, payload: &[u8]) {
+        let value = String::from_utf8_lossy(payload).trim().to_ascii_lowercase();
+        if value != "online" {
+            return;
+        }
+        {
+            let mut state = self.0.lock().expect("IoT Gateway state poisoned");
+            state.home_assistant_last_birth_at = Some(now_iso());
+            push_event_locked(
+                &mut state,
+                "home_assistant.birth",
+                json!({"status":"online"}),
+            );
+        }
+        if let Err(error) = self.enqueue_home_assistant_discovery("home_assistant_birth") {
+            self.record_bridge_event(
+                "home_assistant.discovery_failed",
+                json!({"reason":"home_assistant_birth","error":error}),
+            );
+        }
+    }
+
+    pub fn ingest_home_assistant_state(
+        &self,
+        topic: String,
+        payload: Vec<u8>,
+    ) -> Result<ExternalEntityState, String> {
+        let input = serde_json::from_slice::<HomeAssistantStateInput>(&payload)
+            .map_err(|error| format!("invalid Home Assistant state JSON: {error}"))?;
+        if input.entity_id.is_empty()
+            || input.entity_id.len() > 256
+            || input.entity_id.bytes().any(|byte| byte.is_ascii_control())
+        {
+            return Err("entity_id must contain 1..256 non-control characters".to_string());
+        }
+        if input.state.len() > 1024 || input.state.bytes().any(|byte| byte.is_ascii_control()) {
+            return Err("state must contain at most 1024 non-control characters".to_string());
+        }
+        let update = ExternalEntityState {
+            integration: "home_assistant".to_string(),
+            entity_id: input.entity_id.clone(),
+            state: input.state,
+            attributes: input.attributes,
+            device: input.device,
+            observed_at: input.observed_at.unwrap_or_else(now_iso),
+            received_at: now_iso(),
+            source_topic: topic,
+        };
+        let mut state = self.0.lock().expect("IoT Gateway state poisoned");
+        ensure_outbox_capacity(&state, 1)?;
+        state.home_assistant_state_messages_received = state
+            .home_assistant_state_messages_received
+            .saturating_add(1);
+        state
+            .external_entities
+            .insert(update.entity_id.clone(), update.clone());
+        persist_external_entities(
+            &state.config.external_state_path(),
+            &state.external_entities,
+        )?;
+        let prefix = state.config.mqtt.topic_prefix.trim_matches('/');
+        let message = OutboundMessage {
+            id: Uuid::new_v4(),
+            created_at: now_iso(),
+            kind: "home_assistant_entity_state".to_string(),
+            topic: format!(
+                "{prefix}/state/integrations/homeassistant/{}",
+                topic_segment(&update.entity_id)
+            ),
+            qos: state.config.mqtt.qos,
+            retain: true,
+            payload: serde_json::to_string(&update).map_err(|error| error.to_string())?,
+            source_event_id: None,
+        };
+        write_outbox_message(&state.config.outbox_dir(), &message)?;
+        push_event_locked(
+            &mut state,
+            "home_assistant.entity_state_received",
+            json!({"entity_id":update.entity_id.clone(),"state":update.state.clone()}),
+        );
+        Ok(update)
+    }
+
+    pub fn process_home_assistant_command(
+        &self,
+        topic: String,
+        payload: Vec<u8>,
+        qos: u8,
+        retained: bool,
+    ) -> Result<CommandRecord, String> {
+        let config = self.config();
+        let prefix = format!("{}/", config.home_assistant_command_prefix());
+        let suffix = topic
+            .strip_prefix(&prefix)
+            .ok_or_else(|| "topic is outside the Home Assistant command prefix".to_string())?;
+        let segments = suffix.split('/').collect::<Vec<_>>();
+        if segments.len() != 3 {
+            return Err("Home Assistant command topic must be <type>/<id>/<action>".to_string());
+        }
+        let device_type = segments[0];
+        let target_id = segments[1];
+        let action = segments[2];
+        let raw = String::from_utf8_lossy(&payload).trim().to_string();
+        let (command_type, target_type, command_payload) = match (device_type, action) {
+            ("virtual_relay", "set") => (
+                "virtual.relay.set",
+                "virtual_relay",
+                json!({"state":parse_on_off(&raw)?}),
+            ),
+            ("virtual_light", "set") => {
+                let on = parse_on_off(&raw)?;
+                let brightness = self
+                    .virtual_device_value("virtual_light", target_id, "brightness")
+                    .and_then(|value| value.as_u64())
+                    .unwrap_or(100);
+                (
+                    "virtual.light.set",
+                    "virtual_light",
+                    json!({"on":on,"brightness":brightness}),
+                )
+            }
+            ("virtual_light", "brightness") => {
+                let brightness = raw
+                    .parse::<u64>()
+                    .ok()
+                    .filter(|value| *value <= 100)
+                    .ok_or_else(|| "brightness must be an integer within 0..100".to_string())?;
+                let on = self
+                    .virtual_device_value("virtual_light", target_id, "on")
+                    .and_then(|value| value.as_bool())
+                    .unwrap_or(brightness > 0);
+                (
+                    "virtual.light.set",
+                    "virtual_light",
+                    json!({"on":on,"brightness":brightness}),
+                )
+            }
+            ("virtual_button", "press") => {
+                ("virtual.button.press", "virtual_button", json!({}))
+            }
+            ("homematic_datapoint", "set") => {
+                let datapoint = config
+                    .homematic_datapoints
+                    .iter()
+                    .find(|datapoint| datapoint.id == target_id)
+                    .ok_or_else(|| format!("unknown Homematic datapoint {target_id}"))?;
+                (
+                    "homematic.datapoint.set",
+                    "homematic_datapoint",
+                    json!({"value":parse_typed_value(&raw, &datapoint.value_type)?}),
+                )
+            }
+            _ => {
+                return Err(format!(
+                    "unsupported Home Assistant command path {device_type}/{action}"
+                ))
+            }
+        };
+        let mut command = NetCoreCommand::new(
+            command_type,
+            CommandSource::new("home-assistant", "mqtt-discovery")
+                .with_actor("home-assistant-openlab"),
+            CommandTarget::new(target_type, target_id),
+            command_payload,
+            config.commands.default_ttl_secs as i64,
+        );
+        command
+            .labels
+            .insert("integration".to_string(), "home_assistant".to_string());
+        command
+            .labels
+            .insert("security_mode".to_string(), "open_lab".to_string());
+        {
+            let mut state = self.0.lock().expect("IoT Gateway state poisoned");
+            state.home_assistant_command_messages_received = state
+                .home_assistant_command_messages_received
+                .saturating_add(1);
+        }
+        let encoded = serde_json::to_vec(&command).map_err(|error| error.to_string())?;
+        self.process_command(topic, encoded, qos, retained)
+    }
+
+    fn virtual_device_value(&self, device_type: &str, id: &str, field: &str) -> Option<Value> {
+        self.0
+            .lock()
+            .expect("IoT Gateway state poisoned")
+            .virtual_devices
+            .get(&crate::command::device_key(device_type, id))
+            .and_then(|device| device.state.get(field).cloned())
+    }
+
+    pub fn record_homematic_success(
+        &self,
+        datapoint: &HomematicDatapointConfig,
+        value: Value,
+    ) {
+        let update = HomematicDatapointState {
+            id: datapoint.id.clone(),
+            name: if datapoint.name.is_empty() {
+                datapoint.id.clone()
+            } else {
+                datapoint.name.clone()
+            },
+            address: datapoint.address.clone(),
+            parameter: datapoint.parameter.clone(),
+            value,
+            value_type: datapoint.value_type.clone(),
+            writable: datapoint.writable,
+            updated_at: now_iso(),
+            healthy: true,
+            last_error: None,
+        };
+        let mut state = self.0.lock().expect("IoT Gateway state poisoned");
+        let changed = state
+            .homematic_states
+            .get(&update.id)
+            .map(|previous| previous.value != update.value || !previous.healthy)
+            .unwrap_or(true);
+        state
+            .homematic_states
+            .insert(update.id.clone(), update.clone());
+        if let Err(error) = persist_homematic_states(
+            &state.config.homematic_state_path(),
+            &state.homematic_states,
+        ) {
+            push_event_locked(
+                &mut state,
+                "homematic.persist_failed",
+                json!({"datapoint":update.id,"error":error}),
+            );
+            return;
+        }
+        if changed {
+            if let Err(error) = enqueue_homematic_state_locked(&state, &update) {
+                push_event_locked(
+                    &mut state,
+                    "homematic.publish_failed",
+                    json!({"datapoint":update.id,"error":error}),
+                );
+            } else {
+                push_event_locked(
+                    &mut state,
+                    "homematic.datapoint_changed",
+                    json!({"datapoint":update.id,"value":update.value}),
+                );
+            }
+        }
+    }
+
+    pub fn record_homematic_failure(&self, datapoint_id: &str, error: String) {
+        let mut state = self.0.lock().expect("IoT Gateway state poisoned");
+        if let Some(current) = state.homematic_states.get_mut(datapoint_id) {
+            current.healthy = false;
+            current.last_error = Some(error.clone());
+            current.updated_at = now_iso();
+        } else if let Some(datapoint) = state
+            .config
+            .homematic_datapoints
+            .iter()
+            .find(|datapoint| datapoint.id == datapoint_id)
+            .cloned()
+        {
+            state.homematic_states.insert(
+                datapoint_id.to_string(),
+                HomematicDatapointState {
+                    id: datapoint.id,
+                    name: datapoint.name,
+                    address: datapoint.address,
+                    parameter: datapoint.parameter,
+                    value: Value::Null,
+                    value_type: datapoint.value_type,
+                    writable: datapoint.writable,
+                    updated_at: now_iso(),
+                    healthy: false,
+                    last_error: Some(error.clone()),
+                },
+            );
+        }
+        let _ = persist_homematic_states(
+            &state.config.homematic_state_path(),
+            &state.homematic_states,
+        );
+        if let Some(snapshot) = state.homematic_states.get(datapoint_id).cloned() {
+            if let Err(publish_error) = enqueue_homematic_state_locked(&state, &snapshot) {
+                push_event_locked(
+                    &mut state,
+                    "homematic.publish_failed",
+                    json!({"datapoint":datapoint_id,"error":publish_error}),
+                );
+            }
+        }
+        push_event_locked(
+            &mut state,
+            "homematic.datapoint_failed",
+            json!({"datapoint":datapoint_id,"error":error}),
+        );
     }
 
     pub fn mqtt_connected(&self) -> bool {
@@ -317,18 +766,26 @@ impl SharedGateway {
     }
 
     pub fn mark_mqtt_connected(&self) {
-        let mut state = self.0.lock().expect("IoT Gateway state poisoned");
-        state.mqtt_connected = true;
-        state.mqtt_connected_at = Some(now_iso());
-        state.mqtt_last_error = None;
-        state.mqtt_reconnects = state.mqtt_reconnects.saturating_add(1);
-        let host = state.config.mqtt.host.clone();
-        let port = state.config.mqtt.port;
-        push_event_locked(
-            &mut state,
-            "mqtt.connected",
-            json!({"host":host,"port":port}),
-        );
+        {
+            let mut state = self.0.lock().expect("IoT Gateway state poisoned");
+            state.mqtt_connected = true;
+            state.mqtt_connected_at = Some(now_iso());
+            state.mqtt_last_error = None;
+            state.mqtt_reconnects = state.mqtt_reconnects.saturating_add(1);
+            let host = state.config.mqtt.host.clone();
+            let port = state.config.mqtt.port;
+            push_event_locked(
+                &mut state,
+                "mqtt.connected",
+                json!({"host":host,"port":port}),
+            );
+        }
+        if let Err(error) = self.enqueue_home_assistant_discovery("mqtt_connected") {
+            self.record_bridge_event(
+                "home_assistant.discovery_failed",
+                json!({"reason":"mqtt_connected","error":error}),
+            );
+        }
     }
 
     pub fn mark_mqtt_disconnected(&self, error: impl Into<String>) {
@@ -372,7 +829,7 @@ impl SharedGateway {
     ) {
         let mut state = self.0.lock().expect("IoT Gateway state poisoned");
         let now = now_iso();
-        let recovered = if let Some(source) = state.sources.get_mut(source_id) {
+        let (recovered, snapshot) = if let Some(source) = state.sources.get_mut(source_id) {
             let recovered = !source.healthy && source.consecutive_failures > 0;
             source.healthy = true;
             source.last_poll_at = Some(now.clone());
@@ -383,10 +840,19 @@ impl SharedGateway {
             source.events_enqueued = source.events_enqueued.saturating_add(enqueued);
             source.duplicates_skipped = source.duplicates_skipped.saturating_add(duplicates);
             source.invalid_events = source.invalid_events.saturating_add(invalid);
-            recovered
+            (recovered, Some(source.clone()))
         } else {
-            false
+            (false, None)
         };
+        if let Some(snapshot) = snapshot {
+            if let Err(error) = enqueue_source_state_locked(&state, &snapshot) {
+                push_event_locked(
+                    &mut state,
+                    "source.state_publish_failed",
+                    json!({"source":source_id,"error":error}),
+                );
+            }
+        }
         if recovered {
             push_event_locked(&mut state, "source.recovered", json!({"source":source_id}));
         }
@@ -395,15 +861,24 @@ impl SharedGateway {
     pub fn record_source_failure(&self, source_id: &str, error: impl Into<String>) {
         let error = error.into();
         let mut state = self.0.lock().expect("IoT Gateway state poisoned");
-        let failures = if let Some(source) = state.sources.get_mut(source_id) {
+        let (failures, snapshot) = if let Some(source) = state.sources.get_mut(source_id) {
             source.healthy = false;
             source.last_poll_at = Some(now_iso());
             source.last_error = Some(error.clone());
             source.consecutive_failures = source.consecutive_failures.saturating_add(1);
-            Some(source.consecutive_failures)
+            (Some(source.consecutive_failures), Some(source.clone()))
         } else {
-            None
+            (None, None)
         };
+        if let Some(snapshot) = snapshot {
+            if let Err(publish_error) = enqueue_source_state_locked(&state, &snapshot) {
+                push_event_locked(
+                    &mut state,
+                    "source.state_publish_failed",
+                    json!({"source":source_id,"error":publish_error}),
+                );
+            }
+        }
         if let Some(failures) = failures {
             if failures == 1 || failures % 10 == 0 {
                 push_event_locked(
@@ -520,7 +995,7 @@ impl SharedGateway {
             return Err("test publish topic must not contain MQTT wildcards or NUL".to_string());
         }
         if qos > 1 {
-            return Err("Phase 4 supports QoS 0 or 1 only".to_string());
+            return Err("Phase 5 supports QoS 0 or 1 only".to_string());
         }
         ensure_outbox_capacity(&state, 1)?;
         let message = OutboundMessage {
@@ -742,7 +1217,7 @@ impl SharedGateway {
 
         let lifecycle_acks = if state.config.commands.publish_lifecycle_acks { 2 } else { 0 };
         // accepted + executing + terminal + optional retained virtual state
-        ensure_outbox_capacity(&state, lifecycle_acks + 2)?;
+        ensure_outbox_capacity(&state, lifecycle_acks + 16)?;
         state.commands_accepted = state.commands_accepted.saturating_add(1);
         if command.dry_run {
             state.command_dry_runs = state.command_dry_runs.saturating_add(1);
@@ -767,7 +1242,7 @@ impl SharedGateway {
                 if command.dry_run {
                     "validating sandbox execution in dry-run mode"
                 } else {
-                    "executing command in OPEN-LAB sandbox"
+                    "executing command in Phase-5 OPEN-LAB adapter/sandbox"
                 },
             )
             .with_reason("executing");
@@ -777,7 +1252,12 @@ impl SharedGateway {
             enqueue_ack_locked(&state, &executing)?;
         }
 
-        let execution = execute_sandbox(&command, &mut state.virtual_devices);
+        let execution_config = state.config.clone();
+        let execution = execute_command(
+            &execution_config,
+            &command,
+            &mut state.virtual_devices,
+        );
         let completed_at = now_iso();
         match execution {
             Ok(execution) => {
@@ -788,13 +1268,26 @@ impl SharedGateway {
                     )?;
                     enqueue_virtual_state_locked(&state, update)?;
                 }
+                for outbound in &execution.outbound {
+                    let message = OutboundMessage {
+                        id: Uuid::new_v4(),
+                        created_at: now_iso(),
+                        kind: outbound.kind.clone(),
+                        topic: outbound.topic.clone(),
+                        qos: outbound.qos,
+                        retain: outbound.retain,
+                        payload: outbound.payload.clone(),
+                        source_event_id: None,
+                    };
+                    write_outbox_message(&state.config.outbox_dir(), &message)?;
+                }
                 if !command.dry_run {
                     state.commands_executed = state.commands_executed.saturating_add(1);
                 }
                 let message = if command.dry_run {
                     "command passed sandbox dry-run validation"
                 } else {
-                    "command completed in OPEN-LAB sandbox"
+                    "command completed in Phase-5 OPEN-LAB executor"
                 };
                 let record = CommandRecord {
                     command_id: command.command_id,
@@ -1095,6 +1588,74 @@ fn enqueue_virtual_state_locked(
     write_outbox_message(&state.config.outbox_dir(), &message)
 }
 
+fn enqueue_source_state_locked(
+    state: &GatewayState,
+    source: &SourceStatus,
+) -> Result<PathBuf, String> {
+    let prefix = state.config.mqtt.topic_prefix.trim_matches('/');
+    let message = OutboundMessage {
+        id: Uuid::new_v4(),
+        created_at: now_iso(),
+        kind: "iot_gateway_source_state".to_string(),
+        topic: format!(
+            "{prefix}/state/integrations/iot_gateway_sources/{}",
+            topic_segment(&source.id)
+        ),
+        qos: state.config.mqtt.qos,
+        retain: true,
+        payload: serde_json::to_string(source).map_err(|error| error.to_string())?,
+        source_event_id: None,
+    };
+    write_outbox_message(&state.config.outbox_dir(), &message)
+}
+
+fn enqueue_homematic_state_locked(
+    state: &GatewayState,
+    update: &HomematicDatapointState,
+) -> Result<PathBuf, String> {
+    let prefix = state.config.mqtt.topic_prefix.trim_matches('/');
+    let message = OutboundMessage {
+        id: Uuid::new_v4(),
+        created_at: now_iso(),
+        kind: "homematic_datapoint_state".to_string(),
+        topic: format!(
+            "{prefix}/state/homematic/{}",
+            topic_segment(&update.id)
+        ),
+        qos: state.config.mqtt.qos,
+        retain: true,
+        payload: serde_json::to_string(update).map_err(|error| error.to_string())?,
+        source_event_id: None,
+    };
+    write_outbox_message(&state.config.outbox_dir(), &message)
+}
+
+fn parse_on_off(value: &str) -> Result<bool, String> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "on" | "true" | "1" => Ok(true),
+        "off" | "false" | "0" => Ok(false),
+        other => Err(format!("expected ON/OFF or true/false, got {other}")),
+    }
+}
+
+fn parse_typed_value(value: &str, value_type: &str) -> Result<Value, String> {
+    match value_type {
+        "bool" => parse_on_off(value).map(Value::Bool),
+        "integer" => value
+            .trim()
+            .parse::<i64>()
+            .map(Value::from)
+            .map_err(|error| format!("invalid integer: {error}")),
+        "float" => value
+            .trim()
+            .parse::<f64>()
+            .map(Value::from)
+            .map_err(|error| format!("invalid float: {error}")),
+        "string" => Ok(Value::String(value.to_string())),
+        other => Err(format!("unsupported value_type {other}")),
+    }
+}
+
 fn ensure_outbox_capacity(state: &GatewayState, additional: usize) -> Result<(), String> {
     let pending = count_outbox(&state.config.outbox_dir());
     if pending.saturating_add(additional) > state.config.storage.outbox_limit {
@@ -1315,6 +1876,32 @@ fn persist_command_ledger(
     fs::rename(&temporary, path).map_err(|error| error.to_string())
 }
 
+fn ensure_default_virtual_devices(devices: &mut BTreeMap<String, VirtualDeviceState>) {
+    let defaults = [
+        ("virtual_relay", "lab-relay-01", json!({"state":false})),
+        (
+            "virtual_light",
+            "lab-light-01",
+            json!({"on":false,"brightness":0}),
+        ),
+        (
+            "virtual_button",
+            "lab-button-01",
+            json!({"last_pressed_at":Value::Null,"press_count":0}),
+        ),
+    ];
+    for (device_type, id, value) in defaults {
+        let key = crate::command::device_key(device_type, id);
+        devices.entry(key).or_insert_with(|| VirtualDeviceState {
+            device_type: device_type.to_string(),
+            id: id.to_string(),
+            state: value,
+            updated_at: now_iso(),
+            command_id: Uuid::nil(),
+        });
+    }
+}
+
 fn load_virtual_devices(
     path: &Path,
 ) -> Result<BTreeMap<String, VirtualDeviceState>, Box<dyn std::error::Error>> {
@@ -1331,6 +1918,46 @@ fn persist_virtual_devices(
 ) -> Result<(), String> {
     let temporary = path.with_extension("json.tmp");
     let raw = serde_json::to_vec_pretty(devices).map_err(|error| error.to_string())?;
+    fs::write(&temporary, raw).map_err(|error| error.to_string())?;
+    fs::rename(&temporary, path).map_err(|error| error.to_string())
+}
+
+fn load_external_entities(
+    path: &Path,
+) -> Result<BTreeMap<String, ExternalEntityState>, Box<dyn std::error::Error>> {
+    if !path.exists() {
+        return Ok(BTreeMap::new());
+    }
+    let raw = fs::read_to_string(path)?;
+    Ok(serde_json::from_str(&raw)?)
+}
+
+fn persist_external_entities(
+    path: &Path,
+    entities: &BTreeMap<String, ExternalEntityState>,
+) -> Result<(), String> {
+    let temporary = path.with_extension("json.tmp");
+    let raw = serde_json::to_vec_pretty(entities).map_err(|error| error.to_string())?;
+    fs::write(&temporary, raw).map_err(|error| error.to_string())?;
+    fs::rename(&temporary, path).map_err(|error| error.to_string())
+}
+
+fn load_homematic_states(
+    path: &Path,
+) -> Result<BTreeMap<String, HomematicDatapointState>, Box<dyn std::error::Error>> {
+    if !path.exists() {
+        return Ok(BTreeMap::new());
+    }
+    let raw = fs::read_to_string(path)?;
+    Ok(serde_json::from_str(&raw)?)
+}
+
+fn persist_homematic_states(
+    path: &Path,
+    states: &BTreeMap<String, HomematicDatapointState>,
+) -> Result<(), String> {
+    let temporary = path.with_extension("json.tmp");
+    let raw = serde_json::to_vec_pretty(states).map_err(|error| error.to_string())?;
     fs::write(&temporary, raw).map_err(|error| error.to_string())?;
     fs::rename(&temporary, path).map_err(|error| error.to_string())
 }

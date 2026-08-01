@@ -44,14 +44,14 @@ Die bisher umgesetzten LXC-Dienste starten im ausdrücklich markierten `open_lab
 2. Gemeinsames `netcore-event-v1`-Ereignismodell – umgesetzt
 3. IoT Gateway mit MQTT – umgesetzt (OPEN LAB)
 4. Command/Ack- und Policy-System – umgesetzt (OPEN-LAB-Sandbox)
-5. Homematic IP / Home Assistant
+5. Homematic IP / Home Assistant – umgesetzt (OPEN LAB)
 6. Hardware-I/O, Rack- und RF-Monitoring
 7. SDS-, Status-, Alarm- und WAP-Workflows
 8. zentraler SIP-Switch – bewusst nach hinten gestellt
 9. Zello, FRN und weitere Voice-Gateways
 10. aktive LIP-Abfrage und danach Kartendienste
 
-Details zu Phase 2 stehen in `Docs/MQTT_PHASE2_COMMON_EVENT_MODEL.md`; Phase 3 ist in `Docs/MQTT_PHASE3_IOT_GATEWAY_OPENLAB.md` dokumentiert. Phase 4 steht in `Docs/MQTT_PHASE4_COMMAND_ACK_POLICY_OPENLAB.md` und unter `system-backend/iot-gateway/`.
+Details zu Phase 2 stehen in `Docs/MQTT_PHASE2_COMMON_EVENT_MODEL.md`; Phase 3 ist in `Docs/MQTT_PHASE3_IOT_GATEWAY_OPENLAB.md` dokumentiert. Phase 4 steht in `Docs/MQTT_PHASE4_COMMAND_ACK_POLICY_OPENLAB.md`. Phase 5 ist in `Docs/MQTT_PHASE5_HOME_ASSISTANT_HOMEMATIC_OPENLAB.md` und unter `system-backend/iot-gateway/` beschrieben.
 
 ---
 
@@ -74,10 +74,10 @@ Details zu Phase 2 stehen in `Docs/MQTT_PHASE2_COMMON_EVENT_MODEL.md`; Phase 3 i
 - `observability`: umgesetzt, zentrale Metrik-, Log-, Trace-, Alarm- und Diagnoseebene mit WebUI
 - `application-gateway`: umgesetzt, Connector Registry, Webhooks, Routing, Vorlagen, Retry/Dead Letter, Secret-Redaction und TTS-Orchestrierung mit WebUI
 - `media-library`: umgesetzt, Audio-Assets, Vorschau, Freigabe, TETRA-Cache, Archiv und kontrolliertes Playout mit WebUI
-- `iot-gateway`: umgesetzt, Event-MQTT-Brücke sowie persistentes `netcore-command-v1`/`netcore-command-ack-v1`-Ledger, Default-Deny-Policy und virtuelle OPEN-LAB-Aktoren mit WebUI
+- `iot-gateway`: umgesetzt, Event-MQTT-Brücke, Command/Ack/Policy, Home Assistant MQTT Discovery, HA-State-Ingress, optionales Homematic-CCU-XML-RPC und virtuelle OPEN-LAB-Aktoren mit WebUI
 - `shared`: umgesetzt, gemeinsame `netcore.v1`-Verträge, Service-/Persistenz-/Telemetrie-Bausteine und build-freies WebUI-Kit
 - `deploy/open-lab`: umgesetzt, inventory-gesteuerte LXC-Integration, URL-Rendering, Dependency-Plan, PDF-freies Bundle und SSH-Deployment
-- nächste MQTT-Phase: Homematic IP / Home Assistant als Adapter; reale Aktoren bleiben bis zur expliziten Adapter- und Policy-Konfiguration gesperrt
+- nächste MQTT-Phase: Hardware-I/O, Rack- und RF-Monitoring; reale Aktoren bleiben bis zur expliziten Adapter- und Policy-Konfiguration gesperrt
 
 # 2. Normative Grundlage
 
@@ -1467,8 +1467,10 @@ operative Abnahme und kann nicht durch statische Prüfung ersetzt werden.
 
 ---
 
-## Package R – IoT Gateway / MQTT ✅ Phase 3 umgesetzt
+## Package R – IoT Gateway / MQTT ✅ Phase 5 umgesetzt
 
-Der IoT Gateway ist als eigenständiger LXC-Dienst auf Port 8240 umgesetzt. Er pollt die vier ersten `netcore-event-v1`-Produzenten, validiert und dedupliziert Ereignisse, hält eine persistente MQTT-Outbox vor und veröffentlicht Eventtopics sowie retained Subject-Zustände. MQTT Last Will, WebUI, REST, Health und Prometheus-Metriken sind enthalten.
+Der IoT Gateway ist als eigenständiger LXC-Dienst auf Port 8240 umgesetzt. Er pollt die ersten `netcore-event-v1`-Produzenten, validiert und dedupliziert Ereignisse, hält eine persistente MQTT-Outbox vor und veröffentlicht Eventtopics sowie retained Subject-Zustände. Das persistente Command-/Ack-/Policy-System arbeitet mit Default Deny und virtuellen `lab-*`-Aktoren.
 
-Die aktuelle Stufe bleibt bewusst `open_lab`: keine Anmeldung, keine Tokens, keine MQTT-Credentials und kein TLS. Eingehende Topics unter `netcore/v1/commands/#` werden ausschließlich protokolliert; der Dienst verweigert den Start, sobald Command-Ausführung aktiviert werden soll. Command-, Ack- und Policy-Logik bleibt Phase 4.
+Phase 5 ergänzt Home Assistant MQTT Discovery, erneute Discovery nach dem HA-Birth-Topic, einen normalisierten State-Ingress für ausgewählte Home-Assistant-/Homematic-IP-Entitäten und optionales direktes CCU3-/RaspberryMatic-Polling per XML-RPC. Reale Home-Assistant- und Homematic-Schreibpfade sind vorbereitet, aber standardmäßig mehrfach gesperrt.
+
+Die aktuelle Stufe bleibt bewusst `open_lab`: keine Anmeldung, keine Tokens, keine MQTT-Credentials und kein TLS.

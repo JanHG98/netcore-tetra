@@ -1,6 +1,6 @@
-# NetCore IoT Gateway – Phase 4 / OPEN LAB
+# NetCore IoT Gateway – Phase 5 / OPEN LAB
 # Keine Anmeldung, keine Tokens, kein TLS. Nur im isolierten Testnetz verwenden.
-# Reale Aktoren sind nicht enthalten; die mitgelieferten Policies erlauben nur lab-* Sandbox-Geräte.
+# Home Assistant MQTT Discovery ist aktiv. Reale HA-/Homematic-Schreibzugriffe sind standardmäßig aus.
 
 [server]
 bind = "0.0.0.0:8240"
@@ -24,8 +24,40 @@ qos = 1
 event_retain = false
 state_retain = true
 observe_commands = true
-# Alt-Switch aus Phase 3. Muss false bleiben; Phase 4 nutzt [commands].enabled.
+# Veralteter Kompatibilitätsschalter. Muss false bleiben; [commands].enabled ist maßgeblich.
 execute_commands = false
+
+[home_assistant]
+enabled = true
+discovery_enabled = true
+discovery_prefix = "homeassistant"
+status_topic = "homeassistant/status"
+node_id = "netcore_tetra"
+discovery_qos = 1
+discovery_retain = true
+expose_gateway = true
+expose_sources = true
+expose_virtual_devices = true
+# Ausgewählte HA-/Homematic-IP-Entitäten können über diesen Eingang nach NetCore gespiegelt werden.
+accept_state_ingress = true
+# Leer = netcore/v1/integrations/homeassistant/state
+state_ingress_topic = ""
+# Reale Aktionen in Home Assistant bleiben aus, bis Automation + Policy bewusst aktiviert wurden.
+allow_command_egress = false
+# Leer = netcore/v1/integrations/homeassistant/command-egress
+command_egress_topic = ""
+
+[homematic]
+# Für Homematic IP Access Point normalerweise false lassen und Home Assistant als Bridge verwenden.
+# Für CCU3/RaspberryMatic: enabled=true und mode="ccu_xml_rpc" setzen.
+enabled = false
+mode = "home_assistant_mqtt"
+ccu_host = "127.0.0.1"
+ccu_port = 2010
+poll_interval_ms = 2000
+request_timeout_ms = 2500
+# Direkte setValue-Aufrufe bleiben gesperrt, bis dies plus Datenpunkt + Policy aktiviert wurde.
+allow_writes = false
 
 [commands]
 enabled = true
@@ -47,6 +79,8 @@ command_inbox_file = "command-inbox.ndjson"
 command_ledger_file = "command-ledger.json"
 command_audit_file = "command-audit.ndjson"
 virtual_state_file = "virtual-device-state.json"
+external_state_file = "external-entity-state.json"
+homematic_state_file = "homematic-datapoint-state.json"
 dedup_limit = 50000
 outbox_limit = 20000
 command_ledger_limit = 50000
@@ -56,8 +90,7 @@ interval_ms = 2000
 batch_limit = 500
 request_timeout_ms = 2500
 
-# Default Deny: Nur Commands, die eine Allow-Policy treffen, werden ausgeführt.
-# Eine passende Deny-Policy würde jede Allow-Policy überstimmen.
+# Default Deny: Nur Commands, die eine aktive Allow-Policy treffen, werden ausgeführt.
 [[command_policies]]
 id = "allow-openlab-virtual-relays"
 enabled = true
@@ -88,8 +121,53 @@ target_prefixes = ["lab-"]
 max_ttl_secs = 60
 allow_dry_run = true
 
-# Die vier Phase-2-Produzenten. Hostnamen durch LXC-IP ersetzen, falls im Netz
-# keine passenden DNS-/Hosts-Einträge existieren.
+# Vorbereitet, aber bewusst deaktiviert. Aktivierung erlaubt nur input_boolean.netcore_lab_*.
+[[command_policies]]
+id = "allow-openlab-homeassistant-lab-bridge"
+enabled = false
+effect = "allow"
+command_types = ["homeassistant.entity.command"]
+target_types = ["home_assistant_entity"]
+target_prefixes = ["input_boolean.netcore_lab_"]
+max_ttl_secs = 60
+allow_dry_run = true
+
+# Vorbereitet, aber bewusst deaktiviert. Zusätzlich sind homematic.allow_writes=true
+# und writable=true am konkreten Datenpunkt nötig.
+[[command_policies]]
+id = "allow-openlab-homematic-lab-writes"
+enabled = false
+effect = "allow"
+command_types = ["homematic.datapoint.set"]
+target_types = ["homematic_datapoint"]
+target_prefixes = ["lab-"]
+max_ttl_secs = 60
+allow_dry_run = true
+
+# Beispiel für CCU3/RaspberryMatic – zum Aktivieren als [[homematic_datapoints]]
+# unkommentiert übernehmen. HmIP-Datenpunkte liegen typischerweise an Port 2010.
+# [[homematic_datapoints]]
+# id = "rack_temperature"
+# name = "Rack Temperatur"
+# enabled = true
+# address = "000A1B2C3D4E5F:1"
+# parameter = "ACTUAL_TEMPERATURE"
+# value_type = "float"
+# platform = "sensor"
+# device_class = "temperature"
+# unit = "°C"
+# writable = false
+
+# [[homematic_datapoints]]
+# id = "lab-relay-ccu"
+# name = "Lab Relais CCU"
+# enabled = true
+# address = "000A1B2C3D4E5F:4"
+# parameter = "STATE"
+# value_type = "bool"
+# platform = "switch"
+# writable = true
+
 [[sources]]
 id = "node-gateway"
 url = "http://node-gateway:8080/api/v1/events/netcore"
