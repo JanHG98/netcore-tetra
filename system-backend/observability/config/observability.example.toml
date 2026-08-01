@@ -775,3 +775,26 @@ live_path = "/health/live"
 ready_path = "/health/ready"
 enabled = true
 labels = { environment = "open-lab", component = "task-workflow" }
+
+
+[[targets]]
+target_id = "asset-management"
+display_name = "Asset Management"
+service = "asset-management"
+base_url = "http://10.0.20.32:8290"
+metrics_path = "/metrics"
+live_path = "/health/live"
+ready_path = "/health/ready"
+enabled = true
+labels = { environment = "open-lab", component = "asset-management" }
+
+[[targets]]
+target_id = "sip-switch"
+display_name = "NetCore SIP Switch"
+service = "sip-switch"
+base_url = "http://10.0.20.33:8300"
+metrics_path = "/metrics"
+live_path = "/health/live"
+ready_path = "/health/ready"
+enabled = true
+labels = { environment = "open-lab", component = "sip-switch" }

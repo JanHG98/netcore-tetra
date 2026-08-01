@@ -43,3 +43,15 @@ Phase 9 ergänzt `netcore-task-v1` für strukturierte Aufträge und WAP-Formular
 - `schemas/netcore-task-v1.schema.json`
 - `TASK_MODEL_V1.md`
 - Ereignisse `task.*` in `src/event.rs`
+
+## Asset-, Personen- und Zuordnungsverträge
+
+Phase 10 ergänzt:
+
+- `schemas/netcore-asset-v1.schema.json`
+- `schemas/netcore-person-v1.schema.json`
+- `schemas/netcore-assignment-v1.schema.json`
+- `ASSET_MANAGEMENT_V1.md`
+- Ereignisse `asset.*`, `person.*`, `assignment.*` und `maintenance.*`
+
+- Ereignisse `sip.*` für zentrale PBX-/TBS-Routingentscheidungen und SIP-Call-Lifecycle

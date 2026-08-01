@@ -258,7 +258,9 @@
         "hardware-gateway",
         "rf-monitor",
         "alarm-workflow",
-        "task-workflow"
+        "task-workflow",
+        "asset-management",
+        "sip-switch"
       ]
     },
     {
@@ -292,6 +294,8 @@
         "rf-monitor",
         "alarm-workflow",
         "task-workflow",
+        "asset-management",
+        "sip-switch",
         "control-room"
       ]
     },
@@ -370,6 +374,38 @@
       "depends_on": [
         "iot-gateway",
         "sds-router"
+      ]
+    },
+    {
+      "name": "asset-management",
+      "host": "10.0.20.32",
+      "port": 8290,
+      "base_url": "http://10.0.20.32:8290",
+      "webui": "http://10.0.20.32:8290/",
+      "health_live": "http://10.0.20.32:8290/health/live",
+      "health_ready": "http://10.0.20.32:8290/health/ready",
+      "metrics": "http://10.0.20.32:8290/metrics",
+      "unit": "netcore-asset-management.service",
+      "depends_on": [
+        "iot-gateway",
+        "subscriber-core",
+        "mobility-core",
+        "task-workflow"
+      ]
+    },
+    {
+      "name": "sip-switch",
+      "host": "10.0.20.33",
+      "port": 8300,
+      "base_url": "http://10.0.20.33:8300",
+      "webui": "http://10.0.20.33:8300/",
+      "health_live": "http://10.0.20.33:8300/health/live",
+      "health_ready": "http://10.0.20.33:8300/health/ready",
+      "metrics": "http://10.0.20.33:8300/metrics",
+      "unit": "netcore-sip-switch.service",
+      "depends_on": [
+        "iot-gateway",
+        "mobility-core"
       ]
     }
   ]

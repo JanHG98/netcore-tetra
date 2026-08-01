@@ -432,6 +432,8 @@ fn default_targets() -> Vec<TargetConfig> {
         target("rf-monitor", "RF Monitor", "rf-monitor", 8260),
         target("alarm-workflow", "Alarm Workflow", "alarm-workflow", 8270),
         target("task-workflow", "Task Workflow / WAP", "task-workflow", 8280),
+        target("asset-management", "Asset Management", "asset-management", 8290),
+        target("sip-switch", "NetCore SIP Switch", "sip-switch", 8300),
         target("control-room", "Control Room", "control-room", 9010),
     ]
 }

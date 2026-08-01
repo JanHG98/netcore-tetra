@@ -46,3 +46,12 @@ Der gemeinsame Katalog umfasst nun zusätzlich `hardware.*`, `rf.*` und `alarm.*
 ## Phase 9: Strukturierte Aufträge
 
 Der Ereigniskatalog enthält zusätzlich `task.*`. Das primäre Fachobjekt verwendet `subject.type = "task"`; der aktuelle Auftrag wird separat als retained Zustand veröffentlicht.
+
+## Phase 10: Asset- und Geräteverwaltung
+
+Der Katalog enthält zusätzlich `asset.*`, `person.*`, `assignment.*` und `maintenance.*`. Subscriber Core und Mobility Core bleiben autoritativ für Netzfreigabe und Serving-TBS; der Asset-Dienst veröffentlicht lediglich seinen physischen Bestand, Zuordnungen und Wartungsvorgänge.
+
+
+## Phase 11 – SIP Switch
+
+Der gemeinsame Katalog enthält nun `sip.*`. Routingentscheidungen verwenden `subject.type = "sip_call"`; `payload.node_id`, `payload.endpoint`, `payload.issi` und `payload.reason` machen die Mobility-Core-Entscheidung nachvollziehbar. Der SIP Switch veröffentlicht keine SIP-Kennwörter oder vollständigen Asterisk-Konfigurationen als Ereignis.

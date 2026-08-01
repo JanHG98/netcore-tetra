@@ -1,0 +1,92 @@
+# NetCore-TETRA SIP Switch · Phase 11 · OPEN LAB
+# Asterisk wird ausschließlich als SIP-B2BUA/Router benutzt: keine Benutzer-Nebenstellen,
+# keine IVR, keine Voicemail und keine zweite Telefonanlage.
+
+[service]
+name = "netcore-sip-switch"
+phase = 11
+mode = "open_lab"
+
+[server]
+bind = "0.0.0.0:8300"
+
+[security]
+mode = "open_lab"
+# Keine WebUI-Anmeldung, keine API-Tokens, kein TLS. Nur im isolierten Testnetz.
+
+[storage]
+state_file = "/var/lib/netcore-sip-switch/state.json"
+event_log = "/var/lib/netcore-sip-switch/events.ndjson"
+audit_log = "/var/lib/netcore-sip-switch/audit.ndjson"
+
+[mqtt]
+enabled = true
+host = "127.0.0.1"
+port = 1883
+topic_prefix = "netcore/v1"
+client_id = "netcore-sip-switch"
+
+[mobility_core]
+enabled = true
+base_url = "http://10.0.20.11:8090"
+timeout_secs = 2
+
+[asterisk]
+enabled = true
+binary = "/usr/sbin/asterisk"
+config_dir = "/etc/asterisk"
+agi_script = "netcore-sip-route.py"
+sip_bind = "0.0.0.0:5060"
+rtp_start = 10000
+rtp_end = 20000
+
+[management]
+event_history_limit = 3000
+probe_interval_secs = 10
+
+# Ein einziger Trunk zum bereits vorhandenen PBX.
+# mode = "ip_trunk" nutzt IP-Zuordnung; mode = "registration" registriert sich am PBX.
+[pbx]
+mode = "ip_trunk"
+endpoint_id = "netcore-pbx"
+host = "127.0.0.1"
+port = 5060
+transport = "udp"
+username = ""
+auth_username = ""
+password = ""
+from_user = "netcore-tetra"
+from_domain = ""
+contact_user = "netcore-tetra"
+allow = "ulaw"
+match = []
+
+[routing]
+# Beispiel: tetra_number_prefix = "40" und strip_tetra_prefix = true
+# lässt das PBX 404010001 wählen und routet intern auf ISSI 4010001.
+tetra_number_prefix = ""
+strip_tetra_prefix = false
+pbx_outbound_prefix = ""
+strip_pbx_outbound_prefix = false
+accept_stale_routes = false
+require_tbs_contact = true
+dial_timeout_secs = 60
+
+# Jede TBS registriert ihren vorhandenen lokalen SIP-/RTP-Connector hier.
+# Der endpoint_id muss eindeutig und Asterisk-tauglich sein.
+[[tbs]]
+node_id = "SRV-M-TBS-01"
+endpoint_id = "tbs-srv-m-tbs-01"
+username = "tbs-srv-m-tbs-01"
+password = "openlab-change-me"
+enabled = false
+max_contacts = 1
+aliases = ["TBS-01"]
+
+# Explizite Nummernabbildung ist optional. Ohne Mapping wird eine rein numerische
+# Zielnummer direkt als 24-Bit-ISSI interpretiert.
+[[number_mappings]]
+number = "4010001"
+target_type = "issi"
+target = 4010001
+enabled = false

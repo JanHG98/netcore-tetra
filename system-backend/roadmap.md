@@ -1484,3 +1484,14 @@ Hardware Gateway (`8250`), RF Monitor (`8260`) und Alarm Workflow (`8270`) bilde
 ## Package T – WAP-Formulare und strukturierte Aufträge ✅ Phase 9 umgesetzt
 
 Der Task Workflow läuft als eigener LXC-Dienst auf Port `8280`. Er verwaltet `netcore-task-v1`, bietet REST/WebUI, XHTML Basic und WML 1.1, versendet Aufgaben über den SDS Router und verarbeitet SDS-Kommandos sowie pre-coded Status 5301–5305. Die kompakte lokale TBS-WAP-Navigation enthält zusätzliche Informationsseiten für Aufgaben und Formulare. Der zentrale Dienst ist direkt über Paketdaten erreichbar; der lokale WSP-Pfad ist noch kein Reverse Proxy zum Task-LXC.
+
+
+## Phase 10 – Asset-, Geräte- und Benutzerverwaltung ✅
+
+- eigener `asset-management`-LXC auf Port 8290
+- Assets und Funkgeräte mit Seriennummer, Firmware, Codeplug, TEI und ISSI
+- Personen und vorbereitete RUI-Metadaten ohne PIN-Speicherung
+- nachvollziehbare Ausgabe/Rückgabe von Geräten
+- Wartungs- und Reparaturakte mit Task-Workflow-Anbindung
+- lesender Abgleich mit Subscriber Core und Mobility Core ohne konkurrierende Autorität
+- MQTT-Zustände und `asset.*`, `person.*`, `assignment.*`, `maintenance.*` Ereignisse

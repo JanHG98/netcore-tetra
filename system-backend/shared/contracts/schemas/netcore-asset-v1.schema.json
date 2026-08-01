@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://netcore-tetra.local/schemas/netcore-asset-v1.schema.json",
+  "title": "NetCore Asset v1",
+  "type": "object",
+  "required": ["schema", "asset_id", "inventory_id", "kind", "status", "created_at", "updated_at"],
+  "properties": {
+    "schema": {"const": "netcore-asset-v1"},
+    "asset_id": {"type": "string", "minLength": 1, "maxLength": 160},
+    "inventory_id": {"type": "string", "minLength": 1, "maxLength": 80},
+    "kind": {"enum": ["tetra_radio", "tbs", "server", "rack", "rf_component", "power", "gateway", "vehicle", "accessory", "tool", "generic"]},
+    "status": {"enum": ["in_stock", "assigned", "maintenance", "repair", "retired", "lost"]},
+    "manufacturer": {"type": "string"},
+    "model": {"type": "string"},
+    "serial_number": {"type": "string"},
+    "firmware_version": {"type": "string"},
+    "codeplug_version": {"type": "string"},
+    "device_tei": {"type": ["integer", "null"], "minimum": 0},
+    "issi": {"type": ["integer", "null"], "minimum": 1},
+    "current_assignment_id": {"type": ["string", "null"]},
+    "network_snapshot": {"type": "object"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "updated_at": {"type": "string", "format": "date-time"}
+  },
+  "additionalProperties": true
+}

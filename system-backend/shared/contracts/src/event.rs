@@ -408,6 +408,39 @@ pub mod event_types {
     pub const TASK_NOTIFICATION_QUEUED: &str = "task.notification_queued";
     pub const TASK_NOTIFICATION_FAILED: &str = "task.notification_failed";
 
+    pub const ASSET_CREATED: &str = "asset.created";
+    pub const ASSET_UPDATED: &str = "asset.updated";
+    pub const ASSET_DELETED: &str = "asset.deleted";
+    pub const ASSET_RETIRED: &str = "asset.retired";
+    pub const ASSET_ASSIGNED: &str = "asset.assigned";
+    pub const ASSET_RETURNED: &str = "asset.returned";
+    pub const ASSET_RECONCILED: &str = "asset.reconciled";
+    pub const PERSON_CREATED: &str = "person.created";
+    pub const PERSON_UPDATED: &str = "person.updated";
+    pub const PERSON_DEACTIVATED: &str = "person.deactivated";
+    pub const PERSON_DELETED: &str = "person.deleted";
+    pub const ASSIGNMENT_CREATED: &str = "assignment.created";
+    pub const ASSIGNMENT_RETURNED: &str = "assignment.returned";
+    pub const MAINTENANCE_CREATED: &str = "maintenance.created";
+    pub const MAINTENANCE_UPDATED: &str = "maintenance.updated";
+    pub const MAINTENANCE_STARTED: &str = "maintenance.started";
+    pub const MAINTENANCE_DUE: &str = "maintenance.due";
+    pub const MAINTENANCE_COMPLETED: &str = "maintenance.completed";
+    pub const MAINTENANCE_CANCELLED: &str = "maintenance.cancelled";
+
+    pub const SIP_ROUTE_RESOLVED: &str = "sip.route_resolved";
+    pub const SIP_ROUTE_FAILED: &str = "sip.route_failed";
+    pub const SIP_CALL_STARTED: &str = "sip.call_started";
+    pub const SIP_CALL_ANSWERED: &str = "sip.call_answered";
+    pub const SIP_CALL_ENDED: &str = "sip.call_ended";
+    pub const SIP_CALL_FAILED: &str = "sip.call_failed";
+    pub const SIP_CALL_UPDATED: &str = "sip.call_updated";
+    pub const SIP_TBS_CONTACT_UP: &str = "sip.tbs_contact_up";
+    pub const SIP_TBS_CONTACT_DOWN: &str = "sip.tbs_contact_down";
+    pub const SIP_ASTERISK_CONFIG_RENDERED: &str = "sip.asterisk_config_rendered";
+    pub const SIP_ASTERISK_RELOADED: &str = "sip.asterisk_reloaded";
+    pub const SIP_ASTERISK_RELOAD_FAILED: &str = "sip.asterisk_reload_failed";
+
     pub const ALL: &[&str] = &[
         SERVICE_DEPENDENCY_CONNECTED,
         SERVICE_DEPENDENCY_DISCONNECTED,
@@ -497,6 +530,37 @@ pub mod event_types {
         TASK_COMMENT_ADDED,
         TASK_NOTIFICATION_QUEUED,
         TASK_NOTIFICATION_FAILED,
+        ASSET_CREATED,
+        ASSET_UPDATED,
+        ASSET_DELETED,
+        ASSET_RETIRED,
+        ASSET_ASSIGNED,
+        ASSET_RETURNED,
+        ASSET_RECONCILED,
+        PERSON_CREATED,
+        PERSON_UPDATED,
+        PERSON_DEACTIVATED,
+        PERSON_DELETED,
+        ASSIGNMENT_CREATED,
+        ASSIGNMENT_RETURNED,
+        MAINTENANCE_CREATED,
+        MAINTENANCE_UPDATED,
+        MAINTENANCE_STARTED,
+        MAINTENANCE_DUE,
+        MAINTENANCE_COMPLETED,
+        MAINTENANCE_CANCELLED,
+        SIP_ROUTE_RESOLVED,
+        SIP_ROUTE_FAILED,
+        SIP_CALL_STARTED,
+        SIP_CALL_ANSWERED,
+        SIP_CALL_ENDED,
+        SIP_CALL_FAILED,
+        SIP_CALL_UPDATED,
+        SIP_TBS_CONTACT_UP,
+        SIP_TBS_CONTACT_DOWN,
+        SIP_ASTERISK_CONFIG_RENDERED,
+        SIP_ASTERISK_RELOADED,
+        SIP_ASTERISK_RELOAD_FAILED,
     ];
 }
 
@@ -515,6 +579,11 @@ pub mod subject_types {
     pub const RF_STATION: &str = "rf_station";
     pub const ALARM: &str = "alarm";
     pub const TASK: &str = "task";
+    pub const ASSET: &str = "asset";
+    pub const PERSON: &str = "person";
+    pub const ASSIGNMENT: &str = "assignment";
+    pub const MAINTENANCE: &str = "maintenance";
+    pub const SIP_CALL: &str = "sip_call";
 }
 
 /// Bestehender einfacher Datensatz bleibt für Quellkompatibilität erhalten.

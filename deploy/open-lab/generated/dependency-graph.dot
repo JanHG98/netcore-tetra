@@ -66,6 +66,8 @@ digraph netcore_open_lab {
   "rf-monitor" -> "control-room";
   "alarm-workflow" -> "control-room";
   "task-workflow" -> "control-room";
+  "asset-management" -> "control-room";
+  "sip-switch" -> "control-room";
   "observability" [label="observability\n10.0.20.26:8210"];
   "node-gateway" -> "observability";
   "subscriber-core" -> "observability";
@@ -87,6 +89,8 @@ digraph netcore_open_lab {
   "rf-monitor" -> "observability";
   "alarm-workflow" -> "observability";
   "task-workflow" -> "observability";
+  "asset-management" -> "observability";
+  "sip-switch" -> "observability";
   "control-room" -> "observability";
   "iot-gateway" [label="iot-gateway\n10.0.20.27:8240"];
   "node-gateway" -> "iot-gateway";
@@ -105,4 +109,12 @@ digraph netcore_open_lab {
   "task-workflow" [label="task-workflow\n10.0.20.31:8280"];
   "iot-gateway" -> "task-workflow";
   "sds-router" -> "task-workflow";
+  "asset-management" [label="asset-management\n10.0.20.32:8290"];
+  "iot-gateway" -> "asset-management";
+  "subscriber-core" -> "asset-management";
+  "mobility-core" -> "asset-management";
+  "task-workflow" -> "asset-management";
+  "sip-switch" [label="sip-switch\n10.0.20.33:8300"];
+  "iot-gateway" -> "sip-switch";
+  "mobility-core" -> "sip-switch";
 }

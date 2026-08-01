@@ -653,3 +653,28 @@ token_auth = false
 tls = false
 depends_on = ["iot-gateway", "sds-router"]
 warning = "OPEN LAB: no login, tokens or TLS; every reachable client may create and transition tasks; ?issi is test identity only"
+
+
+# Phase 10 Asset-, Geräte- und Benutzerverwaltung. OPEN LAB ohne Authentisierung.
+[[services]]
+name = "asset-management"
+webui = true
+scheme = "http"
+management_port = 8290
+security_mode = "open_lab"
+token_auth = false
+tls = false
+depends_on = ["iot-gateway", "subscriber-core", "mobility-core", "task-workflow"]
+warning = "OPEN LAB: no login, tokens or TLS; every reachable client may change assets, persons, assignments and maintenance records"
+
+# Phase 11 Zentraler SIP Switch. Asterisk ausschließlich als B2BUA/Registrar, keine zweite PBX.
+[[services]]
+name = "sip-switch"
+webui = true
+scheme = "http"
+management_port = 8300
+security_mode = "open_lab"
+token_auth = false
+tls = false
+depends_on = ["iot-gateway", "mobility-core"]
+warning = "OPEN LAB: no WebUI/API authentication or TLS; SIP credentials are lab secrets; Asterisk routes one PBX trunk to mobility-selected TBS contacts"

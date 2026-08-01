@@ -458,3 +458,32 @@ url = "http://10.0.20.31:8280/health/ready"
 critical_for_edge = false
 fallback_mode = "central_task_workflow_unavailable_local_radio_sds_and_cached_forms_continue"
 depends_on = ["iot-gateway", "sds-router"]
+
+
+[[services]]
+name = "asset-management"
+display_name = "Asset Management"
+kind = "management"
+base_url = "http://10.0.20.32:8290"
+critical = false
+
+[[service_monitor.targets]]
+name = "asset-management"
+url = "http://10.0.20.32:8290/health/ready"
+critical_for_edge = false
+fallback_mode = "asset_inventory_unavailable_core_radio_services_continue"
+depends_on = ["iot-gateway", "subscriber-core", "mobility-core", "task-workflow"]
+
+[[services]]
+name = "sip-switch"
+display_name = "NetCore SIP Switch"
+kind = "voice-gateway"
+base_url = "http://10.0.20.33:8300"
+critical = false
+
+[[service_monitor.targets]]
+name = "sip-switch"
+url = "http://10.0.20.33:8300/health/ready"
+critical_for_edge = false
+fallback_mode = "central_sip_routing_unavailable_existing_local_radio_and_direct_pbx_fallback_may_continue"
+depends_on = ["iot-gateway", "mobility-core"]

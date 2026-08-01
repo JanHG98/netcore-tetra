@@ -46,7 +46,7 @@ Langfristig verwenden neue Dienste mit eigener LXC-IP einheitlich:
 https://<LXC-IP>:8443/
 ```
 
-Die bisher umgesetzten Dienste sind ausdrücklich dokumentierte Ausnahmen für die isolierte Testumgebung und verwenden je Dienst einen eigenen HTTP-Port im offenen Labormodus. Die verbindliche Zuordnung steht in `services.toml`; die fortlaufende Dienstreihe reicht aktuell vom Recorder auf Port 8140 bis zum Alarm Workflow auf Port 8270. Der Control Room bleibt auf Port 9010.
+Die bisher umgesetzten Dienste sind ausdrücklich dokumentierte Ausnahmen für die isolierte Testumgebung und verwenden je Dienst einen eigenen HTTP-Port im offenen Labormodus. Die verbindliche Zuordnung steht in `services.toml`; die fortlaufende Dienstreihe reicht aktuell vom Recorder auf Port 8140 bis zum SIP Switch auf Port 8300. Der Control Room bleibt auf Port 9010.
 
 ## Bereits deploybare Dienste
 
@@ -73,6 +73,9 @@ Bereits deploybar sind:
 - `hardware-gateway/` – Edge-I/O, Rack- und Umgebungsüberwachung, Port 8250
 - `rf-monitor/` – zentrale HF-, PA-, Antennen- und Modulationsüberwachung, Port 8260
 - `alarm-workflow/` – SDS-, Status-, Alarm- und Eskalationsworkflows, Port 8270
+- `task-workflow/` – WAP-Formulare und strukturierte Aufträge, Port 8280
+- `asset-management/` – Asset-, Geräte- und Benutzerverwaltung, Port 8290
+- `sip-switch/` – zentraler PBX-/TBS-SIP-B2BUA mit Mobility-Core-Routing, Port 8300
 - `control-room/` – zentrale Bedien-, Lage-, Incident- und Schichtbuchebene, Port 9010
 
 Alle enthalten REST-API, eigene WebUI, systemd-Unit und Installationsskripte; Hardware Gateway, RF Monitor und Alarm Workflow sind bewusst schlanke Python-Dienste, die übrigen Kernservices Rust-Runtimes. In der aktuellen Teststufe laufen sie bewusst im deutlich markierten `open_lab`-Modus ohne Tokens, Benutzeranmeldung oder TLS.
@@ -87,3 +90,5 @@ Die gemeinsame Vertragsversion ist `netcore.v1`. Die inventory-gesteuerte Open-L
 Die Backend-Dienste werden über `tests/e2e/` als Gesamtsystem geprüft. Der inventory-gesteuerte Runner enthält einen Mock TBS für die Node-Gateway-Schnittstelle, fachliche Call-/Media-/Recorder-, SDS- und Packet-Data-Szenarien, Control-Room-Federation, redaktierte Plattform-Managementansichten, Persistenztests sowie eine absichtliche Dependency-Ausfallmatrix. Aufruf und Sicherheitsgrenzen stehen in `Docs/OPEN_LAB_E2E_RUNBOOK.md`.
 
 - `task-workflow` (`8280`): strukturierte Aufträge, XHTML/WML-Formulare, SDS-/Statusaktionen und persistente Task-Akte.
+
+- `asset-management` (`8290`): physischer Bestand, Funkgeräte, Personen, Ausgaben, Wartung sowie lesender Abgleich mit Subscriber und Mobility Core.

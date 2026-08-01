@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://netcore-tetra.local/schemas/netcore-assignment-v1.schema.json",
+  "title": "NetCore Assignment v1",
+  "type": "object",
+  "required": ["schema", "assignment_id", "asset_id", "person_id", "status", "issued_at", "rui_context"],
+  "properties": {
+    "schema": {"const": "netcore-assignment-v1"},
+    "assignment_id": {"type": "string", "format": "uuid"},
+    "asset_id": {"type": "string"},
+    "person_id": {"type": "string"},
+    "status": {"enum": ["active", "returned", "cancelled"]},
+    "issued_at": {"type": "string", "format": "date-time"},
+    "expected_return_at": {"type": ["string", "null"]},
+    "returned_at": {"type": ["string", "null"]},
+    "rui_context": {
+      "type": "object",
+      "required": ["pin_stored", "network_login_executed"],
+      "properties": {
+        "pin_stored": {"const": false},
+        "network_login_executed": {"const": false}
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}
