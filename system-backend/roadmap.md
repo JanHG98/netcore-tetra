@@ -42,7 +42,7 @@ Die bisher umgesetzten LXC-Dienste starten im ausdrücklich markierten `open_lab
 
 1. Mobility Core als Routing-Wahrheit – umgesetzt
 2. Gemeinsames `netcore-event-v1`-Ereignismodell – umgesetzt
-3. IoT Gateway mit MQTT – nächster Baustein
+3. IoT Gateway mit MQTT – umgesetzt (OPEN LAB)
 4. Command/Ack- und Policy-System
 5. Homematic IP / Home Assistant
 6. Hardware-I/O, Rack- und RF-Monitoring
@@ -51,7 +51,7 @@ Die bisher umgesetzten LXC-Dienste starten im ausdrücklich markierten `open_lab
 9. Zello, FRN und weitere Voice-Gateways
 10. aktive LIP-Abfrage und danach Kartendienste
 
-Details zu Phase 2 stehen in `Docs/MQTT_PHASE2_COMMON_EVENT_MODEL.md`.
+Details zu Phase 2 stehen in `Docs/MQTT_PHASE2_COMMON_EVENT_MODEL.md`; Phase 3 ist in `Docs/MQTT_PHASE3_IOT_GATEWAY_OPENLAB.md` und unter `system-backend/iot-gateway/` dokumentiert.
 
 ---
 
@@ -74,9 +74,10 @@ Details zu Phase 2 stehen in `Docs/MQTT_PHASE2_COMMON_EVENT_MODEL.md`.
 - `observability`: umgesetzt, zentrale Metrik-, Log-, Trace-, Alarm- und Diagnoseebene mit WebUI
 - `application-gateway`: umgesetzt, Connector Registry, Webhooks, Routing, Vorlagen, Retry/Dead Letter, Secret-Redaction und TTS-Orchestrierung mit WebUI
 - `media-library`: umgesetzt, Audio-Assets, Vorschau, Freigabe, TETRA-Cache, Archiv und kontrolliertes Playout mit WebUI
+- `iot-gateway`: umgesetzt, `netcore-event-v1`-zu-MQTT-Brücke, persistente Outbox, retained Zustände und beobachtete Commands mit WebUI
 - `shared`: umgesetzt, gemeinsame `netcore.v1`-Verträge, Service-/Persistenz-/Telemetrie-Bausteine und build-freies WebUI-Kit
 - `deploy/open-lab`: umgesetzt, inventory-gesteuerte LXC-Integration, URL-Rendering, Dependency-Plan, PDF-freies Bundle und SSH-Deployment
-- nächste Gesamtphase: reale LXC-Integrationstests, End-to-End-Vertragstests, On-Air-Validierung und anschließend produktive Management-Absicherung
+- nächste MQTT-Phase: Command-, Ack- und Policy-System; parallel bleiben reale LXC-Integrationstests und On-Air-Validierung erforderlich
 
 # 2. Normative Grundlage
 
@@ -1404,7 +1405,7 @@ Die Media Library ist als eigenständiger LXC-Dienst auf Port 8230 umgesetzt. Si
 
 ## Package P – Shared Platform und LXC-Deployment ✅ abgeschlossen
 
-Gemeinsame `netcore.v1`-Verträge, Persistenz-/Telemetry-Helfer, WebUI-Bausteine und das inventory-gesteuerte Deployment für alle 17 Runtime-Dienste sind umgesetzt. `shared/` bleibt Library und ist kein eigener Container.
+Gemeinsame `netcore.v1`-Verträge, Persistenz-/Telemetry-Helfer, WebUI-Bausteine und das inventory-gesteuerte Deployment für alle 18 Runtime-Dienste sind umgesetzt. `shared/` bleibt Library und ist kein eigener Container.
 
 ## Package Q – Cross-LXC E2E-Integration ✅ statisch abgeschlossen
 
@@ -1412,7 +1413,7 @@ Umgesetzt sind:
 
 - inventory-gesteuerter E2E-Runner ohne externe Python-Abhängigkeiten;
 - Mock TBS für `netcore-control-room-node-v1`;
-- Management-Vertragsprüfung aller 17 Dienste;
+- Management-Vertragsprüfung aller 18 Dienste;
 - Subscriber-/Group-, Call-/Media-/Recorder-, SDS-, Packet-Data- und Observability-Szenarien;
 - Control-Room-Federation und metadata-only Prüfungen für Security, KMF, Transit, Application Gateway und Media Library;
 - Restart-/Restore-Prüfung;
@@ -1436,8 +1437,8 @@ Der Code- und Paketbaustein ist damit vorbereitet. Der nächste operative Schrit
 
 ## Package R – Full-System Audit und TBS Edge Fallback ✅ statisch abgeschlossen
 
-Alle 17 Runtime-Dienste werden nun als gemeinsames System gegengeprüft. Der
-Node Gateway überwacht die `/health/ready`-Endpunkte der übrigen 16 LXCs und
+Alle 18 Runtime-Dienste werden nun als gemeinsames System gegengeprüft. Der
+Node Gateway überwacht die `/health/ready`-Endpunkte der übrigen 17 LXCs und
 verteilt eine revisionierte Service-Matrix an jede verbundene TBS. Die TBS
 schaltet nicht pauschal ab, sondern pro Funktion auf den dokumentierten lokalen
 Fallback um.
@@ -1452,13 +1453,22 @@ Enthalten sind:
 - lokale SDS-Zustellung und begrenzter, fsync-basierter Store-and-Forward-Spool;
 - replay-sichere Wiederanlieferung ohne doppelte lokale Gruppen-SDS;
 - dynamische SYSINFO-System-Wide-Services-Anzeige;
-- explizite Fallback-Beschreibung für jeden der 17 Runtime-Dienste;
+- explizite Fallback-Beschreibung für jeden der 18 Runtime-Dienste;
 - WebUI- und REST-Sicht auf die Backend-Health-Matrix im Node Gateway;
 - neuer E2E-Vertragstest für die Zustellung der Service-Matrix an eine Mock-TBS;
-- destruktives Fault-Szenario für Ausfall und Recovery jedes der 16 Remote-LXCs;
+- destruktives Fault-Szenario für Ausfall und Recovery jedes der 17 Remote-LXCs;
 - tolerante Recovery eines durch Stromausfall abgerissenen letzten JSONL-Spool-Eintrags;
 - `tools/check_full_system_integration.py` mit Port-, URL-, Dependency-,
   API-, WebUI- und Fallback-Abgleich.
 
 Der echte Multi-LXC-, Stromausfall-, VPN-Abbruch- und On-Air-Test bleibt eine
 operative Abnahme und kann nicht durch statische Prüfung ersetzt werden.
+
+
+---
+
+## Package R – IoT Gateway / MQTT ✅ Phase 3 umgesetzt
+
+Der IoT Gateway ist als eigenständiger LXC-Dienst auf Port 8240 umgesetzt. Er pollt die vier ersten `netcore-event-v1`-Produzenten, validiert und dedupliziert Ereignisse, hält eine persistente MQTT-Outbox vor und veröffentlicht Eventtopics sowie retained Subject-Zustände. MQTT Last Will, WebUI, REST, Health und Prometheus-Metriken sind enthalten.
+
+Die aktuelle Stufe bleibt bewusst `open_lab`: keine Anmeldung, keine Tokens, keine MQTT-Credentials und kein TLS. Eingehende Topics unter `netcore/v1/commands/#` werden ausschließlich protokolliert; der Dienst verweigert den Start, sobald Command-Ausführung aktiviert werden soll. Command-, Ack- und Policy-Logik bleibt Phase 4.

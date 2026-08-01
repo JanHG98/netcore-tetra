@@ -326,3 +326,9 @@ critical_for_edge = false
 # Was: Setzt die Einstellung `fallback_mode` für Dienst monitor targets.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 fallback_mode = "local_dashboard_and_audit"
+
+[[service_monitor.targets]]
+name = "iot-gateway"
+url = "http://10.0.20.27:8240/health/ready"
+critical_for_edge = false
+fallback_mode = "mqtt_bridge_unavailable_local_core_continues"

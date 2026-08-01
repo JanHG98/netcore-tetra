@@ -740,3 +740,14 @@ labels = { source = "netcore-observability" }
 # Was: Setzt die Einstellung `annotations` für alert rules.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 annotations = { runbook = "Check the target /metrics endpoint and NMS routing" }
+
+[[targets]]
+target_id = "iot-gateway"
+display_name = "IoT Gateway / MQTT"
+service = "iot-gateway"
+base_url = "http://127.0.0.1:8240"
+metrics_path = "/metrics"
+live_path = "/health/live"
+ready_path = "/health/ready"
+enabled = true
+labels = { environment = "open-lab", component = "iot-gateway" }

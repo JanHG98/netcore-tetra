@@ -827,6 +827,7 @@ control-room = "local_dashboard_and_audit"
 observability = "local_logs_and_health_continue"
 application-gateway = "local_integrations_only"
 media-library = "local_media_cache_and_playout"
+iot-gateway = "mqtt_bridge_unavailable_local_core_continues"
 
 ###############################################################################
 

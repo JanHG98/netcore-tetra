@@ -39,6 +39,7 @@ members = [
     "system-backend/observability",
     "system-backend/application-gateway",
     "system-backend/media-library",
+    "system-backend/iot-gateway",
     "system-backend/shared/contracts",
     "system-backend/shared/service-common",
     "system-backend/shared/database-common",

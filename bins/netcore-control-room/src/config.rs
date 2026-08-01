@@ -327,6 +327,7 @@ fn default_core_services() -> Vec<CoreServiceConfig> {
         service("transit", "Transit", "interworking", 8200, false),
         service("application-gateway", "Application Gateway", "application", 8220, false),
         service("media-library", "Media Library", "media", 8230, false),
+        service("iot-gateway", "IoT Gateway / MQTT", "integration", 8240, false),
     ]
 }
 

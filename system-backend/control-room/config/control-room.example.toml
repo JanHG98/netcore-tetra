@@ -406,3 +406,10 @@ critical = false
 # Was: Setzt die Einstellung `hide_infrastructure` für directory.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 hide_infrastructure = true
+
+[[services]]
+name = "iot-gateway"
+display_name = "IoT Gateway / MQTT"
+kind = "integration"
+base_url = "http://10.0.20.27:8240"
+critical = false

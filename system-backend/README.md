@@ -46,7 +46,7 @@ Langfristig verwenden neue Dienste mit eigener LXC-IP einheitlich:
 https://<LXC-IP>:8443/
 ```
 
-Die bisher umgesetzten Dienste sind ausdrücklich dokumentierte Ausnahmen für die isolierte Testumgebung und verwenden je Dienst einen eigenen HTTP-Port im offenen Labormodus. Die verbindliche Zuordnung steht in `services.toml`; die fortlaufende Dienstreihe reicht aktuell vom Recorder auf Port 8140 bis zur Media Library auf Port 8230. Der Control Room bleibt auf Port 9010.
+Die bisher umgesetzten Dienste sind ausdrücklich dokumentierte Ausnahmen für die isolierte Testumgebung und verwenden je Dienst einen eigenen HTTP-Port im offenen Labormodus. Die verbindliche Zuordnung steht in `services.toml`; die fortlaufende Dienstreihe reicht aktuell vom Recorder auf Port 8140 bis zum IoT Gateway auf Port 8240. Der Control Room bleibt auf Port 9010.
 
 ## Bereits deploybare Dienste
 
@@ -69,6 +69,7 @@ Bereits deploybar sind:
 - `observability/` – Metriken, Logs, Traces, Alarmierung und Diagnose, Port 8210
 - `application-gateway/` – externe Connectoren, Webhooks, Routing, Vorlagen und TTS-Orchestrierung, Port 8220
 - `media-library/` – Audio-Assets, Vorschau, Freigabe, TETRA-Cache, Archiv und Playout, Port 8230
+- `iot-gateway/` – netcore-event-v1 nach MQTT, persistente Outbox, retained Zustände und Command-Beobachtung, Port 8240
 - `control-room/` – zentrale Bedien-, Lage-, Incident- und Schichtbuchebene, Port 9010
 
 Alle enthalten Rust-Runtime, REST-API, eigene WebUI, systemd-Unit und Installationsskripte. In der aktuellen Teststufe laufen sie bewusst im deutlich markierten `open_lab`-Modus ohne Tokens, Benutzeranmeldung oder TLS.

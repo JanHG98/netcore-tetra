@@ -66,3 +66,8 @@ Prüft die gemeinsamen Rust-Crates, JSON-Schemas, build-freien WebUI-Assets, Ope
 ## Cross-LXC E2E
 
 `check_e2e_integration.py` prüft die statische Vollständigkeit des Open-Lab-E2E-Pakets für 17 Dienste und 11 Szenarien, führt dessen Unit-/Validate-only-Läufe aus und verwirft Pakete mit PDFs oder Python-Laufzeitcaches.
+
+`check_iot_gateway.py` prüft den Phase-3-IoT-Gateway statisch: Workspace- und
+Servicekatalog-Einbindung, OPEN-LAB-Konfiguration, vier Eventproduzenten,
+Port 8240, persistente Outbox, MQTT-Protokollpfad, WebUI/API sowie die harte
+Sperre gegen Command-Ausführung vor Phase 4.

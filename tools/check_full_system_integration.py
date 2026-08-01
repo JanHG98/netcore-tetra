@@ -28,7 +28,7 @@ EXPECTED = {
     "node-gateway", "mobility-core", "subscriber-core", "group-core", "call-control",
     "media-switch", "recorder", "sds-router", "packet-core", "ip-gateway",
     "security-core", "kmf", "transit", "application-gateway", "media-library",
-    "control-room", "observability",
+    "control-room", "observability", "iot-gateway",
 }
 REQUIRED_EDGE = {
     "subscriber-core", "group-core", "mobility-core", "call-control", "media-switch", "sds-router"
@@ -196,7 +196,7 @@ def main() -> int:
     bs = load_toml(ROOT / "config.toml")
     fb = bs.get("edge_fallback", {})
     modes = fb.get("service_fallbacks", {})
-    audit.require(set(modes) == EXPECTED, "TBS edge_fallback.service_fallbacks does not cover all 17 runtime services")
+    audit.require(set(modes) == EXPECTED, "TBS edge_fallback.service_fallbacks does not cover all 18 runtime services")
     audit.require(set(fb.get("required_services", [])) == REQUIRED_EDGE, "TBS required_services mismatch")
     audit.require(fb.get("unknown_service_is_available") is False, "unknown service health must fail closed into fallback")
     audit.require(5 <= int(fb.get("service_matrix_lease_secs", 0)) <= 3600, "TBS service health matrix needs a bounded freshness lease")

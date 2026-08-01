@@ -61,6 +61,7 @@ EXPECTED_SERVICES = {
     "media-library",
     "control-room",
     "observability",
+    "iot-gateway",
 }
 EXPECTED_SCENARIOS = {
     "contracts",
@@ -177,7 +178,7 @@ def main() -> int:
     if errors:
         print("\n".join(errors), file=sys.stderr)
         return 1
-    print(f"Cross-LXC E2E integration package check: OK (17 services, {len(EXPECTED_SCENARIOS)} scenarios)")
+    print(f"Cross-LXC E2E integration package check: OK (18 services, {len(EXPECTED_SCENARIOS)} scenarios)")
     return 0
 
 

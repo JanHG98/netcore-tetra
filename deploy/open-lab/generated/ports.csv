@@ -16,3 +16,4 @@ application-gateway,10.0.20.23,8220,http://10.0.20.23:8220/,netcore-application-
 media-library,10.0.20.24,8230,http://10.0.20.24:8230/,netcore-media-library.service
 control-room,10.0.20.25,9010,http://10.0.20.25:9010/,netcore-control-room.service
 observability,10.0.20.26,8210,http://10.0.20.26:8210/,netcore-observability.service
+iot-gateway,10.0.20.27,8240,http://10.0.20.27:8240/,netcore-iot-gateway.service

@@ -253,7 +253,8 @@
         "kmf",
         "transit",
         "application-gateway",
-        "media-library"
+        "media-library",
+        "iot-gateway"
       ]
     },
     {
@@ -282,7 +283,25 @@
         "transit",
         "application-gateway",
         "media-library",
+        "iot-gateway",
         "control-room"
+      ]
+    },
+    {
+      "name": "iot-gateway",
+      "host": "10.0.20.27",
+      "port": 8240,
+      "base_url": "http://10.0.20.27:8240",
+      "webui": "http://10.0.20.27:8240/",
+      "health_live": "http://10.0.20.27:8240/health/live",
+      "health_ready": "http://10.0.20.27:8240/health/ready",
+      "metrics": "http://10.0.20.27:8240/metrics",
+      "unit": "netcore-iot-gateway.service",
+      "depends_on": [
+        "node-gateway",
+        "mobility-core",
+        "call-control",
+        "sds-router"
       ]
     }
   ]

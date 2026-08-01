@@ -1,6 +1,6 @@
 # NetCore-Tetra Open-Lab E2E Tests
 
-This package validates the interaction of all 17 deployable backend services in the current isolated Open-Lab architecture. It deliberately uses only the Python standard library so the runner can execute from the deployment host without an additional test framework.
+This package validates the interaction of all 18 deployable backend services in the current isolated Open-Lab architecture. It deliberately uses only the Python standard library so the runner can execute from the deployment host without an additional test framework.
 
 ## Safety model
 

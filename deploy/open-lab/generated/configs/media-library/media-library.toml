@@ -60,6 +60,9 @@ backup_root = "/var/lib/netcore-media-library/backups"
 # Was: Setzt die Einstellung `archive_root` für storage.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 archive_root = "/mnt/nfs-share/Media-Library"
+# Kind-specific archive locations. These fall back to archive_root when omitted.
+recording_archive_root = "/mnt/nfs-share/Recordings"
+tts_archive_root = "/mnt/nfs-share/TTS-Dateien"
 # Was: Setzt die Einstellung `max_asset_bytes` für storage.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_asset_bytes = 67108864
@@ -86,7 +89,7 @@ worker_interval_ms = 500
 probe_interval_secs = 15
 # Was: Setzt die Einstellung `import_timeout_secs` für Laufzeit.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-import_timeout_secs = 20
+import_timeout_secs = 120
 # Was: Setzt die Einstellung `max_assets` für Laufzeit.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_assets = 10000
@@ -108,6 +111,28 @@ frame_interval_ms = 60
 # Was: Setzt die Einstellung `auto_approve_tts` für Laufzeit.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 auto_approve_tts = false
+# Automatically copy completed basis-station recordings and TTS media to archive_root.
+auto_archive_recordings = true
+auto_archive_tts = true
+
+# End-to-end radio playout. In basisstation mode the Media Library delegates
+# the approved preview WAV to the selected TBS. The TBS downloads the complete
+# asset, encodes it with its native TETRA codec, creates the radio call, sends
+# the audio and releases the call again.
+[playout]
+mode = "basisstation"
+default_station = "srv-m-tbs-01"
+request_timeout_secs = 15
+completion_timeout_secs = 900
+poll_interval_ms = 500
+
+[[playout.stations]]
+id = "srv-m-tbs-01"
+name = "SRV-M-TBS-01"
+base_url = "http://10.0.20.10:8080"
+enabled = true
+# username = "admin"
+# password = "change-me"
 
 # Was: Öffnet den Konfigurationsabschnitt `codec`.
 # Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
@@ -132,6 +157,45 @@ encoder_command = []
 # Was: Setzt die Einstellung `decoder_command` für codec.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 decoder_command = []
+
+###############################################################################
+# CENTRAL PIPER TEXT TO SPEECH
+###############################################################################
+[tts]
+enabled = true
+endpoint = "http://127.0.0.1:5005"
+template_directory = "/var/lib/netcore-media-library/tts/templates"
+default_voice = "de-thorsten"
+default_speed = 0.95
+max_text_characters = 2000
+synthesis_timeout_secs = 90
+max_output_file_mb = 25
+
+[[tts.voices]]
+id = "de-thorsten"
+name = "Deutsch – Thorsten (mittel)"
+provider_voice = "de_DE-thorsten-medium"
+
+[[tts.voices]]
+id = "de-thorsten-high"
+name = "Deutsch – Thorsten (hoch)"
+provider_voice = "de_DE-thorsten-high"
+
+[[tts.voices]]
+id = "de-karlsson"
+name = "Deutsch – Karlsson"
+provider_voice = "de_DE-karlsson-low"
+
+[[tts.voices]]
+id = "de-pavoque"
+name = "Deutsch – Pavoque"
+provider_voice = "de_DE-pavoque-low"
+
+[[tts.voices]]
+id = "de-thorsten-neutral"
+name = "Deutsch – Thorsten emotional (neutral)"
+provider_voice = "de_DE-thorsten_emotional-medium"
+speaker_id = 4
 
 # Was: Öffnet den Konfigurationsabschnitt `dependencies`.
 # Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
