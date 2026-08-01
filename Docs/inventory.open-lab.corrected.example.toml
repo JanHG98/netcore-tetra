@@ -183,7 +183,7 @@ user = "netcore"
 install = "system-backend/control-room/install/install.sh"
 config_template = "system-backend/control-room/config/control-room.example.toml"
 config_target = "/etc/netcore-control-room/control-room.toml"
-depends_on = ["node-gateway", "subscriber-core", "group-core", "mobility-core", "call-control", "media-switch", "recorder", "sds-router", "packet-core", "ip-gateway", "security-core", "kmf", "transit", "application-gateway", "media-library"]
+depends_on = ["node-gateway", "subscriber-core", "group-core", "mobility-core", "call-control", "media-switch", "recorder", "sds-router", "packet-core", "ip-gateway", "security-core", "kmf", "transit", "application-gateway", "media-library", "iot-gateway", "hardware-gateway", "rf-monitor", "alarm-workflow", "task-workflow", "asset-management", "sip-switch"]
 
 [[services]]
 name = "observability"
@@ -194,4 +194,82 @@ user = "netcore-observability"
 install = "system-backend/observability/install/install.sh"
 config_template = "system-backend/observability/config/observability.example.toml"
 config_target = "/etc/netcore/observability.toml"
-depends_on = ["node-gateway", "subscriber-core", "group-core", "mobility-core", "call-control", "media-switch", "recorder", "sds-router", "packet-core", "ip-gateway", "security-core", "kmf", "transit", "application-gateway", "media-library", "control-room"]
+depends_on = ["node-gateway", "subscriber-core", "group-core", "mobility-core", "call-control", "media-switch", "recorder", "sds-router", "packet-core", "ip-gateway", "security-core", "kmf", "transit", "application-gateway", "media-library", "control-room", "iot-gateway", "hardware-gateway", "rf-monitor", "alarm-workflow", "task-workflow", "asset-management", "sip-switch"]
+
+
+[[services]]
+name = "iot-gateway"
+host = "10.0.20.27"
+port = 8240
+unit = "netcore-iot-gateway.service"
+user = "netcore-iot-gateway"
+install = "system-backend/iot-gateway/install/install.sh"
+config_template = "system-backend/iot-gateway/config/iot-gateway.example.toml"
+config_target = "/etc/netcore/iot-gateway.toml"
+depends_on = ["node-gateway", "mobility-core", "call-control", "sds-router"]
+
+[[services]]
+name = "hardware-gateway"
+host = "10.0.20.28"
+port = 8250
+unit = "netcore-hardware-gateway.service"
+user = "root"
+install = "system-backend/hardware-gateway/install/install.sh"
+config_template = "system-backend/hardware-gateway/config/hardware-gateway.example.toml"
+config_target = "/etc/netcore/hardware-gateway.toml"
+depends_on = ["iot-gateway"]
+
+[[services]]
+name = "rf-monitor"
+host = "10.0.20.29"
+port = 8260
+unit = "netcore-rf-monitor.service"
+user = "root"
+install = "system-backend/rf-monitor/install/install.sh"
+config_template = "system-backend/rf-monitor/config/rf-monitor.example.toml"
+config_target = "/etc/netcore/rf-monitor.toml"
+depends_on = ["iot-gateway"]
+
+[[services]]
+name = "alarm-workflow"
+host = "10.0.20.30"
+port = 8270
+unit = "netcore-alarm-workflow.service"
+user = "root"
+install = "system-backend/alarm-workflow/install/install.sh"
+config_template = "system-backend/alarm-workflow/config/alarm-workflow.example.toml"
+config_target = "/etc/netcore/alarm-workflow.toml"
+depends_on = ["iot-gateway", "sds-router"]
+
+[[services]]
+name = "task-workflow"
+host = "10.0.20.31"
+port = 8280
+unit = "netcore-task-workflow.service"
+user = "root"
+install = "system-backend/task-workflow/install/install.sh"
+config_template = "system-backend/task-workflow/config/task-workflow.example.toml"
+config_target = "/etc/netcore/task-workflow.toml"
+depends_on = ["iot-gateway", "sds-router"]
+
+[[services]]
+name = "asset-management"
+host = "10.0.20.32"
+port = 8290
+unit = "netcore-asset-management.service"
+user = "root"
+install = "system-backend/asset-management/install/install.sh"
+config_template = "system-backend/asset-management/config/asset-management.example.toml"
+config_target = "/etc/netcore/asset-management.toml"
+depends_on = ["iot-gateway", "subscriber-core", "mobility-core", "task-workflow"]
+
+[[services]]
+name = "sip-switch"
+host = "10.0.20.33"
+port = 8300
+unit = "netcore-sip-switch.service"
+user = "root"
+install = "system-backend/sip-switch/install/install.sh"
+config_template = "system-backend/sip-switch/config/sip-switch.example.toml"
+config_target = "/etc/netcore/sip-switch.toml"
+depends_on = ["mobility-core", "iot-gateway"]

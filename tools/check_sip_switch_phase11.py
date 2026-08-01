@@ -108,7 +108,7 @@ cmd="${2:-}"
 case "$cmd" in
   "core show version") echo "Asterisk 20. test" ;;
   "pjsip show endpoint netcore-pbx") echo "Endpoint: netcore-pbx" ;;
-  "pjsip show aor tbs-srv-m-tbs-01-aor") echo "Aor: tbs-srv-m-tbs-01-aor"; echo "Contact: tbs-srv-m-tbs-01-aor/sip:tbs@127.0.0.1:5062 Avail" ;;
+  "pjsip show aor tbs-01") echo "Aor: tbs-01"; echo "Contact: tbs-01/sip:tbs@127.0.0.1:5062 Avail" ;;
   "pjsip show registrations") echo "netcore-pbx-registration Registered" ;;
   "core reload") echo "Reloaded" ;;
   *) echo "OK $cmd" ;;

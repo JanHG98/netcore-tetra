@@ -1495,3 +1495,15 @@ Der Task Workflow läuft als eigener LXC-Dienst auf Port `8280`. Er verwaltet `n
 - Wartungs- und Reparaturakte mit Task-Workflow-Anbindung
 - lesender Abgleich mit Subscriber Core und Mobility Core ohne konkurrierende Autorität
 - MQTT-Zustände und `asset.*`, `person.*`, `assignment.*`, `maintenance.*` Ereignisse
+
+
+## Phase 11 – Zentraler NetCore SIP Switch ✅
+
+- eigener `sip-switch`-LXC auf Port `8300`
+- vorhandenes PBX bleibt alleinige Telefonanlage; ein zentraler SIP-Trunk zum NetCore SIP Switch
+- Asterisk nur als B2BUA, Registrar und SIP-/RTP-Router
+- TBS-SIP-Connectoren registrieren zentral am SIP Switch statt einzeln am PBX
+- PBX→TETRA-Routing über die kanonische Route des Mobility Core
+- TBS→PBX über den einen PBX-Trunk
+- WebUI, Route-Test, Registrierungsstatus, Call-Lifecycle, MQTT und `sip.*`-Ereignisse
+- aktuelle Medienphase: `edge_media`; unterbrechungsfreies Mid-Call-Handover folgt mit zentralem Call-Control-/Media-Switch-Leg

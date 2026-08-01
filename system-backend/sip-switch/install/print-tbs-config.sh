@@ -10,6 +10,8 @@ PASSWORD="$3"
 LOCAL_IP="$4"
 BIND_PORT="${5:-5062}"
 cat <<EOF
+# LEGACY-DIREKTMODUS: Die native TBS-Bridge registriert direkt am SIP-Switch.
+# Empfohlen ist Phase 11c mit lokalem Asterisk und install-tbs-local-fallback.sh.
 [asterisk]
 enabled = true
 outbound_prefix = "91*"

@@ -54,4 +54,6 @@ Phase 10 ergänzt:
 - `ASSET_MANAGEMENT_V1.md`
 - Ereignisse `asset.*`, `person.*`, `assignment.*` und `maintenance.*`
 
-- Ereignisse `sip.*` für zentrale PBX-/TBS-Routingentscheidungen und SIP-Call-Lifecycle
+## SIP-Routing-Ereignisse
+
+Phase 11 ergänzt `sip.*` für zentrale PBX-/TBS-Routingentscheidungen, TBS-Kontaktzustände und den SIP-Call-Lifecycle. Die transportneutralen Ereignisse enthalten keine SIP-Kennwörter oder vollständigen Asterisk-Konfigurationen.

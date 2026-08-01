@@ -1,0 +1,87 @@
+# NetCore-TETRA · Phase 11c · lokaler TBS-SIP-Fallback mit exklusiver Registrierung · OPEN LAB
+# Die native TBS spricht dauerhaft nur mit dem lokalen Asterisk.
+# Normal: lokaler Asterisk registriert sich ausschließlich am zentralen SIP-Switch.
+# Störung: direkte PBX-Registrierung wird erst nach bestätigtem Zentral-Ausfall aktiviert.
+
+[service]
+name = "netcore-tbs-sip-fallback"
+phase = "11c"
+mode = "open_lab"
+node_id = "SRV-M-TBS-01"
+
+[asterisk]
+binary = "/usr/sbin/asterisk"
+config_dir = "/etc/asterisk"
+native_snippet_file = "/etc/netcore/tbs-asterisk-local-snippet.toml"
+sip_bind = "0.0.0.0:5060"
+rtp_start = 30200
+rtp_end = 30300
+central_dial_timeout_secs = 60
+fallback_dial_timeout_secs = 60
+tetra_dial_timeout_secs = 35
+
+# Native NetCore-TBS-SIP-/Codec-Bridge. Sie registriert sich immer nur lokal.
+[native_tbs]
+username = "netcore-tbs-native"
+password = "openlab-native"
+contact_host = "127.0.0.1"
+bind_port = 5062
+allow = "ulaw"
+
+# Primärweg: lokaler Asterisk registriert sich am zentralen SIP-Switch.
+[central]
+enabled = true
+host = "10.0.20.33"
+port = 5060
+username = "tbs-srv-m-tbs-01"
+password = "openlab-central"
+realm = "asterisk"
+allow = "ulaw"
+qualify_frequency_secs = 5
+qualify_timeout_secs = 2
+registration_expiration_secs = 30
+
+# Ersatzweg: direkte Registrierung der TBS am vorhandenen PBX.
+# Diese Registrierung ist im Normalbetrieb NICHT geladen.
+[fallback_pbx]
+enabled = true
+mode = "registration"
+host = "10.0.1.160"
+port = 5060
+username = "netcore-tbs-01"
+auth_username = ""
+password = ""
+from_user = "netcore-tbs-01"
+from_domain = ""
+contact_user = "netcore-tbs-01"
+allow = "ulaw"
+match = ["10.0.1.160"]
+qualify_frequency_secs = 5
+qualify_timeout_secs = 2
+registration_expiration_secs = 30
+
+[failover]
+enabled = true
+check_interval_secs = 2
+startup_grace_secs = 10
+failure_threshold = 3
+recovery_stable_secs = 30
+central_registration_grace_secs = 15
+unregister_grace_secs = 2
+state_file = "/var/lib/netcore-tbs-sip-fallback/state.json"
+lock_file = "/run/netcore-tbs-sip-fallback.lock"
+active_registration_file = "/etc/asterisk/netcore-active-registration.conf"
+central_registration_file = "/etc/asterisk/netcore-registration-central.conf"
+pbx_registration_file = "/etc/asterisk/netcore-registration-pbx-direct.conf"
+# Nur eine der beiden Registrierungsdateien wird über active_registration_file geladen.
+default_mode = "central"
+
+[routing]
+# TBS -> Telefonie: direkter PBX-Weg ist zusätzlich über AstDB gesperrt,
+# bis die Failover-State-Machine PBX_DIRECT_ACTIVE gesetzt hat.
+central_first = true
+fallback_on_chanunavail = true
+fallback_on_congestion = true
+accept_direct_pbx_fallback = true
+fallback_tetra_prefix = ""
+strip_fallback_tetra_prefix = false

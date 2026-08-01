@@ -20,7 +20,7 @@ source "${REPO_ROOT}/system-backend/shared/install/lxc-network.sh"
 netcore_configure_lxc_endpoint "/etc/netcore/sip-switch.toml" "sip-switch" "8300"
 
 SIP_SWITCH_IP="${NETCORE_LXC_IP:-$(hostname -I | awk '{print $1}')}"
-printf 'NETCORE_SIP_SWITCH_URL=http://127.0.0.1:8300\n' >/etc/netcore/sip-switch-agi.env
+printf 'NETCORE_SIP_SWITCH_URL=http://%s:8300\n' "$SIP_SWITCH_IP" >/etc/netcore/sip-switch-agi.env
 chmod 0644 /etc/netcore/sip-switch-agi.env
 
 ensure_include() {

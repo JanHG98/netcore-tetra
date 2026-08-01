@@ -1,36 +1,45 @@
 # Architektur und Zuständigkeiten
 
-## Was der Dienst ist
+## Rollen
 
-Der SIP Switch ist ein zentraler SIP-Router/B2BUA für NetCore-TETRA. Asterisk wird als technische SIP-Engine eingesetzt, nicht als zweite PBX. Es werden keine normalen Telefoniebenutzer, Mailboxen, IVR-Menüs oder DECT-Teilnehmer verwaltet.
+- **Vorhandenes PBX:** Nebenstellen, DECT, Rufgruppen, externer Rufnummernplan.
+- **Zentraler SIP Switch:** Mobility-Core-Auflösung und Auswahl der Serving-TBS.
+- **Lokaler TBS-Asterisk:** stabiler Edge-B2BUA, Primär-/Fallback-Trunk und lokaler SIP-Anker.
+- **Native TBS-Bridge:** TETRA-Rufsteuerung und PCMU↔TETRA-Codec.
 
-## PBX → TETRA
+## Wesentlicher Grundsatz
 
-1. Das vorhandene PBX sendet einen Ruf über den einen NetCore-Trunk.
-2. `netcore-sip-route.py` übergibt Zielnummer, Caller-ID und Kanalquelle an die lokale API.
-3. Der Dienst normalisiert die Zielnummer zu einer ISSI.
-4. Mobility Core liefert `serving_node` und Routenzustand.
-5. Der SIP Switch ordnet den Node einem PJSIP-Endpunkt zu.
-6. `PJSIP_DIAL_CONTACTS()` wählt den aktuell registrierten Kontakt dieser TBS.
-7. Der vorhandene TBS-SIP-Connector erzeugt den TETRA-Individualruf und transcodiert PCMU/TETRA.
+Die native TBS-Bridge registriert sich nicht direkt am zentralen SIP-Switch. Sie registriert sich an ihrem lokalen Asterisk. Der lokale Asterisk registriert sich wiederum als TBS-Endpunkt am zentralen SIP-Switch und hält zusätzlich einen direkten Fallbacktrunk zum PBX.
+
+```text
+Native TBS Bridge ⇄ lokaler Asterisk ⇄ zentraler SIP Switch ⇄ PBX
+                                  └──── direkter PBX-Fallback ────┘
+```
+
+## PBX → TETRA im Normalbetrieb
+
+1. Das PBX sendet den Ruf an den zentralen SIP-Switch.
+2. Der SIP-Switch fragt den Mobility Core nach der Serving-TBS.
+3. Der zentrale Asterisk wählt den registrierten lokalen Asterisk dieser TBS.
+4. Der lokale Asterisk schreibt die Ziel-ISSI in die Request-URI des nativen TBS-Kontakts.
+5. Die native TBS-Bridge erzeugt den TETRA-Individualruf.
+
+## PBX → TETRA im Fallback
+
+1. Das PBX erkennt den zentralen NetCore-Trunk als nicht verfügbar.
+2. Eine PBX-Failoverroute wählt die direkten TBS-Fallbacktrunks.
+3. Jeder lokale TBS-Asterisk versucht die Ziel-ISSI an seine native TBS-Bridge zu liefern.
+4. TBS ohne lokalen Teilnehmer antworten nicht erfolgreich; die passende TBS nimmt den Ruf an.
+
+Das PBX bleibt damit die Stelle, die den **eingehenden** Trunk-Failover auslöst. Eine ausgefallene zentrale Instanz kann ihren eigenen Ausfall naturgemäß nicht mehr signalisieren.
 
 ## TETRA → PBX
 
-1. Der lokale SIP-Connector der TBS wählt seine konfigurierte Telefoniepräfixroute.
-2. Der SIP-Ruf geht an den registrierten TBS-Endpunkt im SIP Switch.
-3. Die AGI erkennt den Quellendpunkt aus dem PJSIP-Kanalnamen.
-4. Die Zielnummer wird über den einzigen PBX-Endpunkt weitergegeben.
+1. Die native TBS-Bridge wählt den lokalen Asterisk.
+2. Der lokale Asterisk versucht zuerst den zentralen SIP-Switch.
+3. Nur bei `CHANUNAVAIL` oder `CONGESTION` wird der direkte PBX-Trunk gewählt.
+4. `BUSY` und `NOANSWER` werden unverändert an die TBS zurückgegeben und nicht dupliziert.
 
-## Nummernmodell
+## Rufstabilität
 
-Eine rein numerische PBX-Zielnummer wird standardmäßig direkt als 24-Bit-ISSI interpretiert. Optional sind ein Präfix und explizite `[[number_mappings]]` möglich. Gruppenrufe werden in dieser Phase nicht über den lokalen TBS-SIP-Connector angeboten, weil dessen eingehender Pfad Individualrufe auf eine ISSI erzeugt.
-
-## Handover
-
-Neue Rufe verwenden immer die aktuelle Mobility-Core-Route. Ein Zellwechsel während eines laufenden SIP-Rufs wird im Monitoring sichtbar, aber der aktive lokale TBS-Medienpfad wird noch nicht live umgehängt. Das spätere zentrale Medienmodell benötigt:
-
-- externes SIP-Leg im Call Control,
-- Media-Switch-Leg für den SIP Switch,
-- gemeinsamen TETRA-Mediencodec außerhalb der TBS-Runtime,
-- RTP/PCM↔TETRA-ACELP am zentralen Gateway,
-- Call-Restore mit unverändertem PBX-SIP-Dialog.
+Die Route wird nur beim Aufbau eines neuen Dialogs gewählt. Laufende Gespräche bleiben auf ihrem bestehenden SIP-/RTP-Pfad. Ein automatisches Mid-Call-Failover wäre ohne zentralen Medienpfad nicht zuverlässig und ist deshalb bewusst nicht enthalten.

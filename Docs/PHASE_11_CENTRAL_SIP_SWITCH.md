@@ -13,3 +13,14 @@ Die erste Ausbaustufe verwendet bewusst `edge_media`: Der vorhandene SIP-/RTP-/T
 ## Keine zweite PBX
 
 Asterisk wird nur als Registrar, B2BUA und SIP-/RTP-Anker betrieben. Nebenstellen, Rufgruppen, DECT, IVR und klassische Telefoniefunktionen verbleiben vollständig im bereits vorhandenen PBX.
+
+## Phase 11b: lokaler TBS-Asterisk bleibt erhalten
+
+Die empfohlene Betriebsart ist jetzt **nicht** mehr die direkte Registrierung der nativen TBS-Bridge am zentralen SIP-Switch. Stattdessen bleibt auf jeder TBS ein lokaler Asterisk als Edge-B2BUA aktiv:
+
+```text
+Native TBS-Bridge → lokaler Asterisk → zentraler SIP-Switch → PBX
+                                  └→ direkter PBX-Fallback
+```
+
+Installationsdetails stehen in `Docs/PHASE_11B_LOCAL_TBS_SIP_FALLBACK.md` und unter `system-backend/sip-switch/tbs-fallback/docs/installation-openlab.md`.

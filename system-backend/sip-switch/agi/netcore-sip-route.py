@@ -89,6 +89,7 @@ def main() -> None:
         code, result = api("/api/v1/resolve", payload)
         setvar("NETCORE_ACTION", result.get("action", "reject"))
         setvar("NETCORE_ENDPOINT", result.get("endpoint", ""))
+        setvar("NETCORE_AOR", result.get("aor", ""))
         setvar("NETCORE_DESTINATION", result.get("destination", ""))
         setvar("NETCORE_NODE_ID", result.get("node_id", ""))
         setvar("NETCORE_ISSI", result.get("issi", ""))

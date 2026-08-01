@@ -45,9 +45,9 @@ event_history_limit = 3000
 probe_interval_secs = 10
 
 # Ein einziger Trunk zum bereits vorhandenen PBX.
-# mode = "ip_trunk" nutzt IP-Zuordnung; mode = "registration" registriert sich am PBX.
+# Phase 11c empfiehlt mode = "registration": Im Normalbetrieb sieht das PBX nur den zentralen Switch.
 [pbx]
-mode = "ip_trunk"
+mode = "registration"
 endpoint_id = "netcore-pbx"
 host = "127.0.0.1"
 port = 5060
@@ -58,6 +58,8 @@ password = ""
 from_user = "netcore-tetra"
 from_domain = ""
 contact_user = "netcore-tetra"
+registration_id = "netcore-pbx-registration"
+registration_expiration_secs = 30
 allow = "ulaw"
 match = []
 
@@ -72,7 +74,8 @@ accept_stale_routes = false
 require_tbs_contact = true
 dial_timeout_secs = 60
 
-# Jede TBS registriert ihren vorhandenen lokalen SIP-/RTP-Connector hier.
+# Empfohlen Phase 11c: Der lokale Asterisk jeder TBS registriert sich hier.
+# Die native TBS-SIP-/Codec-Bridge registriert sich nur am lokalen Asterisk.
 # Der endpoint_id muss eindeutig und Asterisk-tauglich sein.
 [[tbs]]
 node_id = "SRV-M-TBS-01"

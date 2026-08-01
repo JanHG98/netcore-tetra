@@ -1,69 +1,62 @@
-# NetCore SIP Switch – Phase 11
+# NetCore SIP Switch – Phase 11c
 
-Der SIP Switch zentralisiert die SIP-Verwaltung für mehrere TETRA-Basisstationen, ohne eine zweite Telefonanlage aufzubauen. Das vorhandene PBX bleibt zuständig für Nebenstellen, DECT, Rufgruppen, Rufnummernplan und Telefoniefunktionen. Der SIP-Switch-LXC verwendet Asterisk ausschließlich als SIP-B2BUA, Registrar und Routing-/Media-Anker.
+Der zentrale SIP-Switch ist im Normalbetrieb die **einzige Vermittlungsstelle zwischen NetCore-TETRA und dem vorhandenen PBX**. Die lokale TBS behält trotzdem ihren eigenen Asterisk als Edge-B2BUA und Notvermittlung.
 
-## Datenweg der ersten Ausbaustufe
+## Normalbetrieb – „Dame vom Amt“
 
 ```text
-vorhandenes PBX
-      │ ein Trunk
+TETRA-Funkgerät
+      │
       ▼
-NetCore SIP Switch
-      │ Mobility Core: Serving-TBS der Ziel-ISSI
-      ├──────────────► TBS-01 SIP-Connector
-      ├──────────────► TBS-02 SIP-Connector
-      └──────────────► TBS-03 SIP-Connector
+Native TBS-SIP-/Codec-Bridge
+      │ 127.0.0.1:5060
+      ▼
+Lokaler TBS-Asterisk
+      │ einzige aktive externe Registrierung
+      ▼
+Zentraler NetCore SIP-Switch
+      │ einziger normaler PBX-Trunk
+      ▼
+vorhandenes PBX
 ```
 
-Jede TBS registriert ihren bereits vorhandenen lokalen Asterisk-/RTP-Connector nicht mehr direkt am PBX, sondern am SIP Switch. Ein eingehender PBX-Ruf wird anhand der ISSI über den Mobility Core aufgelöst und nur an den SIP-Endpunkt der aktuellen Serving-TBS geschickt. Von der TBS kommende Telefonierufe werden über den einzigen PBX-Trunk weitergereicht.
+Die direkte Registrierung der TBS am PBX ist im Normalbetrieb **nicht geladen**. Das PBX sieht daher nicht dieselbe TBS gleichzeitig über den Switch und direkt.
 
-## Bewusste Grenze dieser Phase
+## Bestätigter Zentral-Ausfall
 
-Der Medienmodus heißt `edge_media`: TETRA-ACELP↔PCMU bleibt zunächst im vorhandenen TBS-Connector. Der SIP Switch verankert SIP und RTP zentral in Asterisk, aber ein bereits laufender SIP-Ruf wird bei einem Zellwechsel noch nicht unterbrechungsfrei auf eine andere TBS verschoben. Dafür werden später ein echtes externes Call-Leg im Call Control und ein zentraler Codecpfad am Media Switch benötigt.
+Eine lokale State Machine überwacht den zentralen SIP-Switch. Standardmäßig müssen drei Prüfungen fehlschlagen. Erst danach wird atomar umgeschaltet:
 
-Diese Grenze ist sichtbar in `/api/v1/status`:
-
-```json
-{
-  "media_mode": "edge_media",
-  "central_media_ready": false
-}
+```text
+CENTRAL_ACTIVE
+  → FAILOVER_PENDING
+  → PBX_DIRECT_ACTIVE
 ```
+
+Dabei wird die zentrale Registrierung entfernt und erst anschließend die direkte PBX-Registrierung geladen. Der direkte Dialplan ist zusätzlich über `AstDB(netcore/failover_mode)` gesperrt und wird nur in `pbx_direct` freigegeben.
+
+## Rückkehr des zentralen Switches
+
+Der zentrale Switch muss standardmäßig 30 Sekunden stabil erreichbar sein. Danach:
+
+```text
+PBX_DIRECT_ACTIVE
+  → RECOVERY_PENDING
+  → direkte PBX-Registrierung abmelden
+  → zentrale Registrierung laden
+  → CENTRAL_ACTIVE
+```
+
+So gibt es immer nur **eine absichtlich aktive externe Registrierung pro TBS**. Nach einem harten Ausfall kann ein alter SIP-Kontakt im PBX noch bis zum Ablauf seiner kurzen Registrierungszeit sichtbar sein; er wird aber nicht mehr von der TBS aktiv gehalten.
+
+## Kein TBS-Neustart beim Failover
+
+Die native TBS-Bridge bleibt dauerhaft auf `127.0.0.1:5060`. Nur der lokale Asterisk schaltet seine externe Registrierung um. Laufende Gespräche werden nicht mitten im Dialog verschoben; der neue Weg gilt für neue Rufe.
 
 ## OPEN LAB
 
-- WebUI/API ohne Anmeldung, Token oder TLS auf Port `8300`
-- SIP auf Port `5060`
-- RTP standardmäßig `10000-20000/udp`
-- TBS-SIP-Kennwörter und ein mögliches PBX-Kennwort liegen im Klartext in der Laborkonfiguration
-- ausschließlich in einem isolierten Testnetz einsetzen
+Keine WebUI-Anmeldung, keine API-Tokens und kein TLS. SIP-Zugangsdaten liegen im Klartext in der Laborkonfiguration. Ausschließlich im isolierten Testnetz verwenden.
 
-## API
+## Installation
 
-- `GET /health/live`
-- `GET /health/ready`
-- `GET /api/v1/status`
-- `GET /api/v1/tbs`
-- `GET /api/v1/mappings`
-- `GET /api/v1/calls`
-- `GET /api/v1/decisions`
-- `GET /api/v1/events`
-- `GET|POST /api/v1/resolve`
-- `POST /api/v1/calls/{token}/state`
-- `POST /api/v1/actions/render-asterisk`
-- `POST /api/v1/actions/reload-asterisk`
-- `GET /metrics`
-
-## Ereignisse
-
-- `sip.route_resolved`
-- `sip.route_failed`
-- `sip.call_started`
-- `sip.call_answered`
-- `sip.call_ended`
-- `sip.call_failed`
-- `sip.tbs_contact_up`
-- `sip.tbs_contact_down`
-- `sip.asterisk_config_rendered`
-- `sip.asterisk_reloaded`
-- `sip.asterisk_reload_failed`
+- Zentraler LXC: [`docs/installation-openlab.md`](docs/installation-openlab.md)
+- Lokale TBS: [`tbs-fallback/docs/installation-openlab.md`](tbs-fallback/docs/installation-openlab.md)

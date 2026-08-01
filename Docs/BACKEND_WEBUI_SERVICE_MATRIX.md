@@ -20,6 +20,12 @@
 | IoT Gateway | MQTT-Events, Commands/Acks, Home Assistant Discovery, importierte HA-Entitäten und Homematic-Datenpunkte | Reale Home-Assistant-/Homematic-Aktionen; in Phase 5 standardmäßig gesperrt, OPEN LAB ohne Management-Tokens |
 | Recorder | Aufnahmen, Suche, Retention, Integrität | Export, Retention, Hold und Löschung; im Testpaket bewusst offen ohne Tokens |
 | Observability | Metriken, Logs, Traces, Alarme und Diagnose | Alarmregeln, Retention, Stummschaltung und Diagnoseexport; im Testpaket bewusst offen ohne Tokens |
+| Hardware Gateway | Edge-I/O, Rack-Sensoren, Eingänge, Messwerte und Heartbeats | Physische Ausgänge; in OPEN LAB standardmäßig deaktiviert |
+| RF Monitor | TBS-RF-Telemetrie, VSWR, Temperaturen, Senderzustand und RF-Alarme | Schwellwerte, Probe-Konfiguration und Alarmquittierung; OPEN LAB ohne Management-Tokens |
+| Alarm Workflow | Alarme, Eskalation, SDS-/Status-Rückmeldungen und Audit-Timeline | Eskalieren, schließen, abbrechen und Empfänger ändern; OPEN LAB ohne Management-Tokens |
+| Task Workflow | Strukturierte Aufträge, WAP-Formulare, SDS-/Status-Aktionen und Timeline | Zuweisen, abschließen, abbrechen und Benachrichtigungen auslösen; OPEN LAB ohne Management-Tokens |
+| Asset Management | Funkgeräte, Assets, Personen, Ausgaben, Rückgaben und Wartungsakten | Bestandsänderung, Zuordnung und Wartungsabschluss; OPEN LAB ohne Management-Tokens |
+| SIP Switch | PBX-Trunk, TBS-Registrierungen, Mobility-Routing, SIP-Rufe und Asterisk-Zustand | Asterisk-Konfiguration rendern/neuladen und SIP-Routen ändern; OPEN LAB ohne Anmeldung oder TLS |
 | Shared | kein Container; gemeinsames UI-Kit, API-Verträge und Service-Grundbausteine | nicht zutreffend |
 
 ## Gemeinsame Seiten

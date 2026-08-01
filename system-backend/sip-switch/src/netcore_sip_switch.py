@@ -336,8 +336,12 @@ class SipSwitch:
         except (OSError, subprocess.TimeoutExpired) as error:
             return False, compact(error)
 
-    def endpoint_has_contact(self, endpoint_id: str) -> tuple[bool, str]:
-        ok, output = self.run_asterisk(f"pjsip show aor {endpoint_id}-aor")
+    def endpoint_has_contact(self, endpoint_id: str, aor_id: str | None = None) -> tuple[bool, str]:
+        # For inbound registrations Asterisk resolves the AoR from the user part
+        # of the REGISTER To-URI. Therefore the managed TBS AoR is named after
+        # the configured registration username, not after an arbitrary endpoint ID.
+        lookup_aor = safe_id(aor_id or endpoint_id)
+        ok, output = self.run_asterisk(f"pjsip show aor {lookup_aor}")
         if not ok:
             return False, compact(output)
         lowered = output.lower()
@@ -378,6 +382,7 @@ class SipSwitch:
             "reason": "unresolved",
             "destination": "",
             "endpoint": "",
+            "aor": "",
             "node_id": None,
             "issi": None,
             "dial_timeout_secs": int(self.config.routing.get("dial_timeout_secs", 60)),
@@ -401,18 +406,21 @@ class SipSwitch:
                         result["node_id"] = node_id
                     else:
                         endpoint = safe_id(tbs.get("endpoint_id") or f"tbs-{node_id.lower()}")
-                        contact_ok, contact_detail = self.endpoint_has_contact(endpoint) if check_contact else (True, "contact check skipped")
+                        aor_id = safe_id(tbs.get("username") or endpoint)
+                        contact_ok, contact_detail = self.endpoint_has_contact(endpoint, aor_id) if check_contact else (True, "contact check skipped")
                         result["contact"] = {"available": contact_ok, "detail": contact_detail}
                         if bool_value(self.config.routing.get("require_tbs_contact", True), True) and not contact_ok:
                             result["reason"] = "serving_tbs_has_no_sip_contact"
                             result["node_id"] = node_id
                             result["endpoint"] = endpoint
+                            result["aor"] = aor_id
                         else:
                             result.update({
                                 "action": "tbs",
                                 "reason": source,
                                 "destination": str(issi),
                                 "endpoint": endpoint,
+                                "aor": aor_id,
                                 "node_id": node_id,
                             })
         elif direction == "outbound":
@@ -425,6 +433,7 @@ class SipSwitch:
                     "reason": reason,
                     "destination": destination,
                     "endpoint": safe_id(self.config.pbx.get("endpoint_id", "netcore-pbx")),
+                    "aor": safe_id(f"{self.config.pbx.get('endpoint_id', 'netcore-pbx')}-aor"),
                     "node_id": self.node_for_endpoint(source_endpoint),
                 })
         else:
@@ -456,6 +465,7 @@ class SipSwitch:
             "caller": caller,
             "action": result["action"],
             "endpoint": result["endpoint"],
+            "aor": result["aor"],
             "node_id": result["node_id"],
             "issi": result["issi"],
             "reason": result["reason"],
@@ -601,9 +611,9 @@ class SipSwitch:
                 f"server_uri=sip:{host}:{port}",
                 f"client_uri=sip:{client_user}@{host}",
                 f"contact_user={contact_user}",
-                "retry_interval=30",
-                "forbidden_retry_interval=60",
-                "expiration=300",
+                "retry_interval=5",
+                "forbidden_retry_interval=30",
+                f"expiration={int_value(pbx.get("registration_expiration_secs"), 30)}",
             ])
             if password:
                 lines.append(f"outbound_auth={auth}")
@@ -620,6 +630,7 @@ class SipSwitch:
             password = self._asterisk_value(item.get("password", ""))
             if not node_id or not endpoint_id or not username:
                 raise ValueError("each enabled TBS needs node_id, endpoint_id and username")
+            aor_id = safe_id(username)
             lines.extend([
                 f"[{endpoint_id}]",
                 "type=endpoint",
@@ -627,8 +638,9 @@ class SipSwitch:
                 "context=netcore-from-tbs",
                 "disallow=all",
                 "allow=ulaw",
+                "identify_by=auth_username,username",
                 f"auth={endpoint_id}-auth",
-                f"aors={endpoint_id}-aor",
+                f"aors={aor_id}",
                 "direct_media=no",
                 "rewrite_contact=yes",
                 "rtp_symmetric=yes",
@@ -642,7 +654,7 @@ class SipSwitch:
                 f"username={username}",
                 f"password={password}",
                 "",
-                f"[{endpoint_id}-aor]",
+                f"[{aor_id}]",
                 "type=aor",
                 f"max_contacts={max(1, int_value(item.get('max_contacts'), 1))}",
                 "remove_existing=yes",
@@ -663,7 +675,7 @@ exten => _X!,1,NoOp(NetCore PBX -> TETRA ${{EXTEN}})
  same => n,GotoIf($[\"${{NETCORE_ACTION}}\"=\"tbs\"]?route)
  same => n,AGI({agi},state,${{NETCORE_CALL_TOKEN}},rejected)
  same => n,Hangup(20)
- same => n(route),Set(NETCORE_DIAL=${{PJSIP_DIAL_CONTACTS(${{NETCORE_ENDPOINT}},,${{NETCORE_DESTINATION}})}})
+ same => n(route),Set(NETCORE_DIAL=${{PJSIP_DIAL_CONTACTS(${{NETCORE_ENDPOINT}},${{NETCORE_AOR}},${{NETCORE_DESTINATION}})}})
  same => n,GotoIf($[\"${{NETCORE_DIAL}}\"=\"\"]?unavailable)
  same => n,AGI({agi},state,${{NETCORE_CALL_TOKEN}},dialing)
  same => n,Dial(${{NETCORE_DIAL}},${{NETCORE_DIAL_TIMEOUT}},U(netcore-mark-answer^${{NETCORE_CALL_TOKEN}}))
@@ -694,7 +706,7 @@ exten => s,1,AGI({agi},state,${{ARG1}},answered)
         end = int_value(self.config.asterisk.get("rtp_end"), 20000)
         if start <= 0 or end <= start or end > 65535:
             raise ValueError("invalid RTP port range")
-        return f"; Generated by netcore-sip-switch.\nrtpstart={start}\nrtpend={end}\nstrictrtp=yes\n"
+        return f"; Generated by netcore-sip-switch.\n[general]\nrtpstart={start}\nrtpend={end}\nstrictrtp=yes\n"
 
     def reload_asterisk(self, restart: bool = False) -> dict[str, Any]:
         command = "core restart now" if restart else "core reload"
@@ -713,10 +725,12 @@ exten => s,1,AGI({agi},state,${{ARG1}},answered)
         current: dict[str, dict[str, Any]] = {}
         for tbs in self.config.tbs:
             endpoint = safe_id(tbs.get("endpoint_id") or f"tbs-{str(tbs.get('node_id', '')).lower()}")
-            registered, detail = self.endpoint_has_contact(endpoint) if asterisk_ok and bool_value(tbs.get("enabled", True), True) else (False, "disabled")
+            aor_id = safe_id(tbs.get("username") or endpoint)
+            registered, detail = self.endpoint_has_contact(endpoint, aor_id) if asterisk_ok and bool_value(tbs.get("enabled", True), True) else (False, "disabled")
             current[endpoint] = {
                 "node_id": tbs.get("node_id"),
                 "endpoint_id": endpoint,
+                "aor_id": aor_id,
                 "enabled": bool_value(tbs.get("enabled", True), True),
                 "registered": registered,
                 "detail": detail,
