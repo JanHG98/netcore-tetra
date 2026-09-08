@@ -7,3 +7,8 @@ Die zentrale Laufzeit kennt Gruppen- und Individualrufe. Ein Gruppenruf kann meh
 Call Control entscheidet nicht über konkrete TDMA-Ressourcen. Jede TBS führt die lokale CMCE-State-Machine aus und liefert lokale Call-ID, Timeslot, Usage sowie Floor-Zustand zurück.
 
 Beobachtete, nicht zentral gestartete Rufe werden aus TBS-Telemetrie als `managed = false` aufgenommen. Dadurch zeigt die WebUI auch Teilnehmer-initiierte Rufe.
+
+
+## Live-Liste und Historie
+
+`GET /api/v1/calls` und die WebUI zeigen ausschließlich nicht-terminale Calls. Calls in den Phasen `ended`, `failed` oder `interrupted` verschwinden damit automatisch aus der Live-Liste, sobald ihr Rufzustand terminal wird. Die Datensätze bleiben dennoch in `calls.json` sowie im Ereignisprotokoll erhalten, damit Diagnose, Restore-Zusammenhänge und spätere Auswertung nicht verloren gehen.
