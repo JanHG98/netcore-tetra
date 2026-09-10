@@ -7,8 +7,15 @@ REPO_ROOT="$(cd "${SERVICE_DIR}/../.." && pwd)"
 apt-get update
 apt-get install -y --no-install-recommends python3 mosquitto-clients ca-certificates
 
-install -d -m 0755 /etc/netcore /var/lib/netcore-task-workflow
-install -m 0755 "${SERVICE_DIR}/src/netcore_task_workflow.py" /usr/local/bin/netcore-task-workflow
+python3 -m py_compile "${SERVICE_DIR}/src/netcore_task_workflow.py" "${SERVICE_DIR}/src/netcore_task_workflow_launcher.py"
+install -d -m 0755 \
+  /etc/netcore \
+  /var/lib/netcore-task-workflow \
+  /usr/local/lib/netcore-task-workflow \
+  /usr/local/share/netcore-task-workflow
+install -m 0644 "${SERVICE_DIR}/src/netcore_task_workflow.py" /usr/local/lib/netcore-task-workflow/netcore_task_workflow.py
+install -m 0755 "${SERVICE_DIR}/src/netcore_task_workflow_launcher.py" /usr/local/bin/netcore-task-workflow
+install -m 0644 "${SERVICE_DIR}/web-ui/index.html" /usr/local/share/netcore-task-workflow/index.html
 if [[ ! -f /etc/netcore/task-workflow.toml ]]; then
   install -m 0644 "${SERVICE_DIR}/config/task-workflow.example.toml" /etc/netcore/task-workflow.toml
 fi
