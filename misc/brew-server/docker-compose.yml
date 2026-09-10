@@ -1,0 +1,12 @@
+services:
+  brew-server:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    volumes:
+      - ./brew-server.toml:/etc/brew-server.toml:ro
+      # Mount TLS cert/key when [tls] enabled = true (paths must match brew-server.toml)
+      - ./tls:/etc/brew-server/tls:ro
+    environment:
+      RUST_LOG: brew_server=info
