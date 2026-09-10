@@ -23,7 +23,6 @@ if [[ "${INSTALL_LOCAL_MQTT_BROKER}" == "1" ]]; then
 listener 1883 0.0.0.0
 allow_anonymous true
 persistence true
-persistence_location /var/lib/mosquitto/
 MOSQUITTO
   fi
   systemctl enable mosquitto.service

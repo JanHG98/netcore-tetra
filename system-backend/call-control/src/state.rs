@@ -612,7 +612,11 @@ impl SharedCalls {
     pub fn status(&self) -> CallControlStatus {
         let state = self.0.lock().expect("call state poisoned");
         let calls_active = state.calls.values().filter(|call| !call.phase.is_terminal()).count();
-        let calls_managed = state.calls.values().filter(|call| call.managed).count();
+        let calls_managed = state
+            .calls
+            .values()
+            .filter(|call| call.managed && !call.phase.is_terminal())
+            .count();
         let call_legs_active = state
             .calls
             .values()
@@ -699,7 +703,12 @@ impl SharedCalls {
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn calls(&self) -> Vec<LogicalCall> {
         let state = self.0.lock().expect("call state poisoned");
-        let mut calls: Vec<_> = state.calls.values().cloned().collect();
+        let mut calls: Vec<_> = state
+            .calls
+            .values()
+            .filter(|call| !call.phase.is_terminal())
+            .cloned()
+            .collect();
         calls.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
         calls
     }
