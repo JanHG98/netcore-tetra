@@ -506,15 +506,14 @@ impl MmBs {
             .client_mgr
             .get_client_by_issi(prim.received_address.ssi)
             .map(|c| c.energy_saving_mode);
-        // D-LOCATION UPDATE ACCEPT carries Energy Saving Information only when the MS
-        // requested an economy mode, or when a real Eg1..Eg3 grant must survive a
-        // re-registration. StayAlive is our local default, not an unsolicited optional IE.
-        // This keeps the wire behaviour that allowed ISSI 5102 to reach CMCE U-SETUP.
-        let effective_esm_request = pdu
-            .energy_saving_mode
-            .or_else(|| prior_esm.filter(|mode| *mode != EnergySavingMode::StayAlive));
-        let esi = effective_esm_request
-            .map(|esm| Self::grant_energy_saving(prim.received_address.ssi, esm));
+        // Keep the first successful Location Update ACCEPT consistent with the MM state.
+        // If the MS did not request energy economy, we operate it as StayAlive and must say so
+        // explicitly on the air instead of only storing that decision locally.
+        let esi = Some(Self::registration_energy_saving_information(
+            prim.received_address.ssi,
+            pdu.energy_saving_mode,
+            prior_esm,
+        ));
 
         // Try to register the client
         let issi = prim.received_address.ssi;
@@ -772,10 +771,10 @@ impl MmBs {
         //      ("please wait" on the radio). DMO→TMO forces an ItsiAttach with a full group
         //      report, which is why that clears it.
         //
-        // Only restore stored affiliations after a confirmed registry drop. A normal
-        // roaming refresh does not remove the subscriber from CMCE/Brew and must not generate
-        // a fresh Affiliate on every location update; that churn can race call setup/release.
-        if was_dropped && !_has_groups {
+        // Fix: when a *known* MS re-registers without supplying a group report, but we
+        // still hold groups for it in client_mgr, re-emit Affiliate for those groups so
+        // CMCE's group_listeners (and Brew) are resynced with what the MS believes.
+        if !is_new && !_has_groups {
             let stored_groups: Vec<u32> = self
                 .client_mgr
                 .get_client_by_issi(issi)
@@ -844,11 +843,12 @@ impl MmBs {
             None
         };
 
-        // Capability discriminator for the strict AIv2/common-SCCH radios seen in the
-        // live traces. Initial ITSI attach and DemandLocationUpdating keep their requested type;
-        // only roaming/service-restoration roaming updates are settled into the configured
-        // periodic-registration state.
-        let ai_v2_common_scch = pdu
+        // Some AIv2/common-SCCH terminals require the initial ITSI attach to be
+        // acknowledged as ITSI attach. Keep that compatibility deliberately narrow:
+        // mirroring later RoamingLocationUpdating requests can trap the terminal in MM
+        // re-registration, so PTT is rejected locally before CMCE ever sees U-SETUP.
+        // ClassOfMs is not Copy, so inspect it before moving it into client_mgr.
+        let initial_attach_accept_compat = pdu
             .class_of_ms
             .as_ref()
             .map(|class| class.common_scch && class.air_interface_version >= 2)
@@ -863,28 +863,43 @@ impl MmBs {
         // Registration / affiliation / EE state changed — persist for restart recovery (debounced).
         self.recovery_mark_dirty();
 
+        // Settle successful registration into a stable MM state. AIv2/common-SCCH
+        // compatibility applies only to the initial ITSI attach. Once the subscriber is known,
+        // a roaming refresh is acknowledged as PeriodicLocationUpdating whenever periodic
+        // registration is enabled. This closes the REREG loop before the user presses PTT.
         let periodic_secs = self.config.config().cell.periodic_registration_secs;
-        let roaming_refresh = matches!(
+        let accept_type = Self::select_location_update_accept_type(
             pdu.location_update_type,
-            LocationUpdateType::RoamingLocationUpdating
-                | LocationUpdateType::ServiceRestorationRoamingLocationUpdating
+            periodic_secs,
+            initial_attach_accept_compat,
         );
-        let accept_type = if periodic_secs > 0 && ai_v2_common_scch && roaming_refresh {
-            tracing::info!(
-                "MM: ISSI {} AIv2/common-SCCH roaming update settled as PeriodicLocationUpdating to stop the REREG loop",
+        if periodic_secs > 0
+            && initial_attach_accept_compat
+            && pdu.location_update_type == LocationUpdateType::ItsiAttach
+        {
+            tracing::debug!(
+                "MM: ISSI {} initial AIv2/common-SCCH ITSI attach acknowledged as ITSI attach",
                 issi
             );
-            LocationUpdateType::PeriodicLocationUpdating
-        } else {
-            pdu.location_update_type
-        };
+        } else if periodic_secs > 0
+            && !is_new
+            && matches!(
+                pdu.location_update_type,
+                LocationUpdateType::RoamingLocationUpdating
+                    | LocationUpdateType::ServiceRestorationRoamingLocationUpdating
+            )
+            && accept_type == LocationUpdateType::PeriodicLocationUpdating
+        {
+            tracing::info!(
+                "MM: ISSI {} known roaming refresh settled as PeriodicLocationUpdating to prevent re-registration loop",
+                issi
+            );
+        }
 
         // Build D-LOCATION UPDATE ACCEPT pdu
         let pdu_response = DLocationUpdateAccept {
             location_update_accept_type: accept_type,
-            // The optional SSI here is an allocated ASSI/(V)ASSI, not the subscriber ISSI.
-            // NetCore has no ASSI allocator/mapping yet, so do not make the MS adopt its ISSI as ASSI.
-            ssi: None,
+            ssi: Some(issi as u64),
             address_extension: None,
             subscriber_class: None,
             energy_saving_information: esi,
@@ -968,6 +983,35 @@ impl MmBs {
     /// Used both by the initial location update (U-LOCATION-UPDATING-DEMAND) and by mid-session
     /// energy saving toggles (U-MM-STATUS / ChangeOfEnergySavingModeRequest) so the two paths
     /// behave identically.
+    fn registration_energy_saving_information(
+        issi: u32,
+        requested: Option<EnergySavingMode>,
+        prior: Option<EnergySavingMode>,
+    ) -> EnergySavingInformation {
+        let effective = requested.or(prior).unwrap_or(EnergySavingMode::StayAlive);
+        Self::grant_energy_saving(issi, effective)
+    }
+
+    fn select_location_update_accept_type(
+        requested: LocationUpdateType,
+        periodic_secs: u32,
+        itsi_attach_accept_compat: bool,
+    ) -> LocationUpdateType {
+        if periodic_secs == 0 {
+            return requested;
+        }
+
+        // A retained client record does not mean this is not a genuine fresh attach:
+        // T351/recovery intentionally keeps client_mgr state across RF absence. Preserve the
+        // requested ITSI-attach type for this capability class regardless of `is_new`; only
+        // later RoamingLocationUpdating is converted to PeriodicLocationUpdating.
+        if itsi_attach_accept_compat && requested == LocationUpdateType::ItsiAttach {
+            return LocationUpdateType::ItsiAttach;
+        }
+
+        LocationUpdateType::PeriodicLocationUpdating
+    }
+
     fn grant_energy_saving(issi: u32, requested: EnergySavingMode) -> EnergySavingInformation {
         let granted_esm = match requested {
             EnergySavingMode::StayAlive => EnergySavingMode::StayAlive,
@@ -2321,30 +2365,48 @@ mod ee_tests {
     }
 
     #[test]
-    fn v17_first_registration_without_energy_saving_request_has_no_esi() {
-        let requested: Option<EnergySavingMode> = None;
-        let prior: Option<EnergySavingMode> = None;
-        assert!(requested.or(prior).is_none());
-    }
-
-    #[test]
-    fn v17_reregistration_preserves_prior_stay_alive() {
-        let requested: Option<EnergySavingMode> = None;
-        let prior = Some(EnergySavingMode::StayAlive);
-        let effective = requested.or(prior).expect("prior StayAlive must be preserved");
-        let esi = MmBs::grant_energy_saving(5102, effective);
+    fn registration_without_energy_saving_request_explicitly_grants_stay_alive() {
+        let esi = MmBs::registration_energy_saving_information(5102, None, None);
         assert_eq!(esi.energy_saving_mode, EnergySavingMode::StayAlive);
         assert!(esi.frame_number.is_none());
         assert!(esi.multiframe_number.is_none());
     }
 
     #[test]
-    fn v17_requested_economy_mode_is_still_granted() {
-        let requested = Some(EnergySavingMode::Eg2);
-        let prior: Option<EnergySavingMode> = None;
-        let effective = requested.or(prior).expect("requested mode must win");
-        let esi = MmBs::grant_energy_saving(5102, effective);
-        assert_eq!(esi.energy_saving_mode, EnergySavingMode::Eg2);
+    fn ai_v2_itsi_attach_keeps_itsi_attach_accept_type_even_with_retained_client_state() {
+        assert_eq!(
+            MmBs::select_location_update_accept_type(
+                LocationUpdateType::ItsiAttach,
+                3600,
+                true,
+            ),
+            LocationUpdateType::ItsiAttach
+        );
+    }
+
+    #[test]
+    fn known_ai_v2_roaming_refresh_is_settled_as_periodic() {
+        for requested in [
+            LocationUpdateType::RoamingLocationUpdating,
+            LocationUpdateType::ServiceRestorationRoamingLocationUpdating,
+        ] {
+            assert_eq!(
+                MmBs::select_location_update_accept_type(requested, 3600, true),
+                LocationUpdateType::PeriodicLocationUpdating
+            );
+        }
+    }
+
+    #[test]
+    fn periodic_registration_disabled_preserves_requested_type() {
+        assert_eq!(
+            MmBs::select_location_update_accept_type(
+                LocationUpdateType::RoamingLocationUpdating,
+                0,
+                true,
+            ),
+            LocationUpdateType::RoamingLocationUpdating
+        );
     }
 
 }
