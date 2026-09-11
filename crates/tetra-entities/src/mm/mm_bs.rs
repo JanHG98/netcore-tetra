@@ -506,10 +506,13 @@ impl MmBs {
             .client_mgr
             .get_client_by_issi(prim.received_address.ssi)
             .map(|c| c.energy_saving_mode);
-        // v1.7.0 radio compatibility: preserve the previously granted energy-saving
-        // state on re-registration, including StayAlive. On the very first attach, when neither
-        // the MS nor client state supplies an ESM, the optional IE remains absent.
-        let effective_esm_request = pdu.energy_saving_mode.or(prior_esm);
+        // D-LOCATION UPDATE ACCEPT carries Energy Saving Information only when the MS
+        // requested an economy mode, or when a real Eg1..Eg3 grant must survive a
+        // re-registration. StayAlive is our local default, not an unsolicited optional IE.
+        // This keeps the wire behaviour that allowed ISSI 5102 to reach CMCE U-SETUP.
+        let effective_esm_request = pdu
+            .energy_saving_mode
+            .or_else(|| prior_esm.filter(|mode| *mode != EnergySavingMode::StayAlive));
         let esi = effective_esm_request
             .map(|esm| Self::grant_energy_saving(prim.received_address.ssi, esm));
 
@@ -769,10 +772,10 @@ impl MmBs {
         //      ("please wait" on the radio). DMO→TMO forces an ItsiAttach with a full group
         //      report, which is why that clears it.
         //
-        // Fix: when a *known* MS re-registers without supplying a group report, but we
-        // still hold groups for it in client_mgr, re-emit Affiliate for those groups so
-        // CMCE's group_listeners (and Brew) are resynced with what the MS believes.
-        if !is_new && !_has_groups {
+        // Only restore stored affiliations after a confirmed registry drop. A normal
+        // roaming refresh does not remove the subscriber from CMCE/Brew and must not generate
+        // a fresh Affiliate on every location update; that churn can race call setup/release.
+        if was_dropped && !_has_groups {
             let stored_groups: Vec<u32> = self
                 .client_mgr
                 .get_client_by_issi(issi)
@@ -841,10 +844,11 @@ impl MmBs {
             None
         };
 
-        // v1.7.0 compatibility path. AIv2 terminals advertising common SCCH were
-        // deliberately exempted from forcing PeriodicLocationUpdating in the ACCEPT. For this
-        // capability set the MS-requested type is mirrored (ITSI attach, roaming update, ...).
-        let hytera_periodic_accept_compat = pdu
+        // Capability discriminator for the strict AIv2/common-SCCH radios seen in the
+        // live traces. Initial ITSI attach and DemandLocationUpdating keep their requested type;
+        // only roaming/service-restoration roaming updates are settled into the configured
+        // periodic-registration state.
+        let ai_v2_common_scch = pdu
             .class_of_ms
             .as_ref()
             .map(|class| class.common_scch && class.air_interface_version >= 2)
@@ -859,26 +863,28 @@ impl MmBs {
         // Registration / affiliation / EE state changed — persist for restart recovery (debounced).
         self.recovery_mark_dirty();
 
-        // v1.7.0 periodic-registration compatibility.
         let periodic_secs = self.config.config().cell.periodic_registration_secs;
-        let accept_type = if periodic_secs > 0 && !hytera_periodic_accept_compat {
+        let roaming_refresh = matches!(
+            pdu.location_update_type,
+            LocationUpdateType::RoamingLocationUpdating
+                | LocationUpdateType::ServiceRestorationRoamingLocationUpdating
+        );
+        let accept_type = if periodic_secs > 0 && ai_v2_common_scch && roaming_refresh {
+            tracing::info!(
+                "MM: ISSI {} AIv2/common-SCCH roaming update settled as PeriodicLocationUpdating to stop the REREG loop",
+                issi
+            );
             LocationUpdateType::PeriodicLocationUpdating
         } else {
-            if periodic_secs > 0 && hytera_periodic_accept_compat {
-                tracing::debug!(
-                    "MM: ISSI {} uses AIv2/common-SCCH; mirroring {:?} in D-LOCATION-UPDATE-ACCEPT instead of forcing PeriodicLocationUpdating (v1.7 compatibility)",
-                    issi,
-                    pdu.location_update_type
-                );
-            }
             pdu.location_update_type
         };
 
         // Build D-LOCATION UPDATE ACCEPT pdu
         let pdu_response = DLocationUpdateAccept {
             location_update_accept_type: accept_type,
-            // Restore v1.7.0 wire behaviour first; revisit ASSI semantics behind multi-vendor tests.
-            ssi: Some(issi as u64),
+            // The optional SSI here is an allocated ASSI/(V)ASSI, not the subscriber ISSI.
+            // NetCore has no ASSI allocator/mapping yet, so do not make the MS adopt its ISSI as ASSI.
+            ssi: None,
             address_extension: None,
             subscriber_class: None,
             energy_saving_information: esi,
