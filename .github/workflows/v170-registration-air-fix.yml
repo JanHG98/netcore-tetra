@@ -1,0 +1,98 @@
+name: v170-registration-air-fix
+
+on:
+  push:
+    branches:
+      - mqtt-fix/v170-registration-air
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mqtt-fix/v170-registration-air
+          fetch-depth: 0
+
+      - name: Restore exact v1.7.0 registration handshake behavior
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('crates/tetra-entities/src/mm/mm_bs.rs')
+          s = p.read_text()
+
+          # 1) v1.7.0: do not invent StayAlive ESI on an initial registration that did
+          # not request energy economy. Reuse prior ESM only when there actually is one.
+          old = '''        let prior_esm = self\n            .client_mgr\n            .get_client_by_issi(prim.received_address.ssi)\n            .map(|c| c.energy_saving_mode);\n        // Keep the first successful Location Update ACCEPT consistent with the MM state.\n        // If the MS did not request energy economy, we operate it as StayAlive and must say so\n        // explicitly on the air instead of only storing that decision locally.\n        let esi = Some(Self::registration_energy_saving_information(\n            prim.received_address.ssi,\n            pdu.energy_saving_mode,\n            prior_esm,\n        ));\n'''
+          new = '''        let prior_esm = self\n            .client_mgr\n            .get_client_by_issi(prim.received_address.ssi)\n            .map(|c| c.energy_saving_mode);\n        let effective_esm_request = pdu.energy_saving_mode.or(prior_esm);\n\n        let esi = effective_esm_request.map(|esm| Self::grant_energy_saving(prim.received_address.ssi, esm));\n'''
+          if old not in s:
+              raise SystemExit('ESI block not found')
+          s = s.replace(old, new, 1)
+
+          # 2) v1.7.0 AIv2/common-SCCH compatibility: mirror the MS request type.
+          # Only non-AIv2/common-SCCH terminals get forced PeriodicLocationUpdating.
+          start = s.find('        // Some AIv2/common-SCCH terminals require the initial ITSI attach to be')
+          end = s.find('        // Build D-LOCATION UPDATE ACCEPT pdu', start)
+          if start < 0 or end < 0:
+              raise SystemExit('accept-type compatibility block not found')
+          compat = '''        // v1.7.0 air-interface compatibility. AIv2/common-SCCH terminals\n        // are acknowledged with the same Location Update type they requested.\n        // This is intentionally kept independent from the newer central-core plumbing.\n        let hytera_periodic_accept_compat = pdu\n            .class_of_ms\n            .as_ref()\n            .map(|class| class.common_scch && class.air_interface_version >= 2)\n            .unwrap_or(false);\n\n        let _ = self.client_mgr.set_client_class_of_ms(issi, pdu.class_of_ms);\n        self.config.state_write().subscribers.set_duplex_capable(issi, duplex_capable);\n\n        // Reset periodic registration timer on every successful registration.\n        self.client_mgr.reset_registration_timer(issi);\n\n        // Registration / affiliation / EE state changed — persist for restart recovery (debounced).\n        self.recovery_mark_dirty();\n\n        let periodic_secs = self.config.config().cell.periodic_registration_secs;\n        let accept_type = if periodic_secs > 0 && !hytera_periodic_accept_compat {\n            LocationUpdateType::PeriodicLocationUpdating\n        } else {\n            if periodic_secs > 0 && hytera_periodic_accept_compat {\n                tracing::debug!(\n                    \"MM: ISSI {} uses AIv2/common-SCCH; mirroring {:?} in D-LOCATION-UPDATE-ACCEPT instead of forcing PeriodicLocationUpdating (v1.7.0 compatibility)\",\n                    issi,\n                    pdu.location_update_type\n                );\n            }\n            pdu.location_update_type\n        };\n\n'''
+          s = s[:start] + compat + s[end:]
+
+          # 3) v1.7.0 encoded the terminal SSI in this field. Whatever the later ASSI
+          # interpretation debate, this is the known-good on-air behavior for this lab radio.
+          old = '''            // The optional SSI IE in D-LOCATION-UPDATE-ACCEPT is an assigned ASSI/(V)ASSI,\n            // not the subscriber's ISSI. Normal home-network registration does not allocate\n            // an ASSI, so advertising the ISSI here falsely tells the MS to switch its layer-2\n            // identity. Leave the IE absent until a real ASSI/VASSI allocator supplies one.\n            ssi: None,\n'''
+          if old not in s:
+              raise SystemExit('SSI accept block not found')
+          s = s.replace(old, '            ssi: Some(issi as u64),\n', 1)
+
+          # 4) v1.7.0 did not inject a second demand-registration after the initial
+          # group-identity ACK. Remove the experimental fast-settle transaction completely.
+          pattern = re.compile(
+              r'\n        // Fast-settle after initial group affiliation\.[\s\S]*?\n        if should_fast_settle \{[\s\S]*?\n        \}\n(?=    \}\n\n    fn rx_lmm_mle_unitdata_ind)',
+              re.M,
+          )
+          s2, n = pattern.subn('\n', s, count=1)
+          if n != 1:
+              raise SystemExit(f'fast-settle block removal count={n}')
+          s = s2
+
+          p.write_text(s)
+          PY
+
+      - name: Verify v1.7.0 registration shape
+        shell: bash
+        run: |
+          set -euxo pipefail
+          f=crates/tetra-entities/src/mm/mm_bs.rs
+          grep -q 'let effective_esm_request = pdu.energy_saving_mode.or(prior_esm);' "$f"
+          grep -q 'let hytera_periodic_accept_compat = pdu' "$f"
+          grep -q 'ssi: Some(issi as u64),' "$f"
+          grep -q 'mirroring {:?} in D-LOCATION-UPDATE-ACCEPT instead of forcing PeriodicLocationUpdating (v1.7.0 compatibility)' "$f"
+          ! grep -q 'fast-settle after initial group affiliation' "$f"
+          ! grep -q 'requesting immediate demand location update without group report' "$f"
+
+      - name: Native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libsoapysdr-dev pkg-config
+
+      - name: Format and compile
+        run: |
+          cargo fmt --all
+          cargo check -p tetra-entities --lib
+
+      - name: Remove temporary workflow and commit
+        shell: bash
+        run: |
+          rm -f .github/workflows/v170-registration-air-fix.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add crates/tetra-entities/src/mm/mm_bs.rs .github/workflows/v170-registration-air-fix.yml
+          git commit -m "fix(tbs): restore v1.7.0 registration air behavior"
+          git push origin HEAD:mqtt-fix/v170-registration-air
