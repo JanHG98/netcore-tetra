@@ -890,7 +890,11 @@ impl MmBs {
         // Build D-LOCATION UPDATE ACCEPT pdu
         let pdu_response = DLocationUpdateAccept {
             location_update_accept_type: accept_type,
-            ssi: Some(issi as u64),
+            // The optional SSI IE in D-LOCATION-UPDATE-ACCEPT is an assigned ASSI/(V)ASSI,
+            // not the subscriber's ISSI. Normal home-network registration does not allocate
+            // an ASSI, so advertising the ISSI here falsely tells the MS to switch its layer-2
+            // identity. Leave the IE absent until a real ASSI/VASSI allocator supplies one.
+            ssi: None,
             address_extension: None,
             subscriber_class: None,
             energy_saving_information: esi,
