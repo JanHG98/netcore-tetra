@@ -1,0 +1,60 @@
+name: no-fake-assi-fix
+
+on:
+  push:
+    branches:
+      - mqtt-fix/no-fake-assi
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mqtt-fix/no-fake-assi
+          fetch-depth: 0
+
+      - name: Remove fake ASSI from normal registration accept
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path('crates/tetra-entities/src/mm/mm_bs.rs')
+          s = p.read_text()
+          old = '''        let pdu_response = DLocationUpdateAccept {\n            location_update_accept_type: accept_type,\n            ssi: Some(issi as u64),\n            address_extension: None,\n'''
+          new = '''        let pdu_response = DLocationUpdateAccept {\n            location_update_accept_type: accept_type,\n            // The optional SSI IE in D-LOCATION-UPDATE-ACCEPT is an assigned ASSI/(V)ASSI,\n            // not the subscriber's ISSI. Normal home-network registration does not allocate\n            // an ASSI, so advertising the ISSI here falsely tells the MS to switch its layer-2\n            // identity. Leave the IE absent until a real ASSI/VASSI allocator supplies one.\n            ssi: None,\n            address_extension: None,\n'''
+          if old not in s:
+              raise SystemExit('target DLocationUpdateAccept block not found')
+          p.write_text(s.replace(old, new, 1))
+          PY
+
+      - name: Verify targeted behavior
+        shell: bash
+        run: |
+          set -euxo pipefail
+          grep -A12 -B3 'let pdu_response = DLocationUpdateAccept' crates/tetra-entities/src/mm/mm_bs.rs
+          ! grep -A12 'let pdu_response = DLocationUpdateAccept' crates/tetra-entities/src/mm/mm_bs.rs | grep -q 'ssi: Some(issi as u64)'
+
+      - name: Native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libsoapysdr-dev pkg-config
+
+      - name: Format and compile
+        run: |
+          cargo fmt --all
+          cargo check -p tetra-entities --lib
+
+      - name: Remove temporary workflow and commit
+        shell: bash
+        run: |
+          rm -f .github/workflows/no-fake-assi-fix.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add crates/tetra-entities/src/mm/mm_bs.rs .github/workflows/no-fake-assi-fix.yml
+          git commit -m "fix(tbs): stop advertising ISSI as assigned ASSI"
+          git push origin HEAD:mqtt-fix/no-fake-assi
