@@ -1,0 +1,124 @@
+name: fast-settle-ptt
+
+on:
+  push:
+    branches:
+      - mqtt-fix/fast-settle-ptt
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mqtt-fix/fast-settle-ptt
+          fetch-depth: 0
+
+      - name: Apply fast-settle MM patch
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          mm = Path('crates/tetra-entities/src/mm/mm_bs.rs')
+          cs = Path('crates/tetra-entities/src/mm/components/client_state.rs')
+          mm_text = mm.read_text()
+          cs_text = cs.read_text()
+
+          struct_anchor = '''    /// True after BS sends D-LOCATION-UPDATE-COMMAND at T351 expiry.\n'''
+          if 'initial_fast_settle_sent' not in cs_text:
+              if struct_anchor not in cs_text:
+                  raise SystemExit('client_state struct anchor not found')
+              cs_text = cs_text.replace(
+                  struct_anchor,
+                  '''    /// One-shot guard for the post-ITSI-attach fast-settle procedure.\n    /// Set after the first successful group affiliation following a fresh registration so\n    /// we can provoke the terminal's final MM update immediately instead of waiting for\n    /// its vendor timer (observed ~34 s on ISSI 5102).\n    pub initial_fast_settle_sent: bool,\n''' + struct_anchor,
+                  1,
+              )
+              init_anchor = '            pending_command_sent: false,\n'
+              if init_anchor not in cs_text:
+                  raise SystemExit('client_state init anchor not found')
+              cs_text = cs_text.replace(
+                  init_anchor,
+                  '            initial_fast_settle_sent: false,\n' + init_anchor,
+                  1,
+              )
+
+          method_anchor = '''    /// Returns true if a D-LOCATION-UPDATE-COMMAND was sent and terminal hasn't responded yet.\n'''
+          method = '''    /// Mark the one-shot post-attach fast-settle command as sent.\n    pub fn mark_initial_fast_settle_sent(&mut self, issi: u32) {\n        if let Some(client) = self.clients.get_mut(&issi) {\n            client.initial_fast_settle_sent = true;\n        }\n    }\n\n'''
+          if method not in cs_text:
+              if method_anchor not in cs_text:
+                  raise SystemExit('client-state method anchor not found')
+              cs_text = cs_text.replace(method_anchor, method + method_anchor, 1)
+
+          old_sig = 'fn send_d_location_update_command(queue: &mut MessageQueue, issi: u32, handle: u32) {'
+          new_sig = 'fn send_d_location_update_command(queue: &mut MessageQueue, issi: u32, handle: u32, group_identity_report: bool) {'
+          if old_sig in mm_text:
+              mm_text = mm_text.replace(old_sig, new_sig, 1)
+          elif new_sig not in mm_text:
+              raise SystemExit('send_d_location_update_command signature not found')
+
+          helper_start = mm_text.find(new_sig)
+          if helper_start < 0:
+              raise SystemExit('updated helper signature not found')
+          helper_end = mm_text.find('\n    }', helper_start)
+          if helper_end < 0:
+              raise SystemExit('helper end not found')
+          helper = mm_text[helper_start:helper_end]
+          if 'group_identity_report: true,' in helper:
+              helper = helper.replace('group_identity_report: true,', 'group_identity_report,', 1)
+              mm_text = mm_text[:helper_start] + helper + mm_text[helper_end:]
+          elif 'group_identity_report,' not in helper:
+              raise SystemExit('group_identity_report field not found in helper')
+
+          # Preserve every pre-existing caller's behaviour: they still request a full group report.
+          mm_text = re.sub(
+              r'Self::send_d_location_update_command\(queue,\s*issi,\s*([^,\n\)]+)\);',
+              r'Self::send_d_location_update_command(queue, issi, \1, true);',
+              mm_text,
+          )
+
+          # Insert the new one-shot fast-settle command at the tail of the successful
+          # U-ATTACH/DETACH-GROUP-IDENTITY handler, after its ACK has been queued.
+          anchor = '''        queue.push_back(msg);\n    }\n\n    fn rx_lmm_mle_unitdata_ind'''
+          if 'fast-settle after initial group affiliation' not in mm_text:
+              if anchor not in mm_text:
+                  raise SystemExit('group-attach function tail anchor not found')
+              block = '''        queue.push_back(msg);\n\n        // Fast-settle after initial group affiliation.\n        //\n        // Live TBS evidence (ISSI 5102): the initial ITSI attach was accepted at\n        // 23:50:29.801 and its groups were affiliated by 23:50:30.197, but the MS did\n        // not make CMCE available until after its own RoamingLocationUpdating at\n        // 23:51:04.425. The first successful U-SETUP then arrived at 23:51:12.414.\n        // Waiting for that vendor-side ~34 s timer makes the radio show \"service not\n        // available\" even though the SwMI already considers it registered.\n        //\n        // For a freshly registered AIv2/common-SCCH radio with at least one accepted\n        // group, send exactly one D-LOCATION-UPDATE-COMMAND immediately after the group\n        // ACK. We deliberately do NOT request a group report: our accepted group\n        // identities use lifetime=0 (persistent), so this closes the MM registration\n        // round-trip without throwing the just-established affiliations away.\n        let should_fast_settle = self\n            .client_mgr\n            .get_client_by_issi(issi)\n            .map(|client| {\n                !client.initial_fast_settle_sent\n                    && client.last_registration_time.elapsed() <= std::time::Duration::from_secs(5)\n                    && !client.groups.is_empty()\n                    && client\n                        .class_of_ms\n                        .as_ref()\n                        .map(|class| class.common_scch && class.air_interface_version >= 2)\n                        .unwrap_or(false)\n            })\n            .unwrap_or(false);\n\n        if should_fast_settle {\n            // Mark before queueing the command so a duplicate group-attach PDU cannot\n            // enqueue a second fast-settle request while the first one is in flight.\n            self.client_mgr.mark_initial_fast_settle_sent(issi);\n            tracing::info!(\n                \"MM: ISSI {} fast-settle after initial group affiliation — requesting immediate demand location update without group report\",\n                issi\n            );\n            Self::send_d_location_update_command(queue, issi, prim.handle, false);\n        }\n    }\n\n    fn rx_lmm_mle_unitdata_ind'''
+              mm_text = mm_text.replace(anchor, block, 1)
+
+          mm.write_text(mm_text)
+          cs.write_text(cs_text)
+          PY
+
+      - name: Verify patch shape
+        shell: bash
+        run: |
+          set -euxo pipefail
+          grep -n "fast-settle after initial group affiliation" crates/tetra-entities/src/mm/mm_bs.rs
+          grep -n "initial_fast_settle_sent" crates/tetra-entities/src/mm/components/client_state.rs
+          grep -n "send_d_location_update_command(queue, issi, prim.handle, false)" crates/tetra-entities/src/mm/mm_bs.rs
+          ! grep -Eq 'send_d_location_update_command\(queue, *issi, *[^,\)]+\);' crates/tetra-entities/src/mm/mm_bs.rs
+
+      - name: Native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libsoapysdr-dev pkg-config
+
+      - name: Format and compile
+        run: |
+          cargo fmt --all
+          cargo check -p tetra-entities --lib
+
+      - name: Remove temporary workflow and commit
+        shell: bash
+        run: |
+          rm -f .github/workflows/fast-settle-ptt.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add crates/tetra-entities/src/mm/mm_bs.rs crates/tetra-entities/src/mm/components/client_state.rs .github/workflows/fast-settle-ptt.yml
+          git commit -m "fix(tbs): settle initial MM registration before first PTT"
+          git push origin HEAD:mqtt-fix/fast-settle-ptt
