@@ -1,0 +1,72 @@
+name: restore-known-good-8b-mm
+
+on:
+  push:
+    branches:
+      - mqtt-fix/restore-known-good-8b-mm
+
+permissions:
+  contents: write
+
+jobs:
+  restore:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mqtt-fix/restore-known-good-8b-mm
+          fetch-depth: 0
+
+      - name: Restore last live call-working MM implementation
+        shell: bash
+        run: |
+          git checkout 8b00cbc7819582d0ce6a301401eb9b954f6e83bc -- crates/tetra-entities/src/mm/mm_bs.rs
+          cat > Docs/MM_RESTORE_KNOWN_GOOD_8B.md <<'EOF'
+          # Restore known-good MM implementation from 8b00cbc7
+
+          ## Evidence
+
+          The live TBS log from `v1.3.0-8b00cbc7` contains repeated successful CMCE `U-SETUP`
+          from ISSI 5102 to GSSI 15201, followed by `D-CALL PROCEEDING`, `D-CONNECT` and traffic
+          circuit allocation. The current `03b6b180` log contains no `U-SETUP` at all; PTT remains
+          trapped below CMCE while the terminal emits location updates.
+
+          Between `8b00cbc7` and `03b6b180`, the only runtime source file changed is
+          `crates/tetra-entities/src/mm/mm_bs.rs`. The later experiments changed several air-interface
+          variables simultaneously (accept type handling, optional SSI/ASSI field, energy-saving IE,
+          and affiliation replay), which made attribution unreliable.
+
+          ## Decision
+
+          Restore `mm_bs.rs` exactly from `8b00cbc7`, the last live build proven to pass PTT into
+          CMCE. Keep every other current `mqtt` file and backend change intact. This creates a clean
+          known-good radio baseline before changing one MM variable at a time.
+          EOF
+
+      - name: Verify exact source restoration
+        shell: bash
+        run: |
+          test "$(git rev-parse 8b00cbc7819582d0ce6a301401eb9b954f6e83bc:crates/tetra-entities/src/mm/mm_bs.rs)" = "$(git hash-object crates/tetra-entities/src/mm/mm_bs.rs)"
+          grep -q 'known roaming refresh settled as PeriodicLocationUpdating to prevent re-registration loop' crates/tetra-entities/src/mm/mm_bs.rs
+          grep -q 'ssi: Some(issi as u64)' crates/tetra-entities/src/mm/mm_bs.rs
+          grep -q 'let esi = Some(Self::registration_energy_saving_information' crates/tetra-entities/src/mm/mm_bs.rs
+
+      - name: Native dependencies
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libsoapysdr-dev
+
+      - name: Compile tetra entities
+        run: cargo check -p tetra-entities --lib
+
+      - name: Commit restored implementation
+        shell: bash
+        run: |
+          git checkout -- Cargo.lock || true
+          rm -f .github/workflows/restore-known-good-8b-mm.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add crates/tetra-entities/src/mm/mm_bs.rs Docs/MM_RESTORE_KNOWN_GOOD_8B.md .github/workflows/restore-known-good-8b-mm.yml
+          git commit -m 'fix(tbs): restore known-good 8b MM call path'
+          git push origin HEAD:mqtt-fix/restore-known-good-8b-mm
