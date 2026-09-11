@@ -992,6 +992,16 @@ impl MmBs {
             return requested;
         }
 
+        // Infrastructure-initiated registration is its own MM transaction:
+        // D-LOCATION-UPDATE-COMMAND -> U-LOCATION-UPDATE-DEMAND(DemandLocationUpdating)
+        // -> D-LOCATION-UPDATE-ACCEPT(DemandLocationUpdating). Do not rewrite that final ACCEPT
+        // to PeriodicLocationUpdating just because T351-style periodic registration is enabled.
+        // Some terminals otherwise keep the service locally unavailable and continue roaming
+        // refreshes even though the SwMI already considers them registered.
+        if requested == LocationUpdateType::DemandLocationUpdating {
+            return LocationUpdateType::DemandLocationUpdating;
+        }
+
         // A retained client record does not mean this is not a genuine fresh attach:
         // T351/recovery intentionally keeps client_mgr state across RF absence. Preserve the
         // requested ITSI-attach type for this capability class regardless of `is_new`; only
