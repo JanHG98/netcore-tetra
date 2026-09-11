@@ -17,171 +17,35 @@ jobs:
           ref: mqtt-fix/stabilize-5102-mm
           fetch-depth: 0
 
-      - name: Apply evidence-driven MM repair
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
+      - name: Transform
+        run: python3 .github/scripts/stabilize_5102_mm.py
 
-          path = Path('crates/tetra-entities/src/mm/mm_bs.rs')
-          text = path.read_text()
-
-          old_esi = '''        let prior_esm = self
-              .client_mgr
-              .get_client_by_issi(prim.received_address.ssi)
-              .map(|c| c.energy_saving_mode);
-          // v1.7.0 radio compatibility: preserve the previously granted energy-saving
-          // state on re-registration, including StayAlive. On the very first attach, when neither
-          // the MS nor client state supplies an ESM, the optional IE remains absent.
-          let effective_esm_request = pdu.energy_saving_mode.or(prior_esm);
-          let esi = effective_esm_request
-              .map(|esm| Self::grant_energy_saving(prim.received_address.ssi, esm));
-          '''
-          new_esi = '''        let prior_esm = self
-              .client_mgr
-              .get_client_by_issi(prim.received_address.ssi)
-              .map(|c| c.energy_saving_mode);
-          // D-LOCATION UPDATE ACCEPT carries Energy Saving Information only when the MS
-          // requested an economy mode, or when a real Eg1..Eg3 grant must survive a
-          // re-registration. StayAlive is our local default, not an unsolicited optional IE.
-          // This keeps the wire behaviour that allowed ISSI 5102 to reach CMCE U-SETUP.
-          let effective_esm_request = pdu
-              .energy_saving_mode
-              .or_else(|| prior_esm.filter(|mode| *mode != EnergySavingMode::StayAlive));
-          let esi = effective_esm_request
-              .map(|esm| Self::grant_energy_saving(prim.received_address.ssi, esm));
-          '''
-          if old_esi not in text:
-              raise SystemExit('expected ESI block not found')
-          text = text.replace(old_esi, new_esi, 1)
-
-          old_aff = '''        // Fix: when a *known* MS re-registers without supplying a group report, but we
-          // still hold groups for it in client_mgr, re-emit Affiliate for those groups so
-          // CMCE's group_listeners (and Brew) are resynced with what the MS believes.
-          if !is_new && !_has_groups {
-          '''
-          new_aff = '''        // Only restore stored affiliations after a confirmed registry drop. A normal
-          // roaming refresh does not remove the subscriber from CMCE/Brew and must not generate
-          // a fresh Affiliate on every location update; that churn can race call setup/release.
-          if was_dropped && !_has_groups {
-          '''
-          if old_aff not in text:
-              raise SystemExit('expected coverage-return affiliation block not found')
-          text = text.replace(old_aff, new_aff, 1)
-
-          old_accept = '''        // v1.7.0 compatibility path. AIv2 terminals advertising common SCCH were
-          // deliberately exempted from forcing PeriodicLocationUpdating in the ACCEPT. For this
-          // capability set the MS-requested type is mirrored (ITSI attach, roaming update, ...).
-          let hytera_periodic_accept_compat = pdu
-              .class_of_ms
-              .as_ref()
-              .map(|class| class.common_scch && class.air_interface_version >= 2)
-              .unwrap_or(false);
-
-          let _ = self.client_mgr.set_client_class_of_ms(issi, pdu.class_of_ms);
-          self.config.state_write().subscribers.set_duplex_capable(issi, duplex_capable);
-
-          // Reset periodic registration timer on every successful registration.
-          self.client_mgr.reset_registration_timer(issi);
-
-          // Registration / affiliation / EE state changed — persist for restart recovery (debounced).
-          self.recovery_mark_dirty();
-
-          // v1.7.0 periodic-registration compatibility.
-          let periodic_secs = self.config.config().cell.periodic_registration_secs;
-          let accept_type = if periodic_secs > 0 && !hytera_periodic_accept_compat {
-              LocationUpdateType::PeriodicLocationUpdating
-          } else {
-              if periodic_secs > 0 && hytera_periodic_accept_compat {
-                  tracing::debug!(
-                      "MM: ISSI {} uses AIv2/common-SCCH; mirroring {:?} in D-LOCATION-UPDATE-ACCEPT instead of forcing PeriodicLocationUpdating (v1.7 compatibility)",
-                      issi,
-                      pdu.location_update_type
-                  );
-              }
-              pdu.location_update_type
-          };
-          '''
-          new_accept = '''        // Capability discriminator for the strict AIv2/common-SCCH radios seen in the
-          // live traces. Their initial ITSI attach and Demand response keep their requested type;
-          // only repeated roaming/service-restoration roaming updates are settled into the
-          // configured periodic-registration state.
-          let ai_v2_common_scch = pdu
-              .class_of_ms
-              .as_ref()
-              .map(|class| class.common_scch && class.air_interface_version >= 2)
-              .unwrap_or(false);
-
-          let _ = self.client_mgr.set_client_class_of_ms(issi, pdu.class_of_ms);
-          self.config.state_write().subscribers.set_duplex_capable(issi, duplex_capable);
-
-          // Reset periodic registration timer on every successful registration.
-          self.client_mgr.reset_registration_timer(issi);
-
-          // Registration / affiliation / EE state changed — persist for restart recovery (debounced).
-          self.recovery_mark_dirty();
-
-          let periodic_secs = self.config.config().cell.periodic_registration_secs;
-          let roaming_refresh = matches!(
-              pdu.location_update_type,
-              LocationUpdateType::RoamingLocationUpdating
-                  | LocationUpdateType::ServiceRestorationRoamingLocationUpdating
-          );
-          let accept_type = if periodic_secs > 0 && ai_v2_common_scch && roaming_refresh {
-              tracing::info!(
-                  "MM: ISSI {} AIv2/common-SCCH roaming update settled as PeriodicLocationUpdating to stop the REREG loop",
-                  issi
-              );
-              LocationUpdateType::PeriodicLocationUpdating
-          } else {
-              pdu.location_update_type
-          };
-          '''
-          if old_accept not in text:
-              raise SystemExit('expected LocationUpdateAccept selector block not found')
-          text = text.replace(old_accept, new_accept, 1)
-
-          old_ssi = '''            // Restore v1.7.0 wire behaviour first; revisit ASSI semantics behind multi-vendor tests.
-              ssi: Some(issi as u64),
-          '''
-          new_ssi = '''            // The optional SSI here is an allocated ASSI/(V)ASSI, not the subscriber ISSI.
-              // NetCore has no ASSI allocator/mapping yet, so do not make the MS adopt its ISSI as ASSI.
-              ssi: None,
-          '''
-          if old_ssi not in text:
-              raise SystemExit('expected D-LOCATION UPDATE ACCEPT SSI block not found')
-          text = text.replace(old_ssi, new_ssi, 1)
-
-          path.write_text(text)
-
-          Path('Docs/MM_5102_STABILITY_HYBRID_FIX.md').write_text('''# ISSI 5102 MM stability hybrid fix\n\n## Live evidence\n\nWith `mqtt` at `3d6c219d`, an idle AIv2/common-SCCH terminal repeatedly emitted\n`RoamingLocationUpdating` roughly every 16-49 seconds. The base station mirrored each roaming\nrequest back as `RoamingLocationUpdating`, re-emitted `Affiliate`, and the loop continued.\n\nEarlier live testing showed that the protocol-conservative registration-accept variant could\nreach CMCE `U-SETUP`, but mirroring roaming updates did not stop the idle re-registration loop.\n\n## Repair\n\nThis combines the two observed-good properties instead of rolling the entire radio stack backward:\n\n- initial ITSI attach and DemandLocationUpdating keep their requested type;\n- AIv2/common-SCCH roaming and service-restoration roaming updates are acknowledged as\n  `PeriodicLocationUpdating` when periodic registration is configured;\n- the optional SSI in D-LOCATION UPDATE ACCEPT stays absent because NetCore does not allocate ASSI;\n- unsolicited `StayAlive` Energy Saving Information is omitted; real active Eg1..Eg3 grants survive\n  re-registration;\n- stored group affiliations are only replayed after an actual subscriber-registry drop, not on every\n  harmless roaming refresh.\n\nThe group-call CMCE/FACCH release FSM is deliberately unchanged by this repair. Stabilize MM first;\nexplicit U-DISCONNECT can then be evaluated without a simultaneous registration loop.\n''')
-          PY
-
-      - name: Verify transformed semantics
+      - name: Verify
         shell: bash
         run: |
           grep -q 'roaming update settled as PeriodicLocationUpdating to stop the REREG loop' crates/tetra-entities/src/mm/mm_bs.rs
           grep -q 'ssi: None,' crates/tetra-entities/src/mm/mm_bs.rs
           grep -q 'if was_dropped && !_has_groups' crates/tetra-entities/src/mm/mm_bs.rs
-          grep -q 'prior_esm.filter(|mode| \*mode != EnergySavingMode::StayAlive)' crates/tetra-entities/src/mm/mm_bs.rs
+          grep -Fq 'prior_esm.filter(|mode| *mode != EnergySavingMode::StayAlive)' crates/tetra-entities/src/mm/mm_bs.rs
           test -s Docs/MM_5102_STABILITY_HYBRID_FIX.md
 
-      - name: Native dependencies
+      - name: Native deps
         shell: bash
         run: |
           sudo apt-get update
           sudo apt-get install -y pkg-config libsoapysdr-dev
 
-      - name: Compile tetra entities
+      - name: Compile
         run: cargo check -p tetra-entities --lib
 
-      - name: Commit final repair
+      - name: Commit
         shell: bash
         run: |
           git checkout -- Cargo.lock || true
           rm -f .github/workflows/stabilize-5102-mm.yml
+          rm -f .github/scripts/stabilize_5102_mm.py
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add crates/tetra-entities/src/mm/mm_bs.rs Docs/MM_5102_STABILITY_HYBRID_FIX.md .github/workflows/stabilize-5102-mm.yml
+          git add crates/tetra-entities/src/mm/mm_bs.rs Docs/MM_5102_STABILITY_HYBRID_FIX.md .github/workflows/stabilize-5102-mm.yml .github/scripts/stabilize_5102_mm.py
           git commit -m 'fix(tbs): stabilize AIv2 roaming registration'
           git push origin HEAD:mqtt-fix/stabilize-5102-mm
