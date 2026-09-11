@@ -508,14 +508,9 @@ impl MmBs {
             .client_mgr
             .get_client_by_issi(prim.received_address.ssi)
             .map(|c| c.energy_saving_mode);
-        // Keep the first successful Location Update ACCEPT consistent with the MM state.
-        // If the MS did not request energy economy, we operate it as StayAlive and must say so
-        // explicitly on the air instead of only storing that decision locally.
-        let esi = Some(Self::registration_energy_saving_information(
-            prim.received_address.ssi,
-            pdu.energy_saving_mode,
-            prior_esm,
-        ));
+        let effective_esm_request = pdu.energy_saving_mode.or(prior_esm);
+
+        let esi = effective_esm_request.map(|esm| Self::grant_energy_saving(prim.received_address.ssi, esm));
 
         // Try to register the client
         let issi = prim.received_address.ssi;
@@ -845,12 +840,10 @@ impl MmBs {
             None
         };
 
-        // Some AIv2/common-SCCH terminals require the initial ITSI attach to be
-        // acknowledged as ITSI attach. Keep that compatibility deliberately narrow:
-        // mirroring later RoamingLocationUpdating requests can trap the terminal in MM
-        // re-registration, so PTT is rejected locally before CMCE ever sees U-SETUP.
-        // ClassOfMs is not Copy, so inspect it before moving it into client_mgr.
-        let initial_attach_accept_compat = pdu
+        // v1.7.0 air-interface compatibility. AIv2/common-SCCH terminals
+        // are acknowledged with the same Location Update type they requested.
+        // This is intentionally kept independent from the newer central-core plumbing.
+        let hytera_periodic_accept_compat = pdu
             .class_of_ms
             .as_ref()
             .map(|class| class.common_scch && class.air_interface_version >= 2)
@@ -865,36 +858,24 @@ impl MmBs {
         // Registration / affiliation / EE state changed — persist for restart recovery (debounced).
         self.recovery_mark_dirty();
 
-        // Settle successful registration into a stable MM state. AIv2/common-SCCH
-        // compatibility applies only to the initial ITSI attach. Once the subscriber is known,
-        // a roaming refresh is acknowledged as PeriodicLocationUpdating whenever periodic
-        // registration is enabled. This closes the REREG loop before the user presses PTT.
         let periodic_secs = self.config.config().cell.periodic_registration_secs;
-        let accept_type = Self::select_location_update_accept_type(pdu.location_update_type, periodic_secs, initial_attach_accept_compat);
-        if periodic_secs > 0 && initial_attach_accept_compat && pdu.location_update_type == LocationUpdateType::ItsiAttach {
-            tracing::debug!("MM: ISSI {} initial AIv2/common-SCCH ITSI attach acknowledged as ITSI attach", issi);
-        } else if periodic_secs > 0
-            && !is_new
-            && matches!(
-                pdu.location_update_type,
-                LocationUpdateType::RoamingLocationUpdating | LocationUpdateType::ServiceRestorationRoamingLocationUpdating
-            )
-            && accept_type == LocationUpdateType::PeriodicLocationUpdating
-        {
-            tracing::info!(
-                "MM: ISSI {} known roaming refresh settled as PeriodicLocationUpdating to prevent re-registration loop",
-                issi
-            );
-        }
+        let accept_type = if periodic_secs > 0 && !hytera_periodic_accept_compat {
+            LocationUpdateType::PeriodicLocationUpdating
+        } else {
+            if periodic_secs > 0 && hytera_periodic_accept_compat {
+                tracing::debug!(
+                    "MM: ISSI {} uses AIv2/common-SCCH; mirroring {:?} in D-LOCATION-UPDATE-ACCEPT instead of forcing PeriodicLocationUpdating (v1.7.0 compatibility)",
+                    issi,
+                    pdu.location_update_type
+                );
+            }
+            pdu.location_update_type
+        };
 
         // Build D-LOCATION UPDATE ACCEPT pdu
         let pdu_response = DLocationUpdateAccept {
             location_update_accept_type: accept_type,
-            // The optional SSI IE in D-LOCATION-UPDATE-ACCEPT is an assigned ASSI/(V)ASSI,
-            // not the subscriber's ISSI. Normal home-network registration does not allocate
-            // an ASSI, so advertising the ISSI here falsely tells the MS to switch its layer-2
-            // identity. Leave the IE absent until a real ASSI/VASSI allocator supplies one.
-            ssi: None,
+            ssi: Some(issi as u64),
             address_extension: None,
             subscriber_class: None,
             energy_saving_information: esi,
@@ -1371,46 +1352,6 @@ impl MmBs {
             }),
         };
         queue.push_back(msg);
-
-        // Fast-settle after initial group affiliation.
-        //
-        // Live TBS evidence (ISSI 5102): the initial ITSI attach was accepted at
-        // 23:50:29.801 and its groups were affiliated by 23:50:30.197, but the MS did
-        // not make CMCE available until after its own RoamingLocationUpdating at
-        // 23:51:04.425. The first successful U-SETUP then arrived at 23:51:12.414.
-        // Waiting for that vendor-side ~34 s timer makes the radio show "service not
-        // available" even though the SwMI already considers it registered.
-        //
-        // For a freshly registered AIv2/common-SCCH radio with at least one accepted
-        // group, send exactly one D-LOCATION-UPDATE-COMMAND immediately after the group
-        // ACK. We deliberately do NOT request a group report: our accepted group
-        // identities use lifetime=0 (persistent), so this closes the MM registration
-        // round-trip without throwing the just-established affiliations away.
-        let should_fast_settle = self
-            .client_mgr
-            .get_client_by_issi(issi)
-            .map(|client| {
-                !client.initial_fast_settle_sent
-                    && client.last_registration_time.elapsed() <= std::time::Duration::from_secs(5)
-                    && !client.groups.is_empty()
-                    && client
-                        .class_of_ms
-                        .as_ref()
-                        .map(|class| class.common_scch && class.air_interface_version >= 2)
-                        .unwrap_or(false)
-            })
-            .unwrap_or(false);
-
-        if should_fast_settle {
-            // Mark before queueing the command so a duplicate group-attach PDU cannot
-            // enqueue a second fast-settle request while the first one is in flight.
-            self.client_mgr.mark_initial_fast_settle_sent(issi);
-            tracing::info!(
-                "MM: ISSI {} fast-settle after initial group affiliation — requesting immediate demand location update without group report",
-                issi
-            );
-            Self::send_d_location_update_command(queue, issi, prim.handle, false);
-        }
     }
 
     fn rx_lmm_mle_unitdata_ind(&mut self, queue: &mut MessageQueue, mut message: SapMsg) {
