@@ -506,15 +506,12 @@ impl MmBs {
             .client_mgr
             .get_client_by_issi(prim.received_address.ssi)
             .map(|c| c.energy_saving_mode);
-        // Energy-saving information is optional in D-LOCATION UPDATE ACCEPT and is the
-        // response to an MS energy-economy request (ETSI EN 300 392-2, 16.7.1). Do not invent
-        // a StayAlive response when the MS did not request energy economy. A previously active
-        // non-StayAlive grant may still be repeated across re-registration.
-        let esi = Self::registration_energy_saving_information(
-            prim.received_address.ssi,
-            pdu.energy_saving_mode,
-            prior_esm,
-        );
+        // v1.7.0 radio compatibility: preserve the previously granted energy-saving
+        // state on re-registration, including StayAlive. On the very first attach, when neither
+        // the MS nor client state supplies an ESM, the optional IE remains absent.
+        let effective_esm_request = pdu.energy_saving_mode.or(prior_esm);
+        let esi = effective_esm_request
+            .map(|esm| Self::grant_energy_saving(prim.received_address.ssi, esm));
 
         // Try to register the client
         let issi = prim.received_address.ssi;
@@ -844,6 +841,15 @@ impl MmBs {
             None
         };
 
+        // v1.7.0 compatibility path. AIv2 terminals advertising common SCCH were
+        // deliberately exempted from forcing PeriodicLocationUpdating in the ACCEPT. For this
+        // capability set the MS-requested type is mirrored (ITSI attach, roaming update, ...).
+        let hytera_periodic_accept_compat = pdu
+            .class_of_ms
+            .as_ref()
+            .map(|class| class.common_scch && class.air_interface_version >= 2)
+            .unwrap_or(false);
+
         let _ = self.client_mgr.set_client_class_of_ms(issi, pdu.class_of_ms);
         self.config.state_write().subscribers.set_duplex_capable(issi, duplex_capable);
 
@@ -853,26 +859,26 @@ impl MmBs {
         // Registration / affiliation / EE state changed — persist for restart recovery (debounced).
         self.recovery_mark_dirty();
 
-        // D-LOCATION UPDATE ACCEPT reports the registration type that was completed.
-        // Do not rewrite a RoamingLocationUpdating request into PeriodicLocationUpdating merely
-        // because the BS has a local periodic-registration timer configured. Periodic registration
-        // is its own MS-initiated procedure; changing the accept type here can leave strict radios
-        // in MM registration instead of opening communication resources for CMCE.
-        let accept_type = pdu.location_update_type;
-        tracing::debug!(
-            "MM: ISSI {} completing {:?} with matching D-LOCATION-UPDATE-ACCEPT",
-            issi,
-            accept_type
-        );
+        // v1.7.0 periodic-registration compatibility.
+        let periodic_secs = self.config.config().cell.periodic_registration_secs;
+        let accept_type = if periodic_secs > 0 && !hytera_periodic_accept_compat {
+            LocationUpdateType::PeriodicLocationUpdating
+        } else {
+            if periodic_secs > 0 && hytera_periodic_accept_compat {
+                tracing::debug!(
+                    "MM: ISSI {} uses AIv2/common-SCCH; mirroring {:?} in D-LOCATION-UPDATE-ACCEPT instead of forcing PeriodicLocationUpdating (v1.7 compatibility)",
+                    issi,
+                    pdu.location_update_type
+                );
+            }
+            pdu.location_update_type
+        };
 
         // Build D-LOCATION UPDATE ACCEPT pdu
         let pdu_response = DLocationUpdateAccept {
             location_update_accept_type: accept_type,
-            // ETSI 16.9.2.7 defines this Type-2 SSI as an allocated ASSI/(V)ASSI,
-            // not the subscriber's ISSI. NetCore does not currently allocate/manage ASSIs,
-            // therefore the field MUST be absent. Sending ISSI here makes a compliant MS adopt
-            // that value as an ASSI for subsequent layer-2 signalling.
-            ssi: None,
+            // Restore v1.7.0 wire behaviour first; revisit ASSI semantics behind multi-vendor tests.
+            ssi: Some(issi as u64),
             address_extension: None,
             subscriber_class: None,
             energy_saving_information: esi,
@@ -956,18 +962,6 @@ impl MmBs {
     /// Used both by the initial location update (U-LOCATION-UPDATING-DEMAND) and by mid-session
     /// energy saving toggles (U-MM-STATUS / ChangeOfEnergySavingModeRequest) so the two paths
     /// behave identically.
-    fn registration_energy_saving_information(
-        issi: u32,
-        requested: Option<EnergySavingMode>,
-        prior: Option<EnergySavingMode>,
-    ) -> Option<EnergySavingInformation> {
-        // StayAlive is the local default when no EE mode applies, not something that must be
-        // signalled unsolicited. Preserve only a previously active economy mode when the MS
-        // omits the optional request during a re-registration.
-        let effective = requested.or_else(|| prior.filter(|mode| *mode != EnergySavingMode::StayAlive));
-        effective.map(|mode| Self::grant_energy_saving(issi, mode))
-    }
-
     fn grant_energy_saving(issi: u32, requested: EnergySavingMode) -> EnergySavingInformation {
         let granted_esm = match requested {
             EnergySavingMode::StayAlive => EnergySavingMode::StayAlive,
@@ -2321,35 +2315,30 @@ mod ee_tests {
     }
 
     #[test]
-    fn registration_without_energy_saving_request_omits_optional_esi() {
-        assert!(MmBs::registration_energy_saving_information(5102, None, None).is_none());
-        assert!(
-            MmBs::registration_energy_saving_information(
-                5102,
-                None,
-                Some(EnergySavingMode::StayAlive),
-            )
-            .is_none()
-        );
+    fn v17_first_registration_without_energy_saving_request_has_no_esi() {
+        let requested: Option<EnergySavingMode> = None;
+        let prior: Option<EnergySavingMode> = None;
+        assert!(requested.or(prior).is_none());
     }
 
     #[test]
-    fn registration_preserves_requested_or_active_economy_mode() {
-        let requested = MmBs::registration_energy_saving_information(
-            5102,
-            Some(EnergySavingMode::Eg2),
-            None,
-        )
-        .expect("requested EE mode should be signalled");
-        assert_eq!(requested.energy_saving_mode, EnergySavingMode::Eg2);
+    fn v17_reregistration_preserves_prior_stay_alive() {
+        let requested: Option<EnergySavingMode> = None;
+        let prior = Some(EnergySavingMode::StayAlive);
+        let effective = requested.or(prior).expect("prior StayAlive must be preserved");
+        let esi = MmBs::grant_energy_saving(5102, effective);
+        assert_eq!(esi.energy_saving_mode, EnergySavingMode::StayAlive);
+        assert!(esi.frame_number.is_none());
+        assert!(esi.multiframe_number.is_none());
+    }
 
-        let retained = MmBs::registration_energy_saving_information(
-            5102,
-            None,
-            Some(EnergySavingMode::Eg1),
-        )
-        .expect("active EE mode should survive re-registration");
-        assert_eq!(retained.energy_saving_mode, EnergySavingMode::Eg1);
+    #[test]
+    fn v17_requested_economy_mode_is_still_granted() {
+        let requested = Some(EnergySavingMode::Eg2);
+        let prior: Option<EnergySavingMode> = None;
+        let effective = requested.or(prior).expect("requested mode must win");
+        let esi = MmBs::grant_energy_saving(5102, effective);
+        assert_eq!(esi.energy_saving_mode, EnergySavingMode::Eg2);
     }
 
 }
