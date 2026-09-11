@@ -22,21 +22,18 @@ use tetra_pdus::umac::pdus::mac_u_blck::MacUBlck;
 use tetra_pdus::umac::pdus::mac_u_signal::MacUSignal;
 use tetra_saps::common::Layer2Report;
 use tetra_saps::control::call_control::{CallControl, Circuit};
-use tetra_saps::tlmc::TlmcReportInd;
 use tetra_saps::lcmc::enums::alloc_type::ChanAllocType;
 use tetra_saps::lcmc::enums::ul_dl_assignment::UlDlAssignment;
 use tetra_saps::lcmc::fields::chan_alloc_req::CmceChanAllocReq;
-use tetra_saps::tma::{
-    parse_frame18_common_scch_handle, TmaReport, TmaReportInd, TmaUnitdataInd,
-};
-use tetra_saps::tmv::{TmvConfigureReq, TmvUnitdataReqSlots};
+use tetra_saps::tlmc::TlmcReportInd;
+use tetra_saps::tma::{TmaReport, TmaReportInd, TmaUnitdataInd, parse_frame18_common_scch_handle};
 use tetra_saps::tmv::enums::logical_chans::LogicalChannel;
+use tetra_saps::tmv::{TmvConfigureReq, TmvUnitdataReqSlots};
 use tetra_saps::{SapMsg, SapMsgInner};
 
 use crate::lmac::components::scrambler;
 use crate::net_media::{
-    LocalMediaUplinkFrame, MediaCodec, MediaDownlinkSource, MediaTryRecvError,
-    MediaUplinkSink, TETRA_ACELP_FRAME_BYTES,
+    LocalMediaUplinkFrame, MediaCodec, MediaDownlinkSource, MediaTryRecvError, MediaUplinkSink, TETRA_ACELP_FRAME_BYTES,
 };
 use crate::umac::subcomp::bs_frag::BsFragger;
 use crate::umac::subcomp::bs_sched::{BsChannelScheduler, CarrierDownlinkMode, PrecomputedUmacPdus, TCH_S_CAP};
@@ -145,21 +142,12 @@ impl UmacBs {
     /// Connect the RF scheduler to the central Media Switch transport. The
     /// queues are bounded and all operations are non-blocking so a slow LXC or
     /// management network cannot stall TDMA processing.
-    pub fn set_media_bridge(
-        &mut self,
-        uplink_sink: MediaUplinkSink,
-        downlink_source: MediaDownlinkSource,
-    ) {
+    pub fn set_media_bridge(&mut self, uplink_sink: MediaUplinkSink, downlink_source: MediaDownlinkSource) {
         self.media_uplink_sink = Some(uplink_sink);
         self.media_downlink_source = Some(downlink_source);
     }
 
-    fn forward_media_uplink(
-        &mut self,
-        carrier_num: u16,
-        logical_ts: u8,
-        data: &[u8],
-    ) {
+    fn forward_media_uplink(&mut self, carrier_num: u16, logical_ts: u8, data: &[u8]) {
         let Some(sink) = self.media_uplink_sink.clone() else {
             return;
         };
@@ -185,10 +173,34 @@ impl UmacBs {
     }
 
     fn drain_media_downlink(&mut self) {
+        // Keep the idle/control-channel path identical to the known-good v1.7.0
+        // runtime.  The Media Switch bridge was added after v1.7.0 and originally
+        // polled its queue on every TDMA tick, even while no downlink traffic
+        // circuit existed.  A busy/stale central media queue must never steal time
+        // from MCCH/SYSINFO/registration processing.
+        let mut has_active_dl = false;
+        for logical_ts in 2..=7u8 {
+            if Self::is_secondary_logical_ts(logical_ts) && self.secondary_carrier().is_none() {
+                continue;
+            }
+            let carrier_num = self.carrier_for_logical_ts(logical_ts);
+            let air_ts = Self::air_ts_for_logical(logical_ts);
+            if self.scheduler_for(carrier_num).circuit_is_active(Direction::Dl, air_ts) {
+                has_active_dl = true;
+                break;
+            }
+        }
+        if !has_active_dl {
+            return;
+        }
+
         let mut frames = Vec::new();
         let mut disconnected = false;
         if let Some(source) = self.media_downlink_source.as_ref() {
-            for _ in 0..64 {
+            // Bound central-media work per TDMA tick.  Eight queued speech frames
+            // already provide far more throughput than one TETRA traffic channel
+            // needs, while preventing a burst from delaying the RF scheduler.
+            for _ in 0..8 {
                 match source.try_recv() {
                     Ok(frame) => frames.push(frame),
                     Err(MediaTryRecvError::Empty) => break,
@@ -214,8 +226,7 @@ impl UmacBs {
             let carrier_num = self.carrier_for_logical_ts(frame.logical_ts);
             let air_ts = Self::air_ts_for_logical(frame.logical_ts);
             if self.scheduler_for(carrier_num).circuit_is_active(Direction::Dl, air_ts) {
-                self.scheduler_for_mut(carrier_num)
-                    .dl_schedule_tmd(air_ts, frame.payload);
+                self.scheduler_for_mut(carrier_num).dl_schedule_tmd(air_ts, frame.payload);
             } else {
                 self.media_downlink_dropped = self.media_downlink_dropped.wrapping_add(1);
                 tracing::trace!(
@@ -248,7 +259,10 @@ impl UmacBs {
         {
             return &mut self.secondary_channel_schedulers[index];
         }
-        tracing::error!("UMAC: unknown carrier {}, no scheduler configured -- falling back to primary", carrier_num);
+        tracing::error!(
+            "UMAC: unknown carrier {}, no scheduler configured -- falling back to primary",
+            carrier_num
+        );
         &mut self.channel_scheduler
     }
 
@@ -263,7 +277,10 @@ impl UmacBs {
         {
             Some(sched) => sched,
             None => {
-                tracing::error!("UMAC: unknown carrier {}, no scheduler configured -- falling back to primary", carrier_num);
+                tracing::error!(
+                    "UMAC: unknown carrier {}, no scheduler configured -- falling back to primary",
+                    carrier_num
+                );
                 &self.channel_scheduler
             }
         }
@@ -310,9 +327,13 @@ impl UmacBs {
             }),
             Some(other) => {
                 tracing::warn!("UMAC: ignoring unknown negative CMCE carrier hint {}", other);
-                logical_ts.map(|ts| self.carrier_for_logical_ts(ts)).unwrap_or_else(|| self.main_carrier())
+                logical_ts
+                    .map(|ts| self.carrier_for_logical_ts(ts))
+                    .unwrap_or_else(|| self.main_carrier())
             }
-            None => logical_ts.map(|ts| self.carrier_for_logical_ts(ts)).unwrap_or_else(|| self.main_carrier()),
+            None => logical_ts
+                .map(|ts| self.carrier_for_logical_ts(ts))
+                .unwrap_or_else(|| self.main_carrier()),
         }
     }
 
@@ -822,13 +843,17 @@ impl UmacBs {
         let msg_dltime = self.dltime.add_timeslots(-2); // Msg on uplink was sent two timeslots ago.
         let carrier_num = prim.carrier_num;
         let logical_ts = self.logical_ts_for_carrier_air_ts(carrier_num, msg_dltime.t);
-        let logical_dltime = TdmaTime { t: logical_ts, ..msg_dltime };
+        let logical_dltime = TdmaTime {
+            t: logical_ts,
+            ..msg_dltime
+        };
         if let Some(res_req) = &pdu.reservation_req {
             let grant_result = self.scheduler_for_mut(carrier_num).ul_process_cap_req(msg_dltime.t, addr, res_req);
             if let Some((grant, usage_marker)) = grant_result {
                 // Schedule grant — marker propagates into the MAC-RESOURCE ACK
                 // so the MS can tag its reservation when continuing the burst.
-                self.scheduler_for_mut(carrier_num).dl_enqueue_grant(msg_dltime.t, addr, grant, usage_marker);
+                self.scheduler_for_mut(carrier_num)
+                    .dl_enqueue_grant(msg_dltime.t, addr, grant, usage_marker);
             } else {
                 tracing::warn!("rx_mac_data: No grant for reservation request {:?}", res_req);
             }
@@ -974,7 +999,10 @@ impl UmacBs {
         let msg_dltime = self.dltime.add_timeslots(-2); // Msg on uplink was sent two timeslots ago.
         let carrier_num = prim.carrier_num;
         let logical_ts = self.logical_ts_for_carrier_air_ts(carrier_num, msg_dltime.t);
-        let logical_dltime = TdmaTime { t: logical_ts, ..msg_dltime };
+        let logical_dltime = TdmaTime {
+            t: logical_ts,
+            ..msg_dltime
+        };
         if !self.scheduler_for(carrier_num).circuit_is_active(Direction::Dl, msg_dltime.t) {
             self.scheduler_for_mut(carrier_num).dl_enqueue_random_access_ack(msg_dltime.t, addr);
         } else {
@@ -1012,7 +1040,8 @@ impl UmacBs {
             if let Some((grant, usage_marker)) = grant_result {
                 // Schedule grant — marker propagates into the MAC-RESOURCE ACK
                 // so the MS can tag its reservation when continuing the burst.
-                self.scheduler_for_mut(carrier_num).dl_enqueue_grant(msg_dltime.t, addr, grant, usage_marker);
+                self.scheduler_for_mut(carrier_num)
+                    .dl_enqueue_grant(msg_dltime.t, addr, grant, usage_marker);
             } else {
                 tracing::warn!("rx_mac_access: No grant for reservation request {:?}", res_req);
             }
@@ -1113,7 +1142,10 @@ impl UmacBs {
         let msg_dltime = self.dltime.add_timeslots(-2); // Msg on uplink was sent two timeslots ago.
         let carrier_num = prim.carrier_num;
         let logical_ts = self.logical_ts_for_carrier_air_ts(carrier_num, msg_dltime.t);
-        let logical_dltime = TdmaTime { t: logical_ts, ..msg_dltime };
+        let logical_dltime = TdmaTime {
+            t: logical_ts,
+            ..msg_dltime
+        };
         let Some(slot_owner) = self.scheduler_for(carrier_num).ul_get_slot_owner(msg_dltime, prim.block_num) else {
             tracing::debug!(
                 "rx_mac_frag_ul: MAC-FRAG-UL for unassigned block {:?} on carrier {} logical ts {} / air ts {} (start not seen — normal on RF loss)",
@@ -1190,7 +1222,10 @@ impl UmacBs {
         let msg_dltime = self.dltime.add_timeslots(-2); // Msg on uplink was sent two timeslots ago.
         let carrier_num = prim.carrier_num;
         let logical_ts = self.logical_ts_for_carrier_air_ts(carrier_num, msg_dltime.t);
-        let logical_dltime = TdmaTime { t: logical_ts, ..msg_dltime };
+        let logical_dltime = TdmaTime {
+            t: logical_ts,
+            ..msg_dltime
+        };
         let Some(slot_owner) = self.scheduler_for(carrier_num).ul_get_slot_owner(msg_dltime, prim.block_num) else {
             // Common with scan-list terminals that transmit on UL without waiting for a grant
             tracing::debug!(
@@ -1215,7 +1250,9 @@ impl UmacBs {
 
         // Handle reservation if present
         if let Some(res_req) = &pdu.reservation_req {
-            let grant_result = self.scheduler_for_mut(carrier_num).ul_process_cap_req(msg_dltime.t, defragbuf.addr, res_req);
+            let grant_result = self
+                .scheduler_for_mut(carrier_num)
+                .ul_process_cap_req(msg_dltime.t, defragbuf.addr, res_req);
             if let Some((grant, usage_marker)) = grant_result {
                 // Schedule grant — marker propagates into the MAC-RESOURCE ACK
                 // so the MS can tag its reservation when continuing the burst.
@@ -1319,7 +1356,10 @@ impl UmacBs {
         let msg_dltime = self.dltime.add_timeslots(-2); // Msg on uplink was sent two timeslots ago.
         let carrier_num = prim.carrier_num;
         let logical_ts = self.logical_ts_for_carrier_air_ts(carrier_num, msg_dltime.t);
-        let logical_dltime = TdmaTime { t: logical_ts, ..msg_dltime };
+        let logical_dltime = TdmaTime {
+            t: logical_ts,
+            ..msg_dltime
+        };
         let Some(slot_owner) = self.scheduler_for(carrier_num).ul_get_slot_owner(msg_dltime, prim.block_num) else {
             tracing::debug!(
                 "rx_mac_end_hu: MAC-END-HU for unassigned block {:?} on carrier {} logical ts {} / air ts {} (start not seen — normal on RF loss)",
@@ -1344,7 +1384,9 @@ impl UmacBs {
 
         // Handle reservation if present
         if let Some(res_req) = &pdu.reservation_req {
-            let grant_result = self.scheduler_for_mut(carrier_num).ul_process_cap_req(msg_dltime.t, defragbuf.addr, res_req);
+            let grant_result = self
+                .scheduler_for_mut(carrier_num)
+                .ul_process_cap_req(msg_dltime.t, defragbuf.addr, res_req);
             if let Some((grant, usage_marker)) = grant_result {
                 // Schedule grant — marker propagates into the MAC-RESOURCE ACK
                 // so the MS can tag its reservation when continuing the burst.
@@ -1531,7 +1573,9 @@ impl UmacBs {
                     // Build MAC-RESOURCE PDU for the STCH half-slot (124 type1 bits).
                     const STCH_CAP: usize = 124;
 
-                    let has_pending_ra = self.scheduler_for_mut(carrier_num).take_pending_ra_ack(air_ts, prim.main_address.ssi);
+                    let has_pending_ra = self
+                        .scheduler_for_mut(carrier_num)
+                        .take_pending_ra_ack(air_ts, prim.main_address.ssi);
                     // FACCH/STCH on an already allocated traffic slot is not a random-access
                     // response by default. Only propagate the flag when we are actually
                     // carrying a pending RA acknowledgement on this same timeslot.
@@ -1577,7 +1621,8 @@ impl UmacBs {
                             stch_block.get_len()
                         );
 
-                        self.scheduler_for_mut(carrier_num).dl_enqueue_stealing(air_ts, stch_block, prim.tx_reporter);
+                        self.scheduler_for_mut(carrier_num)
+                            .dl_enqueue_stealing(air_ts, stch_block, prim.tx_reporter);
                     } else {
                         // Larger than one stolen half-slot: fragment across consecutive stolen
                         // half-slots (panic-safe — a fixed 124-bit buffer used to overflow here and
@@ -1611,10 +1656,7 @@ impl UmacBs {
         let (usage_marker, mac_chan_alloc) = if let Some(chan_alloc) = prim.chan_alloc {
             let logical_ts = self.first_logical_ts_in_chan_alloc(&chan_alloc);
             let target_carrier = self.resolve_cmce_carrier_hint(chan_alloc.carrier, logical_ts);
-            (
-                chan_alloc.usage,
-                Some(Self::cmce_to_mac_chanalloc(&chan_alloc, target_carrier)),
-            )
+            (chan_alloc.usage, Some(Self::cmce_to_mac_chanalloc(&chan_alloc, target_carrier)))
         } else {
             (None, None)
         };
@@ -1864,7 +1906,10 @@ impl UmacBs {
 
                 let dl_target_carrier = self.carrier_for_logical_ts(dl_target_logical_ts);
                 let dl_target_air_ts = Self::air_ts_for_logical(dl_target_logical_ts);
-                if self.scheduler_for(dl_target_carrier).circuit_is_active(Direction::Dl, dl_target_air_ts) {
+                if self
+                    .scheduler_for(dl_target_carrier)
+                    .circuit_is_active(Direction::Dl, dl_target_air_ts)
+                {
                     if let Some(packed) = pack_ul_acelp_bits(&data) {
                         self.scheduler_for_mut(dl_target_carrier).dl_schedule_tmd(dl_target_air_ts, packed);
                     } else {
@@ -2338,7 +2383,6 @@ impl TetraEntityTrait for UmacBs {
 
     fn tick_start(&mut self, queue: &mut MessageQueue, ts: TdmaTime) {
         self.dltime = ts;
-        self.drain_media_downlink();
         self.refresh_system_wide_services();
 
         if self.channel_scheduler.cur_dltime != ts && self.channel_scheduler.cur_dltime == (TdmaTime { t: 0, f: 0, m: 0, h: 0 }) {
@@ -2395,6 +2439,11 @@ impl TetraEntityTrait for UmacBs {
         queue.push_back(s);
 
         self.process_pending_circuit_closes();
+
+        // Central media is deliberately serviced only after the current RF slot
+        // has been finalized.  This preserves the v1.7.0 control-channel timing
+        // contract and adds at most one TDMA-slot of media latency.
+        self.drain_media_downlink();
     }
 }
 
