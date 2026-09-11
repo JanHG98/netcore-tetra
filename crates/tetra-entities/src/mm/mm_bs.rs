@@ -185,7 +185,7 @@ impl MmBs {
                 continue;
             }
             // handle = 0: addressed by ISSI on the MCCH (see send_d_location_update_command).
-            Self::send_d_location_update_command(queue, issi, 0);
+            Self::send_d_location_update_command(queue, issi, 0, true);
             self.recovery_attempts.insert(issi, attempts + 1);
             self.recovery_pending.push_back(issi); // round-robin until it answers or we give up
         }
@@ -267,7 +267,7 @@ impl MmBs {
             issi
         );
         // handle = 0: addressed by ISSI on the MCCH (see send_d_location_update_command).
-        Self::send_d_location_update_command(queue, issi, 0);
+        Self::send_d_location_update_command(queue, issi, 0, true);
     }
 
     /// Force CMCE to release any individual P2P calls involving the given ISSI,
@@ -367,7 +367,11 @@ impl MmBs {
         }
 
         // Always emit an update to the CMCE entity.
-        let mm_update = MmSubscriberUpdate { issi, groups: groups.clone(), action };
+        let mm_update = MmSubscriberUpdate {
+            issi,
+            groups: groups.clone(),
+            action,
+        };
         queue.push_back(SapMsg {
             sap: Sap::Control,
             src: TetraEntity::Mm,
@@ -378,9 +382,7 @@ impl MmBs {
         // SNDCP owns subscriber-scoped PDP contexts and radio resources. Forward
         // registration lifecycle events so an explicit detach/T351 drop releases
         // those resources immediately instead of waiting for the STANDBY timer.
-        if self.config.config().cell.sndcp_service
-            && matches!(action, BrewSubscriberAction::Register | BrewSubscriberAction::Deregister)
-        {
+        if self.config.config().cell.sndcp_service && matches!(action, BrewSubscriberAction::Register | BrewSubscriberAction::Deregister) {
             queue.push_back(SapMsg {
                 sap: Sap::Control,
                 src: TetraEntity::Mm,
@@ -868,25 +870,14 @@ impl MmBs {
         // a roaming refresh is acknowledged as PeriodicLocationUpdating whenever periodic
         // registration is enabled. This closes the REREG loop before the user presses PTT.
         let periodic_secs = self.config.config().cell.periodic_registration_secs;
-        let accept_type = Self::select_location_update_accept_type(
-            pdu.location_update_type,
-            periodic_secs,
-            initial_attach_accept_compat,
-        );
-        if periodic_secs > 0
-            && initial_attach_accept_compat
-            && pdu.location_update_type == LocationUpdateType::ItsiAttach
-        {
-            tracing::debug!(
-                "MM: ISSI {} initial AIv2/common-SCCH ITSI attach acknowledged as ITSI attach",
-                issi
-            );
+        let accept_type = Self::select_location_update_accept_type(pdu.location_update_type, periodic_secs, initial_attach_accept_compat);
+        if periodic_secs > 0 && initial_attach_accept_compat && pdu.location_update_type == LocationUpdateType::ItsiAttach {
+            tracing::debug!("MM: ISSI {} initial AIv2/common-SCCH ITSI attach acknowledged as ITSI attach", issi);
         } else if periodic_secs > 0
             && !is_new
             && matches!(
                 pdu.location_update_type,
-                LocationUpdateType::RoamingLocationUpdating
-                    | LocationUpdateType::ServiceRestorationRoamingLocationUpdating
+                LocationUpdateType::RoamingLocationUpdating | LocationUpdateType::ServiceRestorationRoamingLocationUpdating
             )
             && accept_type == LocationUpdateType::PeriodicLocationUpdating
         {
@@ -959,7 +950,7 @@ impl MmBs {
         let has_groups = _has_groups;
         if is_new && pdu.location_update_type != LocationUpdateType::ItsiAttach && !has_groups {
             tracing::info!("Sending D-LOCATION UPDATE COMMAND to returning MS {} to request group report", issi);
-            Self::send_d_location_update_command(queue, issi, handle);
+            Self::send_d_location_update_command(queue, issi, handle, true);
         }
     }
 
@@ -1366,6 +1357,46 @@ impl MmBs {
             }),
         };
         queue.push_back(msg);
+
+        // Fast-settle after initial group affiliation.
+        //
+        // Live TBS evidence (ISSI 5102): the initial ITSI attach was accepted at
+        // 23:50:29.801 and its groups were affiliated by 23:50:30.197, but the MS did
+        // not make CMCE available until after its own RoamingLocationUpdating at
+        // 23:51:04.425. The first successful U-SETUP then arrived at 23:51:12.414.
+        // Waiting for that vendor-side ~34 s timer makes the radio show "service not
+        // available" even though the SwMI already considers it registered.
+        //
+        // For a freshly registered AIv2/common-SCCH radio with at least one accepted
+        // group, send exactly one D-LOCATION-UPDATE-COMMAND immediately after the group
+        // ACK. We deliberately do NOT request a group report: our accepted group
+        // identities use lifetime=0 (persistent), so this closes the MM registration
+        // round-trip without throwing the just-established affiliations away.
+        let should_fast_settle = self
+            .client_mgr
+            .get_client_by_issi(issi)
+            .map(|client| {
+                !client.initial_fast_settle_sent
+                    && client.last_registration_time.elapsed() <= std::time::Duration::from_secs(5)
+                    && !client.groups.is_empty()
+                    && client
+                        .class_of_ms
+                        .as_ref()
+                        .map(|class| class.common_scch && class.air_interface_version >= 2)
+                        .unwrap_or(false)
+            })
+            .unwrap_or(false);
+
+        if should_fast_settle {
+            // Mark before queueing the command so a duplicate group-attach PDU cannot
+            // enqueue a second fast-settle request while the first one is in flight.
+            self.client_mgr.mark_initial_fast_settle_sent(issi);
+            tracing::info!(
+                "MM: ISSI {} fast-settle after initial group affiliation — requesting immediate demand location update without group report",
+                issi
+            );
+            Self::send_d_location_update_command(queue, issi, prim.handle, false);
+        }
     }
 
     fn rx_lmm_mle_unitdata_ind(&mut self, queue: &mut MessageQueue, mut message: SapMsg) {
@@ -1761,9 +1792,9 @@ impl MmBs {
         }
     }
 
-    fn send_d_location_update_command(queue: &mut MessageQueue, issi: u32, handle: u32) {
+    fn send_d_location_update_command(queue: &mut MessageQueue, issi: u32, handle: u32, group_identity_report: bool) {
         let pdu = DLocationUpdateCommand {
-            group_identity_report: true,
+            group_identity_report,
             cipher_control: false,
             ciphering_parameters: None,
             address_extension: None,
@@ -2079,7 +2110,7 @@ impl TetraEntityTrait for MmBs {
                     "MM: ISSI {} still unresponsive — re-attracting and keeping groups (no REJECT, no removal)",
                     issi
                 );
-                Self::send_d_location_update_command(queue, issi, 0);
+                Self::send_d_location_update_command(queue, issi, 0, true);
                 // Confirmed gone: the terminal ignored the first COMMAND through the whole grace
                 // period. NOW tear it down everywhere — Brew backhaul, the dashboard, and the local
                 // subscriber registry — but keep it in client_mgr so its groups survive for
@@ -2163,7 +2194,7 @@ impl TetraEntityTrait for MmBs {
                 .client_mgr
                 .should_send_t351_command_now(issi, ts, interval_secs, T351_EE_WINDOW_WAIT_SECS)
             {
-                Self::send_d_location_update_command(queue, issi, 0);
+                Self::send_d_location_update_command(queue, issi, 0, true);
                 self.client_mgr.set_pending_command(issi, 60);
             }
         }
@@ -2246,7 +2277,7 @@ impl TetraEntityTrait for MmBs {
                             // always 0 anyway. The COMMAND reaches the camped radio by its ISSI.
                             // (NB: this means whatever makes FH-BUG-028 vendor-specific is NOT the
                             // handle — that root cause is still open.)
-                            Self::send_d_location_update_command(queue, issi, 0);
+                            Self::send_d_location_update_command(queue, issi, 0, true);
                             let groups: Vec<u32> = self
                                 .client_mgr
                                 .get_client_by_issi(issi)
@@ -2299,7 +2330,7 @@ impl MmBs {
             // last_handle != 0, which is never true, so no MS was ever re-registered after a
             // Brew reconnect — the cause of "PTT denied after the backhaul blips".
             tracing::debug!("mm_bs: re-registering ISSI {}", issi);
-            Self::send_d_location_update_command(queue, issi, 0);
+            Self::send_d_location_update_command(queue, issi, 0, true);
         }
     }
 }
@@ -2375,11 +2406,7 @@ mod ee_tests {
     #[test]
     fn ai_v2_itsi_attach_keeps_itsi_attach_accept_type_even_with_retained_client_state() {
         assert_eq!(
-            MmBs::select_location_update_accept_type(
-                LocationUpdateType::ItsiAttach,
-                3600,
-                true,
-            ),
+            MmBs::select_location_update_accept_type(LocationUpdateType::ItsiAttach, 3600, true,),
             LocationUpdateType::ItsiAttach
         );
     }
@@ -2400,13 +2427,8 @@ mod ee_tests {
     #[test]
     fn periodic_registration_disabled_preserves_requested_type() {
         assert_eq!(
-            MmBs::select_location_update_accept_type(
-                LocationUpdateType::RoamingLocationUpdating,
-                0,
-                true,
-            ),
+            MmBs::select_location_update_accept_type(LocationUpdateType::RoamingLocationUpdating, 0, true,),
             LocationUpdateType::RoamingLocationUpdating
         );
     }
-
 }

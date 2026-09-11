@@ -47,7 +47,6 @@ pub enum MmClientState {
     Detached,
 }
 
-
 #[derive(Debug, Clone)]
 // Was: Bündelt die zusammengehörigen Werte für Mobilitätsverwaltung client Mobilität Kontext in einem Datentyp.
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
@@ -100,6 +99,11 @@ pub struct MmClientProperties {
     /// Terminal Equipment Identity (60-bit hardware ID, like IMEI).
     /// Set when the MS sends U-TEI-PROVIDE. None if not yet received.
     pub tei: Option<u64>,
+    /// One-shot guard for the post-ITSI-attach fast-settle procedure.
+    /// Set after the first successful group affiliation following a fresh registration so
+    /// we can provoke the terminal's final MM update immediately instead of waiting for
+    /// its vendor timer (observed ~34 s on ISSI 5102).
+    pub initial_fast_settle_sent: bool,
     /// True after BS sends D-LOCATION-UPDATE-COMMAND at T351 expiry.
     /// If the terminal re-registers, this is cleared. If T351 expires again
     /// while this is still true, the terminal is silently removed (no response).
@@ -124,6 +128,7 @@ impl MmClientProperties {
             monitoring_multiframe: None,
             last_rssi: None,
             last_uplink_time: std::time::Instant::now(),
+            initial_fast_settle_sent: false,
             pending_command_sent: false,
             grace_expires_at: None,
             last_registration_time: std::time::Instant::now(),
@@ -275,6 +280,13 @@ impl MmClientMgr {
             client.last_registration_time = std::time::Instant::now();
             client.pending_command_sent = false;
             client.grace_expires_at = None;
+        }
+    }
+
+    /// Mark the one-shot post-attach fast-settle command as sent.
+    pub fn mark_initial_fast_settle_sent(&mut self, issi: u32) {
+        if let Some(client) = self.clients.get_mut(&issi) {
+            client.initial_fast_settle_sent = true;
         }
     }
 
@@ -452,7 +464,6 @@ impl MmClientMgr {
             client.last_handle = handle;
         }
     }
-
 
     /// Export a subscriber context for forward registration or migration.
     // Was: Führt den Arbeitsschritt `export_mobility_context` für export Mobilität Kontext aus.
