@@ -1,0 +1,25 @@
+name: PHY slotter regression tests
+
+on:
+  pull_request:
+    branches: [mqtt]
+    paths:
+      - crates/tetra-entities/src/phy/components/slotter.rs
+      - .github/workflows/phy-slotter-tests.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  slotter:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsoapysdr-dev libgsm1-dev pkg-config
+      - name: Test downlink phase adjustment and burst vectors
+        run: cargo test -p tetra-entities --lib phy::components::slotter::tests:: -- --nocapture

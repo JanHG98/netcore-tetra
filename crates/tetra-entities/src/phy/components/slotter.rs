@@ -254,8 +254,6 @@ pub fn build_ndb(
 mod tests {
     use tetra_core::bitbuffer::BitBuffer;
 
-    use crate::phy::components::train_consts::*;
-
     use super::*;
 
     #[test]
@@ -263,6 +261,53 @@ mod tests {
         for (phase, bits) in [(-3, [1, 1]), (-1, [1, 0]), (1, [0, 0]), (3, [0, 1])] {
             let symbol = (bits[0] | (bits[1] << 1)) as usize;
             assert_eq!(BITS2PHASE[symbol], phase);
+            let actual_bits = PHASE2BITS.iter().find(|(value, _)| *value == phase).unwrap().1;
+            assert_eq!(actual_bits, bits, "incorrect inverse mapping for phase {phase}");
+        }
+    }
+
+    // Independent oracle from EN 300 392-2 Table 5.1 and equation (9.14).
+    // Do not use the production lookup tables or phase-summing helper here.
+    fn assert_etsi_phase_balance(burst: &[u8], n1: usize, n2: usize, adjustment_bit: usize) {
+        let phase = |dibit: &[u8]| -> i32 {
+            match dibit {
+                [0, 0] => 1,
+                [1, 0] => -1,
+                [0, 1] => 3,
+                [1, 1] => -3,
+                _ => panic!("invalid dibit: {dibit:?}"),
+            }
+        };
+        let sum: i32 = burst[2 * (n1 - 1)..2 * n2].chunks_exact(2).map(phase).sum();
+        let adjustment = phase(&burst[adjustment_bit..adjustment_bit + 2]);
+        assert_eq!(
+            (sum + adjustment).rem_euclid(8),
+            0,
+            "phase imbalance for symbols {n1}..={n2}: sum={sum}, adjustment={adjustment}"
+        );
+    }
+
+    #[test]
+    fn downlink_phase_adjustments_balance_etsi_windows() {
+        // Reproducible varied blocks exercise both sides of the training sequences.
+        let mut state = 0x1234_5678u32;
+        let mut next_bit = || {
+            state = state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+            (state >> 31) as u8
+        };
+        for _ in 0..32 {
+            let sb1 = std::array::from_fn(|_| next_bit());
+            let bbk = std::array::from_fn(|_| next_bit());
+            let blk1 = std::array::from_fn(|_| next_bit());
+            let blk2 = std::array::from_fn(|_| next_bit());
+            let sdb = build_sdb(&sb1, &bbk, &blk2);
+            assert_etsi_phase_balance(&sdb, 8, 108, 12);
+            assert_etsi_phase_balance(&sdb, 109, 249, 498);
+            for training in [TrainingSequence::NormalTrainSeq1, TrainingSequence::NormalTrainSeq2] {
+                let ndb = build_ndb(training, &blk1, &bbk, &blk2);
+                assert_etsi_phase_balance(&ndb, 8, 122, 12);
+                assert_etsi_phase_balance(&ndb, 123, 249, 498);
+            }
         }
     }
 
@@ -304,7 +349,9 @@ mod tests {
         let blk1 =
             "010011110111010011010000110111101111101110111111100101011010011001000011011011101011011101101010001000101101011000101111";
         let blk2 = "011001100001110100100001100000110010110010110110000111010101000111001011000111001011110010000011010010111110000110011011000100110011011010001101011100110000001100111101100000101111010000010110110011100001110001101011";
-        let expected_burst = "000110101101011111111100000000000000000000000000000000000000000000000000000000000000001111111101001111011101001101000011011110111110111011111110010101101001100100001101101110101101110110101000100010110101100010111111000001100111001110100111000001100111001010010110101111111110100100011001100001110100100001100000110010110010110110000111010101000111001011000111001011110010000011010010111110000110011011000100110011011010001101011100110000001100111101100000101111010000010110110011100001110001101011101011011100";
+        // Table 9.15 windows sum to -15*pi/4 (HC) and -pi/4 (HD).
+        // Their corrections are therefore -pi/4 (10) and +pi/4 (00), modulo 2*pi.
+        let expected_burst = "000110101101101111111100000000000000000000000000000000000000000000000000000000000000001111111101001111011101001101000011011110111110111011111110010101101001100100001101101110101101110110101000100010110101100010111111000001100111001110100111000001100111001010010110101111111110100100011001100001110100100001100000110010110010110110000111010101000111001011000111001011110010000011010010111110000110011011000100110011011010001101011100110000001100111101100000101111010000010110110011100001110001101011001011011100";
 
         let bbk = BitBuffer::from_bitstr(bbk).into_bitvec();
         let blk1 = BitBuffer::from_bitstr(blk1).into_bitvec();
