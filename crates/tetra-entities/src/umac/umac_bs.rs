@@ -251,8 +251,12 @@ impl UmacBs {
             sdstl_addressing_method: 2,
             gck_supported: false,
             section: 0,
-            // Extended-services section 0, bit 6 advertises the packet-data/WAP profile.
-            section_data: if wap_profile { 0x40 } else { 0 },
+            // ETSI EN 300 392-2 table 21.68 defines section-1 bit 6 as
+            // "data priority supported", not as a WAP/SNDCP indication. UMAC does
+            // not provide that cell-level capability, so advertise all section-1
+            // capabilities as unavailable. SNDCP remains advertised independently
+            // in the BS service details above.
+            section_data: 0,
         };
 
         let def_access = SysinfoDefaultDefForAccessCodeA {
