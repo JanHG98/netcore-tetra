@@ -398,6 +398,14 @@ impl UmacBs {
             min_pdu_prio: 0,
         };
 
+        // In a single-cell lab with no configured CA neighbours there is nowhere useful
+        // to reselect to. A short RADIO_DOWNLINK_TIMEOUT can make real terminals
+        // repeatedly drop/reacquire the same serving cell after a handful of missed AACH
+        // decodes, which MM then reports as RoamingLocationUpdating. ETSI EN 300 392-2
+        // table 21.65 explicitly defines 0000 as "disable radio downlink counter".
+        // Keep the normal watchdog once neighbour cells exist.
+        let radio_dl_timeout = if c.cell.neighbor_cells_ca.is_empty() { 0 } else { 3 };
+
         let sysinfo1 = MacSysinfo {
             main_carrier: c.cell.main_carrier,
             freq_band: c.cell.freq_band,
@@ -412,7 +420,7 @@ impl UmacBs {
             ms_txpwr_max_cell: c.cell.ms_txpwr_max_cell,
             rxlev_access_min: 3, // -110 dBm (permissive, suitable for single-cell)
             access_parameter: 7, // -39 dBm (MS open-loop power control setpoint)
-            radio_dl_timeout: 3, // 432 timeslots (~6s radio link timeout)
+            radio_dl_timeout, // 0 = disabled for single-cell; 3 = 432 timeslots when neighbours exist
             cck_id: None,
             hyperframe_number: Some(0), // Updated dynamically in scheduler
             option_field: SysinfoOptFieldFlag::DefaultDefForAccCodeA,
@@ -464,11 +472,13 @@ impl UmacBs {
         // A radio that wants advanced-link packet data (class_of_ms.original_advanced_link=1) needs
         // BOTH sndcp_service AND advanced_link advertised, or it won't start the SNDCP procedure.
         tracing::info!(
-            "SYSINFO advertising: sndcp_service={} advanced_link={} voice_service={} circuit_mode_data={}",
+            "SYSINFO advertising: sndcp_service={} advanced_link={} voice_service={} circuit_mode_data={} radio_dl_timeout={} neighbours={}",
             wap_profile,
             c.cell.advanced_link,
             c.cell.voice_service,
-            c.cell.circuit_mode_data_service
+            c.cell.circuit_mode_data_service,
+            radio_dl_timeout,
+            c.cell.neighbor_cells_ca.len()
         );
 
         let mac_sync_pdu = MacSync {
