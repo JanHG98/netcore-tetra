@@ -281,6 +281,9 @@ impl StackConfig {
         if self.cell.ms_txpwr_max_cell > 7 {
             return Err("ms_txpwr_max_cell must be 0-7 (3 bits)");
         }
+        if self.cell.neighbor_cell_broadcast > 3 {
+            return Err("neighbor_cell_broadcast must be 0-3 (2 bits)");
+        }
 
         // SNDCP can expose the local WAP endpoint, the general Linux IP gateway,
         // or both. Capability advertisement and runtime enablement must agree.
