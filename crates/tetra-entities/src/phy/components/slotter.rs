@@ -104,11 +104,11 @@ const PHASE2BITS: [(i8, [u8; 2]); 6] = [
     /* -3 */ (-3, [1, 1]),
     /* -2 unused */
     (0, [0, 0]),
-    /* -1 */ (-1, [0, 1]),
+    /* -1 */ (-1, [1, 0]),
     /*  0 unused */
     (0, [0, 0]),
     /* +1 */ (1, [0, 0]),
-    /* +3 */ (3, [1, 0]),
+    /* +3 */ (3, [0, 1]),
 ];
 
 /// sum up the phases for a window of symbols;  
@@ -259,6 +259,14 @@ mod tests {
     use super::*;
 
     #[test]
+    fn phase_adjustment_dibits_follow_etsi_table_5_1() {
+        for (phase, bits) in [(-3, [1, 1]), (-1, [1, 0]), (1, [0, 0]), (3, [0, 1])] {
+            let symbol = (bits[0] | (bits[1] << 1)) as usize;
+            assert_eq!(BITS2PHASE[symbol], phase);
+        }
+    }
+
+    #[test]
     // Was: Prüft automatisch den Fall build sdb 1.
     // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
     fn test_build_sdb_1() {
@@ -272,19 +280,13 @@ mod tests {
         let blk1 = BitBuffer::from_bitstr(blk1).into_bitvec();
         let blk2 = BitBuffer::from_bitstr(blk2).into_bitvec();
         let expected_burst = BitBuffer::from_bitstr(expected_burst).into_bitvec();
-        let mut expected_burst: [u8; TIMESLOT_TYPE4_BITS] = expected_burst.try_into().unwrap();
+        let expected_burst: [u8; TIMESLOT_TYPE4_BITS] = expected_burst.try_into().unwrap();
 
-        let mut burst = build_sdb(
+        let burst = build_sdb(
             blk1.as_slice().try_into().unwrap(),
             bbk.as_slice().try_into().unwrap(),
             blk2.as_slice().try_into().unwrap(),
         );
-
-        tracing::warn!("WARNING: frequency correction bits are not properly computed and zeroed out for testing");
-        burst[12..14].copy_from_slice(&[0, 0]);
-        burst[498..500].copy_from_slice(&[0, 0]);
-        expected_burst[12..14].copy_from_slice(&[0, 0]);
-        expected_burst[498..500].copy_from_slice(&[0, 0]);
 
         assert!(
             burst == expected_burst,
@@ -308,19 +310,13 @@ mod tests {
         let blk1 = BitBuffer::from_bitstr(blk1).into_bitvec();
         let blk2 = BitBuffer::from_bitstr(blk2).into_bitvec();
         let expected_burst = BitBuffer::from_bitstr(expected_burst).into_bitvec();
-        let mut expected_burst: [u8; TIMESLOT_TYPE4_BITS] = expected_burst.try_into().unwrap();
+        let expected_burst: [u8; TIMESLOT_TYPE4_BITS] = expected_burst.try_into().unwrap();
 
-        let mut burst = build_sdb(
+        let burst = build_sdb(
             blk1.as_slice().try_into().unwrap(),
             bbk.as_slice().try_into().unwrap(),
             blk2.as_slice().try_into().unwrap(),
         );
-
-        tracing::warn!("WARNING: frequency correction bits are not properly computed and zeroed out for testing");
-        burst[12..14].copy_from_slice(&[0, 0]);
-        burst[498..500].copy_from_slice(&[0, 0]);
-        expected_burst[12..14].copy_from_slice(&[0, 0]);
-        expected_burst[498..500].copy_from_slice(&[0, 0]);
 
         assert!(
             burst == expected_burst,
