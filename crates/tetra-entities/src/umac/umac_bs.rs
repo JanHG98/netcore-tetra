@@ -230,14 +230,20 @@ impl UmacBs {
 
         // One predicate controls both the over-air advertisement and SNDCP runtime.
         let wap_profile = c.cell.wap_ip_sndcp_profile_enabled();
+        // The local WAP profile is currently clear-text packet data only.  Keep the
+        // security information in the extended-services SYSINFO consistent with the
+        // accompanying BS service details: ETSI EN 300 392-7 table A.104 requires the
+        // security-class bits and their conditional payload to be zero when AIE service
+        // is unavailable.
+        let aie_service = !wap_profile && c.cell.aie_service;
 
         // TODO FIXME make more/all parameters configurable
         let ext_services = SysinfoExtendedServices {
             auth_required: false,
-            class1_supported: true,
-            class2_supported: true,
+            class1_supported: aie_service,
+            class2_supported: aie_service,
             class3_supported: false,
-            sck_n: Some(0),
+            sck_n: aie_service.then_some(0),
             dck_retrieval_during_cell_select: None,
             dck_retrieval_during_cell_reselect: None,
             linked_gck_crypto_periods: None,
@@ -314,8 +320,7 @@ impl UmacBs {
                 voice_service: c.cell.voice_service,
                 circuit_mode_data_service: c.cell.circuit_mode_data_service,
                 sndcp_service: wap_profile,
-                // The local WAP profile is currently clear-text packet data only.
-                aie_service: if wap_profile { false } else { c.cell.aie_service },
+                aie_service,
                 advanced_link: c.cell.advanced_link,
             },
         };
@@ -324,11 +329,14 @@ impl UmacBs {
         // A radio that wants advanced-link packet data (class_of_ms.original_advanced_link=1) needs
         // BOTH sndcp_service AND advanced_link advertised, or it won't start the SNDCP procedure.
         tracing::info!(
-            "SYSINFO advertising: sndcp_service={} advanced_link={} voice_service={} circuit_mode_data={}",
+            "SYSINFO advertising: sndcp_service={} advanced_link={} voice_service={} circuit_mode_data={} aie_service={} security_class1={} security_class2={}",
             wap_profile,
             c.cell.advanced_link,
             c.cell.voice_service,
-            c.cell.circuit_mode_data_service
+            c.cell.circuit_mode_data_service,
+            aie_service,
+            aie_service,
+            aie_service
         );
 
         let mac_sync_pdu = MacSync {
