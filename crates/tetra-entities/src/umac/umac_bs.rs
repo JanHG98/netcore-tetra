@@ -790,13 +790,28 @@ impl UmacBs {
 
         let pdu = match MacAccess::from_bitbuf(&mut prim.pdu) {
             Ok(pdu) => {
-                tracing::debug!("<- {:?}", pdu);
+                tracing::debug!(
+                    carrier = prim.carrier_num,
+                    logical_channel = ?prim.logical_channel,
+                    block = ?prim.block_num,
+                    rssi_dbfs = prim.rssi_dbfs,
+                    "<- {:?}",
+                    pdu
+                );
                 pdu
             }
             Err(e) => {
                 // A candidate UL burst that isn't a valid MAC-ACCESS — typically a false-positive
                 // training-sequence detection or a noise-corrupted burst. Dropped; normal on RF.
-                tracing::debug!("Failed parsing MacAccess: {:?} {}", e, prim.pdu.dump_bin());
+                tracing::debug!(
+                    carrier = prim.carrier_num,
+                    logical_channel = ?prim.logical_channel,
+                    block = ?prim.block_num,
+                    rssi_dbfs = prim.rssi_dbfs,
+                    "Failed parsing MacAccess: {:?} {}",
+                    e,
+                    prim.pdu.dump_bin()
+                );
                 return;
             }
         };
