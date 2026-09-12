@@ -27,6 +27,21 @@ pub struct RxResult {
     pub count: SampleCount,
 }
 
+/// Cumulative asynchronous TX stream status reported by the SDR driver.
+///
+/// SoapySDR deliberately reports hardware underflows and timestamp errors via
+/// `readStreamStatus`, not via `writeStream`.  Keeping these counters separate
+/// from the software scheduler's late-block counters lets field logs distinguish
+/// a host scheduling gap from a device/DMA-side transmission gap.
+#[derive(Debug, Clone, Copy)]
+pub struct TxStatusCounters {
+    pub supported: bool,
+    pub events: u64,
+    pub underflows: u64,
+    pub time_errors: u64,
+    pub other_errors: u64,
+}
+
 // Was: Bündelt die zusammengehörigen Werte für soapy io in einem Datentyp.
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SoapyIo {
@@ -51,6 +66,12 @@ pub struct SoapyIo {
     rx: Option<soapysdr::RxStream<StreamType>>,
     /// Transmit stream. None if transmitting is disabled.
     tx: Option<soapysdr::TxStream<StreamType>>,
+    /// Whether the driver implements asynchronous TX status reporting.
+    tx_status_supported: bool,
+    tx_status_events: u64,
+    tx_status_underflows: u64,
+    tx_status_time_errors: u64,
+    tx_status_other_errors: u64,
 }
 
 /// Soapy/Lime timestamps can occasionally jitter by a single sample.
@@ -226,6 +247,7 @@ impl SoapyIo {
         if let Some(tx) = &mut tx {
             soapycheck!("activate TX stream", tx.activate(None));
         }
+        let tx_status_supported = tx.is_some();
         Ok(Self {
             rx_ch,
             tx_ch,
@@ -238,6 +260,11 @@ impl SoapyIo {
             dev,
             rx,
             tx,
+            tx_status_supported,
+            tx_status_events: 0,
+            tx_status_underflows: 0,
+            tx_status_time_errors: 0,
+            tx_status_other_errors: 0,
         })
     }
 
@@ -323,6 +350,78 @@ impl SoapyIo {
         } else {
             // TX is disabled
             Err(RxTxDevError::RxReadError)
+        }
+    }
+
+    /// Drain pending asynchronous TX status without blocking the PHY loop.
+    ///
+    /// A successful `write_all` only proves that samples entered the driver's
+    /// queue. Hardware underflows and late timestamps are delivered separately
+    /// through `TxStream::read_status`, so poll that queue at the existing
+    /// five-second continuity-report cadence. Drivers without this facility are
+    /// detected once and then left alone.
+    pub fn poll_tx_status(&mut self) -> TxStatusCounters {
+        if !self.tx_status_supported {
+            return self.tx_status_counters();
+        }
+
+        let Some(tx) = self.tx.as_mut() else {
+            self.tx_status_supported = false;
+            return self.tx_status_counters();
+        };
+
+        let mut events = 0_u64;
+        let mut underflows = 0_u64;
+        let mut time_errors = 0_u64;
+        let mut other_errors = 0_u64;
+        let mut supported = true;
+
+        // Bound the drain so a buggy driver cannot monopolize the real-time PHY loop.
+        for _ in 0..32 {
+            let mut chan_mask = 0_usize;
+            let mut flags = 0_i32;
+            let mut time_ns = 0_i64;
+            match tx.read_status(&mut chan_mask, &mut flags, &mut time_ns, 0) {
+                Ok(status) => {
+                    events += 1;
+                    tracing::debug!(status, chan_mask, flags, time_ns, "SoapySDR TX status event");
+                }
+                Err(err) if err.code == soapysdr::ErrorCode::Timeout => break,
+                Err(err) if err.code == soapysdr::ErrorCode::NotSupported => {
+                    supported = false;
+                    tracing::debug!("SoapySDR TX stream status is not supported by this driver");
+                    break;
+                }
+                Err(err) if err.code == soapysdr::ErrorCode::Underflow => {
+                    underflows += 1;
+                    tracing::warn!(chan_mask, flags, time_ns, error = %err, "SoapySDR TX hardware underflow");
+                }
+                Err(err) if err.code == soapysdr::ErrorCode::TimeError => {
+                    time_errors += 1;
+                    tracing::warn!(chan_mask, flags, time_ns, error = %err, "SoapySDR TX hardware time error");
+                }
+                Err(err) => {
+                    other_errors += 1;
+                    tracing::warn!(chan_mask, flags, time_ns, error = %err, "SoapySDR TX stream status error");
+                }
+            }
+        }
+
+        self.tx_status_supported = supported;
+        self.tx_status_events = self.tx_status_events.saturating_add(events);
+        self.tx_status_underflows = self.tx_status_underflows.saturating_add(underflows);
+        self.tx_status_time_errors = self.tx_status_time_errors.saturating_add(time_errors);
+        self.tx_status_other_errors = self.tx_status_other_errors.saturating_add(other_errors);
+        self.tx_status_counters()
+    }
+
+    fn tx_status_counters(&self) -> TxStatusCounters {
+        TxStatusCounters {
+            supported: self.tx_status_supported,
+            events: self.tx_status_events,
+            underflows: self.tx_status_underflows,
+            time_errors: self.tx_status_time_errors,
+            other_errors: self.tx_status_other_errors,
         }
     }
 
