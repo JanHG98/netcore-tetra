@@ -275,7 +275,7 @@ advanced_link              = true  # required for the terminal-browser WAP/IP pr
 # ─────────────────────────────────────────────────────────────────────────────
 # OPTIONAL: SYNC / low-level cell parameters. Defaults are fine for nearly all
 # deployments — only touch these if you understand the ETSI MAC/MLE fields.
-# neighbor_cell_broadcast = 0       # 2-bit D-MLE-SYNC neighbor-cell broadcast mode (default 0)
+# neighbor_cell_broadcast = 0       # 0=none, 1=enquiry, 2=broadcast, 3=broadcast+enquiry
 # late_entry_supported    = false   # advertise late-entry support in D-MLE-SYNC (default false)
 # Was: Setzt die Einstellung `system_code` für cell info.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
