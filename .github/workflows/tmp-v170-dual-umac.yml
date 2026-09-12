@@ -1,0 +1,19 @@
+name: validate-v170-dual-umac
+on:
+  push:
+    branches: [mqtt-fix/restore-v170-dual-umac]
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Native deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsoapysdr-dev libgsm1-dev pkg-config
+      - name: Check tetra-entities
+        run: cargo check -p tetra-entities --lib
+      - name: Check basisstation
+        run: cargo check -p bluestation-bs
