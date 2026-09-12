@@ -105,15 +105,19 @@ impl UmacBs {
         let scrambling_code = scrambler::tetra_scramb_get_init(c.net.mcc, c.net.mnc, c.cell.colour_code);
         let system_wide_services = Self::get_system_wide_services_state(&config);
         let precomps = Self::generate_precomps(&config);
-        tracing::info!("UMAC dual-carrier logical-timeslot mapper v2.8 active (C2 TS1 control/guard, traffic TS5-TS7)");
+        tracing::info!("UMAC dual-carrier logical-timeslot mapper v2.9 active (C2 idle-silent traffic carrier, traffic TS5-TS7)");
         let mut secondary_channel_schedulers = Vec::new();
         if let Some(secondary_carrier) = c.cell.secondary_carrier {
             let mut sched = BsChannelScheduler::new(scrambling_code, precomps.clone());
             sched.set_carrier_num(secondary_carrier);
-            // Secondary carrier TS1 is reserved for control/guard signalling.
-            // Traffic bearers start at air TS2 (logical TS5) to avoid overloading
-            // radios with seven simultaneous traffic slots and no secondary guard.
-            sched.set_downlink_mode(CarrierDownlinkMode::SecondaryBcchNoMcch);
+            // EN 300 392-2 requires CA common SCCHs to live on the main carrier.
+            // Our SYSINFO advertises num_of_csch=0, so the secondary RF carrier must
+            // not emit an idle BSCH/BNCH/SYSINFO control stream of its own. Doing so
+            // makes an MS see a second control-bearing RF carrier that the serving
+            // cell never advertised and can trigger repeated normal/roaming registration.
+            // Keep C2 completely idle-silent until CMCE allocates one of its traffic
+            // bearers (logical TS5-TS7 => air TS2-TS4).
+            sched.set_downlink_mode(CarrierDownlinkMode::TrafficOnly);
             secondary_channel_schedulers.push(sched);
         }
         Self {
