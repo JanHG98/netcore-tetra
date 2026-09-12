@@ -344,14 +344,13 @@ impl UmacBs {
         let mle_sync_pdu = DMleSync {
             mcc: c.net.mcc,
             mnc: c.net.mnc,
-            // Per ETSI EN 300 392-2 Table 18.17:
-            // 0 = no broadcast, 1 = broadcast+enquiry, 2 = broadcast only, 3 = reserved
-            // Hardcoded to 2 (broadcast only) to match BlueStation v0.5.9 behavior —
-            // required for Motorola terminals (MXP600, MTM800E, MTM5400) to accept
-            // and display network time/date received via D-NWRK-BROADCAST.
-            // Driving this from config (c.cell.neighbor_cell_broadcast) caused a
-            // regression where missing config field → unwrap_or(0) → terminals ignore broadcast.
-            neighbor_cell_broadcast: 2,
+            // ETSI EN 300 392-2 Table 18.61 uses two independent support bits:
+            // bit 1 = D-NWRK-BROADCAST supported, bit 0 = U-PREPARE enquiry supported.
+            // Do not promise a neighbour-cell broadcast unconditionally. In particular, a
+            // single-cell test without D-NWRK-BROADCAST must advertise 0 so the MS does not wait
+            // for neighbour information that can never arrive. Operators that intentionally
+            // broadcast neighbour information can select 2; 3 additionally advertises enquiry.
+            neighbor_cell_broadcast: c.cell.neighbor_cell_broadcast,
             cell_load_ca: 0, // TODO implement dynamic setting. 0 = info unavailable
             late_entry_supported: c.cell.late_entry_supported,
         };
