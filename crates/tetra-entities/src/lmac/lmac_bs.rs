@@ -250,7 +250,13 @@ impl LmacBs {
 
     // Was: Führt den Arbeitsschritt `rx_blk_control` für rx blk Steuerung aus.
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    fn rx_blk_control(&mut self, queue: &mut MessageQueue, blk: TpUnitdataInd, lchan: LogicalChannel) {
+    fn rx_blk_control(
+        &mut self,
+        queue: &mut MessageQueue,
+        blk: TpUnitdataInd,
+        lchan: LogicalChannel,
+        ul_time: TdmaTime,
+    ) {
         // AACH is a control channel but uses a completely different decode path
         // (decode_aach); decode_cp() below explicitly rejects it. Guard here so a future
         // routing change that sends AACH this way logs and drops instead of panicking.
@@ -279,7 +285,16 @@ impl LmacBs {
         //     if crc_pass { "ok" } else { "WRONG" },
         //     type1bits
         // );
-        tracing::debug!("rx_blk_cp {:?} CRC: {}", lchan, if crc_pass { "ok" } else { "WRONG" });
+        tracing::debug!(
+            carrier = carrier_num,
+            ul_time = %ul_time,
+            air_ts = ul_time.t,
+            logical_channel = ?lchan,
+            block = ?block_num,
+            rssi_dbfs = rssi_dbfs,
+            crc = if crc_pass { "ok" } else { "WRONG" },
+            "LMAC: decoded uplink control block"
+        );
 
         // TODO FIXME, for now, we're not passing broken CRC msgs up to Lmac
         // If we see purpose, we may pass it up in the future
@@ -368,7 +383,7 @@ impl LmacBs {
                 self.rx_blk_traffic(queue, prim, lchan, msg_dltime)
             }
             LogicalChannel::SchF | LogicalChannel::SchHu | LogicalChannel::Stch => {
-                self.rx_blk_control(queue, prim, lchan);
+                self.rx_blk_control(queue, prim, lchan, msg_dltime);
             }
             _ => {
                 tracing::error!("BUG: unexpected message or state -- routing error");
