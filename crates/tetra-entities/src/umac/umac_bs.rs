@@ -517,13 +517,23 @@ impl UmacBs {
         if is_effective != self.system_wide_services {
             self.system_wide_services = is_effective;
             self.channel_scheduler.set_system_wide_services_state(is_effective);
-            // Secondary carriers are traffic-only in the current NetCore dual-carrier
-            // profile. Do not mirror system-wide-service changes there; otherwise the
-            // secondary scheduler may advertise BCCH/SYSINFO-like control state even
-            // though random access/common control is intentionally main-carrier only.
 
-            // Should already be signalled at SwMI interface level
-            tracing::debug!("UmacBs: system_wide_services {}", if is_effective { "ENABLED" } else { "DISABLED" });
+            // SecondaryBcchNoMcch is not traffic-only: its TS1 continues to transmit
+            // BSCH/BNCH/SYSINFO. Keep the serving-cell service state identical on every
+            // carrier belonging to this BS. Otherwise a secondary scheduler created while
+            // Brew is still disconnected keeps advertising system_wide_services=false even
+            // after the primary flips to true. An MS scanning that carrier can then treat
+            // the same physical cell as temporarily lacking system-wide services and trigger
+            // another normal/roaming registration.
+            for scheduler in &mut self.secondary_channel_schedulers {
+                scheduler.set_system_wide_services_state(is_effective);
+            }
+
+            tracing::debug!(
+                "UmacBs: system_wide_services {} synchronized across {} RF carrier scheduler(s)",
+                if is_effective { "ENABLED" } else { "DISABLED" },
+                1 + self.secondary_channel_schedulers.len()
+            );
         }
     }
 
