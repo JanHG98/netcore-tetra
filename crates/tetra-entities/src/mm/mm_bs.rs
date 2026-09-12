@@ -185,7 +185,7 @@ impl MmBs {
                 continue;
             }
             // handle = 0: addressed by ISSI on the MCCH (see send_d_location_update_command).
-            Self::send_d_location_update_command(queue, issi, 0, true);
+            Self::send_d_location_update_command(queue, issi, 0);
             self.recovery_attempts.insert(issi, attempts + 1);
             self.recovery_pending.push_back(issi); // round-robin until it answers or we give up
         }
@@ -267,7 +267,7 @@ impl MmBs {
             issi
         );
         // handle = 0: addressed by ISSI on the MCCH (see send_d_location_update_command).
-        Self::send_d_location_update_command(queue, issi, 0, true);
+        Self::send_d_location_update_command(queue, issi, 0);
     }
 
     /// Force CMCE to release any individual P2P calls involving the given ISSI,
@@ -367,11 +367,7 @@ impl MmBs {
         }
 
         // Always emit an update to the CMCE entity.
-        let mm_update = MmSubscriberUpdate {
-            issi,
-            groups: groups.clone(),
-            action,
-        };
+        let mm_update = MmSubscriberUpdate { issi, groups: groups.clone(), action };
         queue.push_back(SapMsg {
             sap: Sap::Control,
             src: TetraEntity::Mm,
@@ -382,7 +378,9 @@ impl MmBs {
         // SNDCP owns subscriber-scoped PDP contexts and radio resources. Forward
         // registration lifecycle events so an explicit detach/T351 drop releases
         // those resources immediately instead of waiting for the STANDBY timer.
-        if self.config.config().cell.sndcp_service && matches!(action, BrewSubscriberAction::Register | BrewSubscriberAction::Deregister) {
+        if self.config.config().cell.sndcp_service
+            && matches!(action, BrewSubscriberAction::Register | BrewSubscriberAction::Deregister)
+        {
             queue.push_back(SapMsg {
                 sap: Sap::Control,
                 src: TetraEntity::Mm,
@@ -508,9 +506,14 @@ impl MmBs {
             .client_mgr
             .get_client_by_issi(prim.received_address.ssi)
             .map(|c| c.energy_saving_mode);
-        let effective_esm_request = pdu.energy_saving_mode.or(prior_esm);
-
-        let esi = effective_esm_request.map(|esm| Self::grant_energy_saving(prim.received_address.ssi, esm));
+        // Keep the first successful Location Update ACCEPT consistent with the MM state.
+        // If the MS did not request energy economy, we operate it as StayAlive and must say so
+        // explicitly on the air instead of only storing that decision locally.
+        let esi = Some(Self::registration_energy_saving_information(
+            prim.received_address.ssi,
+            pdu.energy_saving_mode,
+            prior_esm,
+        ));
 
         // Try to register the client
         let issi = prim.received_address.ssi;
@@ -840,10 +843,12 @@ impl MmBs {
             None
         };
 
-        // v1.7.0 air-interface compatibility. AIv2/common-SCCH terminals
-        // are acknowledged with the same Location Update type they requested.
-        // This is intentionally kept independent from the newer central-core plumbing.
-        let hytera_periodic_accept_compat = pdu
+        // Some AIv2/common-SCCH terminals require the initial ITSI attach to be
+        // acknowledged as ITSI attach. Keep that compatibility deliberately narrow:
+        // mirroring later RoamingLocationUpdating requests can trap the terminal in MM
+        // re-registration, so PTT is rejected locally before CMCE ever sees U-SETUP.
+        // ClassOfMs is not Copy, so inspect it before moving it into client_mgr.
+        let initial_attach_accept_compat = pdu
             .class_of_ms
             .as_ref()
             .map(|class| class.common_scch && class.air_interface_version >= 2)
@@ -858,19 +863,38 @@ impl MmBs {
         // Registration / affiliation / EE state changed — persist for restart recovery (debounced).
         self.recovery_mark_dirty();
 
+        // Settle successful registration into a stable MM state. AIv2/common-SCCH
+        // compatibility applies only to the initial ITSI attach. Once the subscriber is known,
+        // a roaming refresh is acknowledged as PeriodicLocationUpdating whenever periodic
+        // registration is enabled. This closes the REREG loop before the user presses PTT.
         let periodic_secs = self.config.config().cell.periodic_registration_secs;
-        let accept_type = if periodic_secs > 0 && !hytera_periodic_accept_compat {
-            LocationUpdateType::PeriodicLocationUpdating
-        } else {
-            if periodic_secs > 0 && hytera_periodic_accept_compat {
-                tracing::debug!(
-                    "MM: ISSI {} uses AIv2/common-SCCH; mirroring {:?} in D-LOCATION-UPDATE-ACCEPT instead of forcing PeriodicLocationUpdating (v1.7.0 compatibility)",
-                    issi,
-                    pdu.location_update_type
-                );
-            }
-            pdu.location_update_type
-        };
+        let accept_type = Self::select_location_update_accept_type(
+            pdu.location_update_type,
+            periodic_secs,
+            initial_attach_accept_compat,
+        );
+        if periodic_secs > 0
+            && initial_attach_accept_compat
+            && pdu.location_update_type == LocationUpdateType::ItsiAttach
+        {
+            tracing::debug!(
+                "MM: ISSI {} initial AIv2/common-SCCH ITSI attach acknowledged as ITSI attach",
+                issi
+            );
+        } else if periodic_secs > 0
+            && !is_new
+            && matches!(
+                pdu.location_update_type,
+                LocationUpdateType::RoamingLocationUpdating
+                    | LocationUpdateType::ServiceRestorationRoamingLocationUpdating
+            )
+            && accept_type == LocationUpdateType::PeriodicLocationUpdating
+        {
+            tracing::info!(
+                "MM: ISSI {} known roaming refresh settled as PeriodicLocationUpdating to prevent re-registration loop",
+                issi
+            );
+        }
 
         // Build D-LOCATION UPDATE ACCEPT pdu
         let pdu_response = DLocationUpdateAccept {
@@ -935,7 +959,7 @@ impl MmBs {
         let has_groups = _has_groups;
         if is_new && pdu.location_update_type != LocationUpdateType::ItsiAttach && !has_groups {
             tracing::info!("Sending D-LOCATION UPDATE COMMAND to returning MS {} to request group report", issi);
-            Self::send_d_location_update_command(queue, issi, handle, true);
+            Self::send_d_location_update_command(queue, issi, handle);
         }
     }
 
@@ -975,16 +999,6 @@ impl MmBs {
     ) -> LocationUpdateType {
         if periodic_secs == 0 {
             return requested;
-        }
-
-        // Infrastructure-initiated registration is its own MM transaction:
-        // D-LOCATION-UPDATE-COMMAND -> U-LOCATION-UPDATE-DEMAND(DemandLocationUpdating)
-        // -> D-LOCATION-UPDATE-ACCEPT(DemandLocationUpdating). Do not rewrite that final ACCEPT
-        // to PeriodicLocationUpdating just because T351-style periodic registration is enabled.
-        // Some terminals otherwise keep the service locally unavailable and continue roaming
-        // refreshes even though the SwMI already considers them registered.
-        if requested == LocationUpdateType::DemandLocationUpdating {
-            return LocationUpdateType::DemandLocationUpdating;
         }
 
         // A retained client record does not mean this is not a genuine fresh attach:
@@ -1747,9 +1761,9 @@ impl MmBs {
         }
     }
 
-    fn send_d_location_update_command(queue: &mut MessageQueue, issi: u32, handle: u32, group_identity_report: bool) {
+    fn send_d_location_update_command(queue: &mut MessageQueue, issi: u32, handle: u32) {
         let pdu = DLocationUpdateCommand {
-            group_identity_report,
+            group_identity_report: true,
             cipher_control: false,
             ciphering_parameters: None,
             address_extension: None,
@@ -2065,7 +2079,7 @@ impl TetraEntityTrait for MmBs {
                     "MM: ISSI {} still unresponsive — re-attracting and keeping groups (no REJECT, no removal)",
                     issi
                 );
-                Self::send_d_location_update_command(queue, issi, 0, true);
+                Self::send_d_location_update_command(queue, issi, 0);
                 // Confirmed gone: the terminal ignored the first COMMAND through the whole grace
                 // period. NOW tear it down everywhere — Brew backhaul, the dashboard, and the local
                 // subscriber registry — but keep it in client_mgr so its groups survive for
@@ -2149,7 +2163,7 @@ impl TetraEntityTrait for MmBs {
                 .client_mgr
                 .should_send_t351_command_now(issi, ts, interval_secs, T351_EE_WINDOW_WAIT_SECS)
             {
-                Self::send_d_location_update_command(queue, issi, 0, true);
+                Self::send_d_location_update_command(queue, issi, 0);
                 self.client_mgr.set_pending_command(issi, 60);
             }
         }
@@ -2232,7 +2246,7 @@ impl TetraEntityTrait for MmBs {
                             // always 0 anyway. The COMMAND reaches the camped radio by its ISSI.
                             // (NB: this means whatever makes FH-BUG-028 vendor-specific is NOT the
                             // handle — that root cause is still open.)
-                            Self::send_d_location_update_command(queue, issi, 0, true);
+                            Self::send_d_location_update_command(queue, issi, 0);
                             let groups: Vec<u32> = self
                                 .client_mgr
                                 .get_client_by_issi(issi)
@@ -2285,7 +2299,7 @@ impl MmBs {
             // last_handle != 0, which is never true, so no MS was ever re-registered after a
             // Brew reconnect — the cause of "PTT denied after the backhaul blips".
             tracing::debug!("mm_bs: re-registering ISSI {}", issi);
-            Self::send_d_location_update_command(queue, issi, 0, true);
+            Self::send_d_location_update_command(queue, issi, 0);
         }
     }
 }
@@ -2361,7 +2375,11 @@ mod ee_tests {
     #[test]
     fn ai_v2_itsi_attach_keeps_itsi_attach_accept_type_even_with_retained_client_state() {
         assert_eq!(
-            MmBs::select_location_update_accept_type(LocationUpdateType::ItsiAttach, 3600, true,),
+            MmBs::select_location_update_accept_type(
+                LocationUpdateType::ItsiAttach,
+                3600,
+                true,
+            ),
             LocationUpdateType::ItsiAttach
         );
     }
@@ -2382,8 +2400,13 @@ mod ee_tests {
     #[test]
     fn periodic_registration_disabled_preserves_requested_type() {
         assert_eq!(
-            MmBs::select_location_update_accept_type(LocationUpdateType::RoamingLocationUpdating, 0, true,),
+            MmBs::select_location_update_accept_type(
+                LocationUpdateType::RoamingLocationUpdating,
+                0,
+                true,
+            ),
             LocationUpdateType::RoamingLocationUpdating
         );
     }
+
 }
