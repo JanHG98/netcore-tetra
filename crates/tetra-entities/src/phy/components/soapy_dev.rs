@@ -442,6 +442,10 @@ struct TxDsp {
     fcfb: fcfb::SynthesisOutputProcessor,
     block_count: fcfb::BlockCount,
     initial_time: i64,
+    continuity_report_interval_blocks: fcfb::BlockCount,
+    next_continuity_report_block: fcfb::BlockCount,
+    late_skip_events: u64,
+    late_skipped_blocks: u64,
     modulators: Vec<ModulatorChannel>,
     monitor: Option<TxSignalMonitor>,
     /// Scratch buffer reused for cloning the fcfb output when the TX monitor
@@ -465,6 +469,8 @@ impl TxDsp {
         };
 
         let fcfb = fcfb::SynthesisOutputProcessor::new(fft_planner, fcfb_params);
+        let continuity_report_interval_blocks =
+            ((sdr_sample_rate * 5.0) / fcfb.output_block_size() as f64).round().max(1.0) as fcfb::BlockCount;
 
         let mut modulators = Vec::<ModulatorChannel>::new();
         // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
@@ -480,6 +486,10 @@ impl TxDsp {
             fcfb,
             block_count: 0,
             initial_time: 0, // TODO: get it from RX
+            continuity_report_interval_blocks,
+            next_continuity_report_block: continuity_report_interval_blocks,
+            late_skip_events: 0,
+            late_skipped_blocks: 0,
             modulators,
             monitor,
             tx_signal_scratch: Vec::new(),
@@ -503,12 +513,34 @@ impl TxDsp {
         let dmin = 2; // how many blocks in future minimum
         if d < dmin {
             let new_block_count = current_block + dmin;
+            let skipped_blocks = new_block_count - self.block_count;
+            self.late_skip_events += 1;
+            self.late_skipped_blocks = self.late_skipped_blocks.saturating_add(skipped_blocks.max(0) as u64);
             tracing::warn!(
                 "Too late to produce TX block {}, skipping {} TX blocks",
                 self.block_count,
-                new_block_count - self.block_count
+                skipped_blocks
             );
             self.block_count = new_block_count;
+        }
+
+        // A radio-side REREG can be caused by a short serving-cell downlink gap even when
+        // MAC/MM continue to look healthy. Report the actual SDR timeline every five seconds
+        // so field logs prove whether TX stayed ahead of hardware time between attach and
+        // REREG. The existing warning remains the per-event detail; these cumulative counters
+        // make absence of an omitted or throttled warning explicit.
+        if self.block_count >= self.next_continuity_report_block {
+            tracing::info!(
+                tx_block = self.block_count,
+                hw_block = current_block,
+                lead_blocks = self.block_count - current_block,
+                late_skip_events = self.late_skip_events,
+                late_skipped_blocks = self.late_skipped_blocks,
+                "TX continuity"
+            );
+            while self.next_continuity_report_block <= self.block_count {
+                self.next_continuity_report_block += self.continuity_report_interval_blocks;
+            }
         }
         // Limit how far into future TX blocks are generated
         let dmax = 60;
