@@ -26,7 +26,10 @@ use crate::{
         CoreServiceHealthLevel, CoreServicesSnapshot, NodeTelemetryEnvelope,
         NodeToControlRoomMessage,
     },
-    net_media::{MediaDownlinkSink, MediaTryRecvError, MediaUplinkFrame, MediaUplinkSource},
+    net_media::{
+        LocalMediaUplinkFrame, MediaDownlinkSink, MediaTryRecvError, MediaUplinkFrame,
+        MediaUplinkSource,
+    },
     net_telemetry::{TelemetryEvent, TelemetrySource, channel::RecvEvent},
     network::transports::NetworkTransport,
 };
@@ -309,22 +312,22 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
     // Was: Diese Funktion arbeitet Audio- und Mediendaten Uplink (Funkgerät zum Netz).
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn drain_media_uplink(&mut self) {
-        let mut frames = Vec::new();
-        if let Some(source) = self.media_uplink_source.as_ref() {
-            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
-            for _ in 0..64 {
-                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
-                match source.try_recv() {
-                    Ok(frame) => frames.push(frame),
-                    Err(MediaTryRecvError::Empty) => break,
-                    Err(MediaTryRecvError::Disconnected) => {
-                        tracing::warn!("ControlRoom media uplink queue disconnected");
-                        break;
-                    }
-                }
-            }
+        let (frames, disconnected) = self
+            .media_uplink_source
+            .as_ref()
+            .map(Self::read_media_uplink)
+            .unwrap_or_default();
+
+        if disconnected {
+            // A disconnected receiver never reconnects. Keeping it installed would hit this
+            // branch on every 10 ms worker poll and flood journald from inside the TBS process.
+            // In v1.7 RF compatibility mode this happens immediately because UMAC deliberately
+            // drops the unused media sink. Retire the dead source after one notice; control and
+            // telemetry stay connected and local RF operation is unaffected.
+            self.media_uplink_source = None;
+            tracing::warn!(
+                "ControlRoom media uplink queue disconnected; disabling local media uplink until service restart"
+            );
         }
 
         // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
@@ -345,6 +348,21 @@ impl<T: NetworkTransport> ControlRoomWorker<T> {
                 break;
             }
         }
+    }
+
+    /// Drain one bounded media batch and report whether the producer is gone permanently.
+    /// `Disconnected` stays distinct from `Empty`: an empty live queue is polled again, while a
+    /// disconnected queue must be retired to avoid a hot poll/log loop.
+    fn read_media_uplink(source: &MediaUplinkSource) -> (Vec<LocalMediaUplinkFrame>, bool) {
+        let mut frames = Vec::new();
+        for _ in 0..64 {
+            match source.try_recv() {
+                Ok(frame) => frames.push(frame),
+                Err(MediaTryRecvError::Empty) => return (frames, false),
+                Err(MediaTryRecvError::Disconnected) => return (frames, true),
+            }
+        }
+        (frames, false)
     }
 
     // Was: Diese Funktion fragt Downlink (Netz zum Funkgerät).
@@ -879,6 +897,31 @@ fn now_iso() -> String {
 // Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
+    use crate::net_media::media_bridge_channel;
+
+    #[test]
+    fn disconnected_media_uplink_is_detected_after_queued_frames_are_drained() {
+        let (uplink_sink, uplink_source, _downlink_sink, _downlink_source) =
+            media_bridge_channel(16);
+
+        uplink_sink
+            .try_send(LocalMediaUplinkFrame {
+                sequence: 1,
+                carrier_num: 720,
+                logical_ts: 1,
+                codec: crate::net_media::MediaCodec::TetraAcelp0,
+                payload: vec![0; crate::net_media::TETRA_ACELP_FRAME_BYTES],
+            })
+            .expect("test media frame should be queued");
+        drop(uplink_sink);
+
+        let (frames, disconnected) = ControlRoomWorker::<
+            crate::network::transports::mock::MockTransport,
+        >::read_media_uplink(&uplink_source);
+
+        assert_eq!(frames.len(), 1);
+        assert!(disconnected);
+    }
 
     #[test]
     // Was: Führt den Arbeitsschritt `routes_dgna_to_mm` für routes dgna to Mobilitätsverwaltung aus.
