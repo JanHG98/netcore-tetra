@@ -1758,6 +1758,44 @@ impl BsChannelScheduler {
             );
         }
 
+        // Emit the exact serving-cell broadcast state once per multiframe, at the mandatory
+        // BSCH slot. This INFO-level field diagnostic lets a hardware test correlate a radio's
+        // RoamingLocationUpdating with the over-air SYNC/SYSINFO values without enabling the
+        // otherwise extremely noisy per-timeslot trace logs.
+        if ts.is_mandatory_bsch() {
+            let sysinfo_variant = if ts.t % 2 == 1 {
+                &self.precomps.mac_sysinfo1
+            } else {
+                &self.precomps.mac_sysinfo2
+            };
+            let mut sync_bits = BitBuffer::new(60);
+            self.precomps.mac_sync.to_bitbuf(&mut sync_bits);
+            self.precomps.mle_sync.to_bitbuf(&mut sync_bits);
+            sync_bits.seek(0);
+
+            let mut sysinfo_bits = BitBuffer::new(124);
+            sysinfo_variant.to_bitbuf(&mut sysinfo_bits);
+            self.precomps.mle_sysinfo.to_bitbuf(&mut sysinfo_bits);
+            sysinfo_bits.seek(0);
+
+            tracing::info!(
+                carrier = self.carrier_num,
+                tx_time = %ts,
+                system_code = self.precomps.mac_sync.system_code,
+                colour_code = self.precomps.mac_sync.colour_code,
+                mcc = self.precomps.mle_sync.mcc,
+                mnc = self.precomps.mle_sync.mnc,
+                neighbour_broadcast = self.precomps.mle_sync.neighbor_cell_broadcast,
+                main_carrier = sysinfo_variant.main_carrier,
+                hyperframe = ?sysinfo_variant.hyperframe_number,
+                location_area = self.precomps.mle_sysinfo.location_area,
+                option = ?sysinfo_variant.option_field,
+                sync_bits = %sync_bits.dump_bin(),
+                sysinfo_bits = %sysinfo_bits.dump_bin(),
+                "DL serving-cell fingerprint"
+            );
+        }
+
         assert!(elem.bbk.is_some(), "BBK block is not set, this should not happen");
         assert!(elem.blk1.is_some(), "blk1 block is not set, this should not happen");
 
