@@ -530,12 +530,18 @@ impl TxDsp {
         // REREG. The existing warning remains the per-event detail; these cumulative counters
         // make absence of an omitted or throttled warning explicit.
         if self.block_count >= self.next_continuity_report_block {
+            let tx_status = sdr.poll_tx_status();
             tracing::info!(
                 tx_block = self.block_count,
                 hw_block = current_block,
                 lead_blocks = self.block_count - current_block,
                 late_skip_events = self.late_skip_events,
                 late_skipped_blocks = self.late_skipped_blocks,
+                hw_status_supported = tx_status.supported,
+                hw_status_events = tx_status.events,
+                hw_underflows = tx_status.underflows,
+                hw_time_errors = tx_status.time_errors,
+                hw_other_errors = tx_status.other_errors,
                 "TX continuity"
             );
             while self.next_continuity_report_block <= self.block_count {
