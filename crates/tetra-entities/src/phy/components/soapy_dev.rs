@@ -22,6 +22,10 @@ use super::fcfb;
 use super::modulator;
 use super::soapyio;
 
+#[cfg(test)]
+#[path = "soapy_dev_tests.rs"]
+mod tests;
+
 // Was: Bündelt die zusammengehörigen Werte für sdr Konfiguration in einem Datentyp.
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SdrConfig<'a> {
@@ -475,8 +479,9 @@ impl TxDsp {
         let mut modulators = Vec::<ModulatorChannel>::new();
         // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
         // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
-        for dl_freq in phy_config.bs_dl_frequencies {
-            modulators.push(ModulatorChannel::new(fft_planner, fcfb_params, *dl_freq, modulator::Mode::Dl));
+        assert_eq!(phy_config.bs_dl_frequencies.len(), phy_config.bs_carrier_numbers.len());
+        for (&dl_freq, &carrier_num) in phy_config.bs_dl_frequencies.iter().zip(phy_config.bs_carrier_numbers) {
+            modulators.push(ModulatorChannel::new(fft_planner, fcfb_params, dl_freq, carrier_num));
         }
 
         let monitor = telemetry
@@ -568,12 +573,8 @@ impl TxDsp {
             }
         }
 
-        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
-        for (modulator, tx_slot) in self.modulators.iter_mut().zip(tx_slot) {
-            if !modulator.process(&mut self.fcfb, self.block_count, tx_slot) {
-                return Ok(false);
-            }
+        if !modulate_tx_block(&mut self.fcfb, &mut self.modulators, self.block_count, tx_slot) {
+            return Ok(false);
         }
 
         // Cheap upfront check: if the TX monitor isn't due to emit yet, skip the
@@ -623,6 +624,41 @@ impl TxDsp {
 
         Ok(true)
     }
+}
+
+/// Fill every carrier up to the same SDR block boundary before mixing any of them.
+/// A block can straddle two TDMA slots: even when one carrier needs the next slot,
+/// the others must consume the remainder of the current slot before returning.
+fn modulate_tx_block(
+    fcfb: &mut fcfb::SynthesisOutputProcessor,
+    modulators: &mut [ModulatorChannel],
+    block_count: fcfb::BlockCount,
+    tx_slots: &[TxSlotBits],
+) -> bool {
+    let Some(first_slot) = tx_slots.first() else {
+        // No timestamp is available to delimit this batch. Do not run ahead in silence.
+        return false;
+    };
+    let mut ready = true;
+    for channel in modulators.iter_mut() {
+        let silence = TxSlotBits {
+            carrier_num: channel.carrier_num,
+            time: first_slot.time,
+            slot: None,
+        };
+        let slot = tx_slots.iter().find(|slot| slot.carrier_num == channel.carrier_num).unwrap_or(&silence);
+        // Do not short-circuit: all carriers must retain their partial input block.
+        ready = channel.prepare(block_count, slot) && ready;
+    }
+    if !ready {
+        return false;
+    }
+    // Only commit complete blocks. Adding a carrier before a later one stalls
+    // would leave the mixer populated and could add the same carrier twice on retry.
+    for channel in modulators {
+        channel.add_to(fcfb, block_count);
+    }
+    true
 }
 
 // Was: Bündelt die zusammengehörigen Werte für demodulator Kanal in einem Datentyp.
@@ -678,12 +714,15 @@ impl DemodulatorChannel {
 // Was: Bündelt die zusammengehörigen Werte für modulator Kanal in einem Datentyp.
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct ModulatorChannel {
+    carrier_num: u16,
     upconverter: fcfb::SynthesisInputProcessor,
     modulator: modulator::Modulator,
     /// Buffer for modulated signal at modulator sample rate.
     buffer: fcfb::InputBuffer,
     /// How much of buffer is filled
     buffer_i: usize,
+    /// Block being filled, or the next contiguous block after committing it.
+    next_block: Option<fcfb::BlockCount>,
 }
 
 // Was: Implementiert das zugehörige Verhalten für `ModulatorChannel`.
@@ -695,7 +734,7 @@ impl ModulatorChannel {
         fft_planner: &mut FftPlanner,
         synthesis_out_params: fcfb::SynthesisOutputParameters,
         frequency: f64,
-        mode: modulator::Mode,
+        carrier_num: u16,
     ) -> Self {
         let upconverter = fcfb::SynthesisInputProcessor::new_with_frequency(
             fft_planner,
@@ -705,16 +744,26 @@ impl ModulatorChannel {
             Some(25000.0),
         );
         Self {
+            carrier_num,
             buffer: upconverter.make_input_buffer(),
             buffer_i: 0,
+            next_block: None,
             upconverter,
-            modulator: modulator::Modulator::new(mode),
+            modulator: modulator::Modulator::new(modulator::Mode::Dl),
         }
     }
 
     // Was: Diese Funktion verarbeitet den vorgesehenen Arbeitsschritt.
     // Warum: Die einzelnen Verarbeitungsschritte bleiben damit gebündelt und leichter testbar.
-    fn process(&mut self, fcfb: &mut fcfb::SynthesisOutputProcessor, block_count: fcfb::BlockCount, tx_slot: &TxSlotBits) -> bool {
+    fn prepare(&mut self, block_count: fcfb::BlockCount, tx_slot: &TxSlotBits) -> bool {
+        if self.next_block.is_some_and(|next| next != block_count) {
+            // The SDR deadline skipped blocks. Neither a partial old block nor
+            // its filter overlap may be transmitted with the new timestamp.
+            self.buffer = self.upconverter.make_input_buffer();
+            self.buffer_i = 0;
+            self.modulator = modulator::Modulator::new(modulator::Mode::Dl);
+        }
+        self.next_block = Some(block_count);
         let buf = self.buffer.buffer_in();
         // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
         // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
@@ -735,11 +784,15 @@ impl ModulatorChannel {
                 }
             }
         }
+        true
+    }
+
+    fn add_to(&mut self, fcfb: &mut fcfb::SynthesisOutputProcessor, block_count: fcfb::BlockCount) {
         fcfb.add(self.upconverter.process(self.buffer.buffer(), block_count));
 
         let _ = self.buffer.prepare_for_new_samples();
         self.buffer_i = 0;
-        true
+        self.next_block = Some(block_count + 1);
     }
 }
 
