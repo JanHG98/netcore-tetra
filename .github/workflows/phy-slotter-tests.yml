@@ -22,8 +22,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libsoapysdr-dev libgsm1-dev pkg-config
       - name: Test downlink phase adjustment and burst vectors
-        run: cargo test -p tetra-entities --lib phy::components::slotter::tests:: -- --nocapture
+        run: |
+          cargo test -p tetra-entities --lib phy::components::slotter::tests:: -- --nocapture
       - name: Test carrier mapping and continuous TX waveforms
-        run: cargo test -p tetra-entities --lib phy::components::soapy_dev::tests:: -- --nocapture
+        run: |
+          cargo test -p tetra-entities --lib phy::components::soapy_dev::tests:: -- --nocapture
       - name: Build the base station
         run: cargo build --release -p bluestation-bs
