@@ -338,14 +338,10 @@ impl LmacBs {
         let key = (prim.carrier_num, msg_dltime.t);
         let pchan = self.uplink_phy_chan.get(&key).copied().unwrap_or(PhysicalChannel::Unallocated);
 
-        // Dual-carrier guard: secondary carriers are traffic-only in this build.
-        // Random access / SCH/HU / SCH/F on TS1 must stay on the main carrier. With
-        // adjacent carriers, the secondary demodulator can see ghost copies of the
-        // main-carrier common-control uplink. Dropping those here prevents duplicate
-        // MAC-ACCESS, duplicate ACKs and LLC setup loops while still allowing genuine
-        // assigned traffic (pchan == Tp) on a secondary carrier.
+        // Keep secondary TS1 closed to common-control ghost copies, but accept
+        // assigned control on secondary traffic bearers during hangtime.
         let main_carrier = self.config.config().cell.main_carrier;
-        if prim.carrier_num != main_carrier && pchan != PhysicalChannel::Tp {
+        if !Self::accepts_uplink(prim.carrier_num == main_carrier, msg_dltime.t, pchan) {
             tracing::debug!(
                 carrier=prim.carrier_num,
                 main_carrier,
@@ -358,22 +354,13 @@ impl LmacBs {
             return;
         }
 
-        let blk2_stolen = self.blk2_stolen.get(&key).copied().unwrap_or(false);
+        // A stolen second half belongs to one burst, never to the next frame or
+        // to an assigned-control burst after a traffic/control transition.
+        if prim.block_num != PhyBlockNum::Block2 || pchan != PhysicalChannel::Tp {
+            self.blk2_stolen.remove(&key);
+        }
+        let blk2_stolen = self.blk2_stolen.remove(&key).unwrap_or(false);
         let lchan = Self::determine_logical_channel_ul(&prim, pchan == PhysicalChannel::Tp, blk2_stolen);
-
-        // Sanity checks
-        if prim.block_num == PhyBlockNum::Block1 && blk2_stolen {
-            tracing::warn!("lmac_bs: blk2_stolen set when receiving block1, resetting");
-            self.blk2_stolen.insert(key, false);
-        }
-        if pchan != PhysicalChannel::Tp && blk2_stolen {
-            tracing::warn!(
-                "lmac_bs: blk2_stolen set on non-traffic burst (pchan={:?}), resetting — likely late STCH after circuit close",
-                pchan
-            );
-            self.blk2_stolen.insert(key, false);
-            return;
-        }
 
         // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
         // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
@@ -390,6 +377,10 @@ impl LmacBs {
                 return;
             }
         }
+    }
+
+    fn accepts_uplink(is_main_carrier: bool, air_ts: u8, pchan: PhysicalChannel) -> bool {
+        is_main_carrier || ((2..=4).contains(&air_ts) && matches!(pchan, PhysicalChannel::Tp | PhysicalChannel::Cp))
     }
 
     // Was: Führt den Arbeitsschritt `rx_tmv_configure_req` für rx tmv configure req aus.
@@ -690,5 +681,74 @@ impl TetraEntityTrait for LmacBs {
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn tick_start(&mut self, _queue: &mut MessageQueue, ts: TdmaTime) {
         self.dltime = ts;
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tetra_core::{BitBuffer, PhyBlockType};
+    use tetra_saps::tmv::TmvUnitdataReq;
+
+    fn receiver() -> LmacBs {
+        let cfg = tetra_config::bluestation::parsing::from_toml_str(r#"
+config_version = "0.6"
+stack_mode = "Bs"
+[phy_io]
+backend = "None"
+[net_info]
+mcc = 901
+mnc = 1510
+[cell_info]
+main_carrier = 720
+freq_band = 4
+freq_offset = 0
+duplex_spacing = 4
+reverse_operation = false
+location_area = 1
+"#).unwrap();
+        LmacBs::new(SharedConfig::from_parts(cfg, None))
+    }
+
+    fn receive_cub(lmac: &mut LmacBs, ts: u8, channel: PhysicalChannel) -> MessageQueue {
+        lmac.dltime = TdmaTime { h: 0, m: 2, f: 5, t: ts }.add_timeslots(2);
+        lmac.uplink_phy_chan.insert((721, ts), channel);
+        // A stale flag from an earlier traffic burst must not poison control reception.
+        lmac.blk2_stolen.insert((721, ts), true);
+        let block = errorcontrol::encode_cp(TmvUnitdataReq {
+            logical_channel: LogicalChannel::SchHu,
+            mac_block: BitBuffer::new(92),
+            scrambling_code: lmac.scrambling_code,
+        });
+        let mut queue = MessageQueue::new();
+        lmac.rx_tp_prim(&mut queue, SapMsg {
+            sap: Sap::TpSap, src: TetraEntity::Phy, dest: TetraEntity::Lmac,
+            msg: SapMsgInner::TpUnitdataInd(TpUnitdataInd {
+                carrier_num: 721, train_type: TrainingSequence::ExtendedTrainSeq,
+                burst_type: BurstType::CUB, block_type: PhyBlockType::NUB,
+                block_num: PhyBlockNum::Block1, block, rssi_dbfs: -20.0,
+            }),
+        });
+        queue
+    }
+
+    #[test]
+    fn secondary_assigned_control_reaches_umac_with_valid_crc() {
+        let mut lmac = receiver();
+        let mut queue = receive_cub(&mut lmac, 3, PhysicalChannel::Cp);
+        let message = queue.pop_front().expect("assigned-control access was dropped");
+        let SapMsgInner::TmvUnitdataInd(ind) = message.msg else { panic!("expected control PDU") };
+        assert_eq!(ind.carrier_num, 721);
+        assert_eq!(ind.logical_channel, LogicalChannel::SchHu);
+        assert!(ind.crc_pass);
+        assert!(!lmac.blk2_stolen.contains_key(&(721, 3)));
+    }
+
+    #[test]
+    fn secondary_guard_and_unallocated_slots_still_drop_access() {
+        let mut lmac = receiver();
+        assert!(receive_cub(&mut lmac, 1, PhysicalChannel::Cp).is_empty());
+        assert!(receive_cub(&mut lmac, 3, PhysicalChannel::Unallocated).is_empty());
     }
 }

@@ -1,10 +1,14 @@
-name: PHY downlink regression tests
+name: Radio traffic regression tests
 
 on:
   pull_request:
     branches: [mqtt]
     paths:
       - crates/tetra-entities/src/phy/**
+      - crates/tetra-entities/src/lmac/**
+      - crates/tetra-entities/src/umac/**
+      - crates/tetra-entities/src/cmce/**
+      - crates/tetra-entities/src/net_recorder/**
       - .github/workflows/phy-slotter-tests.yml
   workflow_dispatch:
 
@@ -29,9 +33,16 @@ jobs:
           sudo ldconfig
       - name: Test downlink phase adjustment and burst vectors
         run: |
-          cargo test -p tetra-entities --lib phy::components::slotter::tests:: -- --nocapture
+          cargo test -p tetra-entities --features recording --lib phy::components::slotter::tests:: -- --nocapture
       - name: Test carrier mapping and continuous TX waveforms
         run: |
-          cargo test -p tetra-entities --lib phy::components::soapy_dev::tests:: -- --nocapture
+          cargo test -p tetra-entities --features recording --lib phy::components::soapy_dev::tests:: -- --nocapture
+      - name: Test assigned control, group lifecycle and asynchronous recording
+        run: |
+          test_status=0
+          for test_filter in umac::subcomp::bs_sched::tests:: lmac::lmac_bs::tests:: cmce::subentities::cc_bs::pdu::tests:: net_recorder::entity::tests::; do
+            cargo test -p tetra-entities --features recording --lib "$test_filter" -- --nocapture || test_status=1
+          done
+          exit "$test_status"
       - name: Build the base station
         run: cargo build --release -p bluestation-bs

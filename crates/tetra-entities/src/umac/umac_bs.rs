@@ -895,7 +895,9 @@ impl UmacBs {
         let carrier_num = prim.carrier_num;
         let logical_ts = self.logical_ts_for_carrier_air_ts(carrier_num, msg_dltime.t);
         let logical_dltime = TdmaTime { t: logical_ts, ..msg_dltime };
-        if !self.scheduler_for(carrier_num).circuit_is_active(Direction::Dl, msg_dltime.t) {
+        if !self.scheduler_for(carrier_num).circuit_is_active(Direction::Dl, msg_dltime.t)
+            || self.scheduler_for(carrier_num).is_hangtime(msg_dltime.t)
+        {
             self.scheduler_for_mut(carrier_num).dl_enqueue_random_access_ack(msg_dltime.t, addr);
         } else {
             tracing::trace!(

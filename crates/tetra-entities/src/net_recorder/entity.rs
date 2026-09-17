@@ -5,9 +5,12 @@ use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
+use std::sync::{Arc, atomic::{AtomicU64, Ordering}};
+use std::thread::JoinHandle;
+use crossbeam_channel::{Sender, Receiver, TrySendError, RecvTimeoutError};
 
 use tetra_config::bluestation::SharedConfig;
-use tetra_core::{TdmaTime, tetra_entities::TetraEntity};
+use tetra_core::tetra_entities::TetraEntity;
 use tetra_saps::{SapMsg, SapMsgInner, control::call_control::CallControl, tmd::TmdCircuitDataInd};
 use uuid::Uuid;
 
@@ -17,6 +20,97 @@ use crate::{MessageQueue, TetraEntityTrait};
 use super::service::RecorderHandle;
 use super::types::{RecordingMetadata, RecordingSegment};
 use super::wav::PcmWavWriter;
+
+/// Recorder work is ordered on one I/O thread. The RF thread only submits
+/// bounded messages; disk writes, codec work and fsync never run on a TDMA tick.
+pub struct RecorderEntity {
+    mailbox: Option<RecorderMailbox>,
+    worker: Option<JoinHandle<()>>,
+}
+
+struct RecorderEnvelope {
+    epoch: u64,
+    message: SapMsgInner,
+}
+
+struct RecorderMailbox {
+    tx: Sender<RecorderEnvelope>,
+    epoch: Arc<AtomicU64>,
+}
+
+impl RecorderMailbox {
+    fn submit(&self, message: SapMsgInner) {
+        let envelope = RecorderEnvelope {
+            epoch: self.epoch.load(Ordering::SeqCst),
+            message,
+        };
+        if let Err(TrySendError::Full(_)) = self.tx.try_send(envelope) {
+            // A missing lifecycle event could attach audio to the wrong call.
+            // Invalidate the entire old epoch; the worker closes those sessions
+            // and discards queued stale events before accepting new ones.
+            self.epoch.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+}
+
+impl RecorderEntity {
+    pub fn new(config: SharedConfig) -> Result<(Self, RecorderHandle), String> {
+        let (state, handle) = RecorderWorker::new(config)?;
+        let (tx, rx) = crossbeam_channel::bounded(2048);
+        let epoch = Arc::new(AtomicU64::new(0));
+        let worker_epoch = epoch.clone();
+        let worker = std::thread::Builder::new()
+            .name("tetra-recorder".into())
+            .spawn(move || state.run(rx, worker_epoch))
+            .map_err(|e| format!("cannot start recorder worker: {e}"))?;
+        Ok((Self { mailbox: Some(RecorderMailbox { tx, epoch }), worker: Some(worker) }, handle))
+    }
+}
+
+impl TetraEntityTrait for RecorderEntity {
+    fn entity(&self) -> TetraEntity { TetraEntity::Recorder }
+
+    fn rx_prim(&mut self, _queue: &mut MessageQueue, message: SapMsg) {
+        if matches!(&message.msg,
+            SapMsgInner::CmceCallControl(CallControl::FloorGranted { .. }
+                | CallControl::FloorReleased { .. } | CallControl::CallEnded { .. })
+                | SapMsgInner::TmdCircuitDataInd(_)) {
+            if let Some(mailbox) = &self.mailbox { mailbox.submit(message.msg); }
+        }
+    }
+}
+
+impl Drop for RecorderEntity {
+    fn drop(&mut self) {
+        // Disconnect after the last message, then drain and finalize in order.
+        self.mailbox.take();
+        if let Some(worker) = self.worker.take() {
+            if worker.join().is_err() { tracing::error!("Recorder worker panicked"); }
+        }
+    }
+}
+
+impl RecorderWorker {
+    fn run(mut self, rx: Receiver<RecorderEnvelope>, epoch: Arc<AtomicU64>) {
+        let mut current_epoch = 0;
+        loop {
+            let received = rx.recv_timeout(Duration::from_millis(100));
+            let latest_epoch = epoch.load(Ordering::SeqCst);
+            if latest_epoch != current_epoch {
+                self.finish_all("recorder-queue-overflow");
+                self.handle.note_error("Recorder queue overflow: incomplete recordings closed; RF processing continued");
+                current_epoch = latest_epoch;
+            }
+            self.poll();
+            match received {
+                Ok(event) if event.epoch == current_epoch => self.on_message(event.message),
+                Ok(_) | Err(RecvTimeoutError::Timeout) => {},
+                Err(RecvTimeoutError::Disconnected) => break,
+            }
+        }
+        // Drop finalizes any remaining sessions, including a clean BS shutdown.
+    }
+}
 
 // Was: Bündelt die zusammengehörigen Werte für recording Sitzung in einem Datentyp.
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
@@ -119,7 +213,7 @@ impl RecordingSession {
 
 // Was: Bündelt die zusammengehörigen Werte für Aufzeichnung entity in einem Datentyp.
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
-pub struct RecorderEntity {
+struct RecorderWorker {
     config: SharedConfig,
     handle: RecorderHandle,
     sessions: HashMap<(u16, u8), RecordingSession>,
@@ -128,12 +222,12 @@ pub struct RecorderEntity {
     runtime_was_active: bool,
 }
 
-// Was: Implementiert das zugehörige Verhalten für `RecorderEntity`.
+// Was: Implementiert das zugehörige Verhalten für `RecorderWorker`.
 // Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
-impl RecorderEntity {
+impl RecorderWorker {
     // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
     // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
-    pub fn new(config: SharedConfig) -> Result<(Self, RecorderHandle), String> {
+    fn new(config: SharedConfig) -> Result<(Self, RecorderHandle), String> {
         let handle = RecorderHandle::new(
             config.config().recording.clone(),
             config.config().media_library.clone(),
@@ -400,21 +494,13 @@ impl RecorderEntity {
     }
 }
 
-// Was: Implementiert das zugehörige Verhalten für `TetraEntityTrait for RecorderEntity`.
-// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
-impl TetraEntityTrait for RecorderEntity {
-    // Was: Führt den Arbeitsschritt `entity` für entity aus.
-    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    fn entity(&self) -> TetraEntity {
-        TetraEntity::Recorder
-    }
-
+impl RecorderWorker {
     // Was: Führt den Arbeitsschritt `rx_prim` für rx prim aus.
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    fn rx_prim(&mut self, _queue: &mut MessageQueue, message: SapMsg) {
+    fn on_message(&mut self, message: SapMsgInner) {
         // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
         // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
-        match message.msg {
+        match message {
             SapMsgInner::CmceCallControl(CallControl::FloorGranted {
                 call_id,
                 source_issi,
@@ -441,7 +527,7 @@ impl TetraEntityTrait for RecorderEntity {
 
     // Was: Diese Funktion bearbeitet start.
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    fn tick_start(&mut self, _queue: &mut MessageQueue, _ts: TdmaTime) {
+    fn poll(&mut self) {
         let active = self.handle.is_active();
         if self.runtime_was_active && !active {
             self.finish_all("disabled-from-ui");
@@ -451,9 +537,9 @@ impl TetraEntityTrait for RecorderEntity {
     }
 }
 
-// Was: Implementiert das zugehörige Verhalten für `Drop for RecorderEntity`.
+// Was: Implementiert das zugehörige Verhalten für `Drop for RecorderWorker`.
 // Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
-impl Drop for RecorderEntity {
+impl Drop for RecorderWorker {
     // Was: Führt den Arbeitsschritt `drop` für drop aus.
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn drop(&mut self) {
@@ -484,4 +570,85 @@ fn write_json_atomic(path: &Path, metadata: &RecordingMetadata) -> Result<(), St
     let tmp = PathBuf::from(format!("{}.tmp", path.display()));
     fs::write(&tmp, body).map_err(|e| e.to_string())?;
     fs::rename(&tmp, path).map_err(|e| e.to_string())
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn floor(call_id: u16) -> SapMsgInner {
+        SapMsgInner::CmceCallControl(CallControl::FloorGranted {
+            call_id, source_issi: 5102, dest_gssi: 15201, dest_is_group: true, ts: 6,
+        })
+    }
+
+    #[test]
+    fn full_mailbox_never_waits_and_invalidates_stale_lifecycle_events() {
+        let (tx, rx) = crossbeam_channel::bounded(1);
+        let epoch = Arc::new(AtomicU64::new(0));
+        let mailbox = RecorderMailbox { tx, epoch: epoch.clone() };
+        mailbox.submit(floor(7));
+        // No consumer is running: a blocking send would deadlock this test.
+        mailbox.submit(SapMsgInner::CmceCallControl(CallControl::CallEnded { call_id: 7, ts: 6 }));
+        assert_eq!(epoch.load(Ordering::SeqCst), 1);
+        assert_eq!(rx.recv().unwrap().epoch, 0, "queued start is now stale");
+        mailbox.submit(floor(8));
+        assert_eq!(rx.recv().unwrap().epoch, 1, "new call uses a fresh epoch");
+    }
+
+    fn config(directory: &Path) -> SharedConfig {
+        let mut cfg = tetra_config::bluestation::parsing::from_toml_str(r#"
+config_version = "0.6"
+stack_mode = "Bs"
+[phy_io]
+backend = "None"
+[net_info]
+mcc = 901
+mnc = 1510
+[cell_info]
+main_carrier = 720
+freq_band = 4
+freq_offset = 0
+duplex_spacing = 4
+reverse_operation = false
+location_area = 1
+"#).unwrap();
+        cfg.cell.secondary_carrier = Some(721);
+        cfg.recording.enabled = true;
+        cfg.recording.active = true;
+        cfg.recording.directory = directory.to_str().unwrap().to_owned();
+        cfg.recording.minimum_free_space_mb = 0;
+        cfg.recording.retention_days = 0;
+        cfg.recording.archive_enabled = false;
+        cfg.recording.tts_archive_enabled = false;
+        cfg.media_library.enabled = false;
+        SharedConfig::from_parts(cfg, None)
+    }
+
+    #[test]
+    fn shutdown_drains_audio_and_call_end_in_order() {
+        let directory = std::env::temp_dir().join(format!("tetra-recorder-{}", Uuid::new_v4()));
+        let (recorder, handle) = RecorderEntity::new(config(&directory)).unwrap();
+        let mailbox = recorder.mailbox.as_ref().unwrap();
+        for call_id in [7, 8] {
+            mailbox.submit(floor(call_id));
+            mailbox.submit(SapMsgInner::TmdCircuitDataInd(TmdCircuitDataInd {
+                carrier_num: 721, ts: 6, data: vec![0; 274],
+            }));
+            if call_id == 7 {
+                mailbox.submit(SapMsgInner::CmceCallControl(CallControl::CallEnded { call_id, ts: 6 }));
+            }
+        }
+        drop(recorder); // Drains pending messages and finalizes call 8 on shutdown.
+        let recordings = handle.list_recordings(None);
+        assert_eq!(recordings.len(), 2, "{:?}", handle.status());
+        for recording in recordings {
+            assert_eq!(recording.duration_ms, 60);
+            assert_eq!(recording.segments[0].carrier_num, 721);
+            assert_eq!(recording.segments[0].timeslot, 6);
+            assert!(directory.join(&recording.relative_audio_path).is_file());
+        }
+        fs::remove_dir_all(directory).unwrap();
+    }
 }

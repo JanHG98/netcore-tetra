@@ -1564,8 +1564,10 @@ impl BsChannelScheduler {
         self.precomps.mac_sysinfo1.hyperframe_number = Some(ts.h);
         self.precomps.mac_sysinfo2.hyperframe_number = Some(ts.h);
 
-        let dl_circuit_active = self.circuits.is_active(Direction::Dl, ts.t) && ts.f != 18;
-        let ul_circuit_active = self.circuits.is_active(Direction::Ul, ts.t) && ts.f != 18;
+        let dl_allocated = self.circuits.is_active(Direction::Dl, ts.t);
+        let ul_allocated = self.circuits.is_active(Direction::Ul, ts.t);
+        let dl_circuit_active = dl_allocated && ts.f != 18;
+        let ul_circuit_active = ul_allocated && ts.f != 18;
 
         // During hangtime we stop sending traffic frames and switch to signalling mode.
         // Keep traffic mode while FACCH/stealing is still queued for delivery.
@@ -1579,14 +1581,12 @@ impl BsChannelScheduler {
         let dl_is_traffic = dl_circuit_active && !hang_effective;
         let ul_is_traffic = ul_circuit_active && !hang_effective;
 
-        // NetCore dual-carrier hardening:
-        // TrafficOnly carriers suppress all idle bursts. SecondaryBcchNoMcch keeps
-        // TS1 alive as a secondary control/guard slot, but suppresses idle bursts on
-        // TS2..TS4 so those air slots are only active when a traffic circuit exists.
-        // Returning an empty TP slot makes PHY skip transmission for this carrier/slot.
+        // Silence only genuinely unallocated secondary slots. An allocated bearer
+        // still needs SCH/F + AACH during hangtime and its frame-18 broadcasts.
+        // Mandatory rotating BSCH must also survive on otherwise idle air slots.
         if ((self.downlink_mode == CarrierDownlinkMode::TrafficOnly)
             || (self.downlink_mode == CarrierDownlinkMode::SecondaryBcchNoMcch && ts.t != 1))
-            && !dl_is_traffic && !ul_is_traffic {
+            && !dl_allocated && !ul_allocated && !ts.is_mandatory_bsch() && !ts.is_mandatory_bnch() {
             let clear_ts = ts.add_timeslots(-4);
             let index = self.ul_ts_to_sched_index(&clear_ts);
             self.ulsched[ts.t as usize - 1][index].ul1 = None;
@@ -1712,7 +1712,9 @@ impl BsChannelScheduler {
 
         // Construct the BBK block to reflect UL/DL usage
         assert!(elem.bbk.is_none(), "BBK block already set");
-        elem.bbk = Some(self.generate_bbk_block(ts));
+        // Use the same mode decision as the payload above, made BEFORE popping
+        // the last FACCH item. Otherwise AACH says SCH/F while we send STCH/TCH.
+        elem.bbk = Some(self.generate_bbk_block(ts, hang_effective));
 
         // tracing::trace!("finalize_ts_for_tick: have {}{}{}",
         //     if elem.bbk.is_some() { "bbk " } else { "" },
@@ -1832,7 +1834,7 @@ impl BsChannelScheduler {
 
     // Was: Diese Funktion erzeugt bbk block.
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    fn generate_bbk_block(&self, ts: TdmaTime) -> TmvUnitdataReq {
+    fn generate_bbk_block(&self, ts: TdmaTime, hang_effective: bool) -> TmvUnitdataReq {
         let (ul_traffic_usage, dl_traffic_usage) = if ts.f == 18 {
             (None, None)
         } else {
@@ -1854,7 +1856,7 @@ impl BsChannelScheduler {
                     // On a secondary traffic-only carrier, air TS1 is available as a
                     // normal traffic bearer. The primary carrier still owns MCCH/Control
                     // on TS1; this branch is only used by the secondary scheduler.
-                    let in_hangtime = self.hangtime[ts.t as usize - 1];
+                    let in_hangtime = hang_effective;
                     if in_hangtime && (dl_traffic_usage.is_some() || ul_traffic_usage.is_some()) {
                         aach.dl_usage = AccessAssignDlUsage::AssignedControl;
                         aach.ul_usage = AccessAssignUlUsage::AssignedOnly;
@@ -1925,11 +1927,9 @@ impl BsChannelScheduler {
                 2..=4 => {
                     // Additional channels (TS2..TS4).
                     // Normal operation: Traffic(usage) when a circuit is active, else Unallocated.
-                    // Hangtime: immediately switch AACH to AssignedControl so radios
-                    // detect the end of traffic in the same frame as D-TX CEASED.
-                    // The timeslot may still be in traffic mode (for STCH delivery) but
-                    // the AACH reflects the new channel state.
-                    let in_hangtime = (2..=4).contains(&ts.t) && self.hangtime[ts.t as usize - 1];
+                    // Switch to assigned control only after queued FACCH has
+                    // drained; the advertised usage must match this slot's payload.
+                    let in_hangtime = hang_effective;
 
                     if in_hangtime && (dl_traffic_usage.is_some() || ul_traffic_usage.is_some()) {
                         aach.dl_usage = AccessAssignDlUsage::AssignedControl;
@@ -2267,6 +2267,92 @@ mod tests {
             speech_service: Some(0),
             etee_encrypted: false,
             dl_media_source: CircuitDlMediaSource::LocalLoopback,
+        }
+    }
+
+    fn finish_at(sched: &mut BsChannelScheduler, time: TdmaTime) -> TmvUnitdataReqSlot {
+        // Advance the test clock without the destructive resynchronization in
+        // set_dl_time(), which intentionally purges all queued FACCH messages.
+        sched.cur_dltime = time.add_timeslots(-(MACSCHED_TX_AHEAD as i32));
+        sched.finalize_ts_for_tick()
+    }
+
+    fn aach(slot: &mut TmvUnitdataReqSlot) -> AccessAssign {
+        AccessAssign::from_bitbuf(&mut slot.bbk.as_mut().unwrap().mac_block).unwrap()
+    }
+
+    #[test]
+    fn secondary_hangtime_keeps_control_and_resumes_traffic() {
+        let mut sched = get_testing_slotter();
+        sched.set_carrier_num(721);
+        sched.set_downlink_mode(CarrierDownlinkMode::SecondaryBcchNoMcch);
+        sched.create_circuit(Direction::Dl, test_circuit(Direction::Dl, 3));
+        sched.create_circuit(Direction::Ul, test_circuit(Direction::Ul, 3));
+        sched.set_hangtime(3, true);
+        let time = TdmaTime { h: 0, m: 2, f: 5, t: 3 };
+        let mut idle = finish_at(&mut sched, time);
+        assert_eq!(idle.carrier_num, 721);
+        assert_eq!(idle.blk1.as_ref().unwrap().logical_channel, LogicalChannel::SchF);
+        assert_eq!(idle.ul_phy_chan, PhysicalChannel::Cp);
+        let usage = aach(&mut idle);
+        assert_eq!(usage.dl_usage, AccessAssignDlUsage::AssignedControl);
+        assert_eq!(usage.ul_usage, AccessAssignUlUsage::AssignedOnly);
+
+        sched.set_hangtime(3, false);
+        let mut traffic = finish_at(&mut sched, time.add_timeslots(4));
+        assert_eq!(traffic.blk1.as_ref().unwrap().logical_channel, LogicalChannel::TchS);
+        assert_eq!(traffic.ul_phy_chan, PhysicalChannel::Tp);
+        assert_eq!(aach(&mut traffic).dl_usage, AccessAssignDlUsage::Traffic(4));
+
+        sched.close_circuit(Direction::Dl, 3);
+        sched.close_circuit(Direction::Ul, 3);
+        let released = finish_at(&mut sched, time.add_timeslots(8));
+        assert!(released.blk1.is_none());
+        assert_eq!(released.ul_phy_chan, PhysicalChannel::Unallocated);
+    }
+
+    #[test]
+    fn last_facch_has_traffic_aach_before_hangtime_control() {
+        for mode in [CarrierDownlinkMode::PrimaryMcch, CarrierDownlinkMode::SecondaryBcchNoMcch] {
+            let mut sched = get_testing_slotter();
+            sched.set_downlink_mode(mode);
+            sched.create_circuit(Direction::Dl, test_circuit(Direction::Dl, 3));
+            sched.create_circuit(Direction::Ul, test_circuit(Direction::Ul, 3));
+            sched.set_hangtime(3, true);
+            let time = TdmaTime { h: 0, m: 2, f: 5, t: 3 };
+            sched.set_dl_time(time.add_timeslots(-(MACSCHED_TX_AHEAD as i32)));
+            sched.dl_enqueue_stealing(3, BitBuffer::new(124), None);
+            let mut release = finish_at(&mut sched, time);
+            assert_eq!(release.blk1.as_ref().unwrap().logical_channel, LogicalChannel::Stch);
+            assert_eq!(release.blk2.as_ref().unwrap().logical_channel, LogicalChannel::TchS);
+            assert_eq!(aach(&mut release).dl_usage, AccessAssignDlUsage::Traffic(4));
+            let mut idle = finish_at(&mut sched, time.add_timeslots(4));
+            assert_eq!(idle.blk1.as_ref().unwrap().logical_channel, LogicalChannel::SchF);
+            assert_eq!(aach(&mut idle).dl_usage, AccessAssignDlUsage::AssignedControl);
+        }
+    }
+
+    #[test]
+    fn secondary_frame18_broadcasts_survive_idle_suppression() {
+        for allocated in [false, true] {
+            let mut sched = get_testing_slotter();
+            sched.set_downlink_mode(CarrierDownlinkMode::SecondaryBcchNoMcch);
+            if allocated {
+                for ts in 2..=4 {
+                    sched.create_circuit(Direction::Dl, test_circuit(Direction::Dl, ts));
+                }
+            }
+            for m in 1..=4 {
+                for t in 1..=4 {
+                    let time = TdmaTime { h: 0, m, f: 18, t };
+                    let slot = finish_at(&mut sched, time);
+                    if allocated || t == 1 || time.is_mandatory_bsch() || time.is_mandatory_bnch() {
+                        assert_eq!(slot.blk1.unwrap().logical_channel, LogicalChannel::Bsch);
+                        assert!(slot.blk2.is_some());
+                        assert!(slot.bbk.is_some());
+                    }
+                }
+            }
         }
     }
 

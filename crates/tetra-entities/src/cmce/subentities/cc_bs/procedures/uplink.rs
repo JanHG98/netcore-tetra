@@ -980,8 +980,22 @@ impl CcBsSubentity {
             return;
         }
 
+        let traffic_ts = call.ts;
+        let was_speaker = call.is_current_speaker(sender.ssi);
+        if let Some(call) = self.active_calls.get_mut(&call_id) {
+            if call.queued_tx_demand.is_some_and(|requester| requester.ssi == sender.ssi) {
+                call.queued_tx_demand = None;
+            }
+        }
+        if was_speaker {
+            // Leaving the call must also surrender the floor, otherwise the
+            // remaining group members keep seeing an absent speaker as busy.
+            if let Err(error) = self.fsm_group_on_tx_ceased(queue, call_id, sender) {
+                tracing::warn!(?error, call_id, "CMCE: could not release departing participant's floor");
+            }
+        }
         tracing::info!(
-            "U-DISCONNECT: non-call-owner ISSI {} rejected for call_id={} cause={}",
+            "U-DISCONNECT: participant ISSI {} leaving call_id={} locally, cause={}",
             sender.ssi,
             call_id,
             disconnect_cause
@@ -989,7 +1003,7 @@ impl CcBsSubentity {
 
         let d_release = DRelease {
             call_identifier: call_id,
-            disconnect_cause: DisconnectCause::RequestedServiceNotAvailable,
+            disconnect_cause,
             notification_indicator: None,
             facility: None,
             proprietary: None,
@@ -1001,6 +1015,9 @@ impl CcBsSubentity {
         sdu.seek(0);
 
         let sender_addr = TetraAddress::new(sender.ssi, SsiType::Issi);
+        // The participant may still be listening on the assigned bearer (also
+        // on Carrier 2). A response on MCCH alone cannot release that radio.
+        queue.push_back(Self::build_sapmsg_stealing(sdu.clone(), self.dltime, sender_addr, traffic_ts, None));
         let msg = SapMsg {
             sap: Sap::LcmcSap,
             src: TetraEntity::Cmce,
