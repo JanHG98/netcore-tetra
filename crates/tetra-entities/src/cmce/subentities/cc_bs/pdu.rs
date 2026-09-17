@@ -1675,4 +1675,35 @@ location_area = 1
         assert!(cc.recent_deaffiliations.is_empty());
         assert!(cc.has_listener(26225));
     }
+
+    #[test]
+    fn group_floor_handoff_preserves_owner_and_local_exit_uses_assigned_bearer() {
+        use super::super::*;
+        let mut cc = CcBsSubentity::new(test_cfg());
+        let owner = TetraAddress::new(2020001, SsiType::Issi);
+        let speaker = TetraAddress::new(5102, SsiType::Issi);
+        let mut call = ActiveCall::new_local(owner, 15201, owner.ssi, 6, 4, cc.dltime, CallTimeout::T2m, 0);
+        call.enter_hangtime(cc.dltime);
+        call.grant_floor(speaker.ssi, Some(speaker));
+        assert!(matches!(call.origin, CallOrigin::Local { caller_addr } if caller_addr == owner));
+        call.enter_hangtime(cc.dltime);
+        cc.active_calls.insert(7, call);
+        let mut queue = MessageQueue::new();
+        cc.fsm_on_u_disconnect(&mut queue, speaker, 0, 6, 0, UDisconnect {
+            call_identifier: 7, disconnect_cause: DisconnectCause::UserRequestedDisconnection,
+            facility: None, proprietary: None,
+        });
+        assert!(cc.active_calls.contains_key(&7), "listener exit must not tear down the group");
+        let SapMsgInner::LcmcMleUnitdataReq(release) = queue.pop_front().unwrap().msg else { panic!("expected release") };
+        assert_eq!(release.main_address, speaker);
+        assert!(release.stealing_permission, "radio still listens on assigned bearer");
+        let alloc = release.chan_alloc.unwrap();
+        assert!(alloc.carrier.is_some(), "logical TS6 needs a secondary carrier hint");
+        assert_eq!(alloc.timeslots, [false, false, true, false]);
+        let SapMsgInner::LcmcMleUnitdataReq(fallback) = queue.pop_front().unwrap().msg else { panic!("expected fallback") };
+        assert!(!fallback.stealing_permission);
+        assert_eq!(fallback.main_address, speaker);
+        assert!(queue.is_empty());
+    }
+
 }

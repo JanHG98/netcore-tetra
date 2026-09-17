@@ -286,15 +286,13 @@ impl ActiveCall {
         self.hangtime_start = Some(now);
     }
 
-    pub(super) fn grant_floor(&mut self, source_issi: u32, speaker_addr: Option<TetraAddress>) {
+    pub(super) fn grant_floor(&mut self, source_issi: u32, _speaker_addr: Option<TetraAddress>) {
         self.source_issi = source_issi;
         self.tx_active = true;
         self.hangtime_start = None;
         self.queued_tx_demand = None;
 
-        if let (CallOrigin::Local { caller_addr }, Some(addr)) = (&mut self.origin, speaker_addr) {
-            *caller_addr = addr;
-        }
+        // Floor ownership changes; call ownership stays with the originator.
     }
 
     pub(super) fn queue_tx_demand(&mut self, requester: TetraAddress) -> TxDemandQueueResult {
