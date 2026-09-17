@@ -60,3 +60,8 @@ Keine WebUI-Anmeldung, keine API-Tokens und kein TLS. SIP-Zugangsdaten liegen im
 
 - Zentraler LXC: [`docs/installation-openlab.md`](docs/installation-openlab.md)
 - Lokale TBS: [`tbs-fallback/docs/installation-openlab.md`](tbs-fallback/docs/installation-openlab.md)
+
+## MAIN-COMPAT-Netzanbindung
+
+Installations- und Update-Reihenfolge pro LXC/TBS, aktuelle Funktionsgrenzen und Tests:
+[Zentraler Netzbetrieb](../../Docs/CENTRAL_NETWORK_ROLLOUT.md).

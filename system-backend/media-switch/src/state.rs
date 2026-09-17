@@ -2007,7 +2007,7 @@ mod tests {
         assert!(matches!(
             &routed[0],
             BackendRequest::MediaFrame { node_id, frame }
-                if node_id == "tbs-b" && frame.logical_ts == 3
+                if node_id == "tbs-b" && frame.logical_ts == 3 && frame.session_id == "test-operation"
         ));
 
         media.route_uplink(frame);

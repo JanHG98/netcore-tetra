@@ -40,6 +40,9 @@ allow = "ulaw"
 qualify_frequency_secs = 5
 qualify_timeout_secs = 2
 registration_expiration_secs = 30
+# Defaults to http://<central.host>:8300/health/ready when omitted.
+# Set to the switch management URL when a custom port is used; empty disables it.
+health_timeout_secs = 1
 
 # Ersatzweg: direkte Registrierung der TBS am vorhandenen PBX.
 # Diese Registrierung ist im Normalbetrieb NICHT geladen.

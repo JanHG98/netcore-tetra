@@ -49,10 +49,14 @@ impl CcBsSubentity {
                 );
             }
         };
-        if let Some(call_id) = self.active_calls.iter().find_map(|(id, c)|
-                (c.brew_uuid == Some(operation_uuid)).then_some(*id))
-            .or_else(|| self.find_brew_individual_call(operation_uuid).map(|(id, _)| id)) {
-            return self.control_leg_result(call_id).unwrap();
+        if let Some((call_id, call)) = self.active_calls.iter().find(|(_, c)| c.brew_uuid == Some(operation_uuid)) {
+            if call.dest_gssi == gssi {
+                return self.control_leg_result(*call_id).unwrap();
+            }
+            return ManagedLegResult::failure(ManagedCallKind::Group, "operation UUID already belongs to another call");
+        }
+        if self.find_brew_individual_call(operation_uuid).is_some() {
+            return ManagedLegResult::failure(ManagedCallKind::Group, "operation UUID already belongs to an individual call");
         }
         if source_issi == 0 || source_issi > 0x00ff_ffff {
             return ManagedLegResult::failure(
@@ -119,10 +123,14 @@ impl CcBsSubentity {
                 );
             }
         };
-        if let Some(call_id) = self.active_calls.iter().find_map(|(id, c)|
-                (c.brew_uuid == Some(operation_uuid)).then_some(*id))
-            .or_else(|| self.find_brew_individual_call(operation_uuid).map(|(id, _)| id)) {
-            return self.control_leg_result(call_id).unwrap();
+        if let Some((call_id, call)) = self.find_brew_individual_call(operation_uuid) {
+            if call.calling_addr.ssi == calling_issi && call.called_addr.ssi == called_issi && call.is_simplex() == simplex {
+                return self.control_leg_result(call_id).unwrap();
+            }
+            return ManagedLegResult::failure(ManagedCallKind::Individual, "operation UUID already belongs to another call");
+        }
+        if self.active_calls.values().any(|c| c.brew_uuid == Some(operation_uuid)) {
+            return ManagedLegResult::failure(ManagedCallKind::Individual, "operation UUID already belongs to a group call");
         }
         if calling_issi == 0 || calling_issi > 0x00ff_ffff {
             return ManagedLegResult::failure(
@@ -400,5 +408,76 @@ impl CcBsSubentity {
             queued_issi: call.queued_tx_demand.map(|address| address.ssi),
             message: "individual-call leg found".to_string(),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn cc() -> CcBsSubentity {
+        let cfg = tetra_config::bluestation::parsing::from_toml_str(r#"
+config_version = "0.6"
+stack_mode = "Bs"
+[phy_io]
+backend = "None"
+[net_info]
+mcc = 901
+mnc = 9999
+[cell_info]
+main_carrier = 1584
+freq_band = 4
+freq_offset = 0
+duplex_spacing = 4
+reverse_operation = false
+location_area = 1
+"#).unwrap();
+        let cfg = SharedConfig::from_parts(cfg, None);
+        cfg.state_write().subscribers.register(5102);
+        CcBsSubentity::new(cfg)
+    }
+
+    fn callbacks(cc: &mut CcBsSubentity, queue: &mut MessageQueue) {
+        for _ in 0..128 {
+            let Some(message) = queue.pop_front() else { return; };
+            assert_ne!(message.dest, TetraEntity::Asterisk, "core legs must not require a local SIP dialog");
+            if message.dest == TetraEntity::Cmce {
+                cc.rx_call_control(queue, message);
+            }
+        }
+        panic!("recursive callback loop");
+    }
+
+    #[test]
+    fn central_control_accepts_radio_connect_without_asterisk_dialog() {
+        let mut cc = cc();
+        let mut queue = MessageQueue::new();
+        let operation = uuid::Uuid::new_v4();
+        let first = cc.control_start_individual_call(&mut queue, &operation.to_string(), 103, 5102, false, 0);
+        assert!(first.success, "{}", first.message);
+        let repeated = cc.control_start_individual_call(&mut queue, &operation.to_string(), 103, 5102, false, 0);
+        assert_eq!(first.call_id, repeated.call_id);
+        assert_eq!(cc.individual_calls.len(), 1);
+        assert!(!cc.control_start_individual_call(&mut queue, &operation.to_string(), 103, 999, false, 0).success);
+        callbacks(&mut cc, &mut queue);
+        let id = first.call_id.unwrap();
+        cc.fsm_on_u_connect(&mut queue, TetraAddress::new(5102, SsiType::Issi), 0, 1, 0,
+            UConnect { call_identifier: id, hook_method_selection: true, simplex_duplex_selection: true,
+                basic_service_information: None, facility: None, proprietary: None });
+        callbacks(&mut cc, &mut queue);
+        assert!(cc.individual_calls[&id].is_active());
+        assert!(cc.control_release_call(&mut queue, id, 2).success);
+        callbacks(&mut cc, &mut queue);
+        assert!(!cc.individual_calls.contains_key(&id));
+    }
+
+    #[test]
+    fn central_control_rejects_offline_subscriber_without_allocating() {
+        let mut cc = cc();
+        let mut queue = MessageQueue::new();
+        let result = cc.control_start_individual_call(&mut queue, &uuid::Uuid::new_v4().to_string(), 103, 999, false, 0);
+        assert!(!result.success);
+        callbacks(&mut cc, &mut queue);
+        assert!(cc.individual_calls.is_empty());
     }
 }

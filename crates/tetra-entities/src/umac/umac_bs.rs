@@ -100,19 +100,22 @@ impl UmacBs {
         for _ in 0..16 {
             let Some(source) = self.media_downlink.as_ref() else { break; };
             let Ok(frame) = source.try_recv() else { break; };
-            let ts = frame.logical_ts;
-            if !(2..=7).contains(&ts) || (ts >= 5 && self.secondary_carrier().is_none())
-                || frame.payload.len() != 35
-                || self.central_media_bindings[ts as usize - 1].as_deref() != Some(frame.session_id.as_str()) {
-                continue;
-            }
-            let air_ts = Self::air_ts_for_logical(ts);
-            let carrier = self.carrier_for_logical_ts(ts);
-            if !self.pending_circuit_closes[ts as usize - 1].dl
-                && self.scheduler_for(carrier).circuit_is_active(Direction::Dl, air_ts) {
+            if self.central_media_allowed(&frame) {
+                let ts = frame.logical_ts;
+                let air_ts = Self::air_ts_for_logical(ts);
+                let carrier = self.carrier_for_logical_ts(ts);
                 self.scheduler_for_mut(carrier).dl_schedule_tmd(air_ts, frame.payload);
             }
         }
+    }
+
+    fn central_media_allowed(&self, frame: &crate::net_media::MediaDownlinkFrame) -> bool {
+        let ts = frame.logical_ts;
+        (2..=7).contains(&ts) && (ts < 5 || self.secondary_carrier().is_some())
+            && frame.payload.len() == 35
+            && self.central_media_bindings[ts as usize - 1].as_deref() == Some(frame.session_id.as_str())
+            && !self.pending_circuit_closes[ts as usize - 1].dl
+            && self.scheduler_for_logical(ts).circuit_is_active(Direction::Dl, Self::air_ts_for_logical(ts))
     }
 
     pub fn new(config: SharedConfig) -> Self {
@@ -2356,4 +2359,61 @@ fn pack_ul_acelp_bits(bits: &[u8]) -> Option<Vec<u8>> {
         out.push(byte);
     }
     Some(out)
+}
+
+#[cfg(test)]
+mod central_media_tests {
+    use super::*;
+    use crate::net_media::{media_bridge_channel, MediaDownlinkFrame};
+    use tetra_saps::control::{call_control::CircuitDlMediaSource, enums::circuit_mode_type::CircuitModeType};
+
+    #[test]
+    fn central_media_rejects_old_operations_and_closed_or_control_slots() {
+        let cfg = tetra_config::bluestation::parsing::from_toml_str(r#"
+config_version = "0.6"
+stack_mode = "Bs"
+[phy_io]
+backend = "None"
+[net_info]
+mcc = 901
+mnc = 9999
+[cell_info]
+main_carrier = 1584
+secondary_carrier = 1585
+freq_band = 4
+freq_offset = 0
+duplex_spacing = 4
+reverse_operation = false
+location_area = 1
+"#).unwrap();
+        let mut umac = UmacBs::new(SharedConfig::from_parts(cfg, None));
+        let mut queue = MessageQueue::new();
+        let operation = uuid::Uuid::new_v4();
+        for ts in [2, 5, 7] {
+            umac.rx_control_circuit_open(&mut queue, CallControl::Open(Circuit {
+                direction: Direction::Both, ts, peer_ts: None, usage: 4,
+                circuit_mode: CircuitModeType::TchS, speech_service: Some(0),
+                etee_encrypted: false, dl_media_source: CircuitDlMediaSource::SwMI,
+            }));
+            umac.central_media_bindings[ts as usize - 1] = Some(operation.to_string());
+            let mut frame = MediaDownlinkFrame { session_id: operation.to_string(), source_node_id: "core".into(),
+                sequence: 1, logical_ts: ts, codec: MediaCodec::TetraAcelp0, payload: vec![0; 35] };
+            assert!(umac.central_media_allowed(&frame));
+            frame.session_id = uuid::Uuid::new_v4().to_string();
+            assert!(!umac.central_media_allowed(&frame));
+            frame.session_id = operation.to_string();
+            umac.rx_control_circuit_close(&mut queue, CallControl::Close(Direction::Both, ts));
+            assert!(!umac.central_media_allowed(&frame));
+        }
+        let (uplink, _, sink, source) = media_bridge_channel(32);
+        umac.set_media_bridge(uplink, source);
+        for sequence in 0..20 {
+            sink.try_send(MediaDownlinkFrame { session_id: operation.to_string(), source_node_id: "core".into(),
+                sequence, logical_ts: 2, codec: MediaCodec::TetraAcelp0, payload: vec![0; 35] }).unwrap();
+        }
+        umac.drain_central_media();
+        let source = umac.media_downlink.as_ref().unwrap();
+        assert_eq!((0..4).filter(|_| source.try_recv().is_ok()).count(), 4);
+        assert!(source.try_recv().is_err());
+    }
 }
