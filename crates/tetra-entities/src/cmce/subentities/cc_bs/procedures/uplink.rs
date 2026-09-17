@@ -981,6 +981,19 @@ impl CcBsSubentity {
         }
 
         let traffic_ts = call.ts;
+        let was_speaker = call.is_current_speaker(sender.ssi);
+        if let Some(call) = self.active_calls.get_mut(&call_id) {
+            if call.queued_tx_demand.is_some_and(|requester| requester.ssi == sender.ssi) {
+                call.queued_tx_demand = None;
+            }
+        }
+        if was_speaker {
+            // Leaving the call must also surrender the floor, otherwise the
+            // remaining group members keep seeing an absent speaker as busy.
+            if let Err(error) = self.fsm_group_on_tx_ceased(queue, call_id, sender) {
+                tracing::warn!(?error, call_id, "CMCE: could not release departing participant's floor");
+            }
+        }
         tracing::info!(
             "U-DISCONNECT: participant ISSI {} leaving call_id={} locally, cause={}",
             sender.ssi,

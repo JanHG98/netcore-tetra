@@ -1688,6 +1688,7 @@ location_area = 1
         assert!(matches!(call.origin, CallOrigin::Local { caller_addr } if caller_addr == owner));
         call.enter_hangtime(cc.dltime);
         cc.active_calls.insert(7, call);
+        cc.cached_setups.insert(7, group_setup_for_test());
         let mut queue = MessageQueue::new();
         cc.fsm_on_u_disconnect(&mut queue, speaker, 0, 6, 0, UDisconnect {
             call_identifier: 7, disconnect_cause: DisconnectCause::UserRequestedDisconnection,
@@ -1704,6 +1705,60 @@ location_area = 1
         assert!(!fallback.stealing_permission);
         assert_eq!(fallback.main_address, speaker);
         assert!(queue.is_empty());
+        cc.fsm_on_u_disconnect(&mut queue, owner, 0, 6, 0, UDisconnect {
+            call_identifier: 7, disconnect_cause: DisconnectCause::UserRequestedDisconnection,
+            facility: None, proprietary: None,
+        });
+        assert!(!cc.active_calls.contains_key(&7), "original owner must still be able to end the group");
+    }
+
+    fn group_setup_for_test() -> super::super::CachedSetup {
+        use super::super::*;
+        use tetra_pdus::cmce::fields::basic_service_information::BasicServiceInformation;
+        CachedSetup {
+            dest_addr: TetraAddress::new(15201, SsiType::Gssi), resend: true, tx_receipt: None,
+            pdu: DSetup {
+                call_identifier: 7, call_time_out: CallTimeout::T2m,
+                hook_method_selection: false, simplex_duplex_selection: false,
+                basic_service_information: BasicServiceInformation {
+                    circuit_mode_type: CircuitModeType::TchS, encryption_flag: false,
+                    communication_type: CommunicationType::P2Mp, slots_per_frame: None, speech_service: Some(0),
+                },
+                transmission_grant: TransmissionGrant::GrantedToOtherUser,
+                transmission_request_permission: false, call_priority: 0,
+                notification_indicator: None, temporary_address: None,
+                calling_party_address_ssi: Some(2020001), calling_party_extension: None,
+                external_subscriber_number: None, facility: None, dm_ms_address: None, proprietary: None,
+            },
+        }
+    }
+
+    #[test]
+    fn departing_non_owner_surrenders_floor_and_cancels_pending_demand() {
+        use super::super::*;
+        for speaking in [false, true] {
+            let mut cc = CcBsSubentity::new(test_cfg());
+            let owner = TetraAddress::new(2020001, SsiType::Issi);
+            let participant = TetraAddress::new(5102, SsiType::Issi);
+            let mut call = ActiveCall::new_local(owner, 15201, owner.ssi, 6, 4, cc.dltime, CallTimeout::T2m, 0);
+            if speaking { call.grant_floor(participant.ssi, Some(participant)); }
+            else { call.queue_tx_demand(participant); }
+            cc.active_calls.insert(7, call);
+            cc.cached_setups.insert(7, group_setup_for_test());
+            let mut queue = MessageQueue::new();
+            cc.fsm_on_u_disconnect(&mut queue, participant, 0, 6, 0, UDisconnect {
+                call_identifier: 7, disconnect_cause: DisconnectCause::UserRequestedDisconnection,
+                facility: None, proprietary: None,
+            });
+            let remaining = &cc.active_calls[&7];
+            assert!(remaining.queued_tx_demand.is_none());
+            assert!(!remaining.is_current_speaker(participant.ssi));
+            assert_eq!(remaining.is_tx_active(), !speaking);
+            if speaking {
+                assert!(queue.iter().any(|message| matches!(&message.msg,
+                    SapMsgInner::CmceCallControl(CallControl::FloorReleased { call_id: 7, ts: 6 }))));
+            }
+        }
     }
 
 }

@@ -2317,8 +2317,9 @@ mod tests {
             sched.create_circuit(Direction::Dl, test_circuit(Direction::Dl, 3));
             sched.create_circuit(Direction::Ul, test_circuit(Direction::Ul, 3));
             sched.set_hangtime(3, true);
-            sched.dl_enqueue_stealing(3, BitBuffer::new(124), None);
             let time = TdmaTime { h: 0, m: 2, f: 5, t: 3 };
+            sched.set_dl_time(time.add_timeslots(-(MACSCHED_TX_AHEAD as i32)));
+            sched.dl_enqueue_stealing(3, BitBuffer::new(124), None);
             let mut release = finish_at(&mut sched, time);
             assert_eq!(release.blk1.as_ref().unwrap().logical_channel, LogicalChannel::Stch);
             assert_eq!(release.blk2.as_ref().unwrap().logical_channel, LogicalChannel::TchS);
