@@ -135,6 +135,8 @@ pub struct CallControlMediaEvent {
 // Was: Bündelt die zusammengehörigen Werte für Ruf Steuerung Rufzweig in einem Datentyp.
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CallControlLeg {
+    #[serde(default)]
+    pub operation_id: String,
     pub node_id: String,
     pub local_call_id: Option<u16>,
     pub phase: String,

@@ -1,3 +1,4 @@
+use crate::net_media::{MediaDownlinkSource, MediaUplinkSink, LocalMediaUplinkFrame, MediaCodec};
 use tetra_config::bluestation::SharedConfig;
 use tetra_core::freqs::FreqInfo;
 use tetra_core::tetra_entities::TetraEntity;
@@ -40,6 +41,10 @@ use crate::{MessagePrio, MessageQueue, TetraEntityTrait};
 use super::subcomp::bs_defrag::BsDefrag;
 
 pub struct UmacBs {
+    media_uplink: Option<MediaUplinkSink>,
+    media_downlink: Option<MediaDownlinkSource>,
+    media_sequence: u64,
+    central_media_bindings: [Option<String>; 8],
     self_component: TetraEntity,
     config: SharedConfig,
     dltime: TdmaTime,
@@ -85,6 +90,31 @@ struct PendingStch {
 }
 
 impl UmacBs {
+    pub fn set_media_bridge(&mut self, uplink: MediaUplinkSink, downlink: MediaDownlinkSource) {
+        self.media_uplink = Some(uplink);
+        self.media_downlink = Some(downlink);
+    }
+
+    fn drain_central_media(&mut self) {
+        // Fixed per-tick budget; all networking/codec work stays outside RF.
+        for _ in 0..16 {
+            let Some(source) = self.media_downlink.as_ref() else { break; };
+            let Ok(frame) = source.try_recv() else { break; };
+            let ts = frame.logical_ts;
+            if !(2..=7).contains(&ts) || (ts >= 5 && self.secondary_carrier().is_none())
+                || frame.payload.len() != 35
+                || self.central_media_bindings[ts as usize - 1].as_deref() != Some(frame.session_id.as_str()) {
+                continue;
+            }
+            let air_ts = Self::air_ts_for_logical(ts);
+            let carrier = self.carrier_for_logical_ts(ts);
+            if !self.pending_circuit_closes[ts as usize - 1].dl
+                && self.scheduler_for(carrier).circuit_is_active(Direction::Dl, air_ts) {
+                self.scheduler_for_mut(carrier).dl_schedule_tmd(air_ts, frame.payload);
+            }
+        }
+    }
+
     pub fn new(config: SharedConfig) -> Self {
         let c = config.config();
         let scrambling_code = scrambler::tetra_scramb_get_init(c.net.mcc, c.net.mnc, c.cell.colour_code);
@@ -102,6 +132,8 @@ impl UmacBs {
             secondary_channel_schedulers.push(sched);
         }
         Self {
+            media_uplink: None, media_downlink: None, media_sequence: 0,
+            central_media_bindings: Default::default(),
             self_component: TetraEntity::Umac,
             config,
             dltime: TdmaTime::default(),
@@ -1644,6 +1676,18 @@ impl UmacBs {
                 }
 
                 let ul_active = self.scheduler_for(carrier_num).circuit_is_active(Direction::Ul, air_ts);
+                if ul_active {
+                    if let Some(sink) = self.media_uplink.as_ref() {
+                        if let Some(payload) = pack_ul_acelp_bits(&data) {
+                            self.media_sequence = self.media_sequence.wrapping_add(1);
+                            let _ = sink.try_send(LocalMediaUplinkFrame {
+                                sequence: self.media_sequence, carrier_num, logical_ts,
+                                codec: MediaCodec::TetraAcelp0, payload,
+                            });
+                        }
+                    }
+                }
+
 
                 // Passive local recorder tap. The recorder receives only valid UL media on an
                 // active circuit and correlates the logical timeslot with CMCE lifecycle events.
@@ -1949,6 +1993,10 @@ impl UmacBs {
             tracing::error!("BUG: unexpected message or state -- routing error");
             return;
         };
+        if (2..=7).contains(&ts) && matches!(dir, Direction::Dl | Direction::Both) {
+            self.central_media_bindings[ts as usize - 1] = None;
+        }
+
 
         // Traffic bearers use logical TS 2..7. Defer close until pending FACCH/STCH
         // release signalling on the matching physical carrier/slot has drained.
@@ -2105,6 +2153,11 @@ impl UmacBs {
         };
 
         match prim {
+            CallControl::BindCentralMedia { operation_id, ts } => {
+                if (2..=7).contains(&ts) {
+                    self.central_media_bindings[ts as usize - 1] = Some(operation_id.to_string());
+                }
+            }
             CallControl::Open(_) => {
                 self.rx_control_circuit_open(queue, prim);
             }
@@ -2230,6 +2283,8 @@ impl TetraEntityTrait for UmacBs {
                 scheduler.tick_start(ts);
             }
         }
+
+        self.drain_central_media();
 
         // Check for UL inactivity (stuck transmitter detection)
         self.check_ul_inactivity(queue);

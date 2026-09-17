@@ -80,6 +80,8 @@ pub struct NodeRecord {
 // Was: Bündelt die zusammengehörigen Werte für Audio- und Mediendaten Rufzweig in einem Datentyp.
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MediaLeg {
+    #[serde(default)]
+    pub operation_id: String,
     pub node_id: String,
     pub local_call_id: Option<u16>,
     pub phase: String,
@@ -640,6 +642,7 @@ impl SharedMedia {
                 legs.insert(
                     stream_id,
                     MediaLeg {
+                        operation_id: leg.operation_id.clone(),
                         node_id: leg.node_id.clone(),
                         local_call_id: leg.local_call_id,
                         phase: leg.phase.clone(),
@@ -904,7 +907,7 @@ impl SharedMedia {
                     .target_logical_ts
                     .is_none_or(|logical_ts| logical_ts == leg.logical_ts)
             })
-            .map(|leg| (leg.node_id.clone(), leg.logical_ts))
+            .map(|leg| (leg.node_id.clone(), leg.logical_ts, leg.operation_id.clone()))
             .collect::<Vec<_>>();
 
         if targets.is_empty() {
@@ -917,9 +920,9 @@ impl SharedMedia {
         let mut queued = 0usize;
         // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
         // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
-        for (node_id, logical_ts) in targets {
+        for (node_id, logical_ts, operation_id) in targets {
             let frame = MediaDownlinkFrame {
-                session_id: session_id.to_string(),
+                session_id: operation_id,
                 source_node_id: "media-switch:injection".to_string(),
                 sequence,
                 logical_ts,
@@ -1161,6 +1164,7 @@ impl SharedMedia {
                         (
                             leg.node_id.clone(),
                             leg.logical_ts,
+                            leg.operation_id.clone(),
                             leg.muted,
                             node_can_receive(&state, &leg.node_id),
                         )
@@ -1190,7 +1194,7 @@ impl SharedMedia {
         let mut routed = 0usize;
         // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
         // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
-        for (node_id, logical_ts, muted, online) in targets {
+        for (node_id, logical_ts, operation_id, muted, online) in targets {
             if muted {
                 state.muted_frames = state.muted_frames.wrapping_add(1);
                 continue;
@@ -1206,7 +1210,7 @@ impl SharedMedia {
                 continue;
             }
             let downlink = MediaDownlinkFrame {
-                session_id: session_id.clone(),
+                session_id: operation_id,
                 source_node_id: frame.node_id.clone(),
                 sequence: frame.sequence,
                 logical_ts,
@@ -1892,6 +1896,7 @@ mod tests {
                 (
                     "a".to_string(),
                     CallControlLeg {
+                        operation_id: "test-operation".to_string(),
                         node_id: "tbs-a".to_string(),
                         local_call_id: Some(1),
                         phase: "active".to_string(),
@@ -1904,6 +1909,7 @@ mod tests {
                 (
                     "b".to_string(),
                     CallControlLeg {
+                        operation_id: "test-operation".to_string(),
                         node_id: "tbs-b".to_string(),
                         local_call_id: Some(2),
                         phase: "active".to_string(),

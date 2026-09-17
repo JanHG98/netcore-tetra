@@ -1803,7 +1803,10 @@ impl CallState {
                                 leg.timeslot = timeslot;
                                 leg.usage = usage;
                                 leg.floor_holder = floor_holder;
-                                leg.phase = if success { LegPhase::Active } else { LegPhase::Failed };
+                                leg.phase = if !success { LegPhase::Failed }
+                                    else if matches!(kind, tetra_entities::net_control::ManagedCallKind::Individual)
+                                        && leg.phase != LegPhase::Active { LegPhase::Starting }
+                                    else { LegPhase::Active };
                                 leg.message = message.clone();
                                 leg.updated_at = now();
                             }

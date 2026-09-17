@@ -8,6 +8,10 @@ impl CcBsSubentity {
             return;
         };
 
+        if network_entity == TetraEntity::Cmce {
+            self.central_callback(queue, call_control);
+            return;
+        }
         match call_control {
             CallControl::NetworkCallStart {
                 brew_uuid,

@@ -47,6 +47,7 @@ use crate::{
 /// transient empty listener set while still releasing genuinely unlistened calls promptly.
 const BREW_AFFILIATION_GRACE_TS: i32 = 144;
 
+mod central_control;
 mod dtmf;
 mod lifecycle;
 mod pdu;

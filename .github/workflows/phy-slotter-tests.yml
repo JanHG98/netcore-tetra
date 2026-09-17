@@ -4,6 +4,14 @@ on:
   pull_request:
     branches: [mqtt]
     paths:
+      - system-backend/sip-switch/**
+      - system-backend/media-switch/**
+      - system-backend/call-control/**
+      - crates/tetra-saps/**
+      - crates/tetra-entities/src/net_media/**
+      - crates/tetra-entities/src/net_control_room/**
+      - crates/tetra-entities/src/mm/**
+      - tools/test_sip_network_runtime.py
       - crates/tetra-entities/src/phy/**
       - crates/tetra-entities/src/lmac/**
       - crates/tetra-entities/src/umac/**
@@ -47,5 +55,16 @@ jobs:
             cargo test -p tetra-entities --features recording,asterisk --lib "$test_filter" -- --nocapture || test_status=1
           done
           exit "$test_status"
+      - name: Test central SIP routing and fallback
+        run: |
+          python3 tools/check_sip_switch_phase11.py
+          python3 tools/check_sip_switch_phase11c.py
+          python3 tools/test_sip_network_runtime.py
+      - name: Test central call and media adapters
+        run: |
+          cargo test -p tetra-entities --features recording,asterisk --lib central_control -- --nocapture
+          cargo test -p tetra-entities --features recording,asterisk --lib central_media -- --nocapture
+          cargo test --manifest-path system-backend/call-control/Cargo.toml
+          cargo test --manifest-path system-backend/media-switch/Cargo.toml
       - name: Build the base station
         run: cargo build --release -p bluestation-bs
