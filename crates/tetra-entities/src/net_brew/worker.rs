@@ -383,7 +383,7 @@ impl<T: NetworkTransport> BrewWorker<T> {
             // ── Check for commands from the BrewEntity ──
             // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
             // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
-            loop {
+            for _ in 0..64 {
                 // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
                 // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
                 let cmd = match self.command_receiver.try_recv() {

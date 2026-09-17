@@ -18,7 +18,9 @@ use uuid::Uuid;
 
 use crate::{MessageQueue, TetraEntityTrait};
 
-use super::audio::{AsteriskAudioTranscoder, PCMU_PAYLOAD_TYPE, rtp_payload};
+use super::audio::{PCMU_PAYLOAD_TYPE, rtp_payload};
+use super::media_worker::{MediaWorker, MediaOutput};
+use super::causes;
 
 // Was: Legt den festen Wert `SIP_MAX_DATAGRAM` für sip max datagram fest.
 // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
@@ -73,7 +75,7 @@ struct SipDialog {
     auth_retry_sent: bool,
     state: DialogState,
     rtp: RtpSession,
-    audio: AsteriskAudioTranscoder,
+    audio: MediaWorker,
     media_ready: Option<(u16, u8)>,
     inbound: bool,
     request_context: Option<SipRequestContext>,
@@ -163,6 +165,13 @@ impl SipMessage {
     fn call_id(&self) -> Option<&str> {
         self.header("Call-ID")
     }
+
+    fn disconnect_cause(&self, fallback: DisconnectCause) -> DisconnectCause {
+        self.headers.iter()
+            .filter(|(name, _)| name.eq_ignore_ascii_case("Reason"))
+            .find_map(|(_, value)| causes::from_reason(value))
+            .unwrap_or(fallback)
+    }
 }
 
 #[derive(Clone)]
@@ -197,6 +206,7 @@ pub struct AsteriskEntity {
     last_rx: Option<String>,
     last_tx: Option<String>,
     last_error: Option<String>,
+    last_status_refresh: Option<Instant>,
 }
 
 // Was: Implementiert das zugehörige Verhalten für `AsteriskEntity`.
@@ -215,7 +225,7 @@ impl AsteriskEntity {
             .next()
             .ok_or_else(|| io::Error::new(io::ErrorKind::AddrNotAvailable, "asterisk remote address did not resolve"))?;
 
-        let entity = Self {
+        let mut entity = Self {
             config,
             next_rtp_port: asterisk_config.rtp_port_min,
             register_call_id: format!("flow-reg-{}@{}", Uuid::new_v4(), asterisk_config.contact_host),
@@ -233,6 +243,7 @@ impl AsteriskEntity {
             last_rx: None,
             last_tx: None,
             last_error: None,
+            last_status_refresh: None,
         };
         entity.refresh_status();
         Ok(entity)
@@ -258,7 +269,9 @@ impl AsteriskEntity {
 
     // Was: Führt den Arbeitsschritt `refresh_status` für refresh Status aus.
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    fn refresh_status(&self) {
+    fn refresh_status(&mut self) {
+        if self.last_status_refresh.is_some_and(|at| at.elapsed() < Duration::from_millis(250)) { return; }
+        self.last_status_refresh = Some(Instant::now());
         let mut state = self.config.state_write();
         state.asterisk_status = AsteriskRuntimeStatus {
             configured: true,
@@ -911,7 +924,7 @@ impl AsteriskEntity {
             }
         };
         rtp.remote = Some(remote_rtp);
-        let Some(audio) = AsteriskAudioTranscoder::new() else {
+        let Some(audio) = MediaWorker::new() else {
             self.set_error("TETRA codec allocation failed for inbound Asterisk call".to_string());
             let response = self.build_response(&ctx, 503, "Service Unavailable", Some("flowstation"), None);
             self.send_sip_to(response, addr, "503 Service Unavailable");
@@ -1060,7 +1073,7 @@ impl AsteriskEntity {
         let number = call.number.trim().to_string();
         if number.is_empty() {
             self.set_error(format!("empty Asterisk destination for uuid={}", brew_uuid));
-            self.reject_setup(queue, brew_uuid, 34);
+            self.reject_setup(queue, brew_uuid, DisconnectCause::UnknownExternalSubscriberIdentity);
             return;
         }
         // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
@@ -1069,13 +1082,13 @@ impl AsteriskEntity {
             Ok(rtp) => rtp,
             Err(err) => {
                 self.set_error(format!("RTP allocation failed for uuid={}: {}", brew_uuid, err));
-                self.reject_setup(queue, brew_uuid, 34);
+                self.reject_setup(queue, brew_uuid, DisconnectCause::CongestionInInfrastructure);
                 return;
             }
         };
-        let Some(audio) = AsteriskAudioTranscoder::new() else {
+        let Some(audio) = MediaWorker::new() else {
             self.set_error(format!("TETRA codec allocation failed for uuid={}", brew_uuid));
-            self.reject_setup(queue, brew_uuid, 34);
+            self.reject_setup(queue, brew_uuid, DisconnectCause::CongestionInInfrastructure);
             return;
         };
 
@@ -1105,12 +1118,12 @@ impl AsteriskEntity {
 
     // Was: Führt den Arbeitsschritt `reject_setup` für reject setup aus.
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    fn reject_setup(&self, queue: &mut MessageQueue, brew_uuid: Uuid, cause: u8) {
+    fn reject_setup(&self, queue: &mut MessageQueue, brew_uuid: Uuid, cause: DisconnectCause) {
         queue.push_back(SapMsg {
             sap: Sap::Control,
             src: TetraEntity::Asterisk,
             dest: TetraEntity::Cmce,
-            msg: SapMsgInner::CmceCallControl(CallControl::NetworkCircuitSetupReject { brew_uuid, cause }),
+            msg: SapMsgInner::CmceCallControl(CallControl::NetworkCircuitSetupReject { brew_uuid, cause: cause.into_raw() as u8 }),
         });
     }
 
@@ -1138,12 +1151,12 @@ impl AsteriskEntity {
 
     // Was: Diese Funktion sendet release to CMCE-Rufsteuerung.
     // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
-    fn send_release_to_cmce(&self, queue: &mut MessageQueue, brew_uuid: Uuid, cause: u8) {
+    fn send_release_to_cmce(&self, queue: &mut MessageQueue, brew_uuid: Uuid, cause: DisconnectCause) {
         queue.push_back(SapMsg {
             sap: Sap::Control,
             src: TetraEntity::Asterisk,
             dest: TetraEntity::Cmce,
-            msg: SapMsgInner::CmceCallControl(CallControl::NetworkCircuitRelease { brew_uuid, cause }),
+            msg: SapMsgInner::CmceCallControl(CallControl::NetworkCircuitRelease { brew_uuid, cause: cause.into_raw() as u8 }),
         });
     }
 
@@ -1198,49 +1211,12 @@ impl AsteriskEntity {
     // Was: Diese Funktion verarbeitet ul voice.
     // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_ul_voice(&mut self, prim: TmdCircuitDataInd) {
-        let Some(uuid) = self.rtp_by_ts.get(&prim.ts).copied() else {
-            return;
-        };
-        let mut send_result = None;
-        let mut drop_reason = None;
-        'send: {
-            let Some(dialog) = self.dialogs.get_mut(&uuid) else {
-                return;
-            };
-            let Some(remote) = dialog.rtp.remote else {
-                return;
-            };
-            let Some(payload) = dialog.audio.decode_tmd_to_pcmu(&prim.data) else {
-                drop_reason = Some(format!(
-                    "AsteriskEntity: dropping unsupported TETRA audio block uuid={} ts={} len={}",
-                    uuid,
-                    prim.ts,
-                    prim.data.len()
-                ));
-                break 'send;
-            };
-
-            let mut packet = Vec::with_capacity(12 + payload.len());
-            packet.push(0x80);
-            packet.push(PCMU_PAYLOAD_TYPE);
-            packet.extend_from_slice(&dialog.rtp.seq.to_be_bytes());
-            packet.extend_from_slice(&dialog.rtp.timestamp.to_be_bytes());
-            packet.extend_from_slice(&dialog.rtp.ssrc.to_be_bytes());
-            packet.extend_from_slice(&payload);
-            let result = dialog.rtp.socket.send_to(&packet, remote);
-            if result.is_ok() {
-                dialog.rtp.seq = dialog.rtp.seq.wrapping_add(1);
-                dialog.rtp.timestamp = dialog.rtp.timestamp.wrapping_add(payload.len().max(1) as u32);
+        let Some(uuid) = self.rtp_by_ts.get(&prim.ts) else { return };
+        if let Some(dialog) = self.dialogs.get(uuid) {
+            if !dialog.audio.uplink(prim.data) {
+                self.last_error = Some("Asterisk audio queue full/unavailable; uplink frame dropped".into());
             }
-            send_result = Some(result);
         }
-        if let Some(reason) = drop_reason {
-            self.set_error(reason);
-            return;
-        }
-        if let Some(Err(err)) = send_result {
-            self.set_error(format!("RTP send failed uuid={} ts={}: {}", uuid, prim.ts, err));
-        };
     }
 
     // Was: Diese Funktion fragt rtp.
@@ -1252,9 +1228,7 @@ impl AsteriskEntity {
         // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
         // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for dialog in self.dialogs.values_mut() {
-            let Some((_, ts)) = dialog.media_ready else {
-                continue;
-            };
+            if dialog.media_ready.is_none() { continue; }
             // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
             // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for _ in 0..32 {
@@ -1276,8 +1250,8 @@ impl AsteriskEntity {
                         dialog.rtp.remote = Some(addr);
                         // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
                         // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
-                        for frame in dialog.audio.encode_pcmu_to_tmd(payload) {
-                            downlink.push((ts, frame));
+                        if !dialog.audio.downlink(payload) {
+                            last_error = Some("Asterisk audio queue full/unavailable; RTP frame dropped".into());
                         }
                     }
                     Err(err) if err.kind() == io::ErrorKind::WouldBlock => break,
@@ -1287,6 +1261,36 @@ impl AsteriskEntity {
                     }
                 }
             }
+        }
+        let mut failed = Vec::new();
+        for dialog in self.dialogs.values_mut() {
+            for result in dialog.audio.drain() {
+                match result {
+                    MediaOutput::Downlink(data) => {
+                        if let Some((_, ts)) = dialog.media_ready { downlink.push((ts, data)); }
+                    }
+                    MediaOutput::Uplink(payload) => {
+                        let Some(remote) = dialog.rtp.remote else { continue };
+                        let mut packet = Vec::with_capacity(12 + payload.len());
+                        packet.extend_from_slice(&[0x80, PCMU_PAYLOAD_TYPE]);
+                        packet.extend_from_slice(&dialog.rtp.seq.to_be_bytes());
+                        packet.extend_from_slice(&dialog.rtp.timestamp.to_be_bytes());
+                        packet.extend_from_slice(&dialog.rtp.ssrc.to_be_bytes());
+                        packet.extend_from_slice(&payload);
+                        if let Err(err) = dialog.rtp.socket.send_to(&packet, remote) {
+                            last_error = Some(format!("RTP send failed uuid={}: {}", dialog.uuid, err));
+                        }
+                        dialog.rtp.seq = dialog.rtp.seq.wrapping_add(1);
+                        dialog.rtp.timestamp = dialog.rtp.timestamp.wrapping_add(payload.len() as u32);
+                    }
+                    MediaOutput::CodecUnavailable => failed.push(dialog.uuid),
+                }
+            }
+        }
+        for uuid in failed {
+            self.send_release_to_cmce(queue, uuid, DisconnectCause::RequestedServiceNotAvailable);
+            self.release_dialog(uuid, true, Some(DisconnectCause::RequestedServiceNotAvailable.into_raw() as u8));
+            last_error = Some(format!("TETRA codec unavailable uuid={}", uuid));
         }
         if last_error.is_some() {
             self.last_error = last_error;
@@ -1341,14 +1345,14 @@ impl AsteriskEntity {
                 "BYE" => {
                     self.answer_request(&msg, addr, 200, "OK");
                     if let Some(uuid) = self.find_dialog_by_call_id(msg.call_id()) {
-                        self.send_release_to_cmce(queue, uuid, 16);
+                        self.send_release_to_cmce(queue, uuid, msg.disconnect_cause(DisconnectCause::UserRequestedDisconnection));
                         self.release_dialog(uuid, false, None);
                     }
                 }
                 "CANCEL" => {
                     self.answer_request(&msg, addr, 200, "OK");
                     if let Some(uuid) = self.find_dialog_by_call_id(msg.call_id()) {
-                        self.send_release_to_cmce(queue, uuid, 16);
+                        self.send_release_to_cmce(queue, uuid, msg.disconnect_cause(DisconnectCause::UserRequestedDisconnection));
                         self.release_dialog(uuid, false, None);
                     }
                 }
@@ -1479,7 +1483,7 @@ impl AsteriskEntity {
                     self.send_sip(ack_text, format!("ACK failure {}", uuid));
                 }
                 self.set_error(format!("INVITE uuid={} failed with SIP {}", uuid, code));
-                self.send_release_to_cmce(queue, uuid, 34);
+                self.send_release_to_cmce(queue, uuid, msg.disconnect_cause(causes::from_sip_status(code)));
                 self.release_dialog(uuid, false, None);
             }
             _ => {}
@@ -1643,5 +1647,86 @@ impl TetraEntityTrait for AsteriskEntity {
         self.poll_sip(queue);
         self.poll_rtp(queue);
         self.refresh_status();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn entity() -> AsteriskEntity {
+        let mut cfg = tetra_config::bluestation::parsing::from_toml_str(r#"
+config_version = "0.6"
+stack_mode = "Bs"
+[phy_io]
+backend = "None"
+[net_info]
+mcc = 901
+mnc = 9999
+[cell_info]
+main_carrier = 720
+freq_band = 4
+freq_offset = 0
+duplex_spacing = 4
+reverse_operation = false
+location_area = 1
+"#).unwrap();
+        cfg.asterisk.bind_addr = "127.0.0.1".into();
+        cfg.asterisk.bind_port = 0;
+        cfg.asterisk.remote_host = "127.0.0.1".into();
+        cfg.asterisk.remote_port = 9;
+        cfg.asterisk.rtp_port_min = 0;
+        cfg.asterisk.rtp_port_max = 0;
+        AsteriskEntity::new(SharedConfig::from_parts(cfg, None)).unwrap()
+    }
+
+    fn call() -> NetworkCircuitCall {
+        NetworkCircuitCall {
+            source_issi: 5102, destination: 103, number: "103".into(),
+            priority: 0, service: 0, mode: 0, duplex: 1, method: 0,
+            communication: 0, grant: 0, permission: 0, timeout: 0, ownership: 0, queued: 0,
+        }
+    }
+
+    #[test]
+    fn bye_and_cancel_emit_normal_tetra_release_and_remove_media_route() {
+        for method in ["BYE", "CANCEL"] {
+            for reason in ["", "Reason: Q.850;cause=16;text=\"Normal Clearing\"\r\n"] {
+                let mut entity = entity();
+                let uuid = Uuid::new_v4();
+                entity.start_outbound_call(&mut MessageQueue::new(), uuid, call());
+                entity.mark_media_ready(uuid, 6, 3);
+                let id = entity.dialogs[&uuid].call_id_header.clone();
+                let text = format!("{method} sip:5102@localhost SIP/2.0\r\nVia: SIP/2.0/UDP localhost\r\nFrom: <sip:103@localhost>;tag=a\r\nTo: <sip:5102@localhost>;tag=b\r\nCall-ID: {id}\r\nCSeq: 2 {method}\r\n{reason}Content-Length: 0\r\n\r\n");
+                let mut queue = MessageQueue::new();
+                entity.handle_sip_message(&mut queue, SipMessage::parse(text.as_bytes()).unwrap(), "127.0.0.1:9".parse().unwrap());
+                assert!(matches!(queue.pop_front().unwrap().msg,
+                    SapMsgInner::CmceCallControl(CallControl::NetworkCircuitRelease { brew_uuid, cause: 1 }) if brew_uuid == uuid));
+                assert!(entity.dialogs.is_empty());
+                assert!(entity.rtp_by_ts.is_empty());
+            }
+        }
+    }
+
+    #[test]
+    fn failed_invite_uses_sip_or_explicit_q850_reason_not_raw_integer() {
+        for (code, reason, expected) in [(486, "", 2), (404, "", 18), (503, "", 5),
+            (503, "Reason: Q.850;cause=17\r\n", 2)] {
+            let mut entity = entity();
+            let uuid = Uuid::new_v4();
+            entity.start_outbound_call(&mut MessageQueue::new(), uuid, call());
+            let id = entity.dialogs[&uuid].call_id_header.clone();
+            let text = format!("SIP/2.0 {code} Failure\r\nCall-ID: {id}\r\nCSeq: 1 INVITE\r\n{reason}\r\n");
+            let mut queue = MessageQueue::new();
+            entity.handle_sip_message(&mut queue, SipMessage::parse(text.as_bytes()).unwrap(), "127.0.0.1:9".parse().unwrap());
+            assert!(matches!(queue.pop_front().unwrap().msg,
+                SapMsgInner::CmceCallControl(CallControl::NetworkCircuitRelease { cause, .. }) if cause == expected));
+            assert!(entity.dialogs.is_empty());
+        }
+        let entity = entity();
+        let mut queue = MessageQueue::new();
+        entity.reject_setup(&mut queue, Uuid::new_v4(), DisconnectCause::CongestionInInfrastructure);
+        assert!(matches!(queue.pop_front().unwrap().msg,
+            SapMsgInner::CmceCallControl(CallControl::NetworkCircuitSetupReject { cause: 5, .. })));
     }
 }

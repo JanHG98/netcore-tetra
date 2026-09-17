@@ -263,13 +263,16 @@ impl BrewEntity {
         self.telemetry_sink = Some(sink);
     }
 
-    /// Process all pending events from the worker thread
+    /// Process a bounded FIFO batch so network bursts cannot monopolize a TDMA tick.
     // Was: Diese Funktion verarbeitet events.
     // Warum: Die einzelnen Verarbeitungsschritte bleiben damit gebündelt und leichter testbar.
     fn process_events(&mut self, queue: &mut MessageQueue) {
         // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
         // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
-        while let Ok(event) = self.event_receiver.try_recv() {
+        let started = Instant::now();
+        for processed in 0..64 {
+            if processed > 0 && started.elapsed() >= Duration::from_millis(1) { break; }
+            let Ok(event) = self.event_receiver.try_recv() else { break };
             // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
             // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match event {
@@ -1513,7 +1516,7 @@ impl TetraEntityTrait for BrewEntity {
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn tick_start(&mut self, queue: &mut MessageQueue, ts: TdmaTime) {
         self.dltime = ts;
-        // Process all pending events from the worker thread
+        // Process a bounded batch; leave the rest in FIFO order for the next tick.
         self.process_events(queue);
         // Feed one buffered frame at each traffic playout opportunity.
         self.drain_jitter_playout(queue);
@@ -2157,6 +2160,77 @@ impl Drop for BrewEntity {
                 }
                 std::thread::sleep(std::time::Duration::from_millis(50));
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn registration_event_burst_leaves_time_for_rf_and_keeps_fifo_order() {
+        let cfg = tetra_config::bluestation::parsing::from_toml_str(r#"config_version = "0.6"
+stack_mode = "Bs"
+[phy_io]
+backend = "None"
+[net_info]
+mcc = 901
+mnc = 9999
+[cell_info]
+main_carrier = 720
+freq_band = 4
+freq_offset = 0
+duplex_spacing = 4
+reverse_operation = false
+location_area = 1
+[brew]
+host = "127.0.0.1"
+port = 8081
+tls = false
+username = 0
+password = ""
+"#).unwrap();
+        let brew_config = cfg.brew.clone().unwrap();
+        let register = brew_config.subscriber_type_register;
+        let config = SharedConfig::from_parts(cfg, None);
+        let entity = TetraEntity::Brew;
+        let log_label = "test".into();
+        let (events, event_receiver) = unbounded();
+        let (command_sender, _commands) = unbounded();
+        let mut brew = BrewEntity {
+            entity,
+            log_label,
+            config,
+            brew_config,
+            dltime: TdmaTime::default(),
+            event_receiver,
+            command_sender,
+            active_calls: HashMap::new(),
+            dl_jitter: HashMap::new(),
+            draining_jitter: HashMap::new(),
+            hanging_calls: HashMap::new(),
+            ul_forwarded: HashMap::new(),
+            subscriber_groups: HashMap::new(),
+            connected: false,
+            brew_reconnect_announced: false,
+            brew_version_announced: false,
+            telemetry_sink: None,
+            rssi_last_sent: HashMap::new(),
+            worker_handle: None,
+        };
+        for issi in 1000..1130 {
+            events.send(BrewEvent::SubscriberEvent { msg_type: register, issi, groups: vec![] }).unwrap();
+        }
+        let mut queue = MessageQueue::new();
+        brew.process_events(&mut queue);
+        assert!((1..=64).contains(&queue.len()));
+        assert!(!brew.event_receiver.is_empty(), "a burst must not drain in one RF tick");
+        for _ in 0..130 { brew.process_events(&mut queue); }
+        assert_eq!(queue.len(), 130);
+        for expected in 1000..1130 {
+            assert!(matches!(queue.pop_front().unwrap().msg,
+                SapMsgInner::MmSubscriberUpdate(update) if update.issi == expected));
         }
     }
 }

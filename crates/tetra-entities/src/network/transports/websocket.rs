@@ -853,7 +853,9 @@ impl NetworkTransport for WebSocketTransport {
 
         // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
         // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
-        loop {
+        // Count all frames, including ping/text, so sustained incoming traffic
+        // returns control to the worker's outgoing subscriber/call commands.
+        for _ in 0..64 {
             // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
             // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match ws.read() {
@@ -969,5 +971,40 @@ impl NetworkTransport for WebSocketTransport {
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn server_brew_version(&self) -> u8 {
         self.server_brew_version
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::net::TcpListener;
+    use tungstenite::protocol::Role;
+
+    #[test]
+    fn receive_burst_yields_to_outgoing_control_without_losing_fifo_frames() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let client = TcpStream::connect(listener.local_addr().unwrap()).unwrap();
+        client.set_read_timeout(Some(Duration::from_millis(50))).unwrap();
+        let (server, _) = listener.accept().unwrap();
+        server.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
+        let mut peer = WebSocket::from_raw_socket(server, Role::Server, None);
+        let mut transport = WebSocketTransport::new(WebSocketTransportConfig {
+            host: "127.0.0.1".into(), port: listener.local_addr().unwrap().port(), use_tls: false,
+            custom_root_certs: None, basic_auth_credentials: None, digest_auth_credentials: None,
+            endpoint_path: "/".into(), subprotocol: None, user_agent: "test".into(),
+            heartbeat_interval: Duration::from_secs(60), heartbeat_timeout: Duration::from_secs(60),
+        });
+        transport.ws = Some(WebSocket::from_raw_socket(MaybeTlsStream::Plain(client), Role::Client, None));
+        for n in 0u8..130 { peer.send(Message::Binary(vec![n].into())).unwrap(); }
+        let first = transport.receive_reliable();
+        assert_eq!(first.len(), 64);
+        // An outgoing registration command can run while inbound frames remain.
+        transport.send_reliable(b"registration").unwrap();
+        assert!(matches!(peer.read().unwrap(), Message::Binary(data) if data.as_ref() == b"registration"));
+        let mut received = first;
+        received.extend(transport.receive_reliable());
+        received.extend(transport.receive_reliable());
+        assert_eq!(received.len(), 130);
+        for (n, message) in received.iter().enumerate() { assert_eq!(message.payload, vec![n as u8]); }
     }
 }
