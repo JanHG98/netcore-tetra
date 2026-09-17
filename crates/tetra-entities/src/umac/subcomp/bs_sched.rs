@@ -1509,8 +1509,23 @@ impl BsChannelScheduler {
             return Some(q.remove(i));
         }
 
+        // Integration above turns Grant into Resource. Keep its deadline
+        // priority after that conversion, otherwise a busy MCCH sends it after
+        // the uplink reservation it was supposed to announce.
+        if let Some(i) = q.iter().position(|e| matches!(e,
+            DlSchedElem::Resource(pdu, _, _) if pdu.slot_granting_element.is_some())) {
+            return Some(q.remove(i));
+        }
+
         // Return FragBufs next
         if let Some(i) = q.iter().position(|e| matches!(e, DlSchedElem::FragBuf(_))) {
+            return Some(q.remove(i));
+        }
+
+        // Complete existing fragments first, then acknowledge new access
+        // (including location-update accepts) ahead of background call pages.
+        if let Some(i) = q.iter().position(|e| matches!(e,
+            DlSchedElem::Resource(pdu, _, _) if pdu.random_access_flag)) {
             return Some(q.remove(i));
         }
 
@@ -2138,6 +2153,51 @@ mod tests {
     };
 
     use super::*;
+
+    #[test]
+    fn integrated_access_responses_precede_busy_mcch_background_pages() {
+        let mut sched = get_testing_slotter();
+        let ts = TdmaTime { t: 1, f: 1, m: 1, h: 0 };
+        // Twenty queued group pages reproduce the contention seen during calls.
+        for ssi in 15201..15221 {
+            let addr = TetraAddress { ssi, ssi_type: SsiType::Gssi };
+            sched.dl_enqueue_tma(BsChannelScheduler::dl_make_minimal_resource(&addr, None, false), BitBuffer::new(70), None);
+        }
+        let registering = TetraAddress { ssi: 5102, ssi_type: SsiType::Issi };
+        sched.dl_enqueue_tma(BsChannelScheduler::dl_make_minimal_resource(&registering, None, false), BitBuffer::new(47), None);
+        sched.dl_enqueue_random_access_ack(1, registering);
+        let granted = TetraAddress { ssi: 5103, ssi_type: SsiType::Issi };
+        sched.dl_enqueue_grant(1, granted, BasicSlotgrant {
+            capacity_allocation: BasicSlotgrantCapAlloc::FirstSubslotGranted,
+            granting_delay: BasicSlotgrantGrantingDelay::CapAllocAtNextOpportunity,
+        }, None);
+        sched.dl_integrate_sched_elems_for_timeslot(ts);
+        assert!(matches!(sched.dl_take_prioritized_sched_item(ts),
+            Some(DlSchedElem::Resource(pdu, _, _)) if pdu.addr == Some(granted) && pdu.slot_granting_element.is_some()));
+        assert!(matches!(sched.dl_take_prioritized_sched_item(ts),
+            Some(DlSchedElem::Resource(pdu, _, _)) if pdu.addr == Some(registering) && pdu.random_access_flag));
+        // Background work still drains in FIFO order, with no discarded page.
+        for ssi in 15201..15221 {
+            assert!(matches!(sched.dl_take_prioritized_sched_item(ts),
+                Some(DlSchedElem::Resource(pdu, _, _)) if pdu.addr.unwrap().ssi == ssi));
+        }
+        assert!(sched.dl_take_prioritized_sched_item(ts).is_none());
+    }
+
+    #[test]
+    fn access_ack_does_not_interrupt_an_existing_fragment_chain() {
+        let mut sched = get_testing_slotter();
+        let ts = TdmaTime { t: 1, f: 1, m: 1, h: 0 };
+        let group = TetraAddress { ssi: 15201, ssi_type: SsiType::Gssi };
+        sched.dl_enqueue_tma(BsChannelScheduler::dl_make_minimal_resource(&group, None, false), BitBuffer::new(600), None);
+        assert!(sched.dl_build_block_from_signalling_schedule(ts).is_some());
+        let registering = TetraAddress { ssi: 5102, ssi_type: SsiType::Issi };
+        sched.dl_enqueue_random_access_ack(1, registering);
+        sched.dl_integrate_sched_elems_for_timeslot(ts);
+        assert!(matches!(sched.dl_take_prioritized_sched_item(ts), Some(DlSchedElem::FragBuf(_))));
+        assert!(matches!(sched.dl_take_prioritized_sched_item(ts),
+            Some(DlSchedElem::Resource(pdu, _, _)) if pdu.addr == Some(registering) && pdu.random_access_flag));
+    }
 
     // Was: Diese Funktion liest testing slotter.
     // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
