@@ -21,6 +21,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libsoapysdr-dev libgsm1-dev pkg-config cmake
+      - name: Build and install bundled speech codec
+        run: |
+          cmake -S tetra-codec-master -B "$RUNNER_TEMP/tetra-codec-build" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib
+          cmake --build "$RUNNER_TEMP/tetra-codec-build" --parallel 2
+          sudo cmake --install "$RUNNER_TEMP/tetra-codec-build"
+          sudo ldconfig
       - name: Test downlink phase adjustment and burst vectors
         run: |
           cargo test -p tetra-entities --lib phy::components::slotter::tests:: -- --nocapture
@@ -28,9 +34,4 @@ jobs:
         run: |
           cargo test -p tetra-entities --lib phy::components::soapy_dev::tests:: -- --nocapture
       - name: Build the base station
-        run: |
-          cmake -S tetra-codec-master -B "$RUNNER_TEMP/tetra-codec-build" -DCMAKE_INSTALL_LIBDIR=lib
-          cmake --build "$RUNNER_TEMP/tetra-codec-build" --parallel 2
-          sudo cmake --install "$RUNNER_TEMP/tetra-codec-build"
-          sudo ldconfig
-          cargo build --release -p bluestation-bs
+        run: cargo build --release -p bluestation-bs
