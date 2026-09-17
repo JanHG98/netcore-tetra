@@ -39,9 +39,10 @@ jobs:
           cargo test -p tetra-entities --lib phy::components::soapy_dev::tests:: -- --nocapture
       - name: Test assigned control, group lifecycle and asynchronous recording
         run: |
-          cargo test -p tetra-entities --lib umac::subcomp::bs_sched::tests:: -- --nocapture
-          cargo test -p tetra-entities --lib lmac::lmac_bs::tests:: -- --nocapture
-          cargo test -p tetra-entities --lib cmce::subentities::cc_bs::pdu::tests:: -- --nocapture
-          cargo test -p tetra-entities --lib net_recorder::entity::tests:: -- --nocapture
+          test_status=0
+          for test_filter in umac::subcomp::bs_sched::tests:: lmac::lmac_bs::tests:: cmce::subentities::cc_bs::pdu::tests:: net_recorder::entity::tests::; do
+            cargo test -p tetra-entities --lib "$test_filter" -- --nocapture || test_status=1
+          done
+          exit "$test_status"
       - name: Build the base station
         run: cargo build --release -p bluestation-bs

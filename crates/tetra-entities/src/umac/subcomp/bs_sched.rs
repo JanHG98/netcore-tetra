@@ -2271,7 +2271,9 @@ mod tests {
     }
 
     fn finish_at(sched: &mut BsChannelScheduler, time: TdmaTime) -> TmvUnitdataReqSlot {
-        sched.set_dl_time(time.add_timeslots(-(MACSCHED_TX_AHEAD as i32)));
+        // Advance the test clock without the destructive resynchronization in
+        // set_dl_time(), which intentionally purges all queued FACCH messages.
+        sched.cur_dltime = time.add_timeslots(-(MACSCHED_TX_AHEAD as i32));
         sched.finalize_ts_for_tick()
     }
 
