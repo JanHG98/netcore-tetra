@@ -94,7 +94,7 @@ mod tests {
         for _ in 0..3 { assert!(worker.downlink(&[0xff; 160])); }
         let frame = worker.rx.recv_timeout(Duration::from_secs(5)).expect("encoded 60 ms block");
         let MediaOutput::Downlink(tetra) = frame.value else { panic!("codec unavailable") };
-        assert_eq!(tetra.len(), 274);
+        assert_eq!(tetra.len(), 35, "274 speech bits packed into 35 bytes");
         assert!(worker.uplink(tetra));
         let frame = worker.rx.recv_timeout(Duration::from_secs(5)).expect("decoded block");
         let MediaOutput::Uplink(pcmu) = frame.value else { panic!("wrong direction") };

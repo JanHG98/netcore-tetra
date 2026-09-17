@@ -1000,7 +1000,7 @@ mod tests {
         assert_eq!(first.len(), 64);
         // An outgoing registration command can run while inbound frames remain.
         transport.send_reliable(b"registration").unwrap();
-        assert!(matches!(peer.read().unwrap(), Message::Binary(data) if data.as_ref() == b"registration"));
+        assert!(matches!(peer.read().unwrap(), Message::Binary(data) if &data[..] == b"registration"));
         let mut received = first;
         received.extend(transport.receive_reliable());
         received.extend(transport.receive_reliable());
