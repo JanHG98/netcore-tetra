@@ -305,10 +305,10 @@ impl<D: RxTxDev> PhyBs<D> {
         // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for prim in prims {
             let carrier_num = prim.carrier_num;
-            if let Some(burst) = self.build_dl_burst(prim) {
-                carrier_nums.push(carrier_num);
-                dl_bursts.push(burst);
-            }
+            // An idle/dropped burst still occupies a timeslot on its carrier.
+            // Preserve it as silence so every modulator advances on the same clock.
+            carrier_nums.push(carrier_num);
+            dl_bursts.push(self.build_dl_burst(prim));
         }
 
         let tx_time = self.dltime.add_timeslots(MACSCHED_TX_AHEAD as i32);
@@ -318,7 +318,7 @@ impl<D: RxTxDev> PhyBs<D> {
             .map(|(burst, carrier_num)| TxSlotBits {
                 carrier_num: *carrier_num,
                 time: tx_time,
-                slot: Some(burst),
+                slot: burst.as_ref().map(|bits| bits.as_slice()),
                 ..Default::default()
             })
             .collect::<Vec<_>>();
@@ -326,7 +326,7 @@ impl<D: RxTxDev> PhyBs<D> {
         if let Some(dl_tx_sender) = &self.dl_tx_sender {
             // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
             // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
-            for burst in &dl_bursts {
+            for burst in dl_bursts.iter().flatten() {
                 let _ = dl_tx_sender.try_send(FileWriteMsg::WriteBlock(burst.to_vec()));
             }
         }
