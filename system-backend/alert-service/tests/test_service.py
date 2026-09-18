@@ -5,6 +5,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from urllib.error import HTTPError
 from urllib.parse import unquote
 
@@ -160,6 +161,10 @@ class ServiceTests(unittest.TestCase):
         self.store.close()
         self.store = Store(self.database)
         self.service = self.make_service()
+
+    def snapshot_at(self, elapsed=0):
+        with patch("service.timestamp", side_effect=lambda value=None: NOW + elapsed if value is None else timestamp(value)):
+            return self.service.snapshot()
 
     def test_login_receives_existing_warning_once_per_issi_even_after_restart(self):
         self.tick()
@@ -341,6 +346,137 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(result["devices"], [])
         self.assertIn("control_room", result["errors"])
         self.assertFalse(self.router.posts)
+
+    def test_device_overview_includes_healthy_affected_radio_and_accepted_warning(self):
+        self.nina.result.alerts = []
+        self.control.rows = [subscriber(5102)]
+        manual = self.service.create_manual({"title": "Testnachricht", "latitude": 52.5, "longitude": 13.4,
+                                             "radius_m": 1000, "expires_at": iso(NOW + 3600)}, now=NOW)
+        self.tick()
+        self.tick(1)
+        history_before = self.store.deliveries()
+        result = self.snapshot_at(1)
+        self.assertEqual(result["device_summary"], {"total": 1, "available": 1, "affected": 1, "blocked": 0})
+        row = result["device_overview"][0]
+        self.assertEqual(row["issi"], 5102)
+        self.assertTrue(row["available"])
+        self.assertEqual(row["reason_code"], "ready")
+        self.assertEqual(row["area_status"], "affected")
+        self.assertEqual((row["latitude"], row["longitude"]), (52.5, 13.4))
+        self.assertEqual((row["gps_age_seconds"], row["node_age_seconds"]), (1, 0))
+        self.assertEqual(row["matching_alerts"], [{
+            "id": manual["id"], "title": "Testnachricht", "eligible": True, "eligibility_reason": None,
+            "delivery_state": "accepted", "delivery_error": None, "delivery_updated_at": NOW + 1,
+        }])
+        self.assertEqual(result["device_diagnostics"], [])
+        self.assertEqual(self.store.deliveries(), history_before, "Overview must never mutate delivery state")
+        self.assertEqual(len(self.router.posts), 1)
+
+    def test_device_overview_distinguishes_outside_blocked_and_no_active_alerts(self):
+        self.control.rows = [subscriber(1001, latitude=53), subscriber(1002, updated=NOW - 3601)]
+        self.tick()
+        result = self.snapshot_at()
+        rows = {row["issi"]: row for row in result["device_overview"]}
+        self.assertEqual(rows[1001]["area_status"], "outside")
+        self.assertTrue(rows[1001]["available"])
+        self.assertFalse(rows[1002]["available"])
+        self.assertEqual(rows[1002]["reason_code"], "gps_stale")
+        self.assertEqual(rows[1002]["gps_age_seconds"], 3601)
+        self.assertEqual(rows[1002]["area_status"], "unknown")
+        self.assertEqual(rows[1002]["matching_alerts"], [], "Old GPS must not imply a current geographic match")
+        self.assertEqual(result["device_summary"], {"total": 2, "available": 1, "affected": 0, "blocked": 1})
+        self.nina.result.alerts = []
+        self.tick(1)
+        rows = {row["issi"]: row for row in self.snapshot_at(1)["device_overview"]}
+        self.assertEqual(rows[1001]["area_status"], "no_alerts")
+        self.assertEqual(rows[1002]["area_status"], "unknown")
+
+    def test_device_overview_preserves_matches_while_delivery_paused_or_router_unready(self):
+        self.control.rows = [subscriber()]
+        self.config["delivery"]["enabled"] = False
+        self.tick()
+        result = self.snapshot_at()
+        self.assertFalse(result["delivery_enabled"])
+        self.assertTrue(result["device_overview"][0]["available"])
+        match = result["device_overview"][0]["matching_alerts"][0]
+        self.assertTrue(match["eligible"])
+        self.assertIsNone(match["delivery_state"])
+        self.config["delivery"]["enabled"] = True
+        self.router.ready = False
+        self.tick(1)
+        result = self.snapshot_at(1)
+        self.assertFalse(result["router_ready"])
+        self.assertEqual(result["device_overview"][0]["area_status"], "affected")
+        self.assertIsNone(result["device_overview"][0]["matching_alerts"][0]["delivery_state"])
+        self.assertEqual(self.store.deliveries(), [])
+        self.assertEqual(self.router.posts, [])
+
+    def test_device_overview_uses_accepted_alias_history_over_unsent_reservation(self):
+        self.store.ingest([warning("a"), warning("b")], complete=True, now=NOW)
+        for alert_id in ("a", "b"):
+            self.store.enqueue("nina:" + alert_id, 5102, {"idempotency_key": alert_id + "-key"}, NOW + 300, NOW)
+        delivered = next(row for row in self.store.deliveries() if row["alert_id"] == "nina:b")
+        self.store.update_delivery(delivered, state="accepted", attempts=1, router_id="already-sent")
+        joined = warning("c", now=NOW + 1, aliases=["a", "b", "c"])
+        joined["incident_id"] = "a"
+        self.nina.result.alerts = [joined]
+        self.control.rows = [subscriber(5102)]
+        self.tick(1)
+        row = self.snapshot_at(1)["device_overview"][0]
+        self.assertEqual(len(row["matching_alerts"]), 1)
+        self.assertEqual(row["matching_alerts"][0]["id"], "nina:a")
+        self.assertEqual(row["matching_alerts"][0]["delivery_state"], "accepted")
+        self.assertEqual(self.router.posts, [])
+
+    def test_device_overview_deduplicates_issi_and_usable_position_wins(self):
+        self.control.rows = [subscriber(5102, latitude=53, updated=NOW - 60), subscriber(5102),
+                             subscriber(5102, updated=NOW - 3601)]
+        self.tick()
+        result = self.snapshot_at()
+        self.assertEqual(result["subscribers_seen"], 3)
+        self.assertEqual(len(result["device_diagnostics"]), 2)
+        self.assertEqual(len(result["device_overview"]), 1)
+        self.assertEqual(result["device_summary"], {"total": 1, "available": 1, "affected": 1, "blocked": 0})
+        self.assertTrue(result["device_overview"][0]["available"])
+        self.assertEqual(result["device_overview"][0]["reason_code"], "ready")
+        self.assertEqual(result["device_overview"][0]["latitude"], 52.5)
+        self.assertEqual(len(self.router.posts), 1)
+
+    def test_device_overview_lists_all_matches_including_stale_nina_without_new_sends(self):
+        self.control.rows = [subscriber()]
+        self.nina.result.alerts = [warning("first"), warning("second")]
+        self.tick()
+        self.tick(1)
+        self.nina.result = FetchResult([], False, ["provider unreachable"], [])
+        self.tick(62)
+        result = self.snapshot_at(62)
+        row = result["device_overview"][0]
+        self.assertEqual(row["area_status"], "affected")
+        self.assertEqual({match["id"] for match in row["matching_alerts"]}, {"nina:first", "nina:second"})
+        self.assertTrue(all(not match["eligible"] for match in row["matching_alerts"]))
+        self.assertTrue(all(match["eligibility_reason"] for match in row["matching_alerts"]))
+        self.assertTrue(all(match["delivery_state"] == "accepted" for match in row["matching_alerts"]))
+        self.assertEqual(len(self.router.posts), 2)
+
+    def test_empty_device_overview_preserves_waiting_success_and_fetch_failure(self):
+        initial = self.snapshot_at()
+        self.assertIsNone(initial["last_cycle"])
+        self.assertEqual(initial["errors"], {})
+        self.assertEqual(initial["device_overview"], [])
+        self.tick()
+        empty = self.snapshot_at()
+        self.assertEqual(empty["last_cycle"], NOW)
+        self.assertNotIn("control_room", empty["errors"])
+        self.assertEqual(empty["device_summary"], {"total": 0, "available": 0, "affected": 0, "blocked": 0})
+        self.control.rows = [subscriber()]
+        self.tick(1)
+        self.assertEqual(self.snapshot_at(1)["device_summary"]["available"], 1)
+        self.control.error = OSError("Control Room unavailable")
+        self.tick(2)
+        failed = self.snapshot_at(2)
+        self.assertIn("control_room", failed["errors"])
+        self.assertEqual(failed["device_overview"], [])
+        self.assertEqual(failed["device_summary"]["total"], 0)
 
     def test_duplicate_subscriber_rows_use_newest_position(self):
         self.control.rows = [subscriber(updated=NOW - 60), subscriber(latitude=53, updated=NOW)]

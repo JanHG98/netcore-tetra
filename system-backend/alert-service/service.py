@@ -76,6 +76,7 @@ class AlertService:
         self.nina = nina
         self.devices = []
         self.device_diagnostics = []
+        self._device_node_ages = {}
         self.subscribers_seen = 0
         self.errors = {}
         self.last_cycle = None
@@ -207,6 +208,7 @@ class AlertService:
                 reject(row, "device_data_invalid", "GPS-Daten oder ISSI fehlen oder sind ungültig")
                 continue
         self.device_diagnostics = diagnostics
+        self._device_node_ages = node_ages
         self.subscribers_seen = len(snapshot["subscribers"])
         return list(newest.values())
 
@@ -246,6 +248,7 @@ class AlertService:
         except Exception as exc:
             self.devices = []
             self.device_diagnostics = []
+            self._device_node_ages = {}
             self.subscribers_seen = 0
             self.errors["control_room"] = str(exc)[:500]
         try:
@@ -368,17 +371,95 @@ class AlertService:
             self.router.request("POST", path + "/cancel", {})
             self.store.update_delivery(row, state="cancelled", updated_at=now)
 
+    def _device_overview(self, alerts, deliveries):
+        """Join the current device assessment with warning and delivery history.
+
+        This is read-only presentation data. Matching, reservations and retries
+        remain exclusively owned by the existing dispatch worker.
+        """
+        canonical = {}
+
+        def canonical_id(alert_id):
+            if alert_id not in canonical:
+                canonical[alert_id] = self.store.canonical_id(alert_id)
+            return canonical[alert_id]
+
+        def delivery_rank(delivery):
+            # An alias merge can retain several original delivery keys. Preserve
+            # evidence of an accepted/attempted send over an unused reservation.
+            return (delivery["state"] == "accepted",
+                    delivery["attempts"] > 0 or bool(delivery["router_id"]),
+                    not delivery["suppressed"], delivery["updated_at"])
+
+        history = {}
+        for delivery in deliveries:
+            key = (canonical_id(delivery["alert_id"]), delivery["issi"])
+            if key not in history or delivery_rank(delivery) > delivery_rank(history[key]):
+                history[key] = delivery
+
+        overview = {}
+        for diagnostic in self.device_diagnostics:
+            issi, node_id = diagnostic["issi"], diagnostic["node_id"]
+            key = issi if issi is not None else ("unknown", node_id)
+            overview.setdefault(key, {
+                "issi": issi, "node_id": node_id, "available": False,
+                "reason_code": diagnostic["reason_code"], "reason": diagnostic["reason"],
+                "gps_age_seconds": diagnostic.get("gps_age_seconds"),
+                "node_age_seconds": diagnostic.get("node_age_seconds"),
+                "area_status": "unknown", "matching_alerts": [],
+            })
+        active_alerts = [alert for alert in alerts if alert["active"]]
+        for device in self.devices:
+            matches = []
+            for alert in active_alerts:
+                if not contains(alert["geometry"], device["latitude"], device["longitude"]):
+                    continue
+                delivery = history.get((canonical_id(alert["id"]), device["issi"]))
+                eligibility_reason = None
+                if not alert["eligible"]:
+                    eligibility_reason = ("NINA-Abruf ist deaktiviert" if not self.config["nina"].get("enabled", True)
+                                          else "NINA-Daten sind nicht aktuell genug für neue Zustellungen")
+                matches.append({
+                    "id": alert["id"], "title": alert["title"], "eligible": alert["eligible"],
+                    "eligibility_reason": eligibility_reason,
+                    "delivery_state": delivery["state"] if delivery else None,
+                    "delivery_error": delivery["last_error"] if delivery else None,
+                    "delivery_updated_at": delivery["updated_at"] if delivery else None,
+                })
+            # A usable current position always supersedes rejected duplicate rows
+            # for the same ISSI; show each known radio only once.
+            overview[device["issi"]] = {
+                "issi": device["issi"], "node_id": device["node_id"], "available": True,
+                "reason_code": "ready", "reason": "Online mit aktueller GPS-Position",
+                "gps_age_seconds": device["age_seconds"],
+                "node_age_seconds": self._device_node_ages.get(device["node_id"]),
+                "latitude": device["latitude"], "longitude": device["longitude"],
+                "updated_at": device["updated_at"],
+                "area_status": "affected" if matches else "outside" if active_alerts else "no_alerts",
+                "matching_alerts": matches,
+            }
+        rows = sorted(overview.values(), key=lambda row: (row["issi"] is None, row["issi"] or 0, row["node_id"] or ""))
+        available = sum(row["available"] for row in rows)
+        summary = {"total": len(rows), "available": available,
+                   "affected": sum(row["area_status"] == "affected" for row in rows),
+                   "blocked": len(rows) - available}
+        return rows, summary
+
     def snapshot(self):
-        with self.lock:
+        # Keep alias resolution and the matching history on one database view.
+        with self.lock, self.store.lock:
             now = timestamp()
             alerts = [{**a, "active": active(a, now), "eligible": self._eligible(a, now),
                        "radio_text": radio_text(a, self.config["delivery"].get("max_text_length", 120))} for a in self.store.alerts()]
+            deliveries = self.store.deliveries(public=True)
+            device_overview, device_summary = self._device_overview(alerts, deliveries)
             return {"service": "netcore-alert-service", "now": iso(now), "last_cycle": self.last_cycle,
                     "delivery_enabled": self.config["delivery"].get("enabled", False), "router_ready": self.router_ready,
                     "nina_last_success": self.store.meta("nina_success"), "errors": dict(self.errors),
                     "alerts": alerts, "devices": list(self.devices),
                     "device_diagnostics": list(self.device_diagnostics), "subscribers_seen": self.subscribers_seen,
-                    "deliveries": self.store.deliveries(public=True)}
+                    "device_overview": device_overview, "device_summary": device_summary,
+                    "deliveries": deliveries}
 
     def run(self):
         while not self.stop.is_set():

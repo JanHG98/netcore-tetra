@@ -1,6 +1,22 @@
 # NINA/KATWARN installieren — was du auf welchem System machen musst
 
-**Diese Reihenfolge abarbeiten: SDS-Router-LXC aktualisieren → Control-Room-LXC aktualisieren und mit Node Gateway verbinden → neuen Warn-LXC erstellen → TBS aktualisieren und prüfen → Versand einschalten.**
+## Aktuelles Update: Geräteübersicht in einer bereits funktionierenden Installation
+
+**Wenn Warnungen bereits am Funkgerät ankommen: Nur den Warn-LXC nach [Schritt 5](#5-bestehenden-warn-lxc-aktualisieren) aktualisieren.** Die neue Übersicht zeigt alle aktuell vom Control Room gemeldeten Geräte, auch wenn fehlendes GPS oder eine fehlende TBS-Verbindung den Warnversand verhindern. Die bisherige Empfängerhistorie bleibt erhalten.
+
+| System | Für die neue Geräteübersicht erforderlich |
+|---|---|
+| **Vorhandener Warn-LXC / alert-service-LXC** | **Schritt 5 ausführen**, anschließend die Warn-WebUI neu laden |
+| **SDS-Router-LXC, Call-Control-LXC, Control-Room-LXC** | Kein weiteres Update, wenn die bisherigen Reparaturen bereits installiert sind |
+| **TBS** | Kein weiteres Update, wenn individuelle Test-SDS und Warnungen bereits ankommen |
+| **Node-Gateway-LXC und übrige LXCs** | Keine Änderung |
+| **Neuer LXC** | Nicht erforderlich |
+
+Die bisherigen Warn- und Versandkorrekturen aus [PR #49](https://github.com/JanHG98/netcore-tetra/pull/49) sind bereits in **`katwarn/nina`** enthalten. Die neue Geräteübersicht liegt bis zu ihrer Zusammenführung auf **`fix/warning-device-overview`**; nur der Updateblock in Schritt 5 verwendet diesen neuen Branch. Die folgenden Einrichtungs- und Reparaturbefehle verwenden `katwarn/nina`.
+
+## Ersteinrichtung oder noch fehlende Reparaturen
+
+**Bei einer Ersteinrichtung diese Reihenfolge abarbeiten: SDS-Router-LXC aktualisieren → Control-Room-LXC aktualisieren und mit Node Gateway verbinden → neuen Warn-LXC erstellen → TBS aktualisieren und prüfen → Versand einschalten.** Anschließend Schritt 5 ausführen, wenn die neue Geräteübersicht noch nicht in `katwarn/nina` enthalten ist.
 
 | System | Was du machen musst |
 |---|---|
@@ -9,8 +25,6 @@
 | Neuer **alert-service-LXC** | **Erstellen und installieren** — Schritt 2 |
 | Jede vorhandene **TBS** | **Aktualisieren, dann Anmeldung, GPS und SDS prüfen** — Schritt 3 |
 | Node Gateway und alle übrigen LXCs | **Für diese Funktion kein Update nötig** |
-
-Die Warnfunktion liegt im Branch **`feat/katwarn-nina-alerts`** aus [PR #49](https://github.com/JanHG98/netcore-tetra/pull/49). Die folgenden Befehle verwenden genau diesen Branch. Der PR ist noch nicht in `katwarn/nina` zusammengeführt.
 
 **SDS Router oder Call Control wechseln ständig zwischen ausgefallen, Fallback und recovering?** Dafür gibt es eine separate [Reparaturanleitung mit Befehlen je LXC](SDS_CALL_CONTROL_FALLBACK_REPARATUR.md). Diese Fehlerkorrektur erfordert ein Update von **SDS Router und Call Control**; Node Gateway und TBS müssen dafür nicht aktualisiert werden.
 
@@ -32,9 +46,9 @@ git status --short
 Bei leerer Ausgabe weiter. Werden eigene Änderungen angezeigt, diese zuerst sichern/übernehmen. Liegt dein Repository woanders, nur die `cd`-Zeile anpassen.
 
 ```bash
-git fetch origin feat/katwarn-nina-alerts:refs/remotes/origin/feat/katwarn-nina-alerts
-git switch feat/katwarn-nina-alerts
-git pull --ff-only origin feat/katwarn-nina-alerts
+git fetch origin katwarn/nina:refs/remotes/origin/katwarn/nina
+git switch katwarn/nina
+git pull --ff-only origin katwarn/nina
 ```
 
 ### Software bauen und Update ausführen
@@ -72,7 +86,7 @@ Die Datei ist im oben genannten GitHub-Branch enthalten. Verwende in diesem Fall
 (
   set -e
   cd /opt
-  git clone --single-branch --branch feat/katwarn-nina-alerts https://github.com/JanHG98/netcore-tetra.git netcore-tetra-warn-update
+  git clone --single-branch --branch katwarn/nina https://github.com/JanHG98/netcore-tetra.git netcore-tetra-warn-update
   cd /opt/netcore-tetra-warn-update
   test -s system-backend/sds-router/install/update.sh
   test -s /etc/netcore/sds-router.toml
@@ -101,7 +115,7 @@ Vorher in Proxmox ein Backup des Control-Room-LXC erstellen. **Diesen gesamten B
   test -s /etc/netcore-control-room/control-room.toml
   cd /opt
   update_dir=$(mktemp -d /opt/netcore-control-room-warn.XXXXXX)
-  git clone --single-branch --branch feat/katwarn-nina-alerts https://github.com/JanHG98/netcore-tetra.git "$update_dir"
+  git clone --single-branch --branch katwarn/nina https://github.com/JanHG98/netcore-tetra.git "$update_dir"
   cd "$update_dir"
   if [ -f /root/.cargo/env ]; then . /root/.cargo/env; fi
   bash system-backend/control-room/install/update.sh
@@ -119,13 +133,34 @@ Die bereits vom SDS-Router verwendete Gateway-Adresse lässt sich **vom Warn- od
 curl --noproxy '*' -fsS http://SDS-ROUTER-IP:8150/api/v1/config | python3 -c 'import json,sys; print(json.load(sys.stdin)["node_gateway"]["url"])'
 ```
 
-**Auf dem Control-Room-LXC** die Konfiguration öffnen:
+**Auf dem Control-Room-LXC als root** zuerst prüfen, ob der Abschnitt bereits existiert:
 
 ```bash
-nano /etc/netcore-control-room/control-room.toml
+grep -nE '^[[:space:]]*\[node_gateway\]' /etc/netcore-control-room/control-room.toml
 ```
 
-Diesen Abschnitt ergänzen; wenn er schon existiert, seine Werte bearbeiten statt einen zweiten anzulegen. Für `url` die gerade angezeigte Adresse verwenden:
+**Wenn keine Zeile ausgegeben wird:** Im folgenden Block `NODE-GATEWAY-IP` durch die tatsächliche Gateway-IP ersetzen und den ganzen Block auf dem Control-Room-LXC ausführen. Er sichert die Konfiguration und hängt den fehlenden Abschnitt an. Falls deine zuvor angezeigte Gateway-Adresse einen anderen Port oder `wss://` verwendet, diese vollständige Adresse für `url` übernehmen.
+
+```bash
+(
+  set -e
+  config=/etc/netcore-control-room/control-room.toml
+  test -s "$config"
+  if grep -qE '^[[:space:]]*\[node_gateway\]' "$config"; then
+    echo 'Abschnitt existiert bereits. Seine Werte wie unten beschrieben bearbeiten.' >&2
+    exit 1
+  fi
+  cp -a "$config" "${config}.bak.$(date +%Y%m%d-%H%M%S)"
+  cat >> "$config" <<'TOML'
+
+[node_gateway]
+enabled = true
+url = "ws://NODE-GATEWAY-IP:8080/ws/backend"
+TOML
+)
+```
+
+**Wenn der Abschnitt schon vorhanden ist:** Mit `nano /etc/netcore-control-room/control-room.toml` dessen Werte bearbeiten, keinen zweiten Abschnitt anlegen:
 
 ```toml
 [node_gateway]
@@ -133,7 +168,7 @@ enabled = true
 url = "ws://NODE-GATEWAY-IP:8080/ws/backend"
 ```
 
-Speichern (Strg+O → Enter → Strg+X), dann **auf dem Control-Room-LXC**:
+Bei Verwendung von nano speichern (Strg+O → Enter → Strg+X). Nach dem Ergänzen oder Bearbeiten **auf dem Control-Room-LXC**:
 
 ```bash
 systemctl restart netcore-control-room
@@ -183,7 +218,7 @@ Container erstellen und starten. Nesting und Geräte-Passthrough werden nicht be
 ```bash
 apt-get update
 apt-get install -y git python3 ca-certificates curl nano
-git clone --branch feat/katwarn-nina-alerts --single-branch https://github.com/JanHG98/netcore-tetra.git /opt/netcore-tetra
+git clone --branch katwarn/nina --single-branch https://github.com/JanHG98/netcore-tetra.git /opt/netcore-tetra
 cd /opt/netcore-tetra
 bash system-backend/alert-service/install/install.sh
 ```
@@ -289,7 +324,7 @@ Nur den Wert hinter **`NETCORE_ALERT_TOKEN=`** in das Feld „Zugriffsschlüssel
 (
   set -e
   update_dir=$(mktemp -d "$HOME/netcore-tbs-sds.XXXXXX")
-  git clone --single-branch --branch feat/katwarn-nina-alerts https://github.com/JanHG98/netcore-tetra.git "$update_dir"
+  git clone --single-branch --branch katwarn/nina https://github.com/JanHG98/netcore-tetra.git "$update_dir"
   cd "$update_dir"
   sudo env MIGRATE_LOCAL_TTS_CONFIG=0 DISABLE_LOCAL_PIPER=0 bash install/update-basisstation.sh
 )
@@ -307,7 +342,7 @@ Bei fehlenden Build-Abhängigkeiten bricht der Updater vor dem Dienststopp ab. E
 (
   set -e
   update_dir=$(mktemp -d "$HOME/netcore-tbs-sds.XXXXXX")
-  git clone --single-branch --branch feat/katwarn-nina-alerts https://github.com/JanHG98/netcore-tetra.git "$update_dir"
+  git clone --single-branch --branch katwarn/nina https://github.com/JanHG98/netcore-tetra.git "$update_dir"
   cd "$update_dir"
   if [ -f "$HOME/.cargo/env" ]; then . "$HOME/.cargo/env"; fi
   cargo build --release -p bluestation-bs
@@ -325,7 +360,7 @@ Der bisherige Funkprozess kann während des Builds weiterlaufen. Erst nach erfol
   test -s /opt/netcore-tetra/config.toml
   test -x /opt/netcore-tetra/target/release/bluestation-bs
   update_dir=$(mktemp -d /opt/netcore-tbs-sds.XXXXXX)
-  git clone --single-branch --branch feat/katwarn-nina-alerts https://github.com/JanHG98/netcore-tetra.git "$update_dir"
+  git clone --single-branch --branch katwarn/nina https://github.com/JanHG98/netcore-tetra.git "$update_dir"
   cd "$update_dir"
   if [ -f /root/.cargo/env ]; then . /root/.cargo/env; fi
   cargo build --release -p bluestation-bs
@@ -413,7 +448,7 @@ systemctl is-active netcore-alert-service
 
 ### Wenn trotz aktivem Versand keine Nachricht ankommt
 
-**In der Warn-WebUI zuerst „Geräte mit aktuellem GPS“ und „Geräteprüfung“ ansehen.** Ein Gerät muss dort für Warnungen verfügbar sein. Seine tatsächliche Position im Kreis allein reicht nicht, solange der Dienst diese Position nicht vom Control Room bekommt.
+**In der Warn-WebUI zuerst „Geräte mit aktuellem GPS“ und „Geräte & Warnstatus“ ansehen** (vor dem Update aus Schritt 5 heißt der zweite Bereich „Geräteprüfung“). Ein Gerät muss für Warnungen verfügbar sein. Seine tatsächliche Position im Kreis allein reicht nicht, solange der Dienst diese Position nicht vom Control Room bekommt.
 
 | Anzeige | Auf welchem System du was prüfen musst |
 |---|---|
@@ -447,26 +482,58 @@ systemctl restart netcore-alert-service
 
 Nach dem nächsten Geräteabgleich müssen Gerätezahl und Karte die angemeldeten Geräte mit aktueller Position zeigen. Eine noch aktive Testwarnung wird anschließend automatisch geprüft.
 
-## 5. Spätere Updates: Nur auf dem Warn-LXC
+## 5. Bestehenden Warn-LXC aktualisieren
 
-**In der Konsole des alert-service-LXC als root:**
-
-```bash
-cd /opt/netcore-tetra
-git status --short
-```
-
-Bei leerer Ausgabe:
+**Für die neue Geräteübersicht diesen gesamten Block nur in der Konsole des bestehenden Warn-LXC als root ausführen.** Es ist kein neuer Container nötig. Die zusätzliche Arbeitskopie vermeidet Abhängigkeiten vom Branch oder von lokalen Änderungen in deinem alten Projektordner.
 
 ```bash
-git pull --ff-only origin feat/katwarn-nina-alerts
-bash system-backend/alert-service/install/update.sh
-systemctl is-active netcore-alert-service
-curl --fail --show-error http://127.0.0.1:8310/health/live
+(
+  set -e
+  test -s /etc/netcore/alert-service.toml
+  test -s /etc/netcore/alert-service.env
+  update_dir=$(mktemp -d /opt/netcore-warn-overview.XXXXXX)
+  git clone --single-branch --branch fix/warning-device-overview https://github.com/JanHG98/netcore-tetra.git "$update_dir"
+  cd "$update_dir"
+  bash system-backend/alert-service/install/update.sh
+  systemctl is-active netcore-alert-service
+)
 ```
 
-Der Updater sichert und erhält Konfiguration, Token und Empfängerhistorie.
+**Erwartet:** Der Updater meldet eine erfolgreiche Installation und anschließend erscheint `active`. Er prüft den Dienststart mehrfach, damit eine kurze Startverzögerung nicht als Verbindungsfehler endet. Bei einem dauerhaften Fehler gibt er das Dienstprotokoll aus.
+
+Das Update erhält `/etc/netcore/alert-service.toml`, `/etc/netcore/alert-service.env`, den Zugriffsschlüssel und die konfigurierte SQLite-Datenbank einschließlich Empfängerhistorie. Sicherungen legt es unter `/var/backups/netcore-alert-service/` an. Bestehende eigene Warnungen und die Einstellung für aktivierten Versand bleiben erhalten. **Für eine bestehende Installation `update.sh` verwenden; die Datenbank nicht löschen.**
+
+Danach im Browser die Warn-WebUI unter `http://WARN-LXC-IP:8310/` mit **Strg+F5** neu laden. Unter **„Geräte & Warnstatus“** prüfen:
+
+1. **„Alle“** zeigt die aktuell gemeldeten Geräte mit ISSI und TBS, auch wenn ihre Position fehlt oder für den Versand nicht verwendbar ist. Bereits abgemeldete Geräte gehören nicht zu dieser Übersicht.
+2. **„Im Warngebiet“** zeigt Geräte in aktiven Warngebieten. Bei mehreren passenden Warnungen ist deren Versandstatus jeweils einzeln aufgeführt.
+3. **„Prüfung nötig“** zeigt ausgeschlossene Geräte und den Grund, beispielsweise fehlendes oder zu altes GPS. Deren Warngebiet steht auf **„Nicht geprüft“**. Zusätzlich erscheinen hier Geräte mit fehlgeschlagenen oder unklaren Zustellungen; deren verwendbare Position bleibt im Warngebiet prüfbar.
+4. **„Auf Karte“** zeigt eine vom Dienst mitgelieferte gültige Position. Ohne solche Koordinaten bleibt das Gerät nur in der Liste. Die Anzeige gibt ausgeschlossene Geräte nicht zum Warnversand frei.
+
+**„Von TBS angenommen“** bestätigt die Annahme zum Senden, keine Empfangsbestätigung am Funkgerät. Das Update versendet bereits bearbeitete Warnungen nicht erneut.
+
+Bei einem Fehler **auf dem Warn-LXC**:
+
+```bash
+systemctl status netcore-alert-service --no-pager -l
+journalctl -u netcore-alert-service -n 60 --no-pager
+```
+
+Nach Zusammenführung der Geräteübersicht kann bei späteren Updates im obigen Klonbefehl `--branch katwarn/nina` verwendet werden. Der alte Branch `feat/katwarn-nina-alerts` wird nicht mehr benötigt.
 
 **Diese Datenbanken behalten:** Auf dem Warn-LXC `/var/lib/netcore-alert-service/alerts.sqlite3`, auf dem SDS-Router-LXC `/var/lib/netcore-sds-router/messages.json` bzw. dein abweichender `storage.database_path`. Sie enthalten die Duplikatsperren. Nicht löschen oder mit einem alten Stand überschreiben.
 
-Für alle anderen vorhandenen LXCs ist im Rahmen dieser Warnfunktion nichts zu installieren oder zu aktualisieren. Die separate [Reparatur für wechselnden SDS-/Call-Control-Fallback](SDS_CALL_CONTROL_FALLBACK_REPARATUR.md) betrifft zusätzlich den Call-Control-LXC. Technische Hintergründe stehen in der [Dienstbeschreibung](../system-backend/alert-service/README.md).
+## Bereits enthaltene Reparaturen nachvollziehen
+
+Die folgenden Korrekturen wurden bereits mit PR #49 in `katwarn/nina` übernommen. Die neue Geräteübersicht setzt darauf auf; funktionierende Systeme müssen diese Schritte nicht erneut durchlaufen.
+
+| Bisheriges Problem | Betroffenes System und reproduzierbare Reparatur | Danach prüfen |
+|---|---|---|
+| SDS-Updater fehlt oder `install` ist leer | **SDS-Router-LXC:** Frische Arbeitskopie und Updateblock in Schritt 1 | Dienst `active`, dauerhafte Duplikatsperre und Gateway-Verbindung im Status aktiviert |
+| Erste Prüfung meldet `ConnectionRefusedError` direkt nach Installation | **Warn-LXC:** Aktueller Installer/Updater wartet auf den Dienst; Prüfung in Schritt 2.2 | `/health/live` antwortet erfolgreich |
+| Control-Room-Karte enthält Geräte, Warnzentrale erhält leere Listen | **Control-Room-LXC:** Software und fehlenden `[node_gateway]`-Abschnitt nach Schritt 1b ergänzen | `/api/nodes` enthält die TBS; nach neuer Anmeldung und GPS enthält `/api/subscribers?online=true` das Testgerät |
+| SDS Router / Call Control wechseln ständig in Fallback | **SDS-Router-LXC und Call-Control-LXC:** [Separate Reparaturanleitung](SDS_CALL_CONTROL_FALLBACK_REPARATUR.md) | Beide `/health/ready`-Antworten zuverlässig unter dem Gateway-Timeout |
+| Auftrag erreicht die TBS, aber keine SDS das Funkgerät | **Jede TBS:** Schritt 3; für den manuellen Root-Start unter `/opt/netcore-tetra` den dortigen gesonderten Block verwenden | Individuelle Test-SDS und danach neue Testwarnung kommen am Funkgerät an |
+| Verfügbare Geräte fehlen in der bisherigen Geräteliste | **Nur Warn-LXC:** Schritt 5 | Verfügbare Geräte erscheinen mit Warngebiets- und Zustellstatus; ausgeschlossene Geräte bleiben mit ihrem Grund sichtbar |
+
+Technische Hintergründe stehen in der [Dienstbeschreibung](../system-backend/alert-service/README.md).

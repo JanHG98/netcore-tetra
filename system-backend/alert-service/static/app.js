@@ -9,6 +9,8 @@ let selected = null;
 let preview = null;
 let firstMapFit = true;
 let pendingDelete = null;
+let deviceFilter = 'all';
+const deviceMarkers = new Map();
 const map = L.map('map').setView([51.1, 10.4], 6);
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 18, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -35,22 +37,110 @@ function areaLayer(alert, options={}) {
 }
 function popup(alert) { const n=element('div'); n.append(element('strong',alert.title),element('span',(severityNames[alert.severity]||alert.severity)+' · '+(alert.provider||alert.source))); return n; }
 function fitAreas() { if(areas.getLayers().length && areas.getBounds().isValid()) map.fitBounds(areas.getBounds(),{padding:[35,35],maxZoom:13}); }
+const age = value => typeof value !== 'number' || !Number.isFinite(value) ? 'Unbekannt' : value < 0 ? 'Zeit liegt in der Zukunft' : value < 60 ? Math.round(value) + ' s' : value < 3600 ? Math.round(value / 60) + ' min' : (value / 3600).toLocaleString('de-DE', {maximumFractionDigits:1}) + ' h';
+function validPosition(device) {
+  return Number.isFinite(device.latitude) && Number.isFinite(device.longitude) && Math.abs(device.latitude) <= 90 && Math.abs(device.longitude) <= 180;
+}
+const deviceMarkerKey = device => JSON.stringify([device.issi, device.node_id, device.latitude, device.longitude]);
+function deviceOverview() {
+  if(Array.isArray(snapshot.device_overview)) return snapshot.device_overview;
+  // Older services expose usable devices and rejected records separately. Keep both visible,
+  // but do not infer a geographic match from an earlier delivery or a missing diagnostic.
+  const rows = new Map();
+  for(const [index, device] of (snapshot.device_diagnostics || []).entries()) {
+    rows.set(device.issi == null ? 'unknown-' + index : String(device.issi), {...device, available:false, area_status:'unknown', matching_alerts:[], legacy:true});
+  }
+  for(const device of snapshot.devices || []) {
+    rows.set(String(device.issi), {...device, available:true, gps_age_seconds:device.age_seconds, area_status:'unknown', matching_alerts:[], legacy:true});
+  }
+  return [...rows.values()].sort((a, b) => (a.issi ?? Infinity) - (b.issi ?? Infinity));
+}
+function needsDeviceCheck(device) {
+  return !device.available || (device.matching_alerts || []).some(alert => ['failed', 'uncertain'].includes(alert.delivery_state));
+}
+function deliveryStatus(alert) {
+  const state = alert.delivery_state;
+  // A stored result takes precedence over current eligibility and the global sending switch.
+  if(state) {
+    const terminal = ['failed', 'uncertain', 'cancelled', 'expired'].includes(state);
+    return {
+      text: labels[state] || state,
+      tone: state === 'accepted' ? 'good' : terminal ? 'warn' : 'neutral',
+      detail: alert.delivery_error || (state === 'accepted' ? 'Keine Empfangsbestätigung' : terminal ? 'Keine automatische Wiederholung' : ''),
+      terminal,
+    };
+  }
+  if(!alert.eligible) return {text:'Versand ausgesetzt', tone:'warn', detail:alert.eligibility_reason || 'Diese Warnung ist derzeit nicht für den Versand freigegeben.'};
+  if(!snapshot.delivery_enabled) return {text:'Versand pausiert', tone:'neutral', detail:'Automatischer Versand ist ausgeschaltet.'};
+  if(!snapshot.router_ready) return {text:'SDS-Router nicht bereit', tone:'warn', detail:'Versand wartet auf die Verbindung zum SDS-Router.'};
+  return {text:'Versand ausstehend', tone:'neutral', detail:'Wird beim nächsten Abgleich geprüft.'};
+}
+function focusDevice(device) {
+  if(!validPosition(device)) return;
+  map.setView([device.latitude, device.longitude], 15);
+  deviceMarkers.get(deviceMarkerKey(device))?.openPopup();
+  $('map').scrollIntoView({behavior:'smooth', block:'center'});
+}
 function renderDeviceChecks() {
-  const panel=$('device-checks');
-  panel.hidden=!Array.isArray(snapshot.device_diagnostics);
-  if(panel.hidden) return;
+  const overview = deviceOverview();
   const rows=$('device-check-list'); rows.replaceChildren();
   const waiting=snapshot.last_cycle==null;
-  const failed=Boolean(snapshot.errors.control_room);
-  $('device-check-summary').textContent=failed?'Geräteabgleich fehlgeschlagen':waiting?'Erster Geräteabgleich läuft …':`${snapshot.subscribers_seen} vom Control Room als online gemeldet · ${snapshot.devices.length} für Warnungen verfügbar`;
-  const age=value=>typeof value==='number'?(value<0?'Zeit liegt in der Zukunft':value<60?Math.round(value)+' s':value<3600?Math.round(value/60)+' min':(value/3600).toLocaleString('de-DE',{maximumFractionDigits:1})+' h'):'–';
-  for(const d of snapshot.device_diagnostics) {
-    const row=element('tr');
-    row.append(element('td',d.issi==null?'Unbekannt':String(d.issi)),element('td',d.node_id||'–'),element('td',d.reason),element('td',age(d.gps_age_seconds)),element('td',age(d.node_age_seconds)));
+  const failed=Boolean(snapshot.errors?.control_room);
+  const available = overview.filter(d => d.available).length;
+  const affected = overview.filter(d => d.area_status === 'affected').length;
+  const check = overview.filter(needsDeviceCheck).length;
+  const shown = overview.filter(d => deviceFilter === 'all' || (deviceFilter === 'affected' ? d.area_status === 'affected' : needsDeviceCheck(d)));
+  $('device-check-summary').textContent = `${overview.length} Geräte · ${available} verfügbar · ${affected} im Warngebiet · ${check} mit Prüfbedarf`;
+  for(const [filter, name, count] of [['all', 'Alle', overview.length], ['affected', 'Im Warngebiet', affected], ['check', 'Prüfung nötig', check]]) {
+    const button = $('device-filter-' + filter);
+    button.textContent = name + ' (' + count + ')';
+    button.setAttribute('aria-pressed', String(deviceFilter === filter));
+  }
+  const state = $('device-check-state');
+  state.textContent = failed ? 'Geräteabgleich fehlgeschlagen. Verbindung zum Control Room prüfen.' : waiting ? 'Der erste Geräteabgleich läuft. Geräte erscheinen nach der Antwort des Control Rooms.' : !Array.isArray(snapshot.device_overview) ? 'Der Warn-Dienst liefert noch die bisherige Geräteansicht. Geräte werden angezeigt; der Gebietsstatus ist nach dem Dienstupdate verfügbar.' : '';
+  state.className = 'device-state' + (failed ? ' warning' : '');
+  state.hidden = !state.textContent;
+  for(const d of shown) {
+    const row = element('tr');
+    const identity = element('td');
+    identity.append(element('strong', d.issi == null ? 'ISSI unbekannt' : 'ISSI ' + d.issi, 'device-identity'), element('span', d.node_id || 'TBS unbekannt', 'device-detail'));
+    if(d.node_age_seconds != null) identity.append(element('span', 'TBS-Meldung: ' + age(d.node_age_seconds), 'device-detail'));
+    if(!d.available) identity.append(element('span', d.reason || 'Gerätedaten prüfen', 'device-issue'));
+    const position = element('td');
+    position.append(element('span', validPosition(d) ? `${d.latitude.toFixed(5)}, ${d.longitude.toFixed(5)}` : 'Keine nutzbare Position', 'device-position'));
+    position.append(element('span', 'GPS-Alter: ' + age(d.gps_age_seconds), 'device-detail'));
+    if(d.updated_at) position.append(element('span', date(d.updated_at), 'device-detail'));
+    if(!d.available && validPosition(d)) position.append(element('span', 'Letzte bekannte Position', 'device-detail'));
+    const area = element('td');
+    const areaText = {affected:'Im Warngebiet', outside:'Außerhalb', no_alerts:'Keine aktiven Warnungen', unknown:'Nicht geprüft'};
+    area.append(element('span', areaText[d.area_status] || 'Nicht geprüft', 'status-tag ' + (d.area_status === 'affected' ? 'affected' : 'neutral')));
+    const matches = d.matching_alerts || [];
+    const areaDetail = d.area_status === 'affected' ? `${matches.length} ${matches.length === 1 ? 'aktive Warnung' : 'aktive Warnungen'}` : d.area_status === 'outside' ? 'Keine aktive Warnung am Standort' : d.area_status === 'no_alerts' ? 'Derzeit kein Gebiet zu prüfen' : d.legacy ? 'Dienstupdate erforderlich' : 'Zuerst Gerätedaten prüfen';
+    area.append(element('span', areaDetail, 'device-detail'));
+    const delivery = element('td');
+    for(const alert of matches) {
+      const status = deliveryStatus(alert);
+      const item = element('div', undefined, 'device-delivery');
+      item.append(element('strong', alert.title || 'Warnung ohne Titel', 'device-alert-title'), element('span', status.text, 'status-tag ' + status.tone));
+      if(status.detail) item.append(element('span', status.detail, 'device-detail' + (status.tone === 'warn' ? ' device-issue' : '')));
+      if(status.terminal && alert.delivery_error) item.append(element('span', 'Keine automatische Wiederholung', 'device-detail'));
+      if(alert.delivery_updated_at) item.append(element('span', date(alert.delivery_updated_at), 'device-detail'));
+      delivery.append(item);
+    }
+    if(!matches.length) delivery.append(element('span', d.legacy ? 'Siehe Zustellhistorie' : d.available ? 'Kein Versand erforderlich' : 'Wartet auf Gerätedaten', 'device-detail'));
+    const action = element('td');
+    if(validPosition(d)) {
+      const button = element('button', 'Auf Karte', 'quiet');
+      button.type = 'button';
+      button.setAttribute('aria-label', 'Position von ' + (d.issi == null ? 'unbekanntem Gerät' : 'ISSI ' + d.issi) + ' auf Karte anzeigen');
+      button.onclick = () => focusDevice(d);
+      action.append(button);
+    } else action.append(element('span', '–'));
+    row.append(identity, position, area, delivery, action);
     rows.append(row);
   }
-  if(!snapshot.device_diagnostics.length) {
-    const message=failed?'Verbindung zum Control Room prüfen.':waiting?'Die Geräte werden noch abgefragt.':snapshot.subscribers_seen===0?'Der Control Room meldet keine angemeldeten Geräte. Anmeldung des Testgeräts dort prüfen.':'Alle gemeldeten Geräte erfüllen die Voraussetzungen für den Gebietsabgleich.';
+  if(!shown.length) {
+    const message=failed?'Geräte konnten nicht geladen werden.':waiting?'Die Geräte werden noch abgefragt.':!overview.length?'Der Control Room meldet keine angemeldeten Geräte. Funkgerät anmelden und GPS senden.':deviceFilter === 'affected'?'Keine Geräte mit geprüftem Standort im Warngebiet.':'Für diese Geräte ist derzeit keine Prüfung nötig.';
     const cell=element('td',message,'empty'); cell.colSpan=5; const row=element('tr'); row.append(cell); rows.append(row);
   }
 }
@@ -68,11 +158,19 @@ function render() {
   const noDevices=!waiting && snapshot.delivery_enabled && active.some(a=>a.eligible) && !snapshot.devices.length;
   $('connection').textContent=errors.length?'Verbindung prüfen':waiting?'Abgleich läuft':noDevices?'Keine Empfänger':'Verbunden';
   $('connection').className='pill '+(errors.length||waiting||noDevices?'bad':'good');
-  notice(errors.length?errors.join('\n'):waiting?'Der erste Geräteabgleich läuft.':!snapshot.delivery_enabled?'Vorschau aktiv. Automatischen Versand in der Dienstkonfiguration einschalten, sobald die Einrichtung geprüft ist.':noDevices?'Versand ist aktiv, aber es ist kein Gerät mit verwendbarer Position verfügbar. Anmeldung, GPS und TBS-Verbindung in der Geräteprüfung unten prüfen.':'');
+  notice(errors.length?errors.join('\n'):waiting?'Der erste Geräteabgleich läuft.':!snapshot.delivery_enabled?'Vorschau aktiv. Automatischen Versand in der Dienstkonfiguration einschalten, sobald die Einrichtung geprüft ist.':noDevices?'Versand ist aktiv, aber es ist kein Gerät mit verwendbarer Position verfügbar. Anmeldung, GPS und TBS-Verbindung unter „Geräte & Warnstatus“ prüfen.':'');
   renderDeviceChecks();
-  areas.clearLayers(); devices.clearLayers();
+  areas.clearLayers(); devices.clearLayers(); deviceMarkers.clear();
   for(const a of active) { try { areaLayer(a).bindPopup(popup(a)).addTo(areas); } catch(err) { console.warn('Warngebiet nicht darstellbar',err); } }
-  for(const d of snapshot.devices) L.circleMarker([d.latitude,d.longitude],{radius:5,color:'#fff',weight:2,fillColor:'#1d937e',fillOpacity:1}).bindPopup(element('span','ISSI '+d.issi+' · '+d.node_id+' · GPS '+date(d.updated_at))).addTo(devices);
+  for(const d of deviceOverview()) {
+    if(!validPosition(d)) continue;
+    const content = element('div');
+    content.append(element('strong', 'ISSI ' + (d.issi ?? 'unbekannt')), element('span', (d.node_id || 'TBS unbekannt') + ' · GPS ' + date(d.updated_at)), element('p', d.available ? 'Für Warnungen verfügbar' : d.reason || 'Gerätedaten prüfen'));
+    const marker = L.circleMarker([d.latitude,d.longitude],{radius:6,color:'#fff',weight:2,fillColor:d.available?'#1d937e':'#a77427',fillOpacity:1,bubblingMouseEvents:false}).bindPopup(content).addTo(devices);
+    // Do not let a device-marker click place the centre of a new warning.
+    marker.on('click', event => { if(event.originalEvent) L.DomEvent.stopPropagation(event.originalEvent); });
+    deviceMarkers.set(deviceMarkerKey(d), marker);
+  }
   if(firstMapFit && areas.getLayers().length) { fitAreas(); firstMapFit=false; }
   const list=$('alert-list'); list.replaceChildren();
   const shown=snapshot.alerts.filter(a=>$('show-history').checked||a.active);
@@ -97,7 +195,7 @@ function render() {
   for(const d of snapshot.deliveries.slice(0,500)) {const tr=element('tr');tr.append(element('td',titles.get(d.alert_id)||d.alert_id),element('td',String(d.issi)),element('td',labels[d.state]||d.state),element('td',date(d.updated_at)),element('td',d.last_error||(d.state==='accepted'?'Annahme zum Senden, keine Lesebestätigung':'–')));tbody.append(tr);}
   if(!snapshot.deliveries.length) {const td=element('td','Noch keine Zustellungen.','empty');td.colSpan=5;const tr=element('tr');tr.append(td);tbody.append(tr);}
 }
-async function refresh() { if(busy)return;busy=true;try{snapshot=await api('status');$('login').hidden=true;render();}catch(e){notice(e.message,true);$('connection').textContent='Nicht verbunden';$('connection').className='pill bad';}finally{busy=false;} }
+async function refresh() { if(busy)return;busy=true;try{snapshot=await api('status');$('login').hidden=true;render();}catch(e){notice(e.message,true);$('connection').textContent='Nicht verbunden';$('connection').className='pill bad';const state=$('device-check-state');state.textContent=snapshot?'Warnstatus konnte nicht aktualisiert werden. Die angezeigten Gerätedaten sind möglicherweise veraltet.':'Geräte konnten nicht geladen werden. Verbindung und Zugriffsschlüssel prüfen.';state.className='device-state warning';state.hidden=false;}finally{busy=false;} }
 function openComposer(latlng) {
   $('composer').hidden=false;
   selected=latlng||selected||map.getCenter();
@@ -114,6 +212,7 @@ $('fit-map').onclick=fitAreas;
 $('cancel-delete').onclick=()=>{$('delete-dialog').close();pendingDelete=null;};
 $('confirm-delete').onclick=async()=>{if(!pendingDelete)return;const button=$('confirm-delete');button.disabled=true;try{await api('alerts/'+encodeURIComponent(pendingDelete),{method:'DELETE'});$('delete-dialog').close();pendingDelete=null;await refresh();}catch(e){$('delete-dialog').close();notice(e.message,true);}finally{button.disabled=false;}};
 $('show-history').onchange=render;
+for(const filter of ['all', 'affected', 'check']) $('device-filter-' + filter).onclick = () => { deviceFilter = filter; if(snapshot) renderDeviceChecks(); };
 for(const name of ['latitude','longitude','radius_m'])fields[name].addEventListener('input',previewArea);
 $('login-form').onsubmit=async e=>{e.preventDefault();token=$('token').value.trim();sessionStorage.setItem('netcore-alert-token',token);$('token').value='';await refresh();};
 $('logout').onclick=()=>{sessionStorage.removeItem('netcore-alert-token');token='';location.reload();};
