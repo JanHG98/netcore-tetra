@@ -317,6 +317,33 @@ Bei fehlenden Build-Abhängigkeiten bricht der Updater vor dem Dienststopp ab. E
 
 Der bisherige Funkprozess kann während des Builds weiterlaufen. Erst nach erfolgreichem Build im bisherigen TBS-Terminal mit **Strg+C** beenden. Anschließend **im bisherigen Arbeitsverzeichnis** denselben Startbefehl wie bisher verwenden, darin ausschließlich den Programmpfad durch den ausgegebenen vollständigen Pfad zum neuen `bluestation-bs` ersetzen. Alle Argumente und insbesondere den Konfigurationspfad beibehalten. Nicht gleichzeitig eine zweite TBS-Instanz starten. Die bisherige ausführbare Datei bleibt für einen Rückwechsel erhalten.
 
+**Konkrete Variante für den manuellen Start als root aus `/opt/netcore-tetra` mit `./target/release/bluestation-bs ./config.toml`:** Statt des obigen manuellen Blocks diesen Block in einem zweiten TBS-Terminal ausführen. Er ersetzt nach erfolgreichem Build genau die bisher verwendete Programmdatei; der Startbefehl bleibt gleich.
+
+```bash
+(
+  set -e
+  test -s /opt/netcore-tetra/config.toml
+  test -x /opt/netcore-tetra/target/release/bluestation-bs
+  update_dir=$(mktemp -d /opt/netcore-tbs-sds.XXXXXX)
+  git clone --single-branch --branch feat/katwarn-nina-alerts https://github.com/JanHG98/netcore-tetra.git "$update_dir"
+  cd "$update_dir"
+  if [ -f /root/.cargo/env ]; then . /root/.cargo/env; fi
+  cargo build --release -p bluestation-bs
+  binary=/opt/netcore-tetra/target/release/bluestation-bs
+  cp -a "$binary" "${binary}.bak.$(date +%Y%m%d-%H%M%S)"
+  install -m 0755 target/release/bluestation-bs "${binary}.new"
+  mv -f "${binary}.new" "$binary"
+  echo 'Build und Austausch erfolgreich. Jetzt die laufende TBS mit Strg+C beenden und neu starten.'
+)
+```
+
+Die laufende Instanz verwendet bis zum Beenden noch das alte Programm. **Nur nach erfolgreichem Abschluss** im bisherigen TBS-Terminal Strg+C drücken und anschließend wieder starten:
+
+```bash
+cd /opt/netcore-tetra
+./target/release/bluestation-bs ./config.toml
+```
+
 ### Nach dem TBS-Update prüfen
 
 An **jeder TBS**, deren Geräte Warnungen bekommen sollen:

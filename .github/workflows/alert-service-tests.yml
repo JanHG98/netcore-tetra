@@ -71,6 +71,7 @@ jobs:
           sudo cmake --install "$RUNNER_TEMP/tetra-codec-build"
           sudo ldconfig
       - name: Central SDS dispatch through the TBS control handler
-        run: cargo test -p tetra-entities --features recording,asterisk,audio-player --lib cmce::cmce_bs::
+        run: |
+          cargo test -p tetra-entities --features recording,asterisk,audio-player --lib cmce::cmce_bs::
       - name: Build the base station with its default features
         run: cargo build -p bluestation-bs
