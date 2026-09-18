@@ -7,6 +7,8 @@ on:
       - system-backend/sip-switch/install/**
       - system-backend/sip-switch/tbs-fallback/install/**
       - tools/test_asterisk_installer.py
+      - tools/test_sip_install_guards.py
+      - tools/test_sip_role_repair.py
       - .github/workflows/asterisk-installer-tests.yml
   workflow_dispatch:
 
@@ -20,7 +22,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Test dependency selection and failure handling without host changes
-        run: sudo python3 tools/test_asterisk_installer.py
+        run: |
+          sudo python3 tools/test_asterisk_installer.py
+          python3 tools/test_sip_install_guards.py
+          python3 tools/test_sip_role_repair.py
 
   trixie-source:
     strategy:

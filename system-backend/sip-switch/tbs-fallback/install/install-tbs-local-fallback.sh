@@ -3,7 +3,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FALLBACK_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-if [[ $# -lt 7 ]]; then
+if [[ $# -lt 7 || $# -gt 9 ]]; then
   cat >&2 <<'USAGE'
 Usage:
   install-tbs-local-fallback.sh \
@@ -18,6 +18,10 @@ Example OPEN LAB without PBX auth:
 USAGE
   exit 2
 fi
+
+source "${FALLBACK_DIR}/../install/check-host-role.sh"
+netcore_check_sip_install_args "$@"
+netcore_check_sip_host_role tbs
 
 NODE_ID="$1"
 TBS_IP="$2"
@@ -49,31 +53,35 @@ fi
 python3 - "$FALLBACK_DIR/config/tbs-sip-fallback.example.toml" /etc/netcore/tbs-sip-fallback.toml \
   "$NODE_ID" "$TBS_IP" "$SWITCH_IP" "$CENTRAL_USER" "$CENTRAL_PASSWORD" "$PBX_IP" "$PBX_FALLBACK_ID" "$NATIVE_USER" "$NATIVE_PASSWORD" "$PBX_AUTH_USER" "$PBX_PASSWORD" <<'PY'
 from pathlib import Path
-import json, os, sys
+import json, os, sys, tomllib
 
 src, dst, node, tbs_ip, switch_ip, central_user, central_password, pbx_ip, pbx_id, native_user, native_password, pbx_auth_user, pbx_password = sys.argv[1:]
 text = Path(src).read_text(encoding="utf-8")
+def value(item):
+    return json.dumps(item, ensure_ascii=False)
+
 replacements = {
-    'binary = "/usr/sbin/asterisk"': 'binary = ' + json.dumps(os.environ['NETCORE_ASTERISK_BINARY']),
-    'node_id = "SRV-M-TBS-01"': f'node_id = "{node}"',
-    'username = "netcore-tbs-native"': f'username = "{native_user}"',
-    'password = "openlab-native"': f'password = "{native_password}"',
-    'contact_host = "127.0.0.1"': f'contact_host = "{tbs_ip}"',
-    'host = "10.0.20.33"': f'host = "{switch_ip}"',
-    'username = "tbs-srv-m-tbs-01"': f'username = "{central_user}"',
-    'password = "openlab-central"': f'password = "{central_password}"',
-    'host = "10.0.1.160"': f'host = "{pbx_ip}"',
-    'username = "netcore-tbs-01"': f'username = "{pbx_id}"',
-    'auth_username = ""': f'auth_username = "{pbx_auth_user}"',
-    'password = ""': f'password = "{pbx_password}"',
-    'from_user = "netcore-tbs-01"': f'from_user = "{pbx_id}"',
-    'contact_user = "netcore-tbs-01"': f'contact_user = "{pbx_id}"',
-    'match = ["10.0.1.160"]': f'match = ["{pbx_ip}"]',
+    'binary = "/usr/sbin/asterisk"': 'binary = ' + value(os.environ['NETCORE_ASTERISK_BINARY']),
+    'node_id = "SRV-M-TBS-01"': 'node_id = ' + value(node),
+    'username = "netcore-tbs-native"': 'username = ' + value(native_user),
+    'password = "openlab-native"': 'password = ' + value(native_password),
+    'contact_host = "127.0.0.1"': 'contact_host = ' + value(tbs_ip),
+    'host = "10.0.20.33"': 'host = ' + value(switch_ip),
+    'username = "tbs-srv-m-tbs-01"': 'username = ' + value(central_user),
+    'password = "openlab-central"': 'password = ' + value(central_password),
+    'host = "10.0.1.160"': 'host = ' + value(pbx_ip),
+    'username = "netcore-tbs-01"': 'username = ' + value(pbx_id),
+    'auth_username = ""': 'auth_username = ' + value(pbx_auth_user),
+    'password = ""': 'password = ' + value(pbx_password),
+    'from_user = "netcore-tbs-01"': 'from_user = ' + value(pbx_id),
+    'contact_user = "netcore-tbs-01"': 'contact_user = ' + value(pbx_id),
+    'match = ["10.0.1.160"]': 'match = ' + value([pbx_ip]),
 }
 for old, new in replacements.items():
     if old not in text:
         raise SystemExit(f"template marker missing: {old}")
     text = text.replace(old, new, 1)
+tomllib.loads(text)
 Path(dst).write_text(text, encoding="utf-8")
 PY
 chmod 0640 /etc/netcore/tbs-sip-fallback.toml

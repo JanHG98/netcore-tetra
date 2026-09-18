@@ -2,6 +2,9 @@
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FALLBACK_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+source "${FALLBACK_DIR}/../install/check-host-role.sh"
+netcore_check_sip_host_role tbs
+
 # Check prerequisites before replacing any installed file or touching services.
 if [[ ! -f /etc/netcore/tbs-sip-fallback.toml ]]; then
   cat >&2 <<EOF
