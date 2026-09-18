@@ -46,7 +46,7 @@ Langfristig verwenden neue Dienste mit eigener LXC-IP einheitlich:
 https://<LXC-IP>:8443/
 ```
 
-Die bisher umgesetzten Dienste sind ausdrücklich dokumentierte Ausnahmen für die isolierte Testumgebung und verwenden je Dienst einen eigenen HTTP-Port im offenen Labormodus. Die verbindliche Zuordnung steht in `services.toml`; die fortlaufende Dienstreihe reicht aktuell vom Recorder auf Port 8140 bis zum SIP Switch auf Port 8300. Der Control Room bleibt auf Port 9010.
+Die bisher umgesetzten Dienste verwenden je Dienst einen eigenen HTTP-Port in der isolierten Testumgebung. Die verbindliche Zuordnung steht in `services.toml`; die fortlaufende Dienstreihe reicht aktuell vom Recorder auf Port 8140 bis zur Warnzentrale auf Port 8310. Der Control Room bleibt auf Port 9010. Die Warnzentrale benötigt standardmäßig ein API-Token; die älteren Dienste verwenden überwiegend den offenen Labormodus.
 
 ## Bereits deploybare Dienste
 
@@ -77,8 +77,9 @@ Bereits deploybar sind:
 - `asset-management/` – Asset-, Geräte- und Benutzerverwaltung, Port 8290
 - `sip-switch/` – zentraler PBX-/TBS-SIP-B2BUA mit Mobility-Core-Routing, Port 8300
 - `control-room/` – zentrale Bedien-, Lage-, Incident- und Schichtbuchebene, Port 9010
+- `alert-service/` – NINA-/KATWARN-Warnungen und eigene Kartenwarnungen mit GPS-basierter einmaliger SDS-Zustellung, Port 8310; Tokenzugang als Standard. Installation und Updates aller LXCs/TBS: [Anleitung](../Docs/KATWARN_NINA_INSTALL_UPDATE.md).
 
-Alle enthalten REST-API, eigene WebUI, systemd-Unit und Installationsskripte; Hardware Gateway, RF Monitor und Alarm Workflow sind bewusst schlanke Python-Dienste, die übrigen Kernservices Rust-Runtimes. In der aktuellen Teststufe laufen sie bewusst im deutlich markierten `open_lab`-Modus ohne Tokens, Benutzeranmeldung oder TLS.
+Alle enthalten REST-API, eigene WebUI, systemd-Unit und Installationsskripte. Die Warnzentrale sowie Hardware Gateway, RF Monitor und mehrere Workflow-Dienste verwenden Python; die übrigen Kernservices verwenden Rust. Die älteren Dienste laufen in der aktuellen Teststufe überwiegend im `open_lab`-Modus ohne Tokens, Benutzeranmeldung oder TLS. Die Warnzentrale aktiviert Tokenzugriff als Standard und startet mit deaktiviertem Funkversand.
 
 
 ## Gemeinsame Plattform und Deployment

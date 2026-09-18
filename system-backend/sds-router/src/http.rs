@@ -157,7 +157,7 @@ fn route(
                 Ok((message, commands)) => {
                     dispatch_response(&gateway_tx, commands, 201, &message)
                 }
-                Err(error) => json_response(409, &json!({"error": error})),
+                Err(error) => json_response(if error.starts_with("persistence_failed:") { 503 } else { 409 }, &json!({"error": error})),
             }
         }
         ("POST", "/api/v1/routes") => {
@@ -185,6 +185,10 @@ fn dynamic_route(
     // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
     // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match (request.method.as_str(), parts.as_slice()) {
+        ("GET", ["api", "v1", "idempotency", key]) => match router.idempotency_status(key) {
+            Some(status) => json_response(200, &status),
+            None => json_response(404, &json!({"error":"idempotency_key_not_found"})),
+        },
         ("GET", ["api", "v1", "messages", id]) => match router.message(id) {
             Some(message) => json_response(200, &message),
             None => json_response(404, &json!({"error":"message not found"})),
@@ -312,7 +316,8 @@ fn openapi() -> serde_json::Value {
         },
         "paths":{
             "/api/v1/status":{"get":{}},
-            "/api/v1/messages":{"get":{},"post":{}},
+            "/api/v1/messages":{"get":{},"post":{"description":"Optional idempotency_key (1..160 URL-safe ASCII characters) durably deduplicates identical requests, including after message deletion. Conflicting payloads return 409. at_most_once=true requires a key and an individual recipient; it selects only the serving TBS (or one force_node), permits one dispatch and blocks manual retries/requeue. Optional expires_at is an absolute RFC3339 deadline, capped by ttl_secs; expired new submissions return 409. Delivery means TBS acceptance, not a handset receipt. Persist the original request before retrying after an HTTP timeout."}},
+            "/api/v1/idempotency/{key}":{"get":{"description":"Read-only lookup of a durable submission key; returns message_id, retained and state. 404 means never submitted. retained=false means the message was deleted but the key remains consumed."}},
             "/api/v1/messages/{id}":{"get":{},"delete":{}},
             "/api/v1/messages/{id}/retry":{"post":{}},
             "/api/v1/messages/{id}/requeue":{"post":{}},

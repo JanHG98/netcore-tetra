@@ -1,0 +1,38 @@
+name: Warning service
+on:
+  pull_request:
+    paths:
+      - 'system-backend/alert-service/**'
+      - 'system-backend/sds-router/**'
+      - '.github/workflows/alert-service-tests.yml'
+  push:
+    branches: ['katwarn/nina']
+    paths:
+      - 'system-backend/alert-service/**'
+      - 'system-backend/sds-router/**'
+      - '.github/workflows/alert-service-tests.yml'
+permissions:
+  contents: read
+jobs:
+  warnings:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Python scenarios and HTTP API
+        working-directory: system-backend/alert-service
+        run: python -m unittest discover -s tests -v
+      - name: Shell and browser script syntax
+        run: |
+          bash -n system-backend/alert-service/install/install.sh
+          bash -n system-backend/alert-service/install/update.sh
+          bash -n system-backend/alert-service/install/deploy.sh
+          node --check system-backend/alert-service/static/app.js
+      - uses: dtolnay/rust-toolchain@stable
+      - name: SDS router tests and real HTTP integration
+        run: |
+          cargo test -p netcore-sds-router
+          cargo build -p netcore-sds-router
+          python system-backend/alert-service/tests/integration_router.py

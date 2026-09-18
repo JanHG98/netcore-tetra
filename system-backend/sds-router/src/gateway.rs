@@ -93,7 +93,7 @@ fn connected_loop(
             // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
             // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match rx.try_recv() {
-                Ok(request) => send_request(socket, &request)?,
+                Ok(request) => send_request(socket, router, &request)?,
                 Err(std::sync::mpsc::TryRecvError::Empty) => break,
                 Err(std::sync::mpsc::TryRecvError::Disconnected) => {
                     return Err("SDS command queue closed".to_string());
@@ -126,7 +126,7 @@ fn connected_loop(
             // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
             // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for request in router.tick() {
-                send_request(socket, &request)?;
+                send_request(socket, router, &request)?;
             }
             last_tick = Instant::now();
         }
@@ -144,7 +144,7 @@ fn handle_event(
     // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
     // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for request in router.handle_backend_event(event) {
-        send_request(socket, &request)?;
+        send_request(socket, router, &request)?;
     }
     Ok(())
 }
@@ -153,8 +153,12 @@ fn handle_event(
 // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
 fn send_request(
     socket: &mut WebSocket<MaybeTlsStream<std::net::TcpStream>>,
+    router: &SharedSdsRouter,
     request: &BackendRequest,
 ) -> Result<(), String> {
+    if !router.may_send(request) {
+        return Ok(());
+    }
     let payload = serde_json::to_string(request)
         .map_err(|error| format!("request serialization failed: {error}"))?;
     socket
