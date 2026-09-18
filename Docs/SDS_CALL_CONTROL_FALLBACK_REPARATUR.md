@@ -17,6 +17,8 @@ Beide Dienste schrieben bei Gateway-Telemetrie ihre vollständige Datenbank, auc
 
 Die Befehle verwenden den Branch **`feat/katwarn-nina-alerts`** aus [PR #49](https://github.com/JanHG98/netcore-tetra/pull/49). Jeder Updateblock legt eine eigene Arbeitskopie unter `/opt` an und bricht bei einem Fehler ab. Vorhandene Projektordner bleiben erhalten.
 
+**Davon getrennt: Gerät auf der Warnkarte sichtbar, aber keine SDS am Funkgerät?** Dafür wurde eine fehlende Befehlsweiterleitung in der TBS gefunden. Dieser zusätzliche Fehler erfordert das [TBS-Update aus Schritt 3 der Warn-Anleitung](KATWARN_NINA_INSTALL_UPDATE.md#3-jede-tbs-aktualisieren-und-funkversand-prüfen). Die obige Aussage zum entfallenden TBS-Update bezieht sich ausschließlich auf die langsamen Bereitschaftsprüfungen und den dadurch ausgelösten Fallback.
+
 Der Neustart unterbricht den jeweiligen Dienst kurz. Das Call-Control-Update bei ruhendem Rufbetrieb durchführen. Bestehende Konfigurationen und Datenbanken behalten; insbesondere die SDS-Datenbank enthält die dauerhaften Duplikatsperren.
 
 ## 1. SDS-Router-LXC aktualisieren

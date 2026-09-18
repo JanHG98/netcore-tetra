@@ -2,7 +2,7 @@
 
 Die Warnzentrale vergleicht aktuelle Gerätepositionen aus dem Control Room mit aktiven Warngebieten und verschickt individuelle SDS über den SDS Router. Sie läuft als eigener Python-3.11+-Dienst in einem LXC und benötigt keine pip-Pakete. WebUI: `http://<WARN-LXC-IP>:8310/`.
 
-Die [Schritt-für-Schritt-Anleitung pro LXC und TBS](../../Docs/KATWARN_NINA_INSTALL_UPDATE.md) nennt für jedes betroffene System die erforderlichen Befehle und Prüfungen. Für diese Funktion müssen der neue Warn-LXC installiert sowie SDS Router und Control Room aktualisiert werden. Der Control Room benötigt die aktivierte, nur lesende Verbindung zu Node Gateway `/ws/backend`, damit seine Geräte- und GPS-Ansichten mit Telemetrie gefüllt werden. Die TBS bleiben mit dem Node Gateway verbunden.
+Die [Schritt-für-Schritt-Anleitung pro LXC und TBS](../../Docs/KATWARN_NINA_INSTALL_UPDATE.md) nennt für jedes betroffene System die erforderlichen Befehle und Prüfungen. Für diese Funktion müssen der neue Warn-LXC installiert sowie SDS Router, Control Room und die TBS aktualisiert werden. Die TBS-Korrektur ergänzt die fehlende CMCE-Weiterleitung der zentralen Befehle `DeliverSds` und `SendStatus` samt Rückmeldung. Der Control Room benötigt die aktivierte, nur lesende Verbindung zu Node Gateway `/ws/backend`, damit seine Geräte- und GPS-Ansichten mit Telemetrie gefüllt werden. Die TBS bleiben mit dem Node Gateway verbunden.
 
 ## Verhalten
 

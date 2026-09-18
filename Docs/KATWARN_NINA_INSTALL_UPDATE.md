@@ -1,13 +1,13 @@
 # NINA/KATWARN installieren — was du auf welchem System machen musst
 
-**Diese Reihenfolge abarbeiten: SDS-Router-LXC aktualisieren → Control-Room-LXC aktualisieren und mit Node Gateway verbinden → neuen Warn-LXC erstellen → TBS prüfen → Versand einschalten.**
+**Diese Reihenfolge abarbeiten: SDS-Router-LXC aktualisieren → Control-Room-LXC aktualisieren und mit Node Gateway verbinden → neuen Warn-LXC erstellen → TBS aktualisieren und prüfen → Versand einschalten.**
 
 | System | Was du machen musst |
 |---|---|
 | Vorhandener **SDS-Router-LXC** | **Aktualisieren** — Schritt 1 |
 | Vorhandener **Control-Room-LXC** | **Aktualisieren und Gateway-Telemetrie einschalten** — Schritt 1b |
 | Neuer **alert-service-LXC** | **Erstellen und installieren** — Schritt 2 |
-| Jede vorhandene **TBS** | **Anmeldung, GPS und SDS prüfen** — Schritt 3 |
+| Jede vorhandene **TBS** | **Aktualisieren, dann Anmeldung, GPS und SDS prüfen** — Schritt 3 |
 | Node Gateway und alle übrigen LXCs | **Für diese Funktion kein Update nötig** |
 
 Die Warnfunktion liegt im Branch **`feat/katwarn-nina-alerts`** aus [PR #49](https://github.com/JanHG98/netcore-tetra/pull/49). Die folgenden Befehle verwenden genau diesen Branch. Der PR ist noch nicht in `katwarn/nina` zusammengeführt.
@@ -275,9 +275,49 @@ cat /etc/netcore/alert-service.env
 
 Nur den Wert hinter **`NETCORE_ALERT_TOKEN=`** in das Feld „Zugriffsschlüssel“ kopieren und „Verbinden“ anklicken. Die Datei enthält Geheimnisse; nicht weitergeben.
 
-## 3. Jede TBS: Diese Prüfungen durchführen
+## 3. Jede TBS: Aktualisieren und Funkversand prüfen
 
-**Für diese Erweiterung ist kein TBS-Softwareupdate nötig.** Die vorhandene Anmeldung, GPS-Übertragung und zentrale SDS-Anbindung werden weiterverwendet.
+**Korrektur zur ersten Anleitung: Ein TBS-Softwareupdate ist erforderlich.** Der zentrale SDS-Befehl `DeliverSds` war zwar im Protokoll und im SDS-Untermodul vorhanden, wurde aber vom vorgeschalteten CMCE-Befehlshandler nicht weitergeleitet. Dadurch konnte die Warnzentrale das Gerät mit GPS erkennen und der SDS Router den Auftrag übernehmen, ohne dass eine Funk-SDS entstand. Auch `SendStatus` war von dieser fehlenden Weiterleitung betroffen.
+
+### Auf jeder TBS die Software aktualisieren
+
+**Bei manuellem Start ohne systemd-Dienst:** Den folgenden Service-Updater überspringen und den Abschnitt „Manuell gestartete TBS“ darunter verwenden.
+
+**Diese Befehle direkt auf der Basisstation ausführen**, angemeldet mit dem Linux-Benutzer, mit dem du normalerweise Rust/Cargo verwendest. Der folgende Block erstellt eine zusätzliche Arbeitskopie, baut bei laufendem Dienst und verwendet den vorhandenen Updater. Dieser erkennt den Dienst und die tatsächlich gestartete ausführbare Datei, sichert sie und startet die TBS anschließend neu. Dabei wird der Funkbetrieb kurz unterbrochen.
+
+```bash
+(
+  set -e
+  update_dir=$(mktemp -d "$HOME/netcore-tbs-sds.XXXXXX")
+  git clone --single-branch --branch feat/katwarn-nina-alerts https://github.com/JanHG98/netcore-tetra.git "$update_dir"
+  cd "$update_dir"
+  sudo env MIGRATE_LOCAL_TTS_CONFIG=0 DISABLE_LOCAL_PIPER=0 bash install/update-basisstation.sh
+)
+```
+
+Die beiden gesetzten Optionen erhalten bestehende TTS-Einstellungen und den Piper-Dienst. Die Funkkonfiguration bleibt erhalten. Standard-Konfigurationspfad ist `/etc/netcore/config.toml`; bei einer abweichenden Installation `CONFIG_PATH=/dein/pfad/config.toml` zusätzlich hinter `sudo env` eintragen. Unterstützte automatisch erkannte Dienstnamen sind `tetra.service`, `bluestation.service`, `tetra-bluestation.service` und `bluestation-bs.service`; ein abweichender Name kann dort mit `UNIT=dein-dienst.service` angegeben werden. Der Updater zeigt den gewählten Dienst und Programmpfad an.
+
+Bei fehlenden Build-Abhängigkeiten bricht der Updater vor dem Dienststopp ab. Er verwendet den Cargo-Benutzer des `sudo`-Aufrufs und die standardmäßig aktivierten TBS-Funktionen. Den Updateblock erst nach erfolgreichem Build und gemeldetem `Update erfolgreich` als abgeschlossen betrachten.
+
+### Manuell gestartete TBS
+
+**In einem zweiten Terminal auf der TBS**, mit demselben Benutzer wie beim bisherigen Build:
+
+```bash
+(
+  set -e
+  update_dir=$(mktemp -d "$HOME/netcore-tbs-sds.XXXXXX")
+  git clone --single-branch --branch feat/katwarn-nina-alerts https://github.com/JanHG98/netcore-tetra.git "$update_dir"
+  cd "$update_dir"
+  if [ -f "$HOME/.cargo/env" ]; then . "$HOME/.cargo/env"; fi
+  cargo build --release -p bluestation-bs
+  printf '\nNeues Programm: %s/target/release/bluestation-bs\n' "$update_dir"
+)
+```
+
+Der bisherige Funkprozess kann während des Builds weiterlaufen. Erst nach erfolgreichem Build im bisherigen TBS-Terminal mit **Strg+C** beenden. Anschließend **im bisherigen Arbeitsverzeichnis** denselben Startbefehl wie bisher verwenden, darin ausschließlich den Programmpfad durch den ausgegebenen vollständigen Pfad zum neuen `bluestation-bs` ersetzen. Alle Argumente und insbesondere den Konfigurationspfad beibehalten. Nicht gleichzeitig eine zweite TBS-Instanz starten. Die bisherige ausführbare Datei bleibt für einen Rückwechsel erhalten.
+
+### Nach dem TBS-Update prüfen
 
 An **jeder TBS**, deren Geräte Warnungen bekommen sollen:
 
@@ -289,6 +329,8 @@ An **jeder TBS**, deren Geräte Warnungen bekommen sollen:
 6. In der **neuen Warnzentrale** prüfen, dass das Gerät auf der Karte erscheint.
 
 **Wenn das funktioniert, ist auf dieser TBS alles erledigt.** Keine Warnservice-URL eintragen und `central_sds_routing` nicht für diese Funktion ändern. Dieser Schalter betrifft eingehende Funk-SDS, nicht den Versand der Warnungen.
+
+**Wurde bereits vor dem Update eine Testwarnung an diese TBS übergeben?** Nach dem Update eine **neue** Testwarnung erstellen. Die alte Warnung wird wegen der dauerhaften Duplikatsperre nicht automatisch noch einmal versendet. Die Empfängerhistorie deshalb nicht löschen. Im SDS Router bedeutet `delivered`, dass die TBS die Nachricht zum Funkversand angenommen hat; den tatsächlichen Empfang zusätzlich am Funkgerät prüfen.
 
 Falls Anmeldung, GPS oder die Test-SDS schon hier nicht funktionieren, auf der betreffenden TBS prüfen:
 
@@ -351,7 +393,7 @@ systemctl is-active netcore-alert-service
 | Control Room meldet keine angemeldeten Geräte | **Warn-LXC:** `control_room_url` prüfen. Ist die Adresse korrekt und sind auch `/api/nodes` und `/api/subscribers` leer, auf dem **Control-Room-LXC Schritt 1b** durchführen. Danach Testgerät neu anmelden und GPS übertragen lassen. |
 | GPS fehlt oder ist zu alt | **Testfunkgerät/TBS:** Eine aktuelle GPS-Meldung übertragen lassen. **Control Room:** Den Zeitstempel der Position prüfen; standardmäßig darf sie höchstens 3600 Sekunden alt sein. |
 | TBS nicht verbunden oder Meldung zu alt | **Control Room/Node Gateway:** TBS-Verbindung prüfen. Standardmäßig muss die TBS-Meldung jünger als 120 Sekunden sein. |
-| Beim SDS-Router | **SDS-Router-WebUI:** Den Auftrag und seine TBS-Zustellung prüfen. Die Nachricht wurde bereits an den Router übergeben. |
+| Beim SDS-Router | **SDS-Router-WebUI:** Den Auftrag und seine TBS-Zustellung prüfen. Die Nachricht wurde bereits an den Router übergeben. Bleibt sie bei älterer TBS-Software auf `in_flight` und kommt keine Funk-SDS an, **TBS nach Schritt 3 aktualisieren** und danach eine neue Testwarnung erstellen. |
 | Fehlgeschlagen oder Unklar | Den Hinweis in der Zustellhistorie prüfen. Die Empfängerhistorie nicht löschen, um einen erneuten Versand zu erzwingen. |
 
 **Auf dem Warn-LXC die verwendete Control-Room-Adresse anzeigen:**

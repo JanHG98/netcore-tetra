@@ -122,6 +122,27 @@ impl CmceBs {
                     cep.respond(ControlResponse::SendSdsResponse { handle, success });
                 }
             }
+            ControlCommand::DeliverSds { handle, .. } => {
+                let success = sds.rx_sds_from_control(queue, cmd);
+                if let Some(cep) = responder {
+                    cep.respond(ControlResponse::SdsDeliveryResponse {
+                        handle,
+                        success,
+                        // Acceptance into the local SDS path is not an MS receipt confirmation.
+                        message: if success { "SDS accepted for local radio delivery" } else { "Invalid SDS delivery payload" }.to_string(),
+                    });
+                }
+            }
+            ControlCommand::SendStatus { handle, source_ssi, dest_ssi, pre_coded_status } => {
+                let success = sds.send_status_from_control(queue, source_ssi, dest_ssi, pre_coded_status);
+                if let Some(cep) = responder {
+                    cep.respond(ControlResponse::SdsDeliveryResponse {
+                        handle,
+                        success,
+                        message: if success { "Status accepted for local radio delivery" } else { "Invalid status source or destination" }.to_string(),
+                    });
+                }
+            }
             ControlCommand::KickMs { issi } => {
                 tracing::info!("CMCE: KickMs issi={} requested", issi);
                 let success = cc.kick_ms(queue, issi);
@@ -327,6 +348,141 @@ impl TetraEntityTrait for CmceBs {
             _ => {
                 panic!("Unexpected SAP: {:?}", message.sap);
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::net_control::make_control_link;
+    use tetra_core::{SsiType, TetraAddress};
+    use tetra_pdus::cmce::enums::pre_coded_status::PreCodedStatus;
+    use tetra_pdus::cmce::pdus::{d_sds_data::DSdsData, d_status::DStatus};
+    use tetra_saps::control::enums::sds_user_data::SdsUserData;
+    use tetra_saps::lcmc::LcmcMleUnitdataReq;
+
+    fn dispatch(command: ControlCommand) -> (MessageQueue, ControlResponse) {
+        let config = tetra_config::bluestation::parsing::from_toml_str(r#"
+config_version = "0.6"
+stack_mode = "Bs"
+[phy_io]
+backend = "None"
+[net_info]
+mcc = 901
+mnc = 9999
+[cell_info]
+main_carrier = 1584
+freq_band = 4
+freq_offset = 0
+duplex_spacing = 4
+reverse_operation = false
+location_area = 1
+"#).unwrap();
+        let config = SharedConfig::from_parts(config, None);
+        config.state_write().subscribers.register(5102);
+        let mut cmce = CmceBs::new(config, None, None);
+        let (dispatcher, endpoint) = make_control_link();
+        let mut queue = MessageQueue::new();
+        CmceBs::do_control_command(&mut cmce.sds, &mut cmce.cc, &mut queue, command, Some(&endpoint));
+        let response = dispatcher.try_recv_response().expect("central command must receive a correlated result");
+        assert!(dispatcher.try_recv_response().is_none(), "exactly one response per command");
+        (queue, response)
+    }
+
+    fn assert_delivery_response(response: ControlResponse, expected_handle: u32, expected_success: bool) {
+        let ControlResponse::SdsDeliveryResponse { handle, success, message } = response else {
+            panic!("central SDS/status commands require SdsDeliveryResponse, got {response:?}");
+        };
+        assert_eq!(handle, expected_handle);
+        assert_eq!(success, expected_success);
+        assert!(!message.is_empty());
+    }
+
+    fn radio_request(mut queue: MessageQueue, is_group: bool) -> LcmcMleUnitdataReq {
+        let message = queue.pop_front().expect("command must enqueue a radio PDU");
+        assert!(queue.is_empty(), "command must enqueue exactly one radio PDU");
+        assert_eq!(message.sap, Sap::LcmcSap);
+        assert_eq!(message.src, TetraEntity::Cmce);
+        assert_eq!(message.dest, TetraEntity::Mle);
+        let SapMsgInner::LcmcMleUnitdataReq(request) = message.msg else {
+            panic!("expected LCMC radio delivery request");
+        };
+        assert_eq!(request.main_address, TetraAddress::new(5102, if is_group { SsiType::Gssi } else { SsiType::Issi }));
+        request
+    }
+
+    #[test]
+    fn central_sds_dispatch_preserves_payload_and_destination_on_radio_path() {
+        let cases = [
+            SdsUserData::Type1(0x1234),
+            SdsUserData::Type2(0x12345678),
+            SdsUserData::Type3(0x123456789abcdef0),
+            SdsUserData::Type4(64, vec![0x82, 0, 1, 1, b'T', b'e', b's', b't']),
+        ];
+        for data in cases {
+            for is_group in [false, true] {
+                let (queue, response) = dispatch(ControlCommand::DeliverSds {
+                    handle: 67,
+                    source_ssi: 4010112,
+                    dest_ssi: 5102,
+                    dest_is_group: is_group,
+                    sds_type: data.type_identifier() + 1,
+                    len_bits: data.length_bits(),
+                    payload: data.to_arr(),
+                });
+                assert_delivery_response(response, 67, true);
+                let mut request = radio_request(queue, is_group);
+                let pdu = DSdsData::from_bitbuf(&mut request.sdu).unwrap();
+                assert_eq!(pdu.calling_party_address_ssi, Some(4010112));
+                assert_eq!(pdu.user_defined_data, data, "central payload must not be wrapped again");
+            }
+        }
+    }
+
+    #[test]
+    fn invalid_central_sds_payload_reports_failure_without_radio_delivery() {
+        for (sds_type, len_bits, payload) in [(1, 16, vec![0]), (4, 16, vec![0]), (4, 0, vec![]), (5, 8, vec![0])] {
+            let (queue, response) = dispatch(ControlCommand::DeliverSds {
+                handle: 68,
+                source_ssi: 4010112,
+                dest_ssi: 5102,
+                dest_is_group: false,
+                sds_type,
+                len_bits,
+                payload,
+            });
+            assert_delivery_response(response, 68, false);
+            assert!(queue.is_empty());
+        }
+    }
+
+    #[test]
+    fn central_status_dispatch_enqueues_status_pdu_and_correlated_response() {
+        let (queue, response) = dispatch(ControlCommand::SendStatus {
+            handle: 69,
+            source_ssi: 4010112,
+            dest_ssi: 5102,
+            pre_coded_status: 32769,
+        });
+        assert_delivery_response(response, 69, true);
+        let mut request = radio_request(queue, false);
+        let pdu = DStatus::from_bitbuf(&mut request.sdu).unwrap();
+        assert_eq!(pdu.calling_party_address_ssi, Some(4010112));
+        assert_eq!(pdu.pre_coded_status, PreCodedStatus::NetworkUserSpecific(32769));
+    }
+
+    #[test]
+    fn invalid_central_status_address_reports_failure_without_radio_delivery() {
+        for (source_ssi, dest_ssi) in [(0, 5102), (4010112, 0), (0x1000000, 5102), (4010112, 0x1000000)] {
+            let (queue, response) = dispatch(ControlCommand::SendStatus {
+                handle: 70,
+                source_ssi,
+                dest_ssi,
+                pre_coded_status: 32769,
+            });
+            assert_delivery_response(response, 70, false);
+            assert!(queue.is_empty());
         }
     }
 }
