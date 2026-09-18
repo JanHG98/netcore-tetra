@@ -116,6 +116,21 @@ cd /opt/netcore-tetra
 bash system-backend/alert-service/install/install.sh
 ```
 
+**Falls eine ältere Installer-Version direkt nach dem Start `ConnectionRefusedError` ausgibt:** Die erste Prüfung kann kommen, bevor der Dienst bereit ist. Auf demselben Warn-LXC prüfen:
+
+```bash
+systemctl status netcore-alert-service --no-pager -l
+curl --noproxy '*' --fail --show-error http://127.0.0.1:8310/health/live
+```
+
+Bei **`active (running)`** und **`{"status": "live"}`** war die Installation erfolgreich; direkt mit 2.3 weitermachen. Keine Neuinstallation nötig. Falls der Dienst nicht läuft oder die Abfrage weiter fehlschlägt:
+
+```bash
+journalctl -u netcore-alert-service -n 40 --no-pager
+```
+
+Der aktuelle Installer wartet bei kurzen Startverzögerungen ohne Python-Fehlerausgabe und zeigt bei einem dauerhaften Fehler das Dienstprotokoll an.
+
 ### 2.3 Im neuen LXC deine Adressen eintragen
 
 ```bash

@@ -63,6 +63,9 @@ rollback() {
   local result=$?
   trap - ERR
   if [[ "$CHANGED" == 1 ]]; then
+    echo 'Dienststatus zum Fehlerzeitpunkt:' >&2
+    systemctl status "$UNIT" --no-pager -l >&2 || true
+    journalctl -u "$UNIT" -n 40 --no-pager >&2 || true
     systemctl stop "$UNIT" || true
     if [[ -d "$BACKUP/app" ]]; then
       # Keep the unsuccessful release for diagnosis; never touch the database.
@@ -97,22 +100,33 @@ install -m 0644 "${SERVICE_DIR}/systemd/${UNIT}" "$UNIT_PATH"
 systemctl daemon-reload
 systemctl enable "$UNIT"
 systemctl restart "$UNIT"
+echo 'Warte auf den Start der Warnzentrale ...'
 READY=0
 for _ in {1..20}; do
-  if python3 - "$CONFIG" <<'PY'
-import sys, tomllib, urllib.request
+  if python3 - "$CONFIG" <<'HEALTHCHECK'
+import http.client, sys, tomllib, urllib.error, urllib.request
 with open(sys.argv[1], 'rb') as stream:
     config = tomllib.load(stream)['server']
-host = config.get('bind', '0.0.0.0')
+host = config.get('bind', '127.0.0.1')
 if host in ('0.0.0.0', '::'): host = '127.0.0.1'
 if ':' in host: host = '[' + host + ']'
-with urllib.request.urlopen(f"http://{host}:{config.get('port', 8310)}/health/live", timeout=2) as result:
-    assert result.status == 200
-PY
+# Type=simple returns before Python has opened the listening socket. Expected
+# startup connection failures should retry quietly, not print a traceback.
+# A local probe must not depend on the container's HTTP proxy configuration.
+opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+try:
+    with opener.open(f"http://{host}:{config.get('port', 8310)}/health/live", timeout=2) as result:
+        sys.exit(0 if result.status == 200 else 1)
+except (OSError, urllib.error.URLError, http.client.HTTPException):
+    sys.exit(1)
+HEALTHCHECK
   then READY=1; break; fi
   sleep 1
 done
-[[ "$READY" == 1 ]]
+if [[ "$READY" != 1 ]]; then
+  echo 'Warnzentrale nach 20 Startversuchen nicht erreichbar. Dienstprotokoll folgt.' >&2
+  false # Trigger diagnostics and rollback without resetting the delivery ledger.
+fi
 systemctl is-active --quiet "$UNIT"
 trap - ERR
 printf 'Warnzentrale installiert. Sicherung: %s\n' "$BACKUP"
