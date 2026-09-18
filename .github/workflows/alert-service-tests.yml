@@ -1,0 +1,77 @@
+name: Warning service
+on:
+  pull_request:
+    paths:
+      - 'system-backend/alert-service/**'
+      - 'system-backend/sds-router/**'
+      - 'system-backend/call-control/**'
+      - 'bins/netcore-control-room/**'
+      - 'system-backend/control-room/**'
+      - 'crates/tetra-entities/src/cmce/**'
+      - 'crates/tetra-entities/src/net_control/**'
+      - 'crates/tetra-entities/src/net_control_room/**'
+      - '.github/workflows/alert-service-tests.yml'
+  push:
+    branches: ['katwarn/nina']
+    paths:
+      - 'system-backend/alert-service/**'
+      - 'system-backend/sds-router/**'
+      - 'system-backend/call-control/**'
+      - 'bins/netcore-control-room/**'
+      - 'system-backend/control-room/**'
+      - 'crates/tetra-entities/src/cmce/**'
+      - 'crates/tetra-entities/src/net_control/**'
+      - 'crates/tetra-entities/src/net_control_room/**'
+      - '.github/workflows/alert-service-tests.yml'
+permissions:
+  contents: read
+jobs:
+  warnings:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Python scenarios and HTTP API
+        working-directory: system-backend/alert-service
+        run: python -m unittest discover -s tests -v
+      - name: Shell and browser script syntax
+        run: |
+          bash -n system-backend/alert-service/install/install.sh
+          bash -n system-backend/alert-service/install/update.sh
+          bash -n system-backend/alert-service/install/deploy.sh
+          node --check system-backend/alert-service/static/app.js
+      - uses: dtolnay/rust-toolchain@stable
+      - name: SDS router tests and real HTTP integration
+        run: |
+          cargo test -p netcore-sds-router
+          cargo build -p netcore-sds-router
+          python system-backend/alert-service/tests/integration_router.py
+      - name: Call Control persistence under gateway telemetry
+        run: cargo test -p netcore-call-control
+      - name: Control Room gateway telemetry and warning integration
+        run: |
+          cargo test -p netcore-control-room
+          cargo build -p netcore-control-room
+          python system-backend/alert-service/tests/integration_control_room.py
+  tbs-sds:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install TBS build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsoapysdr-dev libgsm1-dev pkg-config cmake
+      - name: Build and install bundled speech codec
+        run: |
+          cmake -S tetra-codec-master -B "$RUNNER_TEMP/tetra-codec-build" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib
+          cmake --build "$RUNNER_TEMP/tetra-codec-build" --parallel 2
+          sudo cmake --install "$RUNNER_TEMP/tetra-codec-build"
+          sudo ldconfig
+      - name: Central SDS dispatch through the TBS control handler
+        run: |
+          cargo test -p tetra-entities --features recording,asterisk,audio-player --lib cmce::cmce_bs::
+      - name: Build the base station with its default features
+        run: cargo build -p bluestation-bs

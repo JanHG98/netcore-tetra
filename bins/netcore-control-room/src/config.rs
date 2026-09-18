@@ -14,6 +14,7 @@ use serde_json::{json, Value};
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ControlRoomConfig {
     pub server: ServerConfig,
+    pub node_gateway: NodeGatewayConfig,
     pub persistence: PersistenceConfig,
     pub auth: AuthConfig,
     pub federation: FederationConfig,
@@ -32,6 +33,7 @@ impl Default for ControlRoomConfig {
     fn default() -> Self {
         Self {
             server: ServerConfig::default(),
+            node_gateway: NodeGatewayConfig::default(),
             persistence: PersistenceConfig::default(),
             auth: AuthConfig::default(),
             federation: FederationConfig::default(),
@@ -120,6 +122,9 @@ impl ControlRoomConfig {
     // Was: Führt den Arbeitsschritt `normalise` für normalise aus.
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn normalise(&mut self) {
+        self.node_gateway.reconnect_secs = self.node_gateway.reconnect_secs.clamp(1, 60);
+        self.node_gateway.timeout_secs = self.node_gateway.timeout_secs.clamp(1, 120);
+        self.node_gateway.stale_after_secs = self.node_gateway.stale_after_secs.clamp(5, 300);
         self.server.node_path = normalise_path(&self.server.node_path);
         self.server.ui_path = normalise_path(&self.server.ui_path);
         if self.server.history_limit == 0 {
@@ -149,6 +154,30 @@ impl ControlRoomConfig {
                 "statuses": {},
                 "hide_infrastructure": true
             });
+        }
+    }
+}
+
+/// Optional read-only telemetry subscription. The TBS stays connected to its
+/// Node Gateway; this observer never registers a command transport.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct NodeGatewayConfig {
+    pub enabled: bool,
+    pub url: String,
+    pub reconnect_secs: u64,
+    pub timeout_secs: u64,
+    pub stale_after_secs: u64,
+}
+
+impl Default for NodeGatewayConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            url: "ws://node-gateway:8080/ws/backend".to_string(),
+            reconnect_secs: 3,
+            timeout_secs: 10,
+            stale_after_secs: 30,
         }
     }
 }

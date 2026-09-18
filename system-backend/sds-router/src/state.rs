@@ -86,7 +86,7 @@ pub enum RouteMode {
     Route,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 // Was: Bündelt die zusammengehörigen Werte für Weiterleitung rule in einem Datentyp.
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct RouteRule {
@@ -134,7 +134,7 @@ fn default_route_mode() -> RouteMode {
     RouteMode::Route
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 // Was: Bündelt die zusammengehörigen Werte für delivery Rufzweig in einem Datentyp.
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct DeliveryLeg {
@@ -151,7 +151,7 @@ pub struct DeliveryLeg {
     pub last_error: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 // Was: Bündelt die zusammengehörigen Werte für application Rufzweig in einem Datentyp.
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ApplicationLeg {
@@ -164,7 +164,7 @@ pub struct ApplicationLeg {
     pub last_error: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 // Was: Bündelt die zusammengehörigen Werte für terminal report in einem Datentyp.
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TerminalReport {
@@ -174,11 +174,15 @@ pub struct TerminalReport {
     pub message_reference: u8,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 // Was: Bündelt die zusammengehörigen Werte für TETRA-Kurznachricht (SDS) Nachricht Datensatz in einem Datentyp.
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SdsMessageRecord {
     pub id: String,
+    #[serde(default)]
+    pub idempotency_key: Option<String>,
+    #[serde(default)]
+    pub at_most_once: bool,
     pub ingress_node: Option<String>,
     pub ingress: String,
     pub source_issi: u32,
@@ -206,7 +210,7 @@ pub struct SdsMessageRecord {
     pub trace: Vec<TraceEntry>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 // Was: Bündelt die zusammengehörigen Werte für trace entry in einem Datentyp.
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct TraceEntry {
@@ -289,6 +293,8 @@ pub struct SdsEventRecord {
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SdsRouterStatus {
     pub service: &'static str,
+    pub durable_idempotency: bool,
+    pub at_most_once: bool,
     pub started_at: String,
     pub security_mode: &'static str,
     pub warning: &'static str,
@@ -311,10 +317,14 @@ pub struct SdsRouterStatus {
     pub authoritative_ingress: bool,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 // Was: Bündelt die zusammengehörigen Werte für Nachricht input in einem Datentyp.
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MessageInput {
+    #[serde(default)]
+    pub idempotency_key: Option<String>,
+    #[serde(default)]
+    pub at_most_once: bool,
     pub source_issi: u32,
     pub dest_issi: u32,
     #[serde(default)]
@@ -332,6 +342,9 @@ pub struct MessageInput {
     #[serde(default)]
     pub priority: u8,
     pub ttl_secs: Option<u64>,
+    /// Absolute deadline prevents a delayed HTTP retry from extending an alert.
+    #[serde(default)]
+    pub expires_at: Option<String>,
     #[serde(default)]
     pub ingress: String,
     #[serde(default)]
@@ -368,10 +381,27 @@ struct SdsDatabase {
     revision: u64,
     messages: BTreeMap<String, SdsMessageRecord>,
     routes: BTreeMap<String, RouteRule>,
+    // Kept independently of message retention; deleting a message never reopens its key.
+    #[serde(default)]
+    idempotency: BTreeMap<String, IdempotencyEntry>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+struct IdempotencyEntry {
+    message_id: String,
+    input: MessageInput,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct IdempotencyStatus {
+    pub message_id: String,
+    pub retained: bool,
+    pub state: Option<MessageState>,
 }
 
 // Was: Bündelt die zusammengehörigen Werte für pending request in einem Datentyp.
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+#[derive(Clone)]
 struct PendingRequest {
     message_id: String,
     node_id: String,
@@ -380,6 +410,7 @@ struct PendingRequest {
 
 // Was: Bündelt die zusammengehörigen Werte für Router Zustand in einem Datentyp.
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+#[derive(Clone)]
 struct RouterState {
     config: SdsRouterConfig,
     started_at: String,
@@ -391,6 +422,7 @@ struct RouterState {
     group_nodes: BTreeMap<u32, BTreeSet<String>>,
     messages: BTreeMap<String, SdsMessageRecord>,
     routes: BTreeMap<String, RouteRule>,
+    idempotency: BTreeMap<String, IdempotencyEntry>,
     revision: u64,
     events: VecDeque<SdsEventRecord>,
     next_event_seq: u64,
@@ -425,6 +457,7 @@ impl SharedSdsRouter {
             group_nodes: BTreeMap::new(),
             messages: database.messages,
             routes: database.routes,
+            idempotency: database.idempotency,
             revision: database.revision,
             events: VecDeque::new(),
             next_event_seq: 1,
@@ -438,7 +471,7 @@ impl SharedSdsRouter {
         {
             let mut state = router.0.lock().expect("SDS router state poisoned");
             recover_incomplete_locked(&mut state);
-            let _ = persist_locked(&state);
+            persist_locked(&state)?;
         }
         Ok(router)
     }
@@ -550,8 +583,20 @@ impl SharedSdsRouter {
         input: MessageInput,
     ) -> Result<(SdsMessageRecord, Vec<BackendRequest>), String> {
         let mut state = self.0.lock().expect("SDS router state poisoned");
+        validate_idempotency_input(&input)?;
+        if let Some(key) = &input.idempotency_key {
+            if let Some(existing) = state.idempotency.get(key) {
+                if existing.input != input {
+                    return Err("idempotency_key_conflict: key already belongs to another request".to_string());
+                }
+                return state.messages.get(&existing.message_id).cloned()
+                    .map(|message| (message, Vec::new()))
+                    .ok_or_else(|| format!("idempotency_key_already_used: message {} was archived or deleted", existing.message_id));
+            }
+        }
         let force_nodes = input.force_nodes.clone();
-        let mut message = message_from_input_locked(&state, input)?;
+        let mut message = message_from_input_locked(&state, input.clone())?;
+        let previous = state.clone();
         if state.messages.len() >= state.config.limits.max_messages {
             prune_terminal_messages_locked(&mut state);
         }
@@ -560,11 +605,14 @@ impl SharedSdsRouter {
         }
         push_trace(&mut message, "accepted", "manual/API message accepted");
         let id = message.id.clone();
+        if let Some(key) = &input.idempotency_key {
+            state.idempotency.insert(key.clone(), IdempotencyEntry { message_id: id.clone(), input });
+        }
         state.messages.insert(id.clone(), message);
         state.revision = state.revision.saturating_add(1);
         plan_message_locked(&mut state, &id, &force_nodes);
         let requests = collect_due_requests_locked(&mut state);
-        persist_locked(&state)?;
+        persist_or_restore(&mut state, previous)?;
         push_event_locked(
             &mut state,
             "message_created",
@@ -576,12 +624,47 @@ impl SharedSdsRouter {
         Ok((message, requests))
     }
 
+    pub fn idempotency_status(&self, key: &str) -> Option<IdempotencyStatus> {
+        let state = self.0.lock().expect("SDS router state poisoned");
+        let entry = state.idempotency.get(key)?;
+        let message = state.messages.get(&entry.message_id);
+        Some(IdempotencyStatus {
+            message_id: entry.message_id.clone(),
+            retained: message.is_some(),
+            state: message.map(|message| message.state),
+        })
+    }
+
+    /// Recheck a queued command after a gateway reconnect: the alert may have
+    /// expired or been cancelled while the socket was unavailable.
+    pub fn may_send(&self, request: &BackendRequest) -> bool {
+        let BackendRequest::Command { request_id: Some(request_id), .. } = request else {
+            return true;
+        };
+        let state = self.0.lock().expect("SDS router state poisoned");
+        let Some(pending) = state.request_map.get(request_id) else {
+            return false;
+        };
+        state.messages.get(&pending.message_id).is_some_and(|message| {
+            !matches!(message.state, MessageState::Cancelled | MessageState::Expired)
+                && !is_expired(&message.expires_at)
+                && message.delivery_legs.iter().any(|leg| {
+                    leg.node_id == pending.node_id && leg.handle == Some(pending.handle)
+                        && leg.state == LegState::InFlight
+                })
+        })
+    }
+
     // Was: Führt den Arbeitsschritt `retry_message` für retry Nachricht aus.
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn retry_message(&self, id: &str) -> Result<Vec<BackendRequest>, String> {
         let mut state = self.0.lock().expect("SDS router state poisoned");
+        let previous = state.clone();
         let now = now_iso();
         let message = state.messages.get_mut(id).ok_or_else(|| "message not found".to_string())?;
+        if message.at_most_once {
+            return Err("at_most_once messages cannot be manually retried".to_string());
+        }
         if matches!(message.state, MessageState::Expired | MessageState::Cancelled) {
             return Err("expired or cancelled messages cannot be retried; requeue them instead".to_string());
         }
@@ -599,7 +682,7 @@ impl SharedSdsRouter {
         message.last_error = None;
         push_trace(message, "manual_retry", "operator requested a retry");
         let requests = collect_due_requests_locked(&mut state);
-        persist_locked(&state)?;
+        persist_or_restore(&mut state, previous)?;
         push_event_locked(&mut state, "message_retry", Some(id.to_string()), None, json!({}));
         Ok(requests)
     }
@@ -608,6 +691,7 @@ impl SharedSdsRouter {
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn cancel_message(&self, id: &str) -> Result<(), String> {
         let mut state = self.0.lock().expect("SDS router state poisoned");
+        let previous = state.clone();
         let message = state.messages.get_mut(id).ok_or_else(|| "message not found".to_string())?;
         if matches!(message.state, MessageState::Delivered | MessageState::Expired) {
             return Err("completed message cannot be cancelled".to_string());
@@ -629,7 +713,7 @@ impl SharedSdsRouter {
             }
         }
         push_trace(message, "cancelled", "operator cancelled message");
-        persist_locked(&state)?;
+        persist_or_restore(&mut state, previous)?;
         push_event_locked(&mut state, "message_cancelled", Some(id.to_string()), None, json!({}));
         Ok(())
     }
@@ -639,10 +723,15 @@ impl SharedSdsRouter {
     pub fn requeue_message(&self, id: &str) -> Result<(SdsMessageRecord, Vec<BackendRequest>), String> {
         let mut state = self.0.lock().expect("SDS router state poisoned");
         let original = state.messages.get(id).cloned().ok_or_else(|| "message not found".to_string())?;
+        if original.at_most_once {
+            return Err("at_most_once messages cannot be requeued".to_string());
+        }
+        let previous = state.clone();
         let now = Utc::now();
         let ttl = original.ttl_secs.min(state.config.routing.max_ttl_secs);
         let mut clone = original.clone();
         clone.id = Uuid::new_v4().to_string();
+        clone.idempotency_key = None;
         clone.created_at = now.to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
         clone.updated_at = clone.created_at.clone();
         clone.expires_at = (now + ChronoDuration::seconds(ttl as i64))
@@ -660,7 +749,7 @@ impl SharedSdsRouter {
         state.revision = state.revision.saturating_add(1);
         plan_message_locked(&mut state, &new_id, &[]);
         let requests = collect_due_requests_locked(&mut state);
-        persist_locked(&state)?;
+        persist_or_restore(&mut state, previous)?;
         push_event_locked(
             &mut state,
             "message_requeued",
@@ -681,9 +770,10 @@ impl SharedSdsRouter {
         if matches!(message.state, MessageState::InFlight | MessageState::Queued) {
             return Err("cancel an active message before deleting it".to_string());
         }
+        let previous = state.clone();
         state.messages.remove(id);
         state.revision = state.revision.saturating_add(1);
-        persist_locked(&state)?;
+        persist_or_restore(&mut state, previous)?;
         push_event_locked(&mut state, "message_deleted", Some(id.to_string()), None, json!({}));
         Ok(())
     }
@@ -696,6 +786,7 @@ impl SharedSdsRouter {
         if state.routes.len() >= state.config.limits.max_routes {
             return Err("route limit reached".to_string());
         }
+        let previous = state.clone();
         let now = now_iso();
         state.revision = state.revision.saturating_add(1);
         let route = RouteRule {
@@ -713,7 +804,7 @@ impl SharedSdsRouter {
             revision: state.revision,
         };
         state.routes.insert(route.id.clone(), route.clone());
-        persist_locked(&state)?;
+        persist_or_restore(&mut state, previous)?;
         push_event_locked(
             &mut state,
             "route_created",
@@ -730,6 +821,7 @@ impl SharedSdsRouter {
         let mut state = self.0.lock().expect("SDS router state poisoned");
         validate_route_input(&state, &input)?;
         let created_at = state.routes.get(id).map(|route| route.created_at.clone()).ok_or_else(|| "route not found".to_string())?;
+        let previous = state.clone();
         state.revision = state.revision.saturating_add(1);
         let route = RouteRule {
             id: id.to_string(),
@@ -746,7 +838,7 @@ impl SharedSdsRouter {
             revision: state.revision,
         };
         state.routes.insert(id.to_string(), route.clone());
-        persist_locked(&state)?;
+        persist_or_restore(&mut state, previous)?;
         push_event_locked(
             &mut state,
             "route_updated",
@@ -761,11 +853,12 @@ impl SharedSdsRouter {
     // Warum: Das Entfernen wird dadurch kontrolliert durchgeführt und hinterlässt keine verwaisten Verweise.
     pub fn delete_route(&self, id: &str) -> Result<(), String> {
         let mut state = self.0.lock().expect("SDS router state poisoned");
+        let previous = state.clone();
         if state.routes.remove(id).is_none() {
             return Err("route not found".to_string());
         }
         state.revision = state.revision.saturating_add(1);
-        persist_locked(&state)?;
+        persist_or_restore(&mut state, previous)?;
         push_event_locked(
             &mut state,
             "route_deleted",
@@ -805,6 +898,7 @@ impl SharedSdsRouter {
         input: ApplicationAckInput,
     ) -> Result<SdsMessageRecord, String> {
         let mut state = self.0.lock().expect("SDS router state poisoned");
+        let previous = state.clone();
         let message = state.messages.get_mut(message_id).ok_or_else(|| "message not found".to_string())?;
         let leg = message
             .application_legs
@@ -820,7 +914,7 @@ impl SharedSdsRouter {
             &format!("{application}: {}", input.message),
         );
         update_message_state(message);
-        persist_locked(&state)?;
+        persist_or_restore(&mut state, previous)?;
         push_event_locked(
             &mut state,
             "application_acknowledged",
@@ -858,7 +952,15 @@ impl SharedSdsRouter {
     // Was: Diese Funktion verarbeitet Hintergrunddienst Ereignis.
     // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     pub fn handle_backend_event(&self, event: BackendEvent) -> Vec<BackendRequest> {
+        // The Gateway also broadcasts RF/health telemetry and a metadata event
+        // for every TBS message. None of these changes SDS state. The periodic
+        // scheduler still services deadlines without cloning/writing the full
+        // database for every unrelated radio measurement.
+        if !backend_event_affects_sds(&event) {
+            return Vec::new();
+        }
         let mut state = self.0.lock().expect("SDS router state poisoned");
+        let previous = state.clone();
         // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
         // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match event {
@@ -886,7 +988,10 @@ impl SharedSdsRouter {
         expire_locked(&mut state);
         refresh_offline_locked(&mut state);
         let requests = collect_due_requests_locked(&mut state);
-        let _ = persist_locked(&state);
+        if let Err(error) = persist_or_restore(&mut state, previous) {
+            tracing::error!("SDS persistence failed; refusing dispatch: {error}");
+            return Vec::new();
+        }
         requests
     }
 
@@ -894,11 +999,15 @@ impl SharedSdsRouter {
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn tick(&self) -> Vec<BackendRequest> {
         let mut state = self.0.lock().expect("SDS router state poisoned");
+        let previous = state.clone();
         prune_dedupe_locked(&mut state);
         expire_locked(&mut state);
         refresh_offline_locked(&mut state);
         let requests = collect_due_requests_locked(&mut state);
-        let _ = persist_locked(&state);
+        if let Err(error) = persist_or_restore(&mut state, previous) {
+            tracing::error!("SDS persistence failed; refusing dispatch: {error}");
+            return Vec::new();
+        }
         requests
     }
 
@@ -949,6 +1058,7 @@ fn load_database(config: &SdsRouterConfig) -> Result<SdsDatabase, Box<dyn std::e
             revision: 0,
             messages: BTreeMap::new(),
             routes: BTreeMap::new(),
+            idempotency: BTreeMap::new(),
         });
     }
     let bytes = fs::read(&config.storage.database_path)?;
@@ -971,6 +1081,7 @@ fn persist_locked(state: &RouterState) -> Result<(), String> {
         revision: state.revision,
         messages: state.messages.clone(),
         routes: state.routes.clone(),
+        idempotency: state.idempotency.clone(),
     };
     let path = &state.config.storage.database_path;
     if let Some(parent) = path.parent() {
@@ -988,6 +1099,61 @@ fn persist_locked(state: &RouterState) -> Result<(), String> {
     file.write_all(&bytes).map_err(|error| error.to_string())?;
     file.sync_all().map_err(|error| error.to_string())?;
     fs::rename(&temp, path).map_err(|error| error.to_string())?;
+    // Persist the directory entry as well, so a sudden reboot cannot lose a dispatched key.
+    #[cfg(unix)]
+    if let Some(parent) = path.parent() {
+        fs::File::open(parent).and_then(|directory| directory.sync_all())
+            .map_err(|error| error.to_string())?;
+    }
+    Ok(())
+}
+
+fn persist_or_restore(state: &mut RouterState, previous: RouterState) -> Result<(), String> {
+    // Only these fields are stored by persist_locked. Live node/subscriber
+    // presence and event counters do not require disk I/O. Any dispatch changes
+    // its durable delivery leg first, so it still must complete fsync here.
+    if state.revision == previous.revision
+        && state.messages == previous.messages
+        && state.routes == previous.routes
+        && state.idempotency == previous.idempotency {
+        return Ok(());
+    }
+    if let Err(error) = persist_locked(state) {
+        *state = previous;
+        return Err(format!("persistence_failed: {error}"));
+    }
+    Ok(())
+}
+
+fn backend_event_affects_sds(event: &BackendEvent) -> bool {
+    match event {
+        BackendEvent::Event { event } => event.kind == "node_disconnected",
+        BackendEvent::NodeMessage { message, .. } => match message {
+            NodeToControlRoomMessage::Telemetry { envelope } => matches!(envelope.event,
+                TelemetryEvent::MsRegistration { .. }
+                | TelemetryEvent::MsDeregistration { .. }
+                | TelemetryEvent::MsTimeoutDrop { .. }
+                | TelemetryEvent::MsGroupAttach { .. }
+                | TelemetryEvent::MsGroupsSnapshot { .. }
+                | TelemetryEvent::MsGroupDetach { .. }
+                | TelemetryEvent::SdsEdgeIngress { .. }),
+            NodeToControlRoomMessage::ControlAck { .. }
+                | NodeToControlRoomMessage::ControlResponse { .. } => true,
+            _ => false,
+        },
+        _ => true,
+    }
+}
+
+fn validate_idempotency_input(input: &MessageInput) -> Result<(), String> {
+    if let Some(key) = &input.idempotency_key {
+        if key.is_empty() || key.len() > 160 || !key.bytes().all(|byte| byte.is_ascii_alphanumeric() || b":_-.".contains(&byte)) {
+            return Err("idempotency_key must contain 1..160 ASCII letters, digits, ':', '_', '-' or '.'".to_string());
+        }
+    }
+    if input.at_most_once && (input.idempotency_key.is_none() || input.is_group || input.force_nodes.len() > 1) {
+        return Err("at_most_once requires an idempotency_key, an individual destination and at most one force_node".to_string());
+    }
     Ok(())
 }
 
@@ -998,6 +1164,20 @@ fn recover_incomplete_locked(state: &mut RouterState) {
     // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
     // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
     for message in state.messages.values_mut() {
+        if message.at_most_once && message.delivery_legs.iter().any(|leg| leg.attempts > 0 && leg.state != LegState::Delivered) {
+            for leg in &mut message.delivery_legs {
+                if leg.attempts > 0 && leg.state != LegState::Delivered {
+                    leg.state = LegState::Failed;
+                    leg.next_attempt_at = None;
+                    leg.handle = None;
+                    leg.command_id = None;
+                    leg.last_error = Some("delivery uncertain after restart; at_most_once prevents retransmission".to_string());
+                }
+            }
+            message.last_error = Some("delivery uncertain after restart; at_most_once prevents retransmission".to_string());
+            update_message_state(message);
+            continue;
+        }
         if matches!(message.state, MessageState::InFlight | MessageState::Queued) {
             message.state = MessageState::Queued;
             message.updated_at = now.clone();
@@ -1023,6 +1203,8 @@ fn status_locked(state: &RouterState) -> SdsRouterStatus {
     let count = |needle| state.messages.values().filter(|message| message.state == needle).count();
     SdsRouterStatus {
         service: "netcore-sds-router",
+        durable_idempotency: true,
+        at_most_once: true,
         started_at: state.started_at.clone(),
         security_mode: "open_lab",
         warning: "NO AUTHENTICATION, NO TOKENS, NO TLS - ISOLATED TEST NETWORK ONLY",
@@ -1068,8 +1250,17 @@ fn message_from_input_locked(state: &RouterState, input: MessageInput) -> Result
         .clamp(5, state.config.routing.max_ttl_secs);
     let now = Utc::now();
     let created_at = now.to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
-    let expires_at = (now + ChronoDuration::seconds(ttl as i64))
-        .to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+    let ttl_deadline = now + ChronoDuration::seconds(ttl as i64);
+    let deadline = match input.expires_at.as_deref() {
+        Some(value) => DateTime::parse_from_rfc3339(value)
+            .map_err(|_| "expires_at must be an RFC3339 timestamp".to_string())?
+            .with_timezone(&Utc).min(ttl_deadline),
+        None => ttl_deadline,
+    };
+    if deadline <= now {
+        return Err("message_expired: expires_at has already passed".to_string());
+    }
+    let expires_at = deadline.to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
 
     let (sds_type, protocol_id, status_code, len_bits, payload, text_preview) = if input.sds_type == 0 || input.status_code.is_some() {
         let status = input.status_code.ok_or_else(|| "status_code is required for sds_type=0".to_string())?;
@@ -1117,6 +1308,8 @@ fn message_from_input_locked(state: &RouterState, input: MessageInput) -> Result
     let message_reference = extract_message_reference(sds_type, protocol_id, &payload);
     Ok(SdsMessageRecord {
         id: Uuid::new_v4().to_string(),
+        idempotency_key: input.idempotency_key,
+        at_most_once: input.at_most_once,
         ingress_node: None,
         ingress: if input.ingress.trim().is_empty() { "manual".to_string() } else { input.ingress.trim().to_string() },
         source_issi: input.source_issi,
@@ -1378,6 +1571,8 @@ fn ingest_edge_message_locked(
     let status_code = (sds_type == 0 && payload.len() >= 2).then(|| u16::from_be_bytes([payload[0], payload[1]]));
     let mut record = SdsMessageRecord {
         id: message_id.clone(),
+        idempotency_key: None,
+        at_most_once: false,
         ingress_node: Some(node_id.to_string()),
         ingress,
         source_issi,
@@ -1495,6 +1690,8 @@ fn plan_message_locked(state: &mut RouterState, id: &str, force_nodes: &[String]
     let matching_routes: Vec<_> = state
         .routes
         .values()
+        // A one-shot individual alert must never fan out to extra TBS/application routes.
+        .filter(|_| !snapshot.at_most_once)
         .filter(|route| route.enabled)
         .filter(|route| match route.kind {
             RouteKind::Protocol => route.match_value == snapshot.protocol_id as u32,
@@ -1551,7 +1748,7 @@ fn plan_message_locked(state: &mut RouterState, id: &str, force_nodes: &[String]
     }
 
     let now = now_iso();
-    let max_attempts = state.config.routing.max_attempts;
+    let max_attempts = if snapshot.at_most_once { 1 } else { state.config.routing.max_attempts };
     let delivery_legs: Vec<_> = target_nodes
         .into_iter()
         .map(|node_id| DeliveryLeg {
@@ -1577,6 +1774,11 @@ fn plan_message_locked(state: &mut RouterState, id: &str, force_nodes: &[String]
             message.application_legs = application_legs;
         }
         if message.delivery_legs.is_empty() && message.application_legs.is_empty() {
+            if message.state == MessageState::Offline {
+                // No route has appeared since the previous scheduler pass.
+                // Keep both the diagnostic trace and the durable record stable.
+                return;
+            }
             message.state = MessageState::Offline;
             message.last_error = Some("no serving TBS or matching application route".to_string());
             push_trace(message, "offline", "no route resolved; stored for later delivery");
@@ -1624,6 +1826,7 @@ fn collect_due_requests_locked(state: &mut RouterState) -> Vec<BackendRequest> {
             .delivery_legs
             .iter()
             .filter(|leg| matches!(leg.state, LegState::Pending | LegState::RetryWaiting))
+            .filter(|leg| !message_snapshot.at_most_once || leg.attempts == 0)
             .filter(|leg| leg.next_attempt_at.as_deref().is_none_or(|at| parse_time(at).is_none_or(|at| at <= now)))
             .map(|leg| leg.node_id.clone())
             .collect();
@@ -1944,8 +2147,9 @@ fn move_node_legs_offline_locked(state: &mut RouterState, node_id: &str, reason:
         // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for leg in &mut message.delivery_legs {
             if leg.node_id == node_id && matches!(leg.state, LegState::Pending | LegState::InFlight) {
-                leg.state = LegState::RetryWaiting;
-                leg.next_attempt_at = Some(now_iso());
+                let exhausted = message.at_most_once && leg.attempts > 0;
+                leg.state = if exhausted { LegState::Failed } else { LegState::RetryWaiting };
+                leg.next_attempt_at = (!exhausted).then(now_iso);
                 leg.last_error = Some(reason.to_string());
                 leg.command_id = None;
                 leg.handle = None;
@@ -2385,6 +2589,7 @@ mod tests {
             group_nodes: BTreeMap::new(),
             messages: BTreeMap::new(),
             routes: BTreeMap::new(),
+            idempotency: BTreeMap::new(),
             revision: 0,
             events: VecDeque::new(),
             next_event_seq: 1,
@@ -2398,6 +2603,8 @@ mod tests {
         let message = message_from_input_locked(
             &state,
             MessageInput {
+                idempotency_key: None,
+                at_most_once: false,
                 source_issi: 4_010_001,
                 dest_issi: 4_010_002,
                 is_group: false,
@@ -2409,6 +2616,7 @@ mod tests {
                 text: "Hallo".to_string(),
                 priority: 0,
                 ttl_secs: None,
+                expires_at: None,
                 ingress: String::new(),
                 force_nodes: Vec::new(),
             },
@@ -2435,6 +2643,7 @@ mod tests {
             group_nodes: BTreeMap::new(),
             messages: BTreeMap::new(),
             routes: BTreeMap::new(),
+            idempotency: BTreeMap::new(),
             revision: 0,
             events: VecDeque::new(),
             next_event_seq: 1,
@@ -2448,6 +2657,8 @@ mod tests {
         let error = message_from_input_locked(
             &state,
             MessageInput {
+                idempotency_key: None,
+                at_most_once: false,
                 source_issi: 4_010_001,
                 dest_issi: 4_010_002,
                 is_group: false,
@@ -2459,6 +2670,7 @@ mod tests {
                 text: String::new(),
                 priority: 0,
                 ttl_secs: None,
+                expires_at: None,
                 ingress: String::new(),
                 force_nodes: Vec::new(),
             },
@@ -2474,5 +2686,405 @@ mod tests {
         let config = SdsRouterConfig::default();
         assert_eq!(retry_delay_secs(&config, 1), 2);
         assert_eq!(retry_delay_secs(&config, 50), 60);
+    }
+
+    fn test_config() -> SdsRouterConfig {
+        let mut config = SdsRouterConfig::default();
+        let directory = std::env::temp_dir().join(format!("netcore-sds-test-{}", Uuid::new_v4()));
+        config.storage.database_path = directory.join("messages.json");
+        config.storage.backup_path = directory.join("messages.json.bak");
+        config
+    }
+
+    fn alert_input(key: &str) -> MessageInput {
+        serde_json::from_value(json!({
+            "source_issi": 4_010_001,
+            "dest_issi": 4_010_002,
+            "text": "Warnung: Unwetter",
+            "idempotency_key": key,
+            "at_most_once": true
+        })).unwrap()
+    }
+
+    fn add_serving_node(router: &SharedSdsRouter) {
+        let mut state = router.0.lock().unwrap();
+        state.nodes.insert("tbs-1".to_string(), NodeRecord {
+            node_id: "tbs-1".to_string(), station_name: "Test".to_string(),
+            site: None, connected: true, stale: false, last_seen: now_iso(),
+            sds_capable: true, raw_sds_capable: true, mcc: 262, mnc: 1, location_area: 1,
+        });
+        state.subscribers.insert(4_010_002, SubscriberLocation {
+            issi: 4_010_002, node_id: "tbs-1".to_string(), last_seen: now_iso(),
+        });
+    }
+
+    #[test]
+    fn durable_idempotency_survives_restart_conflicts_and_deletion() {
+        let config = test_config();
+        let router = SharedSdsRouter::load(config.clone()).unwrap();
+        let input = alert_input("alert:one");
+        let (original, requests) = router.create_message(input.clone()).unwrap();
+        assert!(requests.is_empty());
+        drop(router);
+        let router = SharedSdsRouter::load(config.clone()).unwrap();
+        let (duplicate, requests) = router.create_message(input.clone()).unwrap();
+        assert_eq!(duplicate.id, original.id);
+        assert!(requests.is_empty());
+        let mut changed = input.clone();
+        changed.text.push('!');
+        assert!(router.create_message(changed).unwrap_err().contains("idempotency_key_conflict"));
+        router.delete_message(&original.id).unwrap();
+        drop(router);
+        let router = SharedSdsRouter::load(config).unwrap();
+        let status = router.idempotency_status("alert:one").unwrap();
+        assert!(!status.retained);
+        assert_eq!(status.message_id, original.id);
+        assert!(router.create_message(input).unwrap_err().contains("idempotency_key_already_used"));
+        assert_eq!(router.status().messages_total, 0);
+    }
+
+    #[test]
+    fn concurrent_duplicate_submissions_dispatch_only_once() {
+        let router = SharedSdsRouter::load(test_config()).unwrap();
+        add_serving_node(&router);
+        let handles: Vec<_> = (0..8).map(|_| {
+            let router = router.clone();
+            std::thread::spawn(move || router.create_message(alert_input("alert:race")).unwrap())
+        }).collect();
+        let results: Vec<_> = handles.into_iter().map(|handle| handle.join().unwrap()).collect();
+        assert!(results.iter().all(|result| result.0.id == results[0].0.id));
+        assert_eq!(results.iter().map(|result| result.1.len()).sum::<usize>(), 1);
+    }
+
+    #[test]
+    fn at_most_once_never_retransmits_after_restart_or_disconnect() {
+        let config = test_config();
+        let router = SharedSdsRouter::load(config.clone()).unwrap();
+        add_serving_node(&router);
+        let (original, requests) = router.create_message(alert_input("alert:crash")).unwrap();
+        assert_eq!(requests.len(), 1);
+        assert_eq!(original.delivery_legs[0].max_attempts, 1);
+        assert!(router.retry_message(&original.id).is_err());
+        assert!(router.requeue_message(&original.id).is_err());
+        drop(router);
+        let router = SharedSdsRouter::load(config).unwrap();
+        add_serving_node(&router);
+        assert!(router.tick().is_empty());
+        let recovered = router.message(&original.id).unwrap();
+        assert_eq!(recovered.state, MessageState::DeadLetter);
+        assert!(recovered.last_error.unwrap().contains("uncertain"));
+        let (second, requests) = router.create_message(alert_input("alert:disconnect")).unwrap();
+        assert_eq!(requests.len(), 1);
+        {
+            let mut state = router.0.lock().unwrap();
+            move_node_legs_offline_locked(&mut state, "tbs-1", "link lost");
+        }
+        assert!(router.tick().is_empty());
+        assert_eq!(router.message(&second.id).unwrap().state, MessageState::DeadLetter);
+    }
+
+    #[test]
+    fn failed_persistence_never_dispatches_or_consumes_submission_key() {
+        let router = SharedSdsRouter::load(test_config()).unwrap();
+        add_serving_node(&router);
+        let original_path = {
+            let mut state = router.0.lock().unwrap();
+            let original = state.config.storage.database_path.clone();
+            // Existing file as parent makes the database write fail on every platform.
+            state.config.storage.database_path = original.join("impossible.json");
+            original
+        };
+        assert!(router.create_message(alert_input("alert:disk")).unwrap_err().contains("persistence_failed"));
+        assert!(router.idempotency_status("alert:disk").is_none());
+        assert_eq!(router.status().messages_total, 0);
+        assert!(router.tick().is_empty());
+        router.0.lock().unwrap().config.storage.database_path = original_path;
+        let (_, requests) = router.create_message(alert_input("alert:disk")).unwrap();
+        assert_eq!(requests.len(), 1);
+    }
+
+    #[test]
+    fn pending_alert_survives_restart_and_dispatches_on_registration() {
+        let config = test_config();
+        let router = SharedSdsRouter::load(config.clone()).unwrap();
+        let (original, requests) = router.create_message(alert_input("alert:offline")).unwrap();
+        assert!(requests.is_empty());
+        assert_eq!(original.state, MessageState::Offline);
+        drop(router);
+        let router = SharedSdsRouter::load(config).unwrap();
+        add_serving_node(&router);
+        assert_eq!(router.tick().len(), 1);
+        assert!(router.tick().is_empty());
+    }
+
+    #[test]
+    fn legacy_database_remains_readable_and_old_clients_need_no_new_fields() {
+        let database: SdsDatabase = serde_json::from_value(json!({
+            "schema_version": 1, "revision": 7, "messages": {}, "routes": {}
+        })).unwrap();
+        assert!(database.idempotency.is_empty());
+        let input: MessageInput = serde_json::from_value(json!({
+            "source_issi": 1, "dest_issi": 2, "text": "test"
+        })).unwrap();
+        assert!(!input.at_most_once);
+        assert!(input.idempotency_key.is_none());
+    }
+
+    #[test]
+    fn retention_pruning_keeps_consumed_keys() {
+        let config = test_config();
+        let router = SharedSdsRouter::load(config.clone()).unwrap();
+        let input = alert_input("alert:prune");
+        let (original, _) = router.create_message(input.clone()).unwrap();
+        router.cancel_message(&original.id).unwrap();
+        {
+            let mut state = router.0.lock().unwrap();
+            prune_terminal_messages_locked(&mut state);
+            persist_locked(&state).unwrap();
+        }
+        drop(router);
+        let router = SharedSdsRouter::load(config).unwrap();
+        assert!(!router.idempotency_status("alert:prune").unwrap().retained);
+        assert!(router.create_message(input).unwrap_err().contains("idempotency_key_already_used"));
+    }
+
+    #[test]
+    fn at_most_once_avoids_route_fanout_and_blocks_cancelled_queued_commands() {
+        let router = SharedSdsRouter::load(test_config()).unwrap();
+        add_serving_node(&router);
+        {
+            let mut state = router.0.lock().unwrap();
+            let mut extra_node = state.nodes["tbs-1"].clone();
+            extra_node.node_id = "tbs-2".to_string();
+            state.nodes.insert("tbs-2".to_string(), extra_node);
+        }
+        router.create_route(RouteInput {
+            name: "Extra TBS".to_string(), enabled: true, kind: RouteKind::Individual,
+            match_value: 4_010_002, target_kind: RouteTargetKind::Node,
+            target: "tbs-2".to_string(), mode: RouteMode::Route, notes: String::new(),
+        }).unwrap();
+        router.create_route(RouteInput {
+            name: "App".to_string(), enabled: true, kind: RouteKind::Individual,
+            match_value: 4_010_002, target_kind: RouteTargetKind::Application,
+            target: "another-app".to_string(), mode: RouteMode::Intercept, notes: String::new(),
+        }).unwrap();
+        let (message, requests) = router.create_message(alert_input("alert:route")).unwrap();
+        assert_eq!(requests.len(), 1);
+        assert_eq!(message.delivery_legs.len(), 1);
+        assert_eq!(message.delivery_legs[0].node_id, "tbs-1");
+        assert!(message.application_legs.is_empty());
+        assert!(router.may_send(&requests[0]));
+        router.cancel_message(&message.id).unwrap();
+        assert!(!router.may_send(&requests[0]));
+    }
+
+    #[test]
+    fn scheduler_waits_for_durable_storage_before_first_dispatch() {
+        let router = SharedSdsRouter::load(test_config()).unwrap();
+        let (message, _) = router.create_message(alert_input("alert:later-disk")).unwrap();
+        add_serving_node(&router);
+        let original_path = {
+            let mut state = router.0.lock().unwrap();
+            let original = state.config.storage.database_path.clone();
+            state.config.storage.database_path = original.join("impossible.json");
+            original
+        };
+        assert!(router.tick().is_empty());
+        assert_eq!(router.message(&message.id).unwrap().state, MessageState::Offline);
+        router.0.lock().unwrap().config.storage.database_path = original_path;
+        assert_eq!(router.tick().len(), 1);
+        assert!(router.tick().is_empty());
+    }
+
+    #[test]
+    fn absolute_deadline_is_never_extended_and_expired_requests_do_not_dispatch() {
+        let router = SharedSdsRouter::load(test_config()).unwrap();
+        add_serving_node(&router);
+        let mut input = alert_input("alert:deadline");
+        let deadline = (Utc::now() + ChronoDuration::seconds(30))
+            .to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+        input.expires_at = Some(deadline.clone());
+        input.ttl_secs = Some(300);
+        let (message, requests) = router.create_message(input.clone()).unwrap();
+        assert_eq!(requests.len(), 1);
+        assert_eq!(message.expires_at, deadline);
+        let (duplicate, requests) = router.create_message(input).unwrap();
+        assert_eq!(duplicate.expires_at, deadline);
+        assert!(requests.is_empty());
+        let mut expired = alert_input("alert:expired");
+        expired.expires_at = Some((Utc::now() - ChronoDuration::seconds(1)).to_rfc3339());
+        assert!(router.create_message(expired).unwrap_err().contains("message_expired"));
+        assert!(router.idempotency_status("alert:expired").is_none());
+    }
+
+    fn telemetry_event(event: TelemetryEvent) -> BackendEvent {
+        BackendEvent::NodeMessage {
+            node_id: "tbs-1".to_string(),
+            message: NodeToControlRoomMessage::Telemetry {
+                envelope: tetra_entities::net_control_room::NodeTelemetryEnvelope {
+                    node_id: "tbs-1".to_string(), seq: 1, timestamp: now_iso(), event,
+                },
+            },
+        }
+    }
+
+    fn make_database_unwritable(router: &SharedSdsRouter) -> std::path::PathBuf {
+        let mut state = router.0.lock().unwrap();
+        let original = state.config.storage.database_path.clone();
+        // This already-existing database file cannot also be a directory.
+        state.config.storage.database_path = original.join("impossible.json");
+        original
+    }
+
+    #[test]
+    fn idle_ticks_and_irrelevant_telemetry_do_not_rewrite_offline_messages() {
+        let config = test_config();
+        let router = SharedSdsRouter::load(config.clone()).unwrap();
+        let (original, _) = router.create_message(alert_input("alert:no-route-idle")).unwrap();
+        let before = fs::read(&config.storage.database_path).unwrap();
+        // Any persistence attempt overwrites the backup before writing the DB.
+        fs::write(&config.storage.backup_path, b"unchanged backup sentinel").unwrap();
+        for _ in 0..32 {
+            assert!(router.tick().is_empty());
+            assert!(router.handle_backend_event(telemetry_event(TelemetryEvent::MsRssi {
+                issi: 4_010_002, rssi_dbfs: -30.0,
+            })).is_empty());
+            let metadata = BackendEvent::Event { event: crate::protocol::GatewayEventRecord {
+                seq: 1, timestamp: now_iso(), kind: "node_message".to_string(),
+                node_id: Some("tbs-1".to_string()), detail: json!({"message_kind":"telemetry"}),
+            }};
+            assert!(router.handle_backend_event(metadata).is_empty());
+        }
+        assert_eq!(router.message(&original.id).unwrap(), original);
+        assert_eq!(fs::read(&config.storage.database_path).unwrap(), before);
+        assert_eq!(fs::read(&config.storage.backup_path).unwrap(), b"unchanged backup sentinel");
+    }
+
+    #[test]
+    fn runtime_only_presence_changes_do_not_require_database_writes() {
+        let router = SharedSdsRouter::load(test_config()).unwrap();
+        let original_path = make_database_unwritable(&router);
+        assert!(router.handle_backend_event(telemetry_event(TelemetryEvent::MsRegistration {
+            issi: 4_010_002,
+        })).is_empty());
+        assert!(router.handle_backend_event(telemetry_event(TelemetryEvent::MsGroupAttach {
+            issi: 4_010_002, gssis: vec![42],
+        })).is_empty());
+        assert_eq!(router.status().subscribers_known, 1);
+        assert_eq!(router.status().groups_known, 1);
+        // Previously persistence failed and reverted both runtime changes.
+        assert!(router.tick().is_empty());
+        assert_eq!(router.status().subscribers_known, 1);
+        router.0.lock().unwrap().config.storage.database_path = original_path;
+    }
+
+    #[test]
+    fn registration_dispatch_requires_successful_durable_write() {
+        let config = test_config();
+        let router = SharedSdsRouter::load(config.clone()).unwrap();
+        let (message, _) = router.create_message(alert_input("alert:registration-disk")).unwrap();
+        add_serving_node(&router);
+        router.0.lock().unwrap().subscribers.clear();
+        let original_path = make_database_unwritable(&router);
+        assert!(router.handle_backend_event(telemetry_event(TelemetryEvent::MsRegistration {
+            issi: 4_010_002,
+        })).is_empty());
+        assert_eq!(router.message(&message.id).unwrap().state, MessageState::Offline);
+        assert_eq!(router.status().subscribers_known, 0);
+        router.0.lock().unwrap().config.storage.database_path = original_path;
+        let requests = router.handle_backend_event(telemetry_event(TelemetryEvent::MsRegistration {
+            issi: 4_010_002,
+        }));
+        assert_eq!(requests.len(), 1);
+        let disk = load_database(&config).unwrap();
+        assert_eq!(disk.messages[&message.id].state, MessageState::InFlight);
+        assert_eq!(disk.messages[&message.id].delivery_legs[0].attempts, 1);
+        assert!(disk.idempotency.contains_key("alert:registration-disk"));
+        assert!(router.tick().is_empty());
+    }
+
+    #[test]
+    fn delivery_ack_is_durable_and_write_failure_restores_pending_handle() {
+        let config = test_config();
+        let router = SharedSdsRouter::load(config.clone()).unwrap();
+        add_serving_node(&router);
+        let (message, _) = router.create_message(alert_input("alert:ack-disk")).unwrap();
+        let handle = message.delivery_legs[0].handle.unwrap();
+        let response = BackendEvent::NodeMessage {
+            node_id: "tbs-1".to_string(),
+            message: NodeToControlRoomMessage::ControlResponse {
+                envelope: tetra_entities::net_control_room::ControlResponseEnvelope {
+                    command_id: None, node_id: "tbs-1".to_string(), target_entity: None,
+                    timestamp: now_iso(), response: ControlResponse::SdsDeliveryResponse {
+                        handle, success: true, message: "accepted".to_string(),
+                    },
+                },
+            },
+        };
+        let original_path = make_database_unwritable(&router);
+        assert!(router.handle_backend_event(response.clone()).is_empty());
+        assert_eq!(router.message(&message.id).unwrap(), message);
+        router.0.lock().unwrap().config.storage.database_path = original_path;
+        assert!(router.handle_backend_event(response).is_empty());
+        assert_eq!(load_database(&config).unwrap().messages[&message.id].state, MessageState::Delivered);
+        assert!(router.0.lock().unwrap().handle_map.is_empty());
+    }
+
+    #[test]
+    fn expiry_is_durable_and_failed_expiry_write_rolls_back() {
+        let config = test_config();
+        let router = SharedSdsRouter::load(config.clone()).unwrap();
+        let (message, _) = router.create_message(alert_input("alert:expiry-disk")).unwrap();
+        {
+            let mut state = router.0.lock().unwrap();
+            state.messages.get_mut(&message.id).unwrap().expires_at =
+                (Utc::now() - ChronoDuration::seconds(1)).to_rfc3339();
+            persist_locked(&state).unwrap();
+        }
+        let original_path = make_database_unwritable(&router);
+        assert!(router.tick().is_empty());
+        assert_eq!(router.message(&message.id).unwrap().state, MessageState::Offline);
+        router.0.lock().unwrap().config.storage.database_path = original_path;
+        assert!(router.tick().is_empty());
+        assert_eq!(load_database(&config).unwrap().messages[&message.id].state, MessageState::Expired);
+        assert!(router.idempotency_status("alert:expiry-disk").is_some());
+    }
+
+    #[test]
+    fn failed_api_mutations_never_leave_unpersisted_state_for_an_idle_tick() {
+        let config = test_config();
+        let router = SharedSdsRouter::load(config.clone()).unwrap();
+        let route_input = || RouteInput {
+            name: "application".to_string(), enabled: true, kind: RouteKind::Individual,
+            match_value: 4_010_002, target_kind: RouteTargetKind::Application,
+            target: "test-app".to_string(), mode: RouteMode::Intercept, notes: String::new(),
+        };
+        let route = router.create_route(route_input()).unwrap();
+        let mut application_input = alert_input("alert:app-rollback");
+        application_input.at_most_once = false;
+        let (application, _) = router.create_message(application_input).unwrap();
+        assert_eq!(application.application_legs.len(), 1);
+        let (offline, _) = router.create_message(alert_input("alert:delete-rollback")).unwrap();
+        let original_path = make_database_unwritable(&router);
+        let before = router.0.lock().unwrap().clone();
+        assert!(router.create_route(route_input()).unwrap_err().contains("persistence_failed"));
+        assert!(router.update_route(&route.id, route_input()).unwrap_err().contains("persistence_failed"));
+        assert!(router.delete_route(&route.id).unwrap_err().contains("persistence_failed"));
+        assert!(router.delete_message(&offline.id).unwrap_err().contains("persistence_failed"));
+        assert!(router.acknowledge_application(&application.id, "test-app", ApplicationAckInput {
+            success: true, message: "accepted".to_string(),
+        }).unwrap_err().contains("persistence_failed"));
+        {
+            let after = router.0.lock().unwrap();
+            assert_eq!(after.revision, before.revision);
+            assert_eq!(after.messages, before.messages);
+            assert_eq!(after.routes, before.routes);
+            assert_eq!(after.idempotency, before.idempotency);
+        }
+        router.0.lock().unwrap().config.storage.database_path = original_path;
+        assert!(router.tick().is_empty());
+        let disk = load_database(&config).unwrap();
+        assert_eq!(disk.messages, before.messages);
+        assert_eq!(disk.routes, before.routes);
     }
 }
