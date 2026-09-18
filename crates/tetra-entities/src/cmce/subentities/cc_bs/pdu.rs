@@ -1732,7 +1732,8 @@ password = ""
     fn inbound_gateway_cli_serializes_long_external_number_without_tetra_extension() {
         use tetra_core::tetra_entities::TetraEntity;
 
-        let phone = "49301234567890123456789012";
+        let phone = "493012345678901234567890";
+        assert_eq!(phone.len(), 24);
         let (_, setup) = inbound_gateway_cli_setup(TetraEntity::Asterisk, 0, phone, 16_777_184);
         assert_eq!(setup.calling_party_address_ssi, Some(16_777_184));
         assert_eq!(setup.calling_party_extension, None);
