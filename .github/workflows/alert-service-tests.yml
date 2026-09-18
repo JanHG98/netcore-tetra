@@ -42,6 +42,8 @@ jobs:
           bash -n system-backend/alert-service/install/update.sh
           bash -n system-backend/alert-service/install/deploy.sh
           node --check system-backend/alert-service/static/app.js
+      - name: Device overview, delivery states and map actions
+        run: node --test system-backend/alert-service/tests/test_device_overview_ui.cjs
       - uses: dtolnay/rust-toolchain@stable
       - name: SDS router tests and real HTTP integration
         run: |

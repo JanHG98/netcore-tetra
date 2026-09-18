@@ -15,7 +15,9 @@ Beide Dienste schrieben bei Gateway-Telemetrie ihre vollständige Datenbank, auc
 | **Jede TBS** | Kein Softwareupdate oder Neustart nötig; abschließend Dienstzustände und Funkbetrieb prüfen |
 | **Neuer LXC** | Keiner erforderlich |
 
-Die Befehle verwenden den Branch **`feat/katwarn-nina-alerts`** aus [PR #49](https://github.com/JanHG98/netcore-tetra/pull/49). Jeder Updateblock legt eine eigene Arbeitskopie unter `/opt` an und bricht bei einem Fehler ab. Vorhandene Projektordner bleiben erhalten.
+Diese Korrekturen sind durch den zusammengeführten [PR #49](https://github.com/JanHG98/netcore-tetra/pull/49) bereits im Branch **`katwarn/nina`** enthalten. Die Befehle verwenden diesen Branch. Jeder Updateblock legt eine eigene Arbeitskopie unter `/opt` an und bricht bei einem Fehler ab. Vorhandene Projektordner bleiben erhalten.
+
+**Sind beide Dienste bereits repariert und bleiben verfügbar, dieses Update nicht für die neue Geräteübersicht wiederholen.** Dafür genügt das [Update des Warn-LXC aus Schritt 5](KATWARN_NINA_INSTALL_UPDATE.md#5-bestehenden-warn-lxc-aktualisieren). Die Geräteübersicht ändert weder diese Bereitschaftsprüfungen noch die TBS-Überwachung.
 
 **Davon getrennt: Gerät auf der Warnkarte sichtbar, aber keine SDS am Funkgerät?** Dafür wurde eine fehlende Befehlsweiterleitung in der TBS gefunden. Dieser zusätzliche Fehler erfordert das [TBS-Update aus Schritt 3 der Warn-Anleitung](KATWARN_NINA_INSTALL_UPDATE.md#3-jede-tbs-aktualisieren-und-funkversand-prüfen). Die obige Aussage zum entfallenden TBS-Update bezieht sich ausschließlich auf die langsamen Bereitschaftsprüfungen und den dadurch ausgelösten Fallback.
 
@@ -31,7 +33,7 @@ Der Neustart unterbricht den jeweiligen Dienst kurz. Das Call-Control-Update bei
   test -s /etc/netcore/sds-router.toml
   cd /opt
   update_dir=$(mktemp -d /opt/netcore-sds-fix.XXXXXX)
-  git clone --single-branch --branch feat/katwarn-nina-alerts https://github.com/JanHG98/netcore-tetra.git "$update_dir"
+  git clone --single-branch --branch katwarn/nina https://github.com/JanHG98/netcore-tetra.git "$update_dir"
   cd "$update_dir"
   test -s system-backend/sds-router/install/update.sh
   . system-backend/shared/install/lxc-network.sh
@@ -62,7 +64,7 @@ journalctl -u netcore-sds-router -n 60 --no-pager
   test -s /etc/netcore/call-control.toml
   cd /opt
   update_dir=$(mktemp -d /opt/netcore-call-fix.XXXXXX)
-  git clone --single-branch --branch feat/katwarn-nina-alerts https://github.com/JanHG98/netcore-tetra.git "$update_dir"
+  git clone --single-branch --branch katwarn/nina https://github.com/JanHG98/netcore-tetra.git "$update_dir"
   cd "$update_dir"
   test -s system-backend/call-control/install/update.sh
   if [ -f /root/.cargo/env ]; then . /root/.cargo/env; fi

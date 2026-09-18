@@ -2,7 +2,9 @@
 
 Die Warnzentrale vergleicht aktuelle Gerätepositionen aus dem Control Room mit aktiven Warngebieten und verschickt individuelle SDS über den SDS Router. Sie läuft als eigener Python-3.11+-Dienst in einem LXC und benötigt keine pip-Pakete. WebUI: `http://<WARN-LXC-IP>:8310/`.
 
-Die [Schritt-für-Schritt-Anleitung pro LXC und TBS](../../Docs/KATWARN_NINA_INSTALL_UPDATE.md) nennt für jedes betroffene System die erforderlichen Befehle und Prüfungen. Für diese Funktion müssen der neue Warn-LXC installiert sowie SDS Router, Control Room und die TBS aktualisiert werden. Die TBS-Korrektur ergänzt die fehlende CMCE-Weiterleitung der zentralen Befehle `DeliverSds` und `SendStatus` samt Rückmeldung. Der Control Room benötigt die aktivierte, nur lesende Verbindung zu Node Gateway `/ws/backend`, damit seine Geräte- und GPS-Ansichten mit Telemetrie gefüllt werden. Die TBS bleiben mit dem Node Gateway verbunden.
+Die [Schritt-für-Schritt-Anleitung pro LXC und TBS](../../Docs/KATWARN_NINA_INSTALL_UPDATE.md) nennt für jedes betroffene System die erforderlichen Befehle und Prüfungen. **Kommen Warnungen bereits am Funkgerät an, braucht die neue Geräteübersicht nur ein [Update des Warn-LXC](../../Docs/KATWARN_NINA_INSTALL_UPDATE.md#5-bestehenden-warn-lxc-aktualisieren).** Konfiguration, Token, eigene Warnungen und dauerhafte Empfängerhistorie bleiben erhalten; weitere LXC- oder TBS-Updates sind dafür nicht erforderlich.
+
+Bei der Ersteinrichtung müssen der neue Warn-LXC installiert sowie SDS Router, Control Room und die TBS aktualisiert werden. Die bereits in `katwarn/nina` enthaltene TBS-Korrektur ergänzt die fehlende CMCE-Weiterleitung der zentralen Befehle `DeliverSds` und `SendStatus` samt Rückmeldung. Der Control Room benötigt die aktivierte, nur lesende Verbindung zu Node Gateway `/ws/backend`, damit seine Geräte- und GPS-Ansichten mit Telemetrie gefüllt werden. Die TBS bleiben mit dem Node Gateway verbunden. Die ebenfalls enthaltene [Reparatur langsamer Bereitschaftsprüfungen](../../Docs/SDS_CALL_CONTROL_FALLBACK_REPARATUR.md) betrifft SDS Router und Call Control.
 
 ## Verhalten
 
@@ -12,7 +14,8 @@ Die [Schritt-für-Schritt-Anleitung pro LXC und TBS](../../Docs/KATWARN_NINA_INS
 - Gültigkeit, Entwarnung, CAP-Referenzen, Polygone, mehrere Teilgebiete, Löcher und Kreise. Updates derselben Warnung behalten ihre Empfängerhistorie; bereits benachrichtigte Geräte erhalten kein weiteres Update derselben Warnung. Neue Geräte erhalten den aktuellen Text.
 - Eigene Meldungen per Kartenklick, Koordinaten, Radius von 50 m bis 200 km, Warnstufe, Text und Ablaufzeit erstellen. Löschen beendet weitere Aussendungen; Verlauf und Empfängerhistorie bleiben erhalten.
 - WebUI mit Karte, vollständigen Meldungstexten, Funktext-Vorschau, Geräten, Zustellstatus und Archiv. Leaflet 1.9.4 ist lokal enthalten; nur Hintergrundkacheln werden vom Browser bei OpenStreetMap geladen.
-- Geräteprüfung mit Gründen für ausgeschlossene Geräte (z. B. fehlendes/zu altes GPS oder fehlende TBS-Verbindung). Eine leere Teilnehmerantwort des Control Rooms wird ausdrücklich angezeigt. Die Versandvoraussetzungen bleiben unverändert.
+- **„Geräte & Warnstatus“** zeigt alle aktuell vom Control Room gemeldeten Geräte mit ISSI, TBS, Position, Prüfung des Warngebiets und Versandstatus je passender Warnung. Filter: **„Alle“**, **„Im Warngebiet“** und **„Prüfung nötig“**, jeweils mit Anzahl. Der letzte Filter umfasst ausgeschlossene Geräte sowie fehlgeschlagene oder unklare Zustellungen. Auch Geräte ohne verwendbares GPS oder frische TBS-Verbindung bleiben mit dem Ausschlussgrund sichtbar. Die Übersicht ist kein Verzeichnis bereits abgemeldeter Geräte.
+- Eine leere Teilnehmerantwort oder ein Fehler beim Control-Room-Abruf wird ausdrücklich angezeigt. Geräte ohne verwendbare Position werden beim Warngebiet als **„Nicht geprüft“** geführt. Die Geräteübersicht ist nur eine zusätzliche Anzeige und ändert weder die Versandvoraussetzungen noch die Duplikatsperren.
 - Zugang mit lokal erzeugtem Token. Das Token wird als HTTP-Header gesendet, ausschließlich in der Browsersitzung gespeichert und in normalen Antworten nicht ausgegeben.
 
 BBK-Daten stammen aus den öffentlichen [Warnungsfeeds](https://warnung.bund.de/api31/mowas/mapData.json) und dem [KATWARN-Feed](https://warnung.bund.de/api31/katwarn/mapData.json). KATWARN ist enthalten, soweit Meldungen dort bereitgestellt werden; der Dienst besitzt keinen unabhängigen KATWARN-Partnerzugang. Das BBK beschreibt die Verbindung der Warnsysteme auf seiner [MoWaS-Seite](https://www.bbk.bund.de/DE/Warnung-Vorsorge/Warnung-in-Deutschland/MoWaS/mowas_node.html). Die öffentlichen App-Endpunkte sind eine externe Abhängigkeit und können sich ändern.
@@ -46,7 +49,7 @@ Der Funktext wird für die vorhandene SDS-Zeichenkodierung in ASCII umgewandelt 
 ```text
 GET    /health/live                Prozessprüfung, ohne Anmeldung
 GET    /health/ready               503 bei fehlendem Erstabgleich oder Abhängigkeitsfehler
-GET    /api/v1/status              Gesamte Übersicht
+GET    /api/v1/status              Gesamte Übersicht einschließlich Geräteprüfung und Warnstatus
 GET    /api/v1/alerts              Warnungen einschließlich Archiv
 GET    /api/v1/devices             Online-Geräte mit verwendbarer Position
 GET    /api/v1/deliveries           Dauerhafte Empfängerhistorie
@@ -70,6 +73,18 @@ Alle `/api/`-Anfragen benötigen `Authorization: Bearer <NETCORE_ALERT_TOKEN>`. 
 
 Eine eigene Warnung darf höchstens 366 Tage gültig sein. Der Beispielzeitpunkt muss daher passend ersetzt werden. Der Dienst nutzt beim Control Room nur lesende Endpunkte `/api/subscribers?online=true` und `/api/nodes`. Diese werden bei TBS am Node Gateway erst durch die eingeschaltete `[node_gateway]`-Verbindung des Control Rooms gefüllt. Nach erstmaligem Einschalten müssen aktuelle Anmeldung und GPS-Telemetrie eintreffen; der Gateway-Snapshot enthält keine alten Gerätepositionen. Für geschützte Control Rooms sind Benutzername und `NETCORE_CONTROL_ROOM_PASSWORD` vorgesehen.
 
+`GET /api/v1/status` ergänzt die bisherigen Felder `devices`, `device_diagnostics` und `subscribers_seen` um:
+
+| Feld | Bedeutung |
+|---|---|
+| `device_overview` | Eine Zeile je aktuell gemeldeter ISSI, einschließlich ausgeschlossener Geräte; enthält `available`, `reason_code`, `reason`, GPS-/TBS-Alter, `area_status` und `matching_alerts` |
+| `device_summary.total` | Anzahl der Gerätezeilen, ohne doppelte ISSIs |
+| `device_summary.available` | Geräte mit für Warnungen verwendbarer Position und TBS-Verbindung |
+| `device_summary.affected` | Verfügbare Geräte in mindestens einem aktiven Warngebiet |
+| `device_summary.blocked` | Geräte, deren GPS-/TBS-Prüfung den Warnversand verhindert |
+
+`area_status` ist `affected` (im Warngebiet), `outside` (außerhalb), `no_alerts` (keine aktiven Warnungen) oder `unknown` (Gerät nicht prüfbar). `matching_alerts` enthält je geografisch passender aktiver Warnung Titel, Versandfreigabe und den gespeicherten Zustellstatus für diese ISSI. Ein vorhandener Zustellstatus wird auch nach zusammengeführten Warnungsreferenzen korrekt zugeordnet. Ohne gespeicherten Auftrag bleibt `delivery_state` leer; die Anzeige allein legt keinen Auftrag an. Ein Gerät in einem Warngebiet erhält bei pausiertem Versand oder nicht ausreichend aktuellen NINA-Daten keine neue Zustellung. Die bestehenden Endpunkte `/api/v1/devices` und das Statusfeld `devices` enthalten weiterhin ausschließlich verwendbare Geräte. Der UI-Filter „Prüfung nötig“ berücksichtigt zusätzlich Zustellprobleme und kann deshalb mehr Geräte enthalten als `device_summary.blocked`.
+
 ## Entwicklung und Prüfung
 
 ```bash
@@ -86,9 +101,15 @@ cargo build -p netcore-sds-router
 python3 system-backend/alert-service/tests/integration_router.py
 ```
 
+Die Geräteanzeige mit dem eingebauten Node.js-Testläufer prüfen, ebenfalls vom Repository-Hauptverzeichnis (Node.js nur für die Entwicklung erforderlich):
+
+```bash
+node --test system-backend/alert-service/tests/test_device_overview_ui.cjs
+```
+
 Der Integrationstest startet ausschließlich seinen eigenen Router auf Loopback mit temporärer Datenbank und einem reservierten, nicht erreichbaren Gateway-Port. Er sendet keine Funknachrichten und stoppt keine vorhandenen Dienste. Ein abweichender Binary-Pfad ist über `--router-binary` möglich.
 
-Die Tests prüfen unter anderem Anmeldung, Gebietswechsel, Referenzketten, Neustarts, Persistenzfehler, verlorene HTTP-Antworten, absolute Fristen, Entwarnung, Token-Schutz und Eingabevalidierung. Die Abnahme mit echten Funkgeräten ist in der Rollout-Anleitung beschrieben.
+Die Tests prüfen unter anderem Anmeldung, Gebietswechsel, Referenzketten, Neustarts, Persistenzfehler, verlorene HTTP-Antworten, absolute Fristen, Entwarnung, Token-Schutz und Eingabevalidierung. Für die Geräteübersicht werden verfügbare und ausgeschlossene Geräte, überlappende Warngebiete, gespeicherte Zustellzustände und zusammengeführte Warnungsreferenzen geprüft. Die Abnahme mit echten Funkgeräten ist in der Rollout-Anleitung beschrieben.
 
 ## Abhängigkeiten und Quellen
 
