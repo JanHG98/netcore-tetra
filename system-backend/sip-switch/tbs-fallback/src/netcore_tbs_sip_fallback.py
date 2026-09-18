@@ -107,6 +107,9 @@ def render_pjsip_base(cfg: dict[str, Any]) -> str:
         f"allow={native.get('allow', 'ulaw')}",
         f"auth={n['native']}",
         f"aors={n['native']}",
+        # Native SIP authenticates as a station account but asserts the radio ISSI.
+        "trust_id_inbound=yes",
+        "send_pai=yes",
         "direct_media=no",
         "rtp_symmetric=yes",
         "force_rport=yes",
@@ -153,6 +156,9 @@ def render_pjsip_base(cfg: dict[str, Any]) -> str:
             f"outbound_auth={n['central_auth']}",
             f"from_user={central.get('username', '')}",
             f"from_domain={host}",
+            # Keep the trunk's From user for identification and carry caller ID in PAI.
+            "trust_id_inbound=yes",
+            "send_pai=yes",
             "direct_media=no",
             "rtp_symmetric=yes",
             "force_rport=yes",
@@ -199,6 +205,8 @@ def render_pjsip_base(cfg: dict[str, Any]) -> str:
             *([auth_line] if auth_line else []),
             f"from_user={pbx.get('from_user') or pbx.get('username') or ''}",
             f"from_domain={pbx.get('from_domain') or host}",
+            "trust_id_inbound=yes",
+            "send_pai=yes",
             "direct_media=no",
             "rtp_symmetric=yes",
             "force_rport=yes",

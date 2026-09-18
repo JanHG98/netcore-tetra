@@ -69,6 +69,19 @@ def dispatch_number(entries, number):
     raise AssertionError("generated dialplan alias loop")
 
 
+def pjsip_objects(text):
+    """Keep same-name endpoint/auth/AoR sections separate, as PJSIP does."""
+    objects = {}
+    for match in re.finditer(r"^\[([^\]]+)\]\s*\n([^\[]*)", text, re.MULTILINE):
+        values = {}
+        for line in match[2].splitlines():
+            if "=" in line and not line.lstrip().startswith(";"):
+                key, value = line.split("=", 1)
+                values[key.strip()] = value.strip()
+        objects[(match[1], values.get("type"))] = values
+    return objects
+
+
 class SipNumberRoutingTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -92,12 +105,13 @@ class SipNumberRoutingTests(unittest.TestCase):
         self.addCleanup(self.app.io.close)
         self.mobility_queries = []
         self.cli_queries = []
+        self.serving_node = "SRV-M-TBS-01"
 
         def mobility_http(method, url, **kwargs):
             self.mobility_queries.append((method, url))
             return 200, {
                 "state": "confirmed", "registered": True,
-                "serving_node": "SRV-M-TBS-01", "node_connected": True,
+                "serving_node": self.serving_node, "node_connected": True,
             }
 
         def asterisk_cli(command, **kwargs):
@@ -169,6 +183,31 @@ class SipNumberRoutingTests(unittest.TestCase):
         result = self.app.resolve("outbound", "91103", commit=False)
         self.assertEqual((result["action"], result["destination"], result["endpoint"]),
                          ("pbx", "103", "pbx"))
+
+    def test_similar_mobility_node_name_requires_explicit_alias(self):
+        self.serving_node = "SRV-M_TBS-01"
+        result = self.resolve_inbound("T5102")
+        self.assertEqual(result["action"], "reject")
+        self.assertEqual(result["reason"], "serving_tbs_not_configured")
+        self.assertEqual(result["node_id"], "SRV-M_TBS-01")
+        self.assertTrue(self.mobility_queries[-1][1].endswith("/5102/route"))
+        self.assertEqual(self.cli_queries, [])
+
+    def test_explicit_mobility_alias_keeps_existing_sip_account(self):
+        self.serving_node = "SRV-M_TBS-01"
+        configured_tbs = self.config.tbs[0]
+        configured_tbs["aliases"] = ["SRV-M_TBS-01"]
+        for number in ("5102", "T5102"):
+            with self.subTest(number=number):
+                result = self.resolve_inbound(number)
+                self.assertEqual(result["action"], "tbs")
+                self.assertEqual(result["destination"], "5102")
+                self.assertEqual(result["node_id"], "SRV-M_TBS-01")
+                self.assertEqual(result["endpoint"], "tbs-srv-m-tbs-01")
+                self.assertEqual(result["aor"], "tbs-registration")
+                self.assertEqual(self.cli_queries[-1], "pjsip show aor tbs-registration")
+        self.assertEqual(configured_tbs["node_id"], "SRV-M-TBS-01")
+        self.assertEqual(configured_tbs["username"], "tbs-registration")
 
     def test_rendered_pbx_context_dispatches_marker_to_real_resolver(self):
         entries = dialplan_entries(self.app._render_extensions(), "netcore-from-pbx")
@@ -255,6 +294,59 @@ class SipNumberRoutingTests(unittest.TestCase):
                 self.assertLess(guard_position, contacts_position)
                 self.assertIn("?valid-number:invalid-number)", guard)
                 self.assertEqual(instructions[guard_position + 1], "Hangup(28)")
+
+    def test_local_asterisk_trusts_and_sends_identity_on_all_three_legs(self):
+        cfg = tomllib.loads((BASE / "tbs-fallback/config/tbs-sip-fallback.example.toml").read_text())
+        cfg["fallback_pbx"].update(username="104", password="test-pbx-password")
+        objects = pjsip_objects(fallback.render_pjsip_base(cfg))
+        endpoints = {name: values for (name, kind), values in objects.items() if kind == "endpoint"}
+        self.assertEqual(len(endpoints), 3)
+        self.assertEqual({values["context"] for values in endpoints.values()}, {
+            "netcore-from-native-tbs", "netcore-from-central-switch", "netcore-from-pbx-fallback",
+        })
+        for name, values in endpoints.items():
+            with self.subTest(endpoint=name):
+                self.assertEqual(values.get("trust_id_inbound"), "yes")
+                self.assertEqual(values.get("send_pai"), "yes")
+
+    def test_caller_identity_does_not_replace_auth_or_registration_users(self):
+        cfg = tomllib.loads((BASE / "tbs-fallback/config/tbs-sip-fallback.example.toml").read_text())
+        cfg["native_tbs"].update(username="native-test", password="native-secret")
+        cfg["central"].update(username="central-registration", password="central-secret", host="10.0.1.125")
+        cfg["fallback_pbx"].update(
+            username="104", auth_username="pbx-digest-id", from_user="pbx-from-id",
+            contact_user="pbx-contact-id", password="pbx-secret", host="10.0.1.21",
+        )
+        names = fallback.names(cfg)
+        objects = pjsip_objects(fallback.render_pjsip_base(cfg))
+        native = objects[(names["native"], "endpoint")]
+        self.assertEqual(native["auth"], "native-test")
+        self.assertEqual(native["aors"], "native-test")
+        self.assertEqual(objects[("native-test", "auth")]["username"], "native-test")
+        self.assertEqual(objects[("native-test", "auth")]["password"], "native-secret")
+        for leg, expected_user, expected_from, expected_password in (
+            ("central", "central-registration", "central-registration", "central-secret"),
+            ("pbx", "pbx-digest-id", "pbx-from-id", "pbx-secret"),
+        ):
+            with self.subTest(leg=leg):
+                endpoint = objects[(names[f"{leg}_ep"], "endpoint")]
+                auth = objects[(names[f"{leg}_auth"], "auth")]
+                self.assertEqual(endpoint["outbound_auth"], names[f"{leg}_auth"])
+                self.assertEqual(endpoint["from_user"], expected_from)
+                self.assertEqual(auth["username"], expected_user)
+                self.assertEqual(auth["password"], expected_password)
+        central_registration = pjsip_objects(fallback.render_central_registration(cfg))[
+            (names["central_reg"], "registration")
+        ]
+        pbx_registration = pjsip_objects(fallback.render_pbx_registration(cfg))[
+            (names["pbx_reg"], "registration")
+        ]
+        self.assertEqual(central_registration["client_uri"], "sip:central-registration@10.0.1.125")
+        self.assertEqual(central_registration["contact_user"], "central-registration")
+        self.assertEqual(central_registration["outbound_auth"], names["central_auth"])
+        self.assertEqual(pbx_registration["client_uri"], "sip:104@10.0.1.21")
+        self.assertEqual(pbx_registration["contact_user"], "pbx-contact-id")
+        self.assertEqual(pbx_registration["outbound_auth"], names["pbx_auth"])
 
 
 if __name__ == "__main__":
