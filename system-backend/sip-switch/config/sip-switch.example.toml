@@ -35,7 +35,8 @@ timeout_secs = 2
 enabled = true
 binary = "/usr/sbin/asterisk"
 config_dir = "/etc/asterisk"
-agi_script = "netcore-sip-route.py"
+# Absolute path also works when Debian uses /usr/share/asterisk/agi-bin.
+agi_script = "/var/lib/asterisk/agi-bin/netcore-sip-route.py"
 sip_bind = "0.0.0.0:5060"
 rtp_start = 10000
 rtp_end = 20000
@@ -68,6 +69,8 @@ allow = "ulaw"
 match = []
 
 [routing]
+# PBX-Ziele 5102, T5102 und t5102 erreichen dieselbe ISSI. Der optionale
+# T-Marker wird vor den numerischen Prefix-/Mapping-Regeln entfernt.
 # Beispiel: tetra_number_prefix = "40" und strip_tetra_prefix = true
 # lässt das PBX 404010001 wählen und routet intern auf ISSI 4010001.
 tetra_number_prefix = ""
