@@ -33,7 +33,9 @@ NATIVE_PASSWORD="openlab-${NATIVE_USER}"
 
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-  asterisk python3 ca-certificates curl
+  python3 ca-certificates curl
+source "${FALLBACK_DIR}/../install/ensure-asterisk.sh"
+netcore_ensure_asterisk
 
 install -d -m 0755 /etc/netcore /var/lib/netcore-tbs-sip-fallback
 install -m 0755 "${FALLBACK_DIR}/src/netcore_tbs_sip_fallback.py" /usr/local/bin/netcore-tbs-sip-fallback
@@ -47,11 +49,12 @@ fi
 python3 - "$FALLBACK_DIR/config/tbs-sip-fallback.example.toml" /etc/netcore/tbs-sip-fallback.toml \
   "$NODE_ID" "$TBS_IP" "$SWITCH_IP" "$CENTRAL_USER" "$CENTRAL_PASSWORD" "$PBX_IP" "$PBX_FALLBACK_ID" "$NATIVE_USER" "$NATIVE_PASSWORD" "$PBX_AUTH_USER" "$PBX_PASSWORD" <<'PY'
 from pathlib import Path
-import sys
+import json, os, sys
 
 src, dst, node, tbs_ip, switch_ip, central_user, central_password, pbx_ip, pbx_id, native_user, native_password, pbx_auth_user, pbx_password = sys.argv[1:]
 text = Path(src).read_text(encoding="utf-8")
 replacements = {
+    'binary = "/usr/sbin/asterisk"': 'binary = ' + json.dumps(os.environ['NETCORE_ASTERISK_BINARY']),
     'node_id = "SRV-M-TBS-01"': f'node_id = "{node}"',
     'username = "netcore-tbs-native"': f'username = "{native_user}"',
     'password = "openlab-native"': f'password = "{native_password}"',
