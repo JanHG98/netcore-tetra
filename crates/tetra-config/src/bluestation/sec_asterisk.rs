@@ -17,6 +17,8 @@ pub struct CfgAsterisk {
     pub outbound_prefix: String,
     pub strip_outbound_prefix: bool,
     pub inbound_prefix: String,
+    /// TETRA gateway identity for inbound SIP calls; the external caller number is carried separately.
+    pub inbound_gateway_issi: u32,
     pub register: bool,
     pub codec: String,
     pub service_numbers: Vec<String>,
@@ -132,6 +134,8 @@ pub struct CfgAsteriskDto {
     pub strip_outbound_prefix: bool,
     #[serde(default = "default_inbound_prefix")]
     pub inbound_prefix: String,
+    #[serde(default = "default_inbound_gateway_issi")]
+    pub inbound_gateway_issi: u32,
     #[serde(default = "default_register")]
     pub register: bool,
     #[serde(default = "default_codec")]
@@ -182,6 +186,7 @@ impl Default for CfgAsteriskDto {
             outbound_prefix: default_outbound_prefix(),
             strip_outbound_prefix: default_strip_outbound_prefix(),
             inbound_prefix: default_inbound_prefix(),
+            inbound_gateway_issi: default_inbound_gateway_issi(),
             register: default_register(),
             codec: default_codec(),
             service_numbers: Vec::new(),
@@ -220,6 +225,10 @@ fn default_strip_outbound_prefix() -> bool {
 // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn default_inbound_prefix() -> String {
     "T".to_string()
+}
+
+fn default_inbound_gateway_issi() -> u32 {
+    16_777_184
 }
 
 // Was: Führt den Arbeitsschritt `default_register` für default register aus.
@@ -315,6 +324,11 @@ fn default_inbound_setup_timeout_secs() -> u32 {
 // Was: Diese Funktion wendet asterisk patch.
 // Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
 pub fn apply_asterisk_patch(src: CfgAsteriskDto) -> Result<CfgAsterisk, String> {
+    // The all-ones SSI is the broadcast address, not an individual gateway identity.
+    if !(1..=0x00ff_fffe).contains(&src.inbound_gateway_issi) {
+        return Err("asterisk: inbound_gateway_issi must be between 1 and 16777214".to_string());
+    }
+
     if src.enabled {
         if src.bind_port == 0 {
             return Err("asterisk: bind_port cannot be 0".to_string());
@@ -356,6 +370,7 @@ pub fn apply_asterisk_patch(src: CfgAsteriskDto) -> Result<CfgAsterisk, String> 
         outbound_prefix: src.outbound_prefix,
         strip_outbound_prefix: src.strip_outbound_prefix,
         inbound_prefix: src.inbound_prefix,
+        inbound_gateway_issi: src.inbound_gateway_issi,
         register: src.register,
         codec,
         service_numbers,
@@ -381,6 +396,39 @@ pub fn apply_asterisk_patch(src: CfgAsteriskDto) -> Result<CfgAsterisk, String> 
 // Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
+
+    #[test]
+    fn inbound_gateway_issi_defaults_for_existing_configs() {
+        let dto: CfgAsteriskDto = toml::from_str("").expect("empty asterisk section should parse");
+        let cfg = apply_asterisk_patch(dto).expect("default asterisk section should be valid");
+        assert_eq!(cfg.inbound_gateway_issi, 16_777_184);
+        assert_eq!(CfgAsterisk::default().inbound_gateway_issi, 16_777_184);
+    }
+
+    #[test]
+    fn inbound_gateway_issi_accepts_custom_identity_and_range_boundaries() {
+        for issi in [1, 5_100_001, 0x00ff_fffe] {
+            let dto: CfgAsteriskDto = toml::from_str(&format!("inbound_gateway_issi = {issi}"))
+                .expect("gateway identity should parse");
+            let cfg = apply_asterisk_patch(dto).expect("gateway identity should be valid");
+            assert_eq!(cfg.inbound_gateway_issi, issi);
+        }
+    }
+
+    #[test]
+    fn inbound_gateway_issi_rejects_zero_broadcast_and_24_bit_overflow() {
+        for issi in [0, 0x00ff_ffff, 0x0100_0000] {
+            let dto: CfgAsteriskDto = toml::from_str(&format!("inbound_gateway_issi = {issi}"))
+                .expect("unsigned gateway identity should parse before range validation");
+            let error = apply_asterisk_patch(dto).expect_err("out-of-range gateway identity must fail");
+            assert_eq!(error, "asterisk: inbound_gateway_issi must be between 1 and 16777214");
+        }
+    }
+
+    #[test]
+    fn inbound_gateway_issi_rejects_negative_toml_value() {
+        assert!(toml::from_str::<CfgAsteriskDto>("inbound_gateway_issi = -1").is_err());
+    }
 
     // Was: Führt den Arbeitsschritt `enabled_cfg` für enabled cfg aus.
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.

@@ -1068,6 +1068,9 @@ enabled = true
 outbound_prefix = "91"
 strip_outbound_prefix = true
 inbound_prefix = "T"
+# Local gateway SSI for incoming phone calls; match the radio's incoming PABX identity.
+# The caller's phone number is sent separately as External Subscriber Number.
+inbound_gateway_issi = 16777184
 register = true
 codec = "PCMU"
 service_numbers = ["*"]
