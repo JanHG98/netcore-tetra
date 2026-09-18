@@ -177,6 +177,68 @@ Routing und weiterhin falscher Anzeige ist diese PBX-Einstellung zu prüfen.
 Die automatischen Tests prüfen die gerenderte Konfiguration und die
 Node-Zuordnung; den Ruf mit Anzeige und Audio in beiden Richtungen am Netz testen.
 
+## Telefon ruft das Funkgerät: CLI kann nicht angezeigt werden
+
+Die Funkbasis muss die Identität des lokalen Telefon-Gateways und die externe
+Anrufernummer getrennt signalisieren. Bisher konnte eine SIP-Nebenstelle wie `103`
+zusätzlich als TETRA-Anrufer-SSI `103` im D-SETUP erscheinen. Das passt nicht zu
+einem PABX-Profil, dessen eingehende Gateway-SSI beispielsweise `16777184` ist.
+
+Für Asterisk-Rufe verwendet die Funkbasis deshalb `asterisk.inbound_gateway_issi`
+als Calling Party SSI. Der Standardwert ist `16777184`; er stammt aus dem
+vorliegenden Codeplug und ist **kein universell vorgeschriebener SIP-Gatewaywert**.
+Eine abweichende Gateway-SSI lässt sich im bestehenden `[asterisk]`-Abschnitt
+der TBS-Konfiguration setzen:
+
+```toml
+inbound_gateway_issi = 16777184
+```
+
+Für einen Anruf von Telefon `103` nach ISSI `5102` ergibt sich:
+
+| D-SETUP-Feld | Wert |
+|---|---|
+| Calling Party SSI | `16777184` |
+| Calling Party Extension | nicht vorhanden: Gateway im lokalen TETRA-Netz |
+| External Subscriber Number | `103` (12 Bit, `0x103`) |
+
+Die interne Kennzeichnung des externen Rufursprungs bleibt erhalten. Die
+Telefonnummer wird nicht als MCC/MNC-Erweiterung interpretiert. Bestehende
+TETRA-Quellidentitäten aus Brew bleiben erhalten.
+
+Der Codeplug unterscheidet **Incoming Identity** und **Outgoing Identity**.
+Für die eingehende CLI ist die erste relevant; die ausgehende Identität und
+Wahlpräfixe werden durch diesen Fix nicht geändert. Der im vorliegenden CPS
+angezeigte MCC `1000` wird nicht auf die Luftschnittstelle übernommen:
+EN 300 392-1 V1.6.1, Abschnitt 7.2.5, reserviert MCC 1000 bis 1023.
+Die Bedeutung dieses Werts in der Programmiersoftware muss anhand der
+Herstellerdokumentation geprüft werden. Der Fix verwendet eine lokale
+Gateway-ISSI gemäß Abschnitt 7.2.6 und eine separate externe Nummer gemäß
+Abschnitt 7.8.2.2.2. Die tatsächliche Anzeige am Gerät muss im Funkversuch
+bestätigt werden.
+
+Nach Übernahme des Fixes **nur auf der TBS** aktualisieren und neu bauen:
+
+```bash
+cd /opt/netcore-tetra
+git pull --ff-only origin mqtt
+cargo build --release -p bluestation-bs
+```
+
+Nach erfolgreichem Build die bisher manuell gestartete Basis beenden und mit
+derselben Konfiguration neu starten:
+
+```bash
+./target/release/bluestation-bs ./config.toml
+```
+
+Bestehende lokale Konfiguration erhalten. Fehlt `inbound_gateway_issi`, wird
+automatisch `16777184` verwendet. Für diesen Rust-Fix ist kein Update oder
+Neustart des zentralen SIP-Switch-LXC oder des lokalen Asterisk erforderlich.
+Bei einem neuen Anruf von `103` muss das TBS-Log `number='103'` und
+`display_ssi=Some(16777184)` zeigen; auf DEBUG zusätzlich D-SETUP mit der
+externen Nummer. Danach Anzeige, Gesprächsannahme und Rückruf am Funkgerät prüfen.
+
 ## MAIN-COMPAT-Netzanbindung
 
 Installations- und Update-Reihenfolge pro LXC/TBS, aktuelle Funktionsgrenzen und Tests:

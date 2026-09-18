@@ -173,18 +173,21 @@ impl CcBsSubentity {
             call.number.clone()
         };
         let external_subscriber_number = Self::encode_external_subscriber_number(&external_number);
-        let calling_party_address_ssi = if call.source_issi != 0 {
+        let calling_party_address_ssi = if network_entity == TetraEntity::Asterisk {
+            // The phone number identifies a subscriber behind the local gateway;
+            // it is not a TETRA subscriber identity. Keep this display identity
+            // separate from call.source_issi and the internal circuit owner.
+            Some(self.config.config().asterisk.inbound_gateway_issi)
+        } else if call.source_issi != 0 {
             Some(call.source_issi)
-        } else if matches!(network_entity, TetraEntity::Asterisk | TetraEntity::Echolink) {
+        } else if network_entity == TetraEntity::Echolink {
             Self::external_number_as_ssi(&external_number)
         } else {
             None
         };
-        let calling_party_extension = if calling_party_address_ssi.is_none() {
-            external_number.trim().parse::<u32>().ok().filter(|value| *value <= 0x00ff_ffff)
-        } else {
-            None
-        };
+        // The extension is a TETRA MCC/MNC, never a numeric phone number.
+        // No remote TETRA network identity is supplied by this setup request.
+        let calling_party_extension = None;
 
         tracing::info!(
             "CMCE: accepting {:?} setup request uuid={} call_id={} src={} dst={} ts={} duplex={} setup_timeout={} number='{}' display_ssi={:?}",

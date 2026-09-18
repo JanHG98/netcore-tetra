@@ -1596,6 +1596,10 @@ mod tests {
     use tetra_saps::control::brew::{BrewSubscriberAction, MmSubscriberUpdate};
 
     fn test_cfg() -> SharedConfig {
+        test_cfg_with_extra("")
+    }
+
+    fn test_cfg_with_extra(extra: &str) -> SharedConfig {
         let toml = r#"
 config_version = "0.6"
 stack_mode = "Bs"
@@ -1612,7 +1616,7 @@ duplex_spacing = 4
 reverse_operation = false
 location_area = 1
 "#;
-        let cfg = tetra_config::bluestation::parsing::from_toml_str(toml).unwrap();
+        let cfg = tetra_config::bluestation::parsing::from_toml_str(&format!("{toml}\n{extra}")).unwrap();
         SharedConfig::from_parts(cfg, None)
     }
 
@@ -1635,6 +1639,141 @@ location_area = 1
         let field = CcBsSubentity::encode_external_subscriber_number(number).expect("field should be generated");
         assert_eq!(field.len, 96);
         assert_eq!(CcBsSubentity::decode_external_subscriber_number(&field), "123456789012345678901234");
+    }
+
+    fn inbound_gateway_cli_setup(
+        entity: tetra_core::tetra_entities::TetraEntity,
+        source_issi: u32,
+        number: &str,
+        gateway_issi: u32,
+    ) -> (CcBsSubentity, tetra_pdus::cmce::pdus::d_setup::DSetup) {
+        use super::super::*;
+
+        let cfg = test_cfg_with_extra(&format!(
+            r#"
+[asterisk]
+inbound_gateway_issi = {gateway_issi}
+[brew]
+host = "127.0.0.1"
+tls = false
+username = 1
+password = ""
+"#
+        ));
+        cfg.state_write().subscribers.register(5102);
+        let mut cc = CcBsSubentity::new(cfg);
+        let mut queue = MessageQueue::new();
+        let uuid = uuid::Uuid::new_v4();
+        cc.fsm_on_network_circuit_setup_request(
+            &mut queue,
+            entity,
+            uuid,
+            NetworkCircuitCall {
+                source_issi,
+                destination: 5102,
+                number: number.to_string(),
+                priority: 0,
+                service: 0,
+                mode: 0,
+                duplex: 1,
+                method: 0,
+                communication: 0,
+                grant: 0,
+                permission: 0,
+                timeout: 0,
+                ownership: 0,
+                queued: 0,
+            },
+        );
+        let setup = queue
+            .iter()
+            .find_map(|message| {
+                let SapMsgInner::LcmcMleUnitdataReq(prim) = &message.msg else {
+                    return None;
+                };
+                assert_eq!(prim.main_address, TetraAddress::new(5102, SsiType::Issi));
+                // Decode the actual SDU emitted toward MLE, not just a helper's output.
+                Some(DSetup::from_bitbuf(&mut prim.sdu.clone()).expect("valid on-air D-SETUP"))
+            })
+            .expect("incoming network setup must send D-SETUP");
+        let call = cc.individual_calls.get(&setup.call_identifier).expect("call state retained");
+        assert_eq!(call.calling_addr.ssi, source_issi);
+        assert_eq!(call.called_addr.ssi, 5102);
+        assert_eq!(call.network_entity, Some(entity));
+        assert_eq!(call.brew_uuid, Some(uuid));
+        let original = call.network_call.as_ref().expect("network setup retained");
+        assert_eq!(original.source_issi, source_issi);
+        assert_eq!(original.number, number);
+        let circuit = cc.circuits.dl[call.called_ts as usize - 1]
+            .as_ref()
+            .expect("called circuit allocated");
+        assert_eq!(circuit.call_id, setup.call_identifier);
+        let cached = &cc.cached_setups[&setup.call_identifier].pdu;
+        assert_eq!(cached.calling_party_address_ssi, setup.calling_party_address_ssi);
+        assert_eq!(cached.calling_party_extension, setup.calling_party_extension);
+        (cc, setup)
+    }
+
+    #[test]
+    fn inbound_gateway_cli_keeps_phone_number_separate_from_gateway_and_call_owner() {
+        use tetra_core::tetra_entities::TetraEntity;
+
+        for (gateway, source) in [(16_777_184, 0), (5_100_001, 2020001)] {
+            let (_, setup) = inbound_gateway_cli_setup(TetraEntity::Asterisk, source, "103", gateway);
+            assert_eq!(setup.calling_party_address_ssi, Some(gateway));
+            assert_eq!(setup.calling_party_extension, None);
+            let number = setup.external_subscriber_number.expect("external phone number present");
+            assert_eq!(number.len, 12);
+            assert_eq!(number.data, 0x103);
+        }
+    }
+
+    #[test]
+    fn inbound_gateway_cli_serializes_long_external_number_without_tetra_extension() {
+        use tetra_core::tetra_entities::TetraEntity;
+
+        let phone = "493012345678901234567890";
+        assert_eq!(phone.len(), 24);
+        let (_, setup) = inbound_gateway_cli_setup(TetraEntity::Asterisk, 0, phone, 16_777_184);
+        assert_eq!(setup.calling_party_address_ssi, Some(16_777_184));
+        assert_eq!(setup.calling_party_extension, None);
+        let number = setup.external_subscriber_number.expect("long external number present");
+        assert_eq!(number.len, 96);
+        assert_eq!(CcBsSubentity::decode_external_subscriber_number(&number), phone);
+    }
+
+    #[test]
+    fn inbound_gateway_cli_missing_caller_keeps_gateway_and_valid_setup() {
+        use tetra_core::tetra_entities::TetraEntity;
+
+        for caller in ["", "0", "anonymous"] {
+            let (_, setup) = inbound_gateway_cli_setup(TetraEntity::Asterisk, 0, caller, 16_777_184);
+            assert_eq!(setup.calling_party_address_ssi, Some(16_777_184));
+            assert_eq!(setup.calling_party_extension, None);
+            if caller == "0" {
+                assert_eq!(
+                    setup.external_subscriber_number.as_ref().map(|number| (number.len, number.data)),
+                    Some((4, 0))
+                );
+            } else {
+                assert!(setup.external_subscriber_number.is_none());
+            }
+        }
+    }
+
+    #[test]
+    fn inbound_gateway_cli_preserves_brew_and_echolink_identities() {
+        use tetra_core::tetra_entities::TetraEntity;
+
+        for (entity, source, phone, expected) in [
+            (TetraEntity::Brew, 2020001, "", Some(2020001)),
+            (TetraEntity::Echolink, 0, "103", Some(103)),
+            (TetraEntity::Brew, 0, "103", None),
+        ] {
+            let (_, setup) = inbound_gateway_cli_setup(entity, source, phone, 16_777_184);
+            assert_eq!(setup.calling_party_address_ssi, expected);
+            assert_eq!(setup.calling_party_extension, None);
+        }
     }
 
     #[test]
