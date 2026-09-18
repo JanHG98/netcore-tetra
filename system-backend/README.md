@@ -77,7 +77,7 @@ Bereits deploybar sind:
 - `asset-management/` – Asset-, Geräte- und Benutzerverwaltung, Port 8290
 - `sip-switch/` – zentraler PBX-/TBS-SIP-B2BUA mit Mobility-Core-Routing, Port 8300
 - `control-room/` – zentrale Bedien-, Lage-, Incident- und Schichtbuchebene, Port 9010
-- `alert-service/` – NINA-/KATWARN-Warnungen und eigene Kartenwarnungen mit GPS-basierter einmaliger SDS-Zustellung, Port 8310; Tokenzugang als Standard. Installation und Updates aller LXCs/TBS: [Anleitung](../Docs/KATWARN_NINA_INSTALL_UPDATE.md).
+- `alert-service/` – NINA-/KATWARN-Warnungen und eigene Kartenwarnungen mit GPS-basierter einmaliger SDS-Zustellung, Port 8310; Tokenzugang als Standard. Konkrete Installation und Prüfung pro LXC/TBS: [Schritt-für-Schritt-Anleitung](../Docs/KATWARN_NINA_INSTALL_UPDATE.md).
 
 Alle enthalten REST-API, eigene WebUI, systemd-Unit und Installationsskripte. Die Warnzentrale sowie Hardware Gateway, RF Monitor und mehrere Workflow-Dienste verwenden Python; die übrigen Kernservices verwenden Rust. Die älteren Dienste laufen in der aktuellen Teststufe überwiegend im `open_lab`-Modus ohne Tokens, Benutzeranmeldung oder TLS. Die Warnzentrale aktiviert Tokenzugriff als Standard und startet mit deaktiviertem Funkversand.
 
