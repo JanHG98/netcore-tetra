@@ -115,6 +115,7 @@ def main() -> int:
         for old, new in replacements.items():
             assert old in text
             text = text.replace(old, new, 1)
+        text = text.replace("[central]", '[central]\nhealth_url = ""')
         config.write_text(text, encoding="utf-8")
         renderer = FALLBACK / "src/netcore_tbs_sip_fallback.py"
         run = subprocess.run([sys.executable, str(renderer), "--config", str(config), "--render"], capture_output=True, text=True)

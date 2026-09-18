@@ -41,6 +41,10 @@ rtp_start = 10000
 rtp_end = 20000
 
 [management]
+# Bounded routing concurrency; health/state requests retain spare HTTP workers.
+route_workers = 8
+side_effect_queue_size = 512
+call_history_limit = 2000
 event_history_limit = 3000
 probe_interval_secs = 10
 

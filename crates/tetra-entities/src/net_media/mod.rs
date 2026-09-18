@@ -43,7 +43,8 @@ pub struct MediaUplinkFrame {
 // Was: Bündelt die zusammengehörigen Werte für Audio- und Mediendaten Downlink (Netz zum Funkgerät) Funkrahmen in einem Datentyp.
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct MediaDownlinkFrame {
-    /// Logical Media-Switch session/call identifier used for diagnostics and taps.
+    /// Destination call-leg operation UUID. The TBS rejects frames for another
+    /// operation after bearer reuse; logical session IDs remain in gateway routing.
     pub session_id: String,
     pub source_node_id: String,
     pub sequence: u64,

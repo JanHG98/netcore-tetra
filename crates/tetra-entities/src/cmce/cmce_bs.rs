@@ -67,6 +67,49 @@ impl CmceBs {
         responder: Option<&ControlEndpoint>,
     ) {
         match cmd {
+            ControlCommand::CallControlGroupStart { handle, operation_id, source_issi, gssi, priority } => {
+                let result = cc.control_start_group_call(queue, &operation_id, source_issi, gssi, priority);
+                if let Some(cep) = responder {
+                    cep.respond(ControlResponse::CallControlLegStarted {
+                        handle, operation_id, kind: result.kind, success: result.success,
+                        call_id: result.call_id, timeslot: result.timeslot, usage: result.usage,
+                        floor_holder: result.floor_holder, message: result.message,
+                    });
+                }
+            }
+            ControlCommand::CallControlIndividualStart { handle, operation_id, calling_issi, called_issi, simplex, priority } => {
+                let result = cc.control_start_individual_call(queue, &operation_id, calling_issi, called_issi, simplex, priority);
+                if let Some(cep) = responder {
+                    cep.respond(ControlResponse::CallControlLegStarted {
+                        handle, operation_id, kind: result.kind, success: result.success,
+                        call_id: result.call_id, timeslot: result.timeslot, usage: result.usage,
+                        floor_holder: result.floor_holder, message: result.message,
+                    });
+                }
+            }
+            ControlCommand::CallControlRelease { handle, call_id, cause } => {
+                let result = cc.control_release_call(queue, call_id, cause);
+                if let Some(cep) = responder {
+                    cep.respond(ControlResponse::CallControlLegReleased { handle, call_id,
+                        success: result.success, message: result.message });
+                }
+            }
+            ControlCommand::CallControlFloorRequest { handle, call_id, source_issi, force } => {
+                let result = cc.control_request_floor(queue, call_id, source_issi, force);
+                if let Some(cep) = responder {
+                    cep.respond(ControlResponse::CallControlFloorChanged { handle, call_id,
+                        success: result.success, floor_holder: result.floor_holder,
+                        queued_issi: result.queued_issi, message: result.message });
+                }
+            }
+            ControlCommand::CallControlFloorRelease { handle, call_id } => {
+                let result = cc.control_release_floor(queue, call_id);
+                if let Some(cep) = responder {
+                    cep.respond(ControlResponse::CallControlFloorChanged { handle, call_id,
+                        success: result.success, floor_holder: result.floor_holder,
+                        queued_issi: result.queued_issi, message: result.message });
+                }
+            }
             ControlCommand::SendSds { handle, .. } => {
                 let success = sds.rx_sds_from_control(queue, cmd);
                 if let Some(cep) = responder {
@@ -222,13 +265,15 @@ impl TetraEntityTrait for CmceBs {
 
         // Process incoming control commands, if the main control link is enabled (request/response).
         if let Some(cep) = &self.control {
-            while let Some(cmd) = cep.try_recv() {
+            for _ in 0..8 {
+                let Some(cmd) = cep.try_recv() else { break; };
                 CmceBs::do_control_command(&mut self.sds, &mut self.cc, queue, cmd, Some(cep));
             }
         }
         // Process commands from the dashboard control link (fire-and-forget, no responder).
         if let Some(cep) = &self.dashboard_control {
-            while let Some(cmd) = cep.try_recv() {
+            for _ in 0..8 {
+                let Some(cmd) = cep.try_recv() else { break; };
                 CmceBs::do_control_command(&mut self.sds, &mut self.cc, queue, cmd, None);
             }
         }

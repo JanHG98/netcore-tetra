@@ -85,6 +85,9 @@ pub struct NetworkCircuitCall {
 // Was: Listet die möglichen Varianten für Ruf Steuerung auf.
 // Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 pub enum CallControl {
+    /// Bind a traffic bearer to one central operation. Prevent delayed media
+    /// from an earlier call being injected after timeslot reuse.
+    BindCentralMedia { operation_id: uuid::Uuid, ts: u8 },
     /// Signals to set up a circuit
     /// Created by CMCE, sent to Umac
     /// Umac forwards to Lmac

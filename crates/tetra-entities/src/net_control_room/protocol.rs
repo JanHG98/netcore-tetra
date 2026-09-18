@@ -133,10 +133,10 @@ impl ControlRoomNodeCapabilities {
             packet_data: cfg.cell.wap_ip_sndcp_profile_enabled(),
             legacy_wap_sds: true,
             multi_pdch: cfg.cell.wap_ip_sndcp_profile_enabled(),
-            subscriber_policy: true,
-            group_policy: true,
+            subscriber_policy: false,
+            group_policy: false,
             call_control: true,
-            call_restore_context: true,
+            call_restore_context: false,
             media_bridge: cfg.control_room.as_ref().is_some_and(|control| control.enabled),
         }
     }

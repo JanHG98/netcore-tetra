@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import html
 import json
 import os
@@ -21,6 +22,8 @@ from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, urlparse
 from urllib.request import Request, urlopen
+
+from netcore_sip_runtime import SideEffects, available_contact, registration_status
 
 STATE_SCHEMA = "netcore-sip-switch-state-v1"
 EVENT_SCHEMA = "netcore-event-v1"
@@ -83,7 +86,7 @@ def http_json(method: str, url: str, payload: dict[str, Any] | None = None, time
         except ValueError:
             body = {"error": compact(raw.decode("utf-8", "replace"))}
         return error.code, body
-    except (URLError, TimeoutError, OSError) as error:
+    except (URLError, TimeoutError, OSError, ValueError) as error:
         return 0, {"error": compact(error)}
 
 
@@ -166,7 +169,11 @@ class SipSwitch:
             "asterisk_reloads": 0,
             "mobility_failures": 0,
         }
+        self.probe_lock = threading.Lock()
+        self.last_probe_monotonic = 0.0
+        self.route_slots = threading.BoundedSemaphore(max(1, min(32, int(config.raw.get("management", {}).get("route_workers", 8)))))
         self._load()
+        self.io = SideEffects(self, int(config.raw.get("management", {}).get("side_effect_queue_size", 512)))
 
     def _load(self) -> None:
         try:
@@ -183,7 +190,11 @@ class SipSwitch:
         except (OSError, ValueError, TypeError):
             pass
         try:
-            for line in self.event_path.read_text(encoding="utf-8").splitlines()[-self.events.maxlen:]:
+            with self.event_path.open("rb") as stream:
+                stream.seek(0, 2)
+                stream.seek(max(0, stream.tell() - 2 * 1024 * 1024))
+                tail = stream.read().decode("utf-8", "replace")
+            for line in tail.splitlines()[-self.events.maxlen:]:
                 try:
                     item = json.loads(line)
                     if isinstance(item, dict):
@@ -194,14 +205,13 @@ class SipSwitch:
             pass
 
     def persist(self) -> None:
+        self.io.dirty.set()
+
+    def persist_snapshot(self) -> None:
         with self.lock:
-            atomic_json(self.state_path, {
-                "schema": STATE_SCHEMA,
-                "updated_at": now_iso(),
-                "calls": self.calls,
-                "endpoint_state": self.endpoint_state,
-                "metrics": self.metrics,
-            })
+            snapshot = copy.deepcopy({"schema": STATE_SCHEMA, "updated_at": now_iso(),
+                "calls": self.calls, "endpoint_state": self.endpoint_state, "metrics": self.metrics})
+        atomic_json(self.state_path, snapshot)
 
     def audit(self, action: str, actor: str, subject_id: str, detail: dict[str, Any]) -> None:
         record = {
@@ -214,8 +224,7 @@ class SipSwitch:
             "subject_id": subject_id or SERVICE,
             "detail": detail,
         }
-        with self.audit_path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(record, ensure_ascii=False, separators=(",", ":")) + "\n")
+        self.io.submit(self.audit_path, record)
 
     def publish_mqtt(self, topic: str, payload: dict[str, Any], retain: bool = False, qos: int = 1) -> bool:
         cfg = self.config.mqtt
@@ -229,7 +238,7 @@ class SipSwitch:
         if retain:
             cmd.append("-r")
         try:
-            result = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, timeout=5, check=False)
+            result = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, timeout=min(2.0, max(.1, float(cfg.get("timeout_secs", 1)))), check=False)
             return result.returncode == 0
         except (OSError, subprocess.TimeoutExpired):
             return False
@@ -248,11 +257,7 @@ class SipSwitch:
         }
         with self.lock:
             self.events.append(event)
-            with self.event_path.open("a", encoding="utf-8") as handle:
-                handle.write(json.dumps(event, ensure_ascii=False, separators=(",", ":")) + "\n")
-        prefix = str(self.config.mqtt.get("topic_prefix", "netcore/v1")).rstrip("/")
-        topic = f"{prefix}/events/{event_type.replace('.', '/')}"
-        self.publish_mqtt(topic, event, retain=False, qos=1)
+        self.io.submit(self.event_path, event, mqtt=True)
         return event
 
     def tbs_by_node(self, node_id: str) -> dict[str, Any] | None:
@@ -314,7 +319,7 @@ class SipSwitch:
         if not bool_value(cfg.get("enabled", True), True):
             return False, {}, "mobility_core_disabled"
         base = str(cfg.get("base_url", "http://127.0.0.1:8090")).rstrip("/")
-        timeout = float(cfg.get("timeout_secs", 2))
+        timeout = min(2.0, max(.1, float(cfg.get("timeout_secs", 2))))
         code, body = http_json("GET", f"{base}/api/v1/subscribers/{issi}/route", timeout=timeout)
         if code != 200 or not isinstance(body, dict):
             self.metrics["mobility_failures"] += 1
@@ -324,11 +329,11 @@ class SipSwitch:
         if bool_value(self.config.routing.get("accept_stale_routes", False)):
             accepted.add("stale")
         node = body.get("serving_node") or body.get("node_id")
-        if state not in accepted or not node or not bool_value(body.get("registered", state == "confirmed"), state == "confirmed"):
+        if state not in accepted or not node or not body.get("node_connected", False) or body.get("node_stale", False) or not bool_value(body.get("registered", False)):
             return False, body, f"mobility_route_{state}"
         return True, body, "ok"
 
-    def run_asterisk(self, command: str, timeout: float = 4.0) -> tuple[bool, str]:
+    def run_asterisk(self, command: str, timeout: float = .75) -> tuple[bool, str]:
         binary = str(self.config.asterisk.get("binary", "/usr/sbin/asterisk"))
         try:
             result = subprocess.run([binary, "-rx", command], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=timeout, check=False)
@@ -344,11 +349,7 @@ class SipSwitch:
         ok, output = self.run_asterisk(f"pjsip show aor {lookup_aor}")
         if not ok:
             return False, compact(output)
-        lowered = output.lower()
-        present = "contact:" in lowered or "contact " in lowered
-        if "no objects found" in lowered or "0 contacts" in lowered:
-            present = False
-        return present, compact(output, 1000)
+        return available_contact(output), compact(output, 1000)
 
     def pbx_available(self) -> tuple[bool, str]:
         pbx = self.config.pbx
@@ -359,12 +360,20 @@ class SipSwitch:
             if not ok:
                 return False, compact(output)
             wanted = str(pbx.get("registration_id", f"{endpoint}-registration"))
-            lower = output.lower()
-            return wanted.lower() in lower and ("registered" in lower or "reged" in lower), compact(output, 1000)
-        ok, output = self.run_asterisk(f"pjsip show endpoint {endpoint}")
-        return ok and "no objects found" not in output.lower(), compact(output, 1000)
+            return registration_status(output, wanted) == "registered", compact(output, 1000)
+        return self.endpoint_has_contact(endpoint, f"{endpoint}-aor")
 
-    def resolve(self, direction: str, number: str, caller: str = "", source_endpoint: str = "", commit: bool = True, check_contact: bool = True) -> dict[str, Any]:
+    def resolve(self, *args, **kwargs) -> dict[str, Any]:
+        # Reserve capacity for health and call-state updates while dependency
+        # requests are slow. Fail quickly rather than building an unbounded queue.
+        if not self.route_slots.acquire(blocking=False):
+            return {"action": "reject", "reason": "routing_overloaded", "hangup_cause": 34}
+        try:
+            return self._resolve(*args, **kwargs)
+        finally:
+            self.route_slots.release()
+
+    def _resolve(self, direction: str, number: str, caller: str = "", source_endpoint: str = "", commit: bool = True, check_contact: bool = True) -> dict[str, Any]:
         direction = direction.strip().lower()
         number = compact(number, 80)
         caller = compact(caller, 80)
@@ -447,6 +456,15 @@ class SipSwitch:
         with self.lock:
             self.decisions.appendleft(result)
             if commit:
+                # Keep active calls; evict oldest completed calls only.
+                limit = max(100, int(self.config.raw.get("management", {}).get("call_history_limit", 2000)))
+                for old_token in list(self.calls):
+                    if len(self.calls) < limit:
+                        break
+                    if self.calls[old_token].get("state") in TERMINAL_STATES:
+                        del self.calls[old_token]
+                if len(self.calls) >= limit:
+                    return {"action": "reject", "reason": "call_capacity_exhausted", "hangup_cause": 34}
                 call = {
                     **result,
                     "state": "routed" if accepted else "rejected",
@@ -487,6 +505,13 @@ class SipSwitch:
             if not call:
                 return False, {"error": "call token not found"}
             previous = call.get("state")
+            if state not in {"routed", "dialing", "ringing", "answered"} | TERMINAL_STATES:
+                return False, {"error": "invalid call state"}
+            if previous in TERMINAL_STATES:
+                return True, dict(call)
+            rank = {"routed": 0, "dialing": 1, "ringing": 2, "answered": 3}
+            if state in rank and rank.get(previous, -1) > rank[state]:
+                return True, dict(call)
             call["state"] = state
             call["updated_at"] = now_iso()
             call.update({key: value for key, value in detail.items() if key in {"dial_status", "hangup_cause", "channel", "uniqueid", "linkedid"}})
@@ -717,6 +742,14 @@ exten => s,1,AGI({agi},state,${{ARG1}},answered)
         return {"ok": ok, "command": command, "output": output}
 
     def probe(self) -> None:
+        if not self.probe_lock.acquire(blocking=False):
+            return
+        try:
+            self._probe()
+        finally:
+            self.probe_lock.release()
+
+    def _probe(self) -> None:
         previous = dict(self.endpoint_state)
         asterisk_ok, _ = self.run_asterisk("core show version")
         mobility_base = str(self.config.mobility.get("base_url", "http://127.0.0.1:8090")).rstrip("/")
@@ -741,6 +774,7 @@ exten => s,1,AGI({agi},state,${{ARG1}},answered)
                 self.emit_event("sip.tbs_contact_up" if registered else "sip.tbs_contact_down", "info" if registered else "warning", "tbs", str(tbs.get("node_id", endpoint)), {"endpoint": endpoint, "state": "up" if registered else "down"})
         with self.lock:
             self.endpoint_state = current
+            self.last_probe_monotonic = time.monotonic()
             self.health.update({
                 "asterisk": asterisk_ok,
                 "mobility_core": mobility_code == 200,
@@ -760,6 +794,7 @@ exten => s,1,AGI({agi},state,${{ARG1}},answered)
                 self.probe()
             except Exception as error:  # service must keep monitoring after one bad probe
                 with self.lock:
+                    self.last_probe_monotonic = 0.0
                     self.health["last_error"] = compact(error)
                     self.health["last_probe_at"] = now_iso()
             self.stop_event.wait(interval)
@@ -773,13 +808,15 @@ exten => s,1,AGI({agi},state,${{ARG1}},answered)
                 "mode": "open_lab",
                 "started_at": self.started_at,
                 "instance": self.instance,
-                "health": dict(self.health),
+                "health": {**self.health, "fresh": bool(self.last_probe_monotonic) and
+                    time.monotonic() - self.last_probe_monotonic < max(10, int(self.config.raw.get("management", {}).get("probe_interval_secs", 10)) * 3)},
                 "calls_total": len(self.calls),
                 "calls_active": active,
                 "tbs_configured": len(self.config.tbs),
                 "tbs_registered": sum(1 for item in self.endpoint_state.values() if item.get("registered")),
                 "pbx_mode": self.config.pbx.get("mode", "ip_trunk"),
                 "pbx_endpoint": self.config.pbx.get("endpoint_id", "netcore-pbx"),
+                "side_effects": self.io.status(),
                 "media_mode": "edge_media",
                 "central_media_ready": False,
                 "metrics": dict(self.metrics),
@@ -800,6 +837,35 @@ exten => s,1,AGI({agi},state,${{ARG1}},answered)
         for key, value in self.metrics.items():
             lines.append(f"netcore_sip_switch_{key} {value}")
         return "\n".join(lines) + "\n"
+
+
+class BoundedHTTPServer(ThreadingHTTPServer):
+    daemon_threads = True
+
+    def __init__(self, *args, **kwargs):
+        self.slots = threading.BoundedSemaphore(48)
+        super().__init__(*args, **kwargs)
+
+    def process_request(self, request, client_address):
+        if not self.slots.acquire(blocking=False):
+            try:
+                request.settimeout(.2)
+                request.sendall(b"HTTP/1.0 503 Service Unavailable\r\nContent-Length: 0\r\n\r\n")
+            finally:
+                self.shutdown_request(request)
+            return
+        request.settimeout(5)
+        try:
+            super().process_request(request, client_address)
+        except Exception:
+            self.slots.release()
+            raise
+
+    def process_request_thread(self, request, client_address):
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self.slots.release()
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -832,6 +898,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def body_json(self) -> dict[str, Any]:
         length = int(self.headers.get("Content-Length", "0") or 0)
+        if length < 0 or length > 65536:
+            raise ValueError("request body exceeds 64 KiB")
         raw = self.rfile.read(length) if length else b"{}"
         value = json.loads(raw.decode("utf-8"))
         if not isinstance(value, dict):
@@ -855,7 +923,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(200, {"status": "live", "service": SERVICE})
         elif path == "/health/ready":
             status = self.app.status()
-            ready = status["health"].get("asterisk") and status["health"].get("mobility_core") and status["health"].get("pbx")
+            ready = status["health"].get("fresh") and status["health"].get("asterisk") and status["health"].get("mobility_core") and status["health"].get("pbx")
             self.send_json(200 if ready else 503, status)
         elif path == "/api/v1/status":
             self.send_json(200, self.app.status())
@@ -869,7 +937,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(200, self.app.config.mappings)
         elif path == "/api/v1/calls":
             limit = min(1000, int_value(query.get("limit", [200])[0], 200))
-            calls = sorted(self.app.calls.values(), key=lambda item: item.get("created_at", ""), reverse=True)[:limit]
+            with self.app.lock:
+                calls = copy.deepcopy(sorted(self.app.calls.values(), key=lambda item: item.get("created_at", ""), reverse=True)[:limit])
             self.send_json(200, calls)
         elif path == "/api/v1/decisions":
             limit = min(1000, int_value(query.get("limit", [200])[0], 200))
@@ -976,13 +1045,15 @@ def main() -> None:
     app = SipSwitch(config)
     if args.render_asterisk:
         print(json.dumps(app.render_asterisk(), ensure_ascii=False, indent=2))
+        app.io.close()
         return
     if args.probe_once:
         app.probe()
         print(json.dumps(app.status(), ensure_ascii=False, indent=2))
+        app.io.close()
         return
     host, port = config.bind
-    server = ThreadingHTTPServer((host, port), Handler)
+    server = BoundedHTTPServer((host, port), Handler)
     server.app = app  # type: ignore[attr-defined]
     monitor = threading.Thread(target=app.background, name="sip-switch-monitor", daemon=True)
     monitor.start()
@@ -998,7 +1069,7 @@ def main() -> None:
         server.serve_forever(poll_interval=0.5)
     finally:
         app.stop_event.set()
-        app.persist()
+        app.io.close()
         server.server_close()
 
 

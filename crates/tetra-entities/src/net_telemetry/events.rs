@@ -22,6 +22,7 @@ pub fn telemetry_source_for_entity(entity: TetraEntity) -> &'static str {
         TetraEntity::Brew2 => "brew2",
         TetraEntity::Asterisk => "asterisk",
         TetraEntity::Echolink => "echolink",
+        TetraEntity::Cmce => "core",
         _ => "local",
     }
 }

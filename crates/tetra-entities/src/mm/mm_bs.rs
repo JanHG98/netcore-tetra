@@ -1964,7 +1964,8 @@ impl TetraEntityTrait for MmBs {
         if self.control.is_some() {
             let mut cmds = Vec::new();
             if let Some(cep) = &self.control {
-                while let Some(cmd) = cep.try_recv() {
+                for _ in 0..8 {
+                    let Some(cmd) = cep.try_recv() else { break; };
                     cmds.push(cmd);
                 }
             }
