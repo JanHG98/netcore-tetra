@@ -185,12 +185,18 @@ impl CcBsSubentity {
         } else {
             None
         };
-        // The extension is a TETRA MCC/MNC, never a numeric phone number.
-        // No remote TETRA network identity is supplied by this setup request.
-        let calling_party_extension = None;
+        // Optional compatibility probe: spell out the same local gateway as a
+        // full TSI instead of an SSI. The extension is MCC/MNC, never the phone
+        // number. Configuration parsing validates its range before activation.
+        let cfg = self.config.config();
+        let calling_party_extension = if network_entity == TetraEntity::Asterisk && cfg.asterisk.inbound_gateway_full_tsi {
+            Some(((cfg.net.mcc as u32) << 14) | cfg.net.mnc as u32)
+        } else {
+            None
+        };
 
         tracing::info!(
-            "CMCE: accepting {:?} setup request uuid={} call_id={} src={} dst={} ts={} duplex={} setup_timeout={} number='{}' display_ssi={:?}",
+            "CMCE: accepting {:?} setup request uuid={} call_id={} src={} dst={} ts={} duplex={} setup_timeout={} number='{}' display_ssi={:?} display_extension={:?}",
             network_entity,
             brew_uuid,
             call_id,
@@ -200,7 +206,8 @@ impl CcBsSubentity {
             simplex_duplex,
             setup_timeout,
             call.number,
-            calling_party_address_ssi
+            calling_party_address_ssi,
+            calling_party_extension
         );
 
         // Acknowledge setup first so network call state progresses while local MS is alerted.

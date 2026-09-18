@@ -9,6 +9,7 @@ on:
       - system-backend/call-control/**
       - crates/tetra-saps/**
       - crates/tetra-config/src/bluestation/sec_asterisk.rs
+      - crates/tetra-config/src/bluestation/parsing.rs
       - crates/tetra-entities/src/net_media/**
       - crates/tetra-entities/src/net_control_room/**
       - crates/tetra-entities/src/mm/**
@@ -54,6 +55,7 @@ jobs:
         run: |
           test_status=0
           cargo test -p tetra-config --lib bluestation::sec_asterisk::tests:: -- --nocapture || test_status=1
+          cargo test -p tetra-config --lib bluestation::parsing::tests::inbound_gateway_full_tsi -- --nocapture || test_status=1
           for test_filter in umac::subcomp::bs_sched::tests:: lmac::lmac_bs::tests:: cmce::subentities::cc_bs::pdu::tests:: net_recorder::entity::tests:: net_asterisk:: net_brew::entity::tests:: network::transports::websocket::tests::; do
             cargo test -p tetra-entities --features recording,asterisk --lib "$test_filter" -- --nocapture || test_status=1
           done
