@@ -12,6 +12,8 @@
 
 Die Warnfunktion liegt im Branch **`feat/katwarn-nina-alerts`** aus [PR #49](https://github.com/JanHG98/netcore-tetra/pull/49). Die folgenden Befehle verwenden genau diesen Branch. Der PR ist noch nicht in `katwarn/nina` zusammengeführt.
 
+**SDS Router oder Call Control wechseln ständig zwischen ausgefallen, Fallback und recovering?** Dafür gibt es eine separate [Reparaturanleitung mit Befehlen je LXC](SDS_CALL_CONTROL_FALLBACK_REPARATUR.md). Diese Fehlerkorrektur erfordert ein Update von **SDS Router und Call Control**; Node Gateway und TBS müssen dafür nicht aktualisiert werden.
+
 **Vorher notieren:** IP deines SDS-Router-LXC, IP deines Control-Room-LXC, IP deines Node-Gateway-LXC und später die IP des neuen Warn-LXC. Die Bezeichnungen `SDS-ROUTER-IP`, `CONTROL-ROOM-IP`, `NODE-GATEWAY-IP` und `WARN-LXC-IP` unten durch diese echten Adressen ersetzen.
 
 ## 1. Vorhandener SDS-Router-LXC: Muss aktualisiert werden
@@ -398,4 +400,4 @@ Der Updater sichert und erhält Konfiguration, Token und Empfängerhistorie.
 
 **Diese Datenbanken behalten:** Auf dem Warn-LXC `/var/lib/netcore-alert-service/alerts.sqlite3`, auf dem SDS-Router-LXC `/var/lib/netcore-sds-router/messages.json` bzw. dein abweichender `storage.database_path`. Sie enthalten die Duplikatsperren. Nicht löschen oder mit einem alten Stand überschreiben.
 
-Für alle anderen vorhandenen LXCs ist im Rahmen dieser Warnfunktion nichts zu installieren oder zu aktualisieren. Technische Hintergründe stehen separat in der [Dienstbeschreibung](../system-backend/alert-service/README.md).
+Für alle anderen vorhandenen LXCs ist im Rahmen dieser Warnfunktion nichts zu installieren oder zu aktualisieren. Die separate [Reparatur für wechselnden SDS-/Call-Control-Fallback](SDS_CALL_CONTROL_FALLBACK_REPARATUR.md) betrifft zusätzlich den Call-Control-LXC. Technische Hintergründe stehen in der [Dienstbeschreibung](../system-backend/alert-service/README.md).

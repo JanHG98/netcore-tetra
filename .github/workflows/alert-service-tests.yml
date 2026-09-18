@@ -4,6 +4,7 @@ on:
     paths:
       - 'system-backend/alert-service/**'
       - 'system-backend/sds-router/**'
+      - 'system-backend/call-control/**'
       - 'bins/netcore-control-room/**'
       - 'system-backend/control-room/**'
       - '.github/workflows/alert-service-tests.yml'
@@ -12,6 +13,7 @@ on:
     paths:
       - 'system-backend/alert-service/**'
       - 'system-backend/sds-router/**'
+      - 'system-backend/call-control/**'
       - 'bins/netcore-control-room/**'
       - 'system-backend/control-room/**'
       - '.github/workflows/alert-service-tests.yml'
@@ -40,6 +42,8 @@ jobs:
           cargo test -p netcore-sds-router
           cargo build -p netcore-sds-router
           python system-backend/alert-service/tests/integration_router.py
+      - name: Call Control persistence under gateway telemetry
+        run: cargo test -p netcore-call-control
       - name: Control Room gateway telemetry and warning integration
         run: |
           cargo test -p netcore-control-room
