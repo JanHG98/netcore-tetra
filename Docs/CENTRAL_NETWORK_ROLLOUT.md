@@ -111,8 +111,9 @@ Der Quellbau verwendet standardmäßig zwei Build-Jobs. Bei knappem RAM oder par
 laufender Basisstation kann `NETCORE_ASTERISK_BUILD_JOBS=1` vorangestellt werden;
 den Build vorzugsweise außerhalb eines Funklasttests ausführen. Der Quellbau legt
 fehlende Grundkonfiguration und eine systemd-Unit an. Vorhandene Konfigurationsdateien
-und Service-Units werden erhalten, `make samples` wird nicht ausgeführt. Der Helfer
-startet Asterisk noch nicht; das übernimmt der anschließende vollständige Installer.
+und Service-Units werden erhalten, `make samples` wird nicht ausgeführt. Beim Quellbau
+startet der Helfer Asterisk noch nicht; das übernimmt der anschließende vollständige
+Installer. Beim APT-Weg können die Paket-Skripte den Dienst bereits starten.
 Eine abgebrochene Quellinstallation wird beim erneuten Aufruf vervollständigt,
 auch wenn die Asterisk-Binärdatei bereits vorhanden ist.
 
