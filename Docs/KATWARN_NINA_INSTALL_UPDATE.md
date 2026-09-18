@@ -59,6 +59,31 @@ Bei einem Fehler auf diesem LXC prüfen:
 journalctl -u netcore-sds-router -n 80 --no-pager
 ```
 
+### Falls `update.sh` fehlt oder der Ordner `install` leer ist
+
+Die Datei ist im oben genannten GitHub-Branch enthalten. Verwende in diesem Fall eine frische Arbeitskopie in einem eigenen Ordner. Der bisherige Projektordner bleibt erhalten.
+
+**Diesen ganzen Block auf dem SDS-Router-LXC als root ausführen:**
+
+```bash
+(
+  set -e
+  cd /opt
+  git clone --single-branch --branch feat/katwarn-nina-alerts https://github.com/JanHG98/netcore-tetra.git netcore-tetra-warn-update
+  cd /opt/netcore-tetra-warn-update
+  test -s system-backend/sds-router/install/update.sh
+  test -s /etc/netcore/sds-router.toml
+  . system-backend/shared/install/lxc-network.sh
+  netcore_detect_lxc_ipv4 >/dev/null
+  if [ -f /root/.cargo/env ]; then . /root/.cargo/env; fi
+  cargo build --release -p netcore-sds-router
+  bash system-backend/sds-router/install/update.sh
+  systemctl is-active netcore-sds-router
+)
+```
+
+Der Block bricht beim ersten Fehler ab. Der eigentliche Dienstwechsel erfolgt erst nach erfolgreichem Build. Existiert `/opt/netcore-tetra-warn-update` bereits, stoppt das Klonen; den vorhandenen Ordner nicht ungeprüft löschen. Anschließend den Status wie oben über die echte SDS-Router-IP prüfen.
+
 ## 2. Neuer LXC „alert-service“: Muss erstellt werden
 
 ### 2.1 In Proxmox den Container erstellen
