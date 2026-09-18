@@ -1600,14 +1600,18 @@ mod tests {
     }
 
     fn test_cfg_with_extra(extra: &str) -> SharedConfig {
-        let toml = r#"
+        test_cfg_with_network(extra, 901, 9999)
+    }
+
+    fn test_cfg_with_network(extra: &str, mcc: u16, mnc: u16) -> SharedConfig {
+        let toml = format!(r#"
 config_version = "0.6"
 stack_mode = "Bs"
 [phy_io]
 backend = "None"
 [net_info]
-mcc = 901
-mnc = 9999
+mcc = {mcc}
+mnc = {mnc}
 [cell_info]
 main_carrier = 1584
 freq_band = 4
@@ -1615,7 +1619,7 @@ freq_offset = 0
 duplex_spacing = 4
 reverse_operation = false
 location_area = 1
-"#;
+"#);
         let cfg = tetra_config::bluestation::parsing::from_toml_str(&format!("{toml}\n{extra}")).unwrap();
         SharedConfig::from_parts(cfg, None)
     }
@@ -1647,19 +1651,30 @@ location_area = 1
         number: &str,
         gateway_issi: u32,
     ) -> (CcBsSubentity, tetra_pdus::cmce::pdus::d_setup::DSetup) {
+        inbound_gateway_cli_setup_with_full_tsi(entity, source_issi, number, gateway_issi, false)
+    }
+
+    fn inbound_gateway_cli_setup_with_full_tsi(
+        entity: tetra_core::tetra_entities::TetraEntity,
+        source_issi: u32,
+        number: &str,
+        gateway_issi: u32,
+        full_tsi: bool,
+    ) -> (CcBsSubentity, tetra_pdus::cmce::pdus::d_setup::DSetup) {
         use super::super::*;
 
-        let cfg = test_cfg_with_extra(&format!(
+        let cfg = test_cfg_with_network(&format!(
             r#"
 [asterisk]
 inbound_gateway_issi = {gateway_issi}
+inbound_gateway_full_tsi = {full_tsi}
 [brew]
 host = "127.0.0.1"
 tls = false
 username = 1
 password = ""
 "#
-        ));
+        ), 901, 1510);
         cfg.state_write().subscribers.register(5102);
         let mut cc = CcBsSubentity::new(cfg);
         let mut queue = MessageQueue::new();
@@ -1725,6 +1740,49 @@ password = ""
             let number = setup.external_subscriber_number.expect("external phone number present");
             assert_eq!(number.len, 12);
             assert_eq!(number.data, 0x103);
+        }
+    }
+
+    #[test]
+    fn inbound_gateway_cli_full_tsi_adds_local_network_without_changing_phone_or_owner() {
+        use tetra_core::tetra_entities::TetraEntity;
+
+        for caller in ["103", "493012345678901234567890", ""] {
+            let (_, short) = inbound_gateway_cli_setup(TetraEntity::Asterisk, 0, caller, 16_777_184);
+            let (_, full) = inbound_gateway_cli_setup_with_full_tsi(TetraEntity::Asterisk, 0, caller, 16_777_184, true);
+            assert_eq!(full.calling_party_address_ssi, short.calling_party_address_ssi);
+            // ETSI MCC occupies the upper 10 bits, MNC the lower 14 bits.
+            assert_eq!(full.calling_party_extension, Some(0xE145E6)); // 901 / 1510
+            assert_eq!(full.hook_method_selection, short.hook_method_selection);
+            assert_eq!(full.simplex_duplex_selection, short.simplex_duplex_selection);
+            assert_eq!(
+                full.external_subscriber_number.as_ref().map(|field| (field.field_id, field.len, field.data)),
+                short.external_subscriber_number.as_ref().map(|field| (field.field_id, field.len, field.data)),
+            );
+            let mut bits = tetra_core::BitBuffer::new_autoexpand(256);
+            full.to_bitbuf(&mut bits).unwrap();
+            // Independent wire-position check: O/P flags followed by CPTI 10,
+            // the 24-bit SSI and 24-bit MCC/MNC before the external-number IE.
+            bits.seek(40);
+            assert_eq!(bits.read_field(6, "optional_flags_and_cpti").unwrap(), 0b100110);
+            assert_eq!(bits.read_field(24, "gateway_ssi").unwrap(), 16_777_184);
+            assert_eq!(bits.read_field(10, "gateway_mcc").unwrap(), 901);
+            assert_eq!(bits.read_field(14, "gateway_mnc").unwrap(), 1510);
+        }
+    }
+
+    #[test]
+    fn inbound_gateway_cli_full_tsi_does_not_add_network_identity_to_other_bridges() {
+        use tetra_core::tetra_entities::TetraEntity;
+
+        for (entity, source, number, expected) in [
+            (TetraEntity::Brew, 2020001, "", Some(2020001)),
+            (TetraEntity::Echolink, 0, "103", Some(103)),
+            (TetraEntity::Brew, 0, "103", None),
+        ] {
+            let (_, setup) = inbound_gateway_cli_setup_with_full_tsi(entity, source, number, 16_777_184, true);
+            assert_eq!(setup.calling_party_address_ssi, expected);
+            assert_eq!(setup.calling_party_extension, None);
         }
     }
 

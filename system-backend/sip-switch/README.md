@@ -239,6 +239,73 @@ Bei einem neuen Anruf von `103` muss das TBS-Log `number='103'` und
 `display_ssi=Some(16777184)` zeigen; auf DEBUG zusätzlich D-SETUP mit der
 externen Nummer. Danach Anzeige, Gesprächsannahme und Rückruf am Funkgerät prüfen.
 
+### Diagnose: vollständige Gateway-TSI
+
+Beim getesteten Sepura SC20 mit V10.24 funktioniert die interne Einzelruf-CLI,
+während die externe Telefon-CLI trotz getrennter Gateway-SSI und Telefonnummer
+noch nicht angezeigt wird. Die geprüften Herstellerunterlagen belegen weder
+einen Firmwarefehler noch eine Pflicht zur vollständigen TSI. Die folgende
+Option ist deshalb ein **unbestätigter Kompatibilitätstest**, kein nachgewiesener
+Fix für die Meldung „cannot display CLI“.
+
+Standardmäßig bleibt `inbound_gateway_full_tsi = false`: nur die lokale
+Gateway-SSI wird übertragen (Calling Party Type Identifier 1). Mit `true`
+überträgt die TBS dieselbe Identität als vollständige TSI (Typ 2) mit MCC und MNC
+aus `[net_info]`. Für das Testnetz ist das:
+
+| Feld | Standard | Testoption aktiv |
+|---|---|---|
+| Calling Party SSI | `16777184` | `16777184` |
+| Calling Party Extension | keine | `901/1510`, kodiert als `14763494` (`0xE145E6`) |
+| External Subscriber Number | `103` | `103` |
+
+Die Option gilt nur für eingehende Asterisk-Rufe. Interner Rufbesitzer, Ziele,
+Brew-/EchoLink-Identitäten, Rufnummer und Hook-Methode ändern sich nicht. Die
+Konfiguration wird bei aktivierter Option abgewiesen, wenn MCC außerhalb 0–999
+oder MNC außerhalb 0–16383 liegt; CPS-Platzhalter wie MCC 1000 werden nicht
+gesendet. Hintergrund: EN 300 392-1 V1.6.1 §§7.2.5–7.2.6 und
+EN 300 392-2 V3.8.1, D-SETUP Tabelle 14.15.
+
+**Nur auf SRV-M-TBS-01 (10.0.1.20), nach Übernahme dieser Änderung in `mqtt`:**
+
+1. Bestehende lokale Konfiguration sichern, Branch aktualisieren und bauen:
+
+   ```bash
+   cd /opt/netcore-tetra
+   cp -p config.toml "config.toml.before-cli-tsi-$(date +%Y%m%d-%H%M%S)"
+   git pull --ff-only origin mqtt
+   cargo build --release -p bluestation-bs
+   ```
+
+   Lokale Änderungen bei einem Git-Konflikt erhalten; kein Reset der Konfiguration.
+
+2. Im **bestehenden** `[asterisk]`-Abschnitt der tatsächlich gestarteten
+   `config.toml` ergänzen (keinen zweiten Abschnitt anlegen):
+
+   ```toml
+   inbound_gateway_full_tsi = true
+   ```
+
+3. Die manuell laufende Basis beenden und mit derselben Konfiguration neu starten:
+
+   ```bash
+   ./target/release/bluestation-bs ./config.toml
+   ```
+
+4. Erneut von Telefon `103` zu HRT `5102` anrufen. Das INFO-Log muss
+   `number='103' display_ssi=Some(16777184) display_extension=Some(14763494)`
+   zeigen. CLI, Rufannahme und Sprache prüfen. Zeigt es `display_extension=None`,
+   ist die Testoption im laufenden Prozess nicht aktiv. Codeplug und SIP-Switch
+   für diesen Vergleich unverändert lassen.
+
+5. **Rücksetzen:** `inbound_gateway_full_tsi = false` setzen oder die Zeile
+   entfernen und die Basis erneut starten. Ein weiterer Build ist nicht nötig.
+
+Für diesen Test sind keine Installation, kein Update und kein Neustart auf
+SIP-Switch-, Mobility- oder anderen LXC-Systemen erforderlich. Auch der lokale
+Asterisk muss nicht neu gestartet werden. Bleibt die Anzeige unverändert,
+ist die vollständige Gateway-TSI als alleinige Abhilfe nicht bestätigt.
+
 ## MAIN-COMPAT-Netzanbindung
 
 Installations- und Update-Reihenfolge pro LXC/TBS, aktuelle Funktionsgrenzen und Tests:

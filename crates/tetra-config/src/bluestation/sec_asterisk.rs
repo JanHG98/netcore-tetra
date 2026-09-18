@@ -19,6 +19,8 @@ pub struct CfgAsterisk {
     pub inbound_prefix: String,
     /// TETRA gateway identity for inbound SIP calls; the external caller number is carried separately.
     pub inbound_gateway_issi: u32,
+    /// Include the local MCC/MNC in the inbound gateway identity as an opt-in compatibility test.
+    pub inbound_gateway_full_tsi: bool,
     pub register: bool,
     pub codec: String,
     pub service_numbers: Vec<String>,
@@ -52,6 +54,25 @@ impl Default for CfgAsterisk {
 // Was: Implementiert das zugehörige Verhalten für `CfgAsterisk`.
 // Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl CfgAsterisk {
+    /// Check the local network identity before explicitly sending it with the SIP gateway SSI.
+    pub(super) fn validate_gateway_network(&self, mcc: u16, mnc: u16) -> Result<(), String> {
+        if !self.inbound_gateway_full_tsi {
+            return Ok(());
+        }
+        // Values from 1000 onwards are reserved; a CPS placeholder is not an on-air MCC.
+        if mcc > 999 {
+            return Err(format!(
+                "asterisk: inbound_gateway_full_tsi requires net_info.mcc between 0 and 999 (got {mcc})"
+            ));
+        }
+        if mnc > 0x3fff {
+            return Err(format!(
+                "asterisk: inbound_gateway_full_tsi requires net_info.mnc between 0 and 16383 (got {mnc})"
+            ));
+        }
+        Ok(())
+    }
+
     /// Route a TETRA dial string to a SIP user according to the Asterisk outbound rules.
     ///
     /// Matching modes:
@@ -136,6 +157,8 @@ pub struct CfgAsteriskDto {
     pub inbound_prefix: String,
     #[serde(default = "default_inbound_gateway_issi")]
     pub inbound_gateway_issi: u32,
+    #[serde(default)]
+    pub inbound_gateway_full_tsi: bool,
     #[serde(default = "default_register")]
     pub register: bool,
     #[serde(default = "default_codec")]
@@ -187,6 +210,7 @@ impl Default for CfgAsteriskDto {
             strip_outbound_prefix: default_strip_outbound_prefix(),
             inbound_prefix: default_inbound_prefix(),
             inbound_gateway_issi: default_inbound_gateway_issi(),
+            inbound_gateway_full_tsi: false,
             register: default_register(),
             codec: default_codec(),
             service_numbers: Vec::new(),
@@ -371,6 +395,7 @@ pub fn apply_asterisk_patch(src: CfgAsteriskDto) -> Result<CfgAsterisk, String> 
         strip_outbound_prefix: src.strip_outbound_prefix,
         inbound_prefix: src.inbound_prefix,
         inbound_gateway_issi: src.inbound_gateway_issi,
+        inbound_gateway_full_tsi: src.inbound_gateway_full_tsi,
         register: src.register,
         codec,
         service_numbers,
@@ -428,6 +453,27 @@ mod tests {
     #[test]
     fn inbound_gateway_issi_rejects_negative_toml_value() {
         assert!(toml::from_str::<CfgAsteriskDto>("inbound_gateway_issi = -1").is_err());
+    }
+
+    #[test]
+    fn inbound_gateway_full_tsi_defaults_to_false() {
+        let dto: CfgAsteriskDto = toml::from_str("").expect("empty asterisk section should parse");
+        assert!(!dto.inbound_gateway_full_tsi);
+        assert!(!apply_asterisk_patch(dto).unwrap().inbound_gateway_full_tsi);
+        assert!(!CfgAsteriskDto::default().inbound_gateway_full_tsi);
+        assert!(!CfgAsterisk::default().inbound_gateway_full_tsi);
+    }
+
+    #[test]
+    fn inbound_gateway_full_tsi_accepts_boolean_opt_in() {
+        let dto: CfgAsteriskDto = toml::from_str("inbound_gateway_full_tsi = true")
+            .expect("boolean opt-in should parse");
+        assert!(apply_asterisk_patch(dto).unwrap().inbound_gateway_full_tsi);
+    }
+
+    #[test]
+    fn inbound_gateway_full_tsi_rejects_string_value() {
+        assert!(toml::from_str::<CfgAsteriskDto>("inbound_gateway_full_tsi = \"true\"").is_err());
     }
 
     // Was: Führt den Arbeitsschritt `enabled_cfg` für enabled cfg aus.

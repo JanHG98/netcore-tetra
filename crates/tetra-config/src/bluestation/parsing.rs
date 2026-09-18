@@ -298,17 +298,21 @@ pub fn from_toml_str(toml_str: &str) -> Result<StackConfig, Box<dyn std::error::
         });
     }
 
+    let net = net_dto_to_cfg(root.net_info);
+    let asterisk = apply_asterisk_patch(root.asterisk.unwrap_or_default())?;
+    asterisk.validate_gateway_network(net.mcc, net.mnc)?;
+
     // Build config from required and optional values
     let mut cfg = StackConfig {
         stack_mode: root.stack_mode,
         debug_log: root.debug_log,
         service_name: root.service_name,
         phy_io: phy_dto_to_cfg(root.phy_io),
-        net: net_dto_to_cfg(root.net_info),
+        net,
         cell: cell_cfg,
         brew: None,
         brew2: None,
-        asterisk: apply_asterisk_patch(root.asterisk.unwrap_or_default())?,
+        asterisk,
         dapnet: apply_dapnet_patch(root.dapnet.unwrap_or_default())?,
         echolink: apply_echolink_patch(root.echolink.unwrap_or_default())?,
         meshcom: apply_meshcom_patch(root.meshcom.unwrap_or_default())?,
@@ -770,6 +774,48 @@ location_area = 1
 "#,
             extra_cell
         )
+    }
+
+    fn gateway_network_toml(mcc: u16, mnc: u16, full_tsi: bool) -> String {
+        minimal_toml("")
+            .replace("mcc = 901", &format!("mcc = {mcc}"))
+            .replace("mnc = 9999", &format!("mnc = {mnc}"))
+            + &format!("\n[asterisk]\ninbound_gateway_full_tsi = {full_tsi}\n")
+    }
+
+    #[test]
+    fn inbound_gateway_full_tsi_accepts_valid_local_network_identity() {
+        for (mcc, mnc) in [(901, 1510), (0, 0), (999, 16383)] {
+            let cfg = from_toml_str(&gateway_network_toml(mcc, mnc, true))
+                .expect("valid local network identity should parse with full TSI enabled");
+            assert!(cfg.asterisk.inbound_gateway_full_tsi);
+            assert_eq!((cfg.net.mcc, cfg.net.mnc), (mcc, mnc));
+        }
+    }
+
+    #[test]
+    fn inbound_gateway_full_tsi_rejects_reserved_mcc_and_oversized_mnc() {
+        for (mcc, mnc, expected_error) in [
+            (1000, 1510, "asterisk: inbound_gateway_full_tsi requires net_info.mcc between 0 and 999 (got 1000)"),
+            (901, 16384, "asterisk: inbound_gateway_full_tsi requires net_info.mnc between 0 and 16383 (got 16384)"),
+        ] {
+            let error = from_toml_str(&gateway_network_toml(mcc, mnc, true))
+                .expect_err("invalid local network identity must not be sent in a full gateway TSI");
+            assert_eq!(error.to_string(), expected_error);
+        }
+    }
+
+    #[test]
+    fn inbound_gateway_full_tsi_opt_out_preserves_existing_network_validation() {
+        let default_cfg = from_toml_str(&minimal_toml(""))
+            .expect("configuration without an asterisk section should still parse");
+        assert!(!default_cfg.asterisk.inbound_gateway_full_tsi);
+        for (mcc, mnc) in [(1000, 1510), (901, 16384)] {
+            let cfg = from_toml_str(&gateway_network_toml(mcc, mnc, false))
+                .expect("full TSI opt-out must preserve the previous parser behavior");
+            assert!(!cfg.asterisk.inbound_gateway_full_tsi);
+            assert_eq!((cfg.net.mcc, cfg.net.mnc), (mcc, mnc));
+        }
     }
 
     #[test]
