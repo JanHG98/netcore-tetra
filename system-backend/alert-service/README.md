@@ -2,7 +2,7 @@
 
 Die Warnzentrale vergleicht aktuelle Gerätepositionen aus dem Control Room mit aktiven Warngebieten und verschickt individuelle SDS über den SDS Router. Sie läuft als eigener Python-3.11+-Dienst in einem LXC und benötigt keine pip-Pakete. WebUI: `http://<WARN-LXC-IP>:8310/`.
 
-Die [Schritt-für-Schritt-Anleitung pro LXC und TBS](../../Docs/KATWARN_NINA_INSTALL_UPDATE.md) nennt für jedes betroffene System die erforderlichen Befehle und Prüfungen. Für diese Funktion müssen der neue Warn-LXC installiert und der SDS Router aktualisiert werden. Bestehende Control-Room-/TBS-Schnittstellen werden unverändert verwendet.
+Die [Schritt-für-Schritt-Anleitung pro LXC und TBS](../../Docs/KATWARN_NINA_INSTALL_UPDATE.md) nennt für jedes betroffene System die erforderlichen Befehle und Prüfungen. Für diese Funktion müssen der neue Warn-LXC installiert sowie SDS Router und Control Room aktualisiert werden. Der Control Room benötigt die aktivierte, nur lesende Verbindung zu Node Gateway `/ws/backend`, damit seine Geräte- und GPS-Ansichten mit Telemetrie gefüllt werden. Die TBS bleiben mit dem Node Gateway verbunden.
 
 ## Verhalten
 
@@ -12,6 +12,7 @@ Die [Schritt-für-Schritt-Anleitung pro LXC und TBS](../../Docs/KATWARN_NINA_INS
 - Gültigkeit, Entwarnung, CAP-Referenzen, Polygone, mehrere Teilgebiete, Löcher und Kreise. Updates derselben Warnung behalten ihre Empfängerhistorie; bereits benachrichtigte Geräte erhalten kein weiteres Update derselben Warnung. Neue Geräte erhalten den aktuellen Text.
 - Eigene Meldungen per Kartenklick, Koordinaten, Radius von 50 m bis 200 km, Warnstufe, Text und Ablaufzeit erstellen. Löschen beendet weitere Aussendungen; Verlauf und Empfängerhistorie bleiben erhalten.
 - WebUI mit Karte, vollständigen Meldungstexten, Funktext-Vorschau, Geräten, Zustellstatus und Archiv. Leaflet 1.9.4 ist lokal enthalten; nur Hintergrundkacheln werden vom Browser bei OpenStreetMap geladen.
+- Geräteprüfung mit Gründen für ausgeschlossene Geräte (z. B. fehlendes/zu altes GPS oder fehlende TBS-Verbindung). Eine leere Teilnehmerantwort des Control Rooms wird ausdrücklich angezeigt. Die Versandvoraussetzungen bleiben unverändert.
 - Zugang mit lokal erzeugtem Token. Das Token wird als HTTP-Header gesendet, ausschließlich in der Browsersitzung gespeichert und in normalen Antworten nicht ausgegeben.
 
 BBK-Daten stammen aus den öffentlichen [Warnungsfeeds](https://warnung.bund.de/api31/mowas/mapData.json) und dem [KATWARN-Feed](https://warnung.bund.de/api31/katwarn/mapData.json). KATWARN ist enthalten, soweit Meldungen dort bereitgestellt werden; der Dienst besitzt keinen unabhängigen KATWARN-Partnerzugang. Das BBK beschreibt die Verbindung der Warnsysteme auf seiner [MoWaS-Seite](https://www.bbk.bund.de/DE/Warnung-Vorsorge/Warnung-in-Deutschland/MoWaS/mowas_node.html). Die öffentlichen App-Endpunkte sind eine externe Abhängigkeit und können sich ändern.
@@ -67,7 +68,7 @@ Alle `/api/`-Anfragen benötigen `Authorization: Bearer <NETCORE_ALERT_TOKEN>`. 
 }
 ```
 
-Eine eigene Warnung darf höchstens 366 Tage gültig sein. Der Beispielzeitpunkt muss daher passend ersetzt werden. Der Dienst nutzt beim Control Room nur lesende Endpunkte `/api/subscribers?online=true` und `/api/nodes`. Für geschützte Control Rooms sind Benutzername und `NETCORE_CONTROL_ROOM_PASSWORD` vorgesehen.
+Eine eigene Warnung darf höchstens 366 Tage gültig sein. Der Beispielzeitpunkt muss daher passend ersetzt werden. Der Dienst nutzt beim Control Room nur lesende Endpunkte `/api/subscribers?online=true` und `/api/nodes`. Diese werden bei TBS am Node Gateway erst durch die eingeschaltete `[node_gateway]`-Verbindung des Control Rooms gefüllt. Nach erstmaligem Einschalten müssen aktuelle Anmeldung und GPS-Telemetrie eintreffen; der Gateway-Snapshot enthält keine alten Gerätepositionen. Für geschützte Control Rooms sind Benutzername und `NETCORE_CONTROL_ROOM_PASSWORD` vorgesehen.
 
 ## Entwicklung und Prüfung
 

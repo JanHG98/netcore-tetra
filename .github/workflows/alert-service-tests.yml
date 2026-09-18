@@ -4,12 +4,16 @@ on:
     paths:
       - 'system-backend/alert-service/**'
       - 'system-backend/sds-router/**'
+      - 'bins/netcore-control-room/**'
+      - 'system-backend/control-room/**'
       - '.github/workflows/alert-service-tests.yml'
   push:
     branches: ['katwarn/nina']
     paths:
       - 'system-backend/alert-service/**'
       - 'system-backend/sds-router/**'
+      - 'bins/netcore-control-room/**'
+      - 'system-backend/control-room/**'
       - '.github/workflows/alert-service-tests.yml'
 permissions:
   contents: read
@@ -36,3 +40,8 @@ jobs:
           cargo test -p netcore-sds-router
           cargo build -p netcore-sds-router
           python system-backend/alert-service/tests/integration_router.py
+      - name: Control Room gateway telemetry and warning integration
+        run: |
+          cargo test -p netcore-control-room
+          cargo build -p netcore-control-room
+          python system-backend/alert-service/tests/integration_control_room.py

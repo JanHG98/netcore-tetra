@@ -75,6 +75,8 @@ class AlertService:
         self.router = router or HttpClient(nc["sds_router_url"], nc.get("http_timeout_seconds", 10))
         self.nina = nina
         self.devices = []
+        self.device_diagnostics = []
+        self.subscribers_seen = 0
         self.errors = {}
         self.last_cycle = None
         self.last_nina_poll = 0
@@ -116,35 +118,96 @@ class AlertService:
         if not isinstance(nodes, list):
             raise ValueError("Ungültige TBS-Antwort der Leitstelle")
         online_nodes = set()
+        node_reasons, node_ages = {}, {}
         for node in nodes:
+            if not isinstance(node, dict):
+                continue
             try:
                 if not isinstance(node.get("last_seen"), str) or not node["last_seen"]:
+                    node_reasons[node["node_id"]] = ("node_timestamp_missing", "Zeitpunkt der letzten TBS-Verbindung fehlt")
                     continue
                 age = now - timestamp(node["last_seen"])
+                node_ages[node["node_id"]] = int(age)
                 if node.get("connected") is True and node.get("transport_connected") is not False and -60 <= age <= self.config["netcore"].get("node_max_age_seconds", 120):
                     online_nodes.add(node["node_id"])
-            except (KeyError, TypeError, ValueError):
+                elif node.get("connected") is not True or node.get("transport_connected") is False:
+                    node_reasons[node["node_id"]] = ("node_offline", "TBS ist nicht verbunden")
+                elif age < -60:
+                    node_reasons[node["node_id"]] = ("node_timestamp_future", "TBS-Zeitpunkt liegt in der Zukunft; Uhrzeit prüfen")
+                else:
+                    limit = self.config["netcore"].get("node_max_age_seconds", 120)
+                    node_reasons[node["node_id"]] = ("node_stale", f"Letzte TBS-Meldung ist älter als {limit} Sekunden")
+            except (KeyError, TypeError, ValueError, OverflowError):
+                if isinstance(node, dict) and isinstance(node.get("node_id"), str):
+                    node_reasons[node["node_id"]] = ("node_timestamp_invalid", "Zeitpunkt der letzten TBS-Verbindung ist ungültig")
                 continue
+        diagnostics = []
+
+        def reject(row, code, reason):
+            row = row if isinstance(row, dict) else {}
+            node_id = row.get("node_id") if isinstance(row.get("node_id"), str) else None
+            try:
+                issi = int(row["issi"])
+            except (KeyError, TypeError, ValueError, OverflowError):
+                issi = None
+            entry = {"issi": issi, "node_id": node_id, "reason_code": code, "reason": reason}
+            if node_id in node_ages:
+                entry["node_age_seconds"] = node_ages[node_id]
+            location = row.get("last_location") or {}
+            try:
+                if isinstance(location, dict) and isinstance(location.get("updated_at"), str) and location["updated_at"]:
+                    entry["gps_age_seconds"] = int(now - timestamp(location["updated_at"]))
+            except (TypeError, ValueError, OverflowError):
+                pass
+            diagnostics.append(entry)
+
         newest = {}
         for row in snapshot["subscribers"]:
+            if not isinstance(row, dict):
+                reject(row, "device_data_invalid", "Teilnehmerdaten sind ungültig")
+                continue
             try:
-                if row.get("online") is not True or row.get("node_id") not in online_nodes:
+                if row.get("online") is not True:
+                    reject(row, "subscriber_offline", "Funkgerät ist nicht als online gemeldet")
+                    continue
+                if row.get("node_id") not in online_nodes:
+                    code, reason = node_reasons.get(row.get("node_id"), ("node_missing", "Zugehörige TBS fehlt in der Leitstellenantwort"))
+                    reject(row, code, reason)
                     continue
                 location = row.get("last_location") or {}
+                if not isinstance(location, dict):
+                    reject(row, "device_data_invalid", "GPS-Daten sind ungültig")
+                    continue
                 if not isinstance(location.get("updated_at"), str) or not location["updated_at"]:
+                    reject(row, "gps_missing", "Keine GPS-Position mit gültigem Zeitpunkt vorhanden")
                     continue
                 age = now - timestamp(location["updated_at"])
                 lat, lon, issi = float(location["latitude"]), float(location["longitude"]), int(row["issi"])
                 if not (math.isfinite(lat) and math.isfinite(lon) and -90 <= lat <= 90 and -180 <= lon <= 180 and 1 <= issi <= 16777215):
+                    reject(row, "device_data_invalid", "GPS-Koordinaten oder ISSI sind ungültig")
                     continue
                 if age < -60 or age > self.config["netcore"].get("gps_max_age_seconds", 3600):
+                    if age < -60:
+                        reject(row, "gps_timestamp_future", "GPS-Zeitpunkt liegt in der Zukunft; Uhrzeit prüfen")
+                    else:
+                        limit = self.config["netcore"].get("gps_max_age_seconds", 3600)
+                        reject(row, "gps_stale", f"GPS-Position ist älter als {limit} Sekunden")
                     continue
                 item = {"issi": issi, "node_id": row["node_id"], "latitude": lat, "longitude": lon,
                         "updated_at": location["updated_at"], "age_seconds": max(0, int(age))}
                 if issi not in newest or timestamp(item["updated_at"]) > timestamp(newest[issi]["updated_at"]):
+                    if issi in newest:
+                        previous = newest[issi]
+                        reject({"issi": issi, "node_id": previous["node_id"], "last_location": previous},
+                               "duplicate_position", "Für diese ISSI wird eine neuere GPS-Position verwendet")
                     newest[issi] = item
+                else:
+                    reject(row, "duplicate_position", "Für diese ISSI wird eine gleich neue oder neuere GPS-Position verwendet")
             except (KeyError, TypeError, ValueError, OverflowError):
+                reject(row, "device_data_invalid", "GPS-Daten oder ISSI fehlen oder sind ungültig")
                 continue
+        self.device_diagnostics = diagnostics
+        self.subscribers_seen = len(snapshot["subscribers"])
         return list(newest.values())
 
     def _eligible(self, alert, now):
@@ -182,6 +245,8 @@ class AlertService:
             self.errors.pop("control_room", None)
         except Exception as exc:
             self.devices = []
+            self.device_diagnostics = []
+            self.subscribers_seen = 0
             self.errors["control_room"] = str(exc)[:500]
         try:
             status = self.router.request("GET", "/api/v1/status")
@@ -311,7 +376,9 @@ class AlertService:
             return {"service": "netcore-alert-service", "now": iso(now), "last_cycle": self.last_cycle,
                     "delivery_enabled": self.config["delivery"].get("enabled", False), "router_ready": self.router_ready,
                     "nina_last_success": self.store.meta("nina_success"), "errors": dict(self.errors),
-                    "alerts": alerts, "devices": list(self.devices), "deliveries": self.store.deliveries(public=True)}
+                    "alerts": alerts, "devices": list(self.devices),
+                    "device_diagnostics": list(self.device_diagnostics), "subscribers_seen": self.subscribers_seen,
+                    "deliveries": self.store.deliveries(public=True)}
 
     def run(self):
         while not self.stop.is_set():

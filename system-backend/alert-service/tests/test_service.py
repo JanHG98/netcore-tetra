@@ -290,6 +290,58 @@ class ServiceTests(unittest.TestCase):
                 nodes[0]["last_seen"] = missing
                 self.assertEqual(self.service._devices({"subscribers": rows}, now, nodes), [])
 
+    def test_snapshot_explains_skipped_gps_without_changing_dispatch(self):
+        self.control.rows = [subscriber(1001, updated=NOW - 3601),
+                             {"issi": 1002, "online": True, "node_id": "tbs-one"},
+                             subscriber(1003)]
+        self.tick()
+        result = self.service.snapshot()
+        self.assertEqual(result["subscribers_seen"], 3)
+        self.assertEqual([d["issi"] for d in result["devices"]], [1003])
+        rejected = {d["issi"]: d for d in result["device_diagnostics"]}
+        self.assertEqual(set(rejected), {1001, 1002})
+        self.assertEqual(rejected[1001]["reason_code"], "gps_stale")
+        self.assertEqual(rejected[1001]["gps_age_seconds"], 3601)
+        self.assertEqual(rejected[1001]["node_age_seconds"], 0)
+        self.assertIn("3600 Sekunden", rejected[1001]["reason"])
+        self.assertEqual(rejected[1002]["reason_code"], "gps_missing")
+        self.assertNotIn("gps_age_seconds", rejected[1002])
+        self.assertEqual([p["dest_issi"] for p in self.router.posts], [1003])
+        self.assertIn(("GET", "/api/subscribers?online=true"), self.control.calls)
+
+    def test_snapshot_explains_offline_and_stale_node_then_clears_on_recovery(self):
+        self.control.rows = [subscriber()]
+        self.control.node_connected = False
+        self.tick()
+        result = self.service.snapshot()
+        self.assertEqual(result["device_diagnostics"][0]["reason_code"], "node_offline")
+        self.assertEqual(result["device_diagnostics"][0]["gps_age_seconds"], 0)
+        self.assertFalse(self.router.posts)
+        self.control.node_connected = True
+        self.control.node_seen = NOW - 121
+        self.tick(1)
+        result = self.service.snapshot()
+        self.assertEqual(result["device_diagnostics"][0]["reason_code"], "node_stale")
+        self.assertEqual(result["device_diagnostics"][0]["node_age_seconds"], 122)
+        self.assertFalse(self.router.posts)
+        self.control.node_seen = None
+        self.tick(2)
+        self.assertEqual(self.service.snapshot()["device_diagnostics"], [])
+        self.assertEqual(len(self.router.posts), 1)
+
+    def test_control_failure_clears_previous_device_diagnostics(self):
+        self.control.rows = [subscriber(updated=NOW - 3601)]
+        self.tick()
+        self.assertEqual(len(self.service.snapshot()["device_diagnostics"]), 1)
+        self.control.nodes_error = OSError("nodes unavailable")
+        self.tick(1)
+        result = self.service.snapshot()
+        self.assertEqual(result["device_diagnostics"], [])
+        self.assertEqual(result["subscribers_seen"], 0)
+        self.assertEqual(result["devices"], [])
+        self.assertIn("control_room", result["errors"])
+        self.assertFalse(self.router.posts)
+
     def test_duplicate_subscriber_rows_use_newest_position(self):
         self.control.rows = [subscriber(updated=NOW - 60), subscriber(latitude=53, updated=NOW)]
         self.tick()

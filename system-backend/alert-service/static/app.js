@@ -35,6 +35,25 @@ function areaLayer(alert, options={}) {
 }
 function popup(alert) { const n=element('div'); n.append(element('strong',alert.title),element('span',(severityNames[alert.severity]||alert.severity)+' · '+(alert.provider||alert.source))); return n; }
 function fitAreas() { if(areas.getLayers().length && areas.getBounds().isValid()) map.fitBounds(areas.getBounds(),{padding:[35,35],maxZoom:13}); }
+function renderDeviceChecks() {
+  const panel=$('device-checks');
+  panel.hidden=!Array.isArray(snapshot.device_diagnostics);
+  if(panel.hidden) return;
+  const rows=$('device-check-list'); rows.replaceChildren();
+  const waiting=snapshot.last_cycle==null;
+  const failed=Boolean(snapshot.errors.control_room);
+  $('device-check-summary').textContent=failed?'Geräteabgleich fehlgeschlagen':waiting?'Erster Geräteabgleich läuft …':`${snapshot.subscribers_seen} vom Control Room als online gemeldet · ${snapshot.devices.length} für Warnungen verfügbar`;
+  const age=value=>typeof value==='number'?(value<0?'Zeit liegt in der Zukunft':value<60?Math.round(value)+' s':value<3600?Math.round(value/60)+' min':(value/3600).toLocaleString('de-DE',{maximumFractionDigits:1})+' h'):'–';
+  for(const d of snapshot.device_diagnostics) {
+    const row=element('tr');
+    row.append(element('td',d.issi==null?'Unbekannt':String(d.issi)),element('td',d.node_id||'–'),element('td',d.reason),element('td',age(d.gps_age_seconds)),element('td',age(d.node_age_seconds)));
+    rows.append(row);
+  }
+  if(!snapshot.device_diagnostics.length) {
+    const message=failed?'Verbindung zum Control Room prüfen.':waiting?'Die Geräte werden noch abgefragt.':snapshot.subscribers_seen===0?'Der Control Room meldet keine angemeldeten Geräte. Anmeldung des Testgeräts dort prüfen.':'Alle gemeldeten Geräte erfüllen die Voraussetzungen für den Gebietsabgleich.';
+    const cell=element('td',message,'empty'); cell.colSpan=5; const row=element('tr'); row.append(cell); rows.append(row);
+  }
+}
 function render() {
   if(!snapshot) return;
   const active=snapshot.alerts.filter(a=>a.active);
@@ -45,9 +64,12 @@ function render() {
   $('send-mode').style.color=snapshot.delivery_enabled?'#228c60':'#a77427';
   $('poll-time').textContent='Geprüft: '+date(snapshot.last_cycle);
   const errors=Object.entries(snapshot.errors).map(([key,value])=>key+': '+value);
-  $('connection').textContent=errors.length?'Verbindung prüfen':'Verbunden';
-  $('connection').className='pill '+(errors.length?'bad':'good');
-  notice(errors.length?errors.join('\n'):(!snapshot.delivery_enabled?'Vorschau aktiv. Automatischen Versand in der Dienstkonfiguration einschalten, sobald die Einrichtung geprüft ist.':''));
+  const waiting=snapshot.last_cycle==null;
+  const noDevices=!waiting && snapshot.delivery_enabled && active.some(a=>a.eligible) && !snapshot.devices.length;
+  $('connection').textContent=errors.length?'Verbindung prüfen':waiting?'Abgleich läuft':noDevices?'Keine Empfänger':'Verbunden';
+  $('connection').className='pill '+(errors.length||waiting||noDevices?'bad':'good');
+  notice(errors.length?errors.join('\n'):waiting?'Der erste Geräteabgleich läuft.':!snapshot.delivery_enabled?'Vorschau aktiv. Automatischen Versand in der Dienstkonfiguration einschalten, sobald die Einrichtung geprüft ist.':noDevices?'Versand ist aktiv, aber es ist kein Gerät mit verwendbarer Position verfügbar. Anmeldung, GPS und TBS-Verbindung in der Geräteprüfung unten prüfen.':'');
+  renderDeviceChecks();
   areas.clearLayers(); devices.clearLayers();
   for(const a of active) { try { areaLayer(a).bindPopup(popup(a)).addTo(areas); } catch(err) { console.warn('Warngebiet nicht darstellbar',err); } }
   for(const d of snapshot.devices) L.circleMarker([d.latitude,d.longitude],{radius:5,color:'#fff',weight:2,fillColor:'#1d937e',fillOpacity:1}).bindPopup(element('span','ISSI '+d.issi+' · '+d.node_id+' · GPS '+date(d.updated_at))).addTo(devices);

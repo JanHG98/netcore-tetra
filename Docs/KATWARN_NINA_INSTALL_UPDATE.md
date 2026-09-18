@@ -1,17 +1,18 @@
 # NINA/KATWARN installieren — was du auf welchem System machen musst
 
-**Diese Reihenfolge abarbeiten: SDS-Router-LXC aktualisieren → neuen Warn-LXC erstellen → TBS prüfen → Versand einschalten.**
+**Diese Reihenfolge abarbeiten: SDS-Router-LXC aktualisieren → Control-Room-LXC aktualisieren und mit Node Gateway verbinden → neuen Warn-LXC erstellen → TBS prüfen → Versand einschalten.**
 
 | System | Was du machen musst |
 |---|---|
 | Vorhandener **SDS-Router-LXC** | **Aktualisieren** — Schritt 1 |
+| Vorhandener **Control-Room-LXC** | **Aktualisieren und Gateway-Telemetrie einschalten** — Schritt 1b |
 | Neuer **alert-service-LXC** | **Erstellen und installieren** — Schritt 2 |
 | Jede vorhandene **TBS** | **Anmeldung, GPS und SDS prüfen** — Schritt 3 |
-| Control Room, Node Gateway und alle übrigen LXCs | **Für diese Funktion kein Update nötig** |
+| Node Gateway und alle übrigen LXCs | **Für diese Funktion kein Update nötig** |
 
 Die Warnfunktion liegt im Branch **`feat/katwarn-nina-alerts`** aus [PR #49](https://github.com/JanHG98/netcore-tetra/pull/49). Die folgenden Befehle verwenden genau diesen Branch. Der PR ist noch nicht in `katwarn/nina` zusammengeführt.
 
-**Vorher notieren:** IP deines SDS-Router-LXC, IP deines Control-Room-LXC und später die IP des neuen Warn-LXC. Die Bezeichnungen `SDS-ROUTER-IP`, `CONTROL-ROOM-IP` und `WARN-LXC-IP` unten durch diese echten Adressen ersetzen.
+**Vorher notieren:** IP deines SDS-Router-LXC, IP deines Control-Room-LXC, IP deines Node-Gateway-LXC und später die IP des neuen Warn-LXC. Die Bezeichnungen `SDS-ROUTER-IP`, `CONTROL-ROOM-IP`, `NODE-GATEWAY-IP` und `WARN-LXC-IP` unten durch diese echten Adressen ersetzen.
 
 ## 1. Vorhandener SDS-Router-LXC: Muss aktualisiert werden
 
@@ -83,6 +84,75 @@ Die Datei ist im oben genannten GitHub-Branch enthalten. Verwende in diesem Fall
 ```
 
 Der Block bricht beim ersten Fehler ab. Der eigentliche Dienstwechsel erfolgt erst nach erfolgreichem Build. Existiert `/opt/netcore-tetra-warn-update` bereits, stoppt das Klonen; den vorhandenen Ordner nicht ungeprüft löschen. Anschließend den Status wie oben über die echte SDS-Router-IP prüfen.
+
+## 1b. Vorhandener Control-Room-LXC: Muss aktualisiert werden
+
+**Dieser Schritt fehlte in der ersten Fassung der Anleitung.** Wenn deine TBS am Node Gateway hängen, bekommt der bisherige Control Room deren Geräte- und GPS-Telemetrie nicht automatisch. Die Warnzentrale erhielt deshalb leere Listen, auch wenn der SDS-Router korrekt verbunden war.
+
+### Software auf dem Control-Room-LXC aktualisieren
+
+Vorher in Proxmox ein Backup des Control-Room-LXC erstellen. **Diesen gesamten Block in seiner Konsole als root ausführen.** Er baut aus einer zusätzlichen Arbeitskopie und erhält den vorhandenen Projektordner.
+
+```bash
+(
+  set -e
+  test -s /etc/netcore-control-room/control-room.toml
+  cd /opt
+  update_dir=$(mktemp -d /opt/netcore-control-room-warn.XXXXXX)
+  git clone --single-branch --branch feat/katwarn-nina-alerts https://github.com/JanHG98/netcore-tetra.git "$update_dir"
+  cd "$update_dir"
+  if [ -f /root/.cargo/env ]; then . /root/.cargo/env; fi
+  bash system-backend/control-room/install/update.sh
+  systemctl is-active netcore-control-room
+)
+```
+
+Der Updater baut vor dem Dienststopp. Bei `active` mit der Konfiguration weitermachen.
+
+### Node-Gateway-Verbindung auf dem Control-Room-LXC eintragen
+
+Die bereits vom SDS-Router verwendete Gateway-Adresse lässt sich **vom Warn- oder Control-Room-LXC** aus anzeigen:
+
+```bash
+curl --noproxy '*' -fsS http://SDS-ROUTER-IP:8150/api/v1/config | python3 -c 'import json,sys; print(json.load(sys.stdin)["node_gateway"]["url"])'
+```
+
+**Auf dem Control-Room-LXC** die Konfiguration öffnen:
+
+```bash
+nano /etc/netcore-control-room/control-room.toml
+```
+
+Diesen Abschnitt ergänzen; wenn er schon existiert, seine Werte bearbeiten statt einen zweiten anzulegen. Für `url` die gerade angezeigte Adresse verwenden:
+
+```toml
+[node_gateway]
+enabled = true
+url = "ws://NODE-GATEWAY-IP:8080/ws/backend"
+```
+
+Speichern (Strg+O → Enter → Strg+X), dann **auf dem Control-Room-LXC**:
+
+```bash
+systemctl restart netcore-control-room
+systemctl is-active netcore-control-room
+journalctl -u netcore-control-room -n 30 --no-pager
+```
+
+Die Verbindung liest nur Telemetrie. TBS und SDS-Router bleiben am vorhandenen Node Gateway; deren URLs nicht umstellen.
+
+### Neue Gerätedaten eintreffen lassen und prüfen
+
+Nach dem ersten Einschalten dieser Verbindung **das Testfunkgerät neu anmelden und eine aktuelle GPS-Meldung senden lassen**. Das Node Gateway liefert keine vollständige Historie alter Gerätepositionen nach. Ein Neustart der TBS ist dafür nicht erforderlich.
+
+**Auf dem Warn-LXC oder Control-Room-LXC prüfen:**
+
+```bash
+curl --noproxy '*' -fsS http://CONTROL-ROOM-IP:9010/api/nodes
+curl --noproxy '*' -fsS 'http://CONTROL-ROOM-IP:9010/api/subscribers?online=true'
+```
+
+Erwartet: TBS in der ersten Antwort; Testgerät mit `online: true` und `last_location` in der zweiten. Bei aktivierter Control-Room-Anmeldung diese Ansicht im angemeldeten Browser prüfen. Danach erkennt die bereits laufende Warnzentrale das Gerät beim nächsten Abgleich.
 
 ## 2. Neuer LXC „alert-service“: Muss erstellt werden
 
@@ -269,6 +339,42 @@ systemctl is-active netcore-alert-service
 4. Testwarnung in der WebUI über **„Löschen“ → „Jetzt löschen“** entfernen.
 
 **Fertig.** Neue Warnungen werden automatisch verteilt. Der Dienst prüft Geräte normalerweise alle 5 Sekunden und NINA alle 60 Sekunden, jeweils zuzüglich Netzlaufzeit.
+
+### Wenn trotz aktivem Versand keine Nachricht ankommt
+
+**In der Warn-WebUI zuerst „Geräte mit aktuellem GPS“ und „Geräteprüfung“ ansehen.** Ein Gerät muss dort für Warnungen verfügbar sein. Seine tatsächliche Position im Kreis allein reicht nicht, solange der Dienst diese Position nicht vom Control Room bekommt.
+
+| Anzeige | Auf welchem System du was prüfen musst |
+|---|---|
+| Control Room meldet keine angemeldeten Geräte | **Warn-LXC:** `control_room_url` prüfen. Ist die Adresse korrekt und sind auch `/api/nodes` und `/api/subscribers` leer, auf dem **Control-Room-LXC Schritt 1b** durchführen. Danach Testgerät neu anmelden und GPS übertragen lassen. |
+| GPS fehlt oder ist zu alt | **Testfunkgerät/TBS:** Eine aktuelle GPS-Meldung übertragen lassen. **Control Room:** Den Zeitstempel der Position prüfen; standardmäßig darf sie höchstens 3600 Sekunden alt sein. |
+| TBS nicht verbunden oder Meldung zu alt | **Control Room/Node Gateway:** TBS-Verbindung prüfen. Standardmäßig muss die TBS-Meldung jünger als 120 Sekunden sein. |
+| Beim SDS-Router | **SDS-Router-WebUI:** Den Auftrag und seine TBS-Zustellung prüfen. Die Nachricht wurde bereits an den Router übergeben. |
+| Fehlgeschlagen oder Unklar | Den Hinweis in der Zustellhistorie prüfen. Die Empfängerhistorie nicht löschen, um einen erneuten Versand zu erzwingen. |
+
+**Auf dem Warn-LXC die verwendete Control-Room-Adresse anzeigen:**
+
+```bash
+python3 - <<'PY'
+import tomllib
+with open('/etc/netcore/alert-service.toml', 'rb') as f:
+    print(tomllib.load(f)['netcore']['control_room_url'])
+PY
+```
+
+Zeigt sie auf die falsche Instanz, **auf dem Warn-LXC** korrigieren:
+
+```bash
+nano /etc/netcore/alert-service.toml
+```
+
+Im vorhandenen Abschnitt `[netcore]` nur `control_room_url` auf die tatsächliche Control-Room-API setzen (normalerweise `http://CONTROL-ROOM-IP:9010`). Danach:
+
+```bash
+systemctl restart netcore-alert-service
+```
+
+Nach dem nächsten Geräteabgleich müssen Gerätezahl und Karte die angemeldeten Geräte mit aktueller Position zeigen. Eine noch aktive Testwarnung wird anschließend automatisch geprüft.
 
 ## 5. Spätere Updates: Nur auf dem Warn-LXC
 
