@@ -6,7 +6,9 @@ REPO_ROOT="$(cd "${SERVICE_DIR}/../.." && pwd)"
 
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-  asterisk python3 mosquitto-clients ca-certificates curl
+  python3 mosquitto-clients ca-certificates curl
+source "${SCRIPT_DIR}/ensure-asterisk.sh"
+netcore_ensure_asterisk
 
 install -d -m 0755 /etc/netcore /var/lib/netcore-sip-switch /var/lib/asterisk/agi-bin
 install -m 0644 "${SERVICE_DIR}/src/netcore_sip_runtime.py" /usr/local/bin/netcore_sip_runtime.py
@@ -14,6 +16,13 @@ install -m 0755 "${SERVICE_DIR}/src/netcore_sip_switch.py" /usr/local/bin/netcor
 install -m 0755 "${SERVICE_DIR}/agi/netcore-sip-route.py" /var/lib/asterisk/agi-bin/netcore-sip-route.py
 if [[ ! -f /etc/netcore/sip-switch.toml ]]; then
   install -m 0640 "${SERVICE_DIR}/config/sip-switch.example.toml" /etc/netcore/sip-switch.toml
+  python3 - /etc/netcore/sip-switch.toml "$NETCORE_ASTERISK_BINARY" <<'PY'
+from pathlib import Path
+import json, sys
+path = Path(sys.argv[1])
+path.write_text(path.read_text().replace('binary = "/usr/sbin/asterisk"',
+                                       'binary = ' + json.dumps(sys.argv[2]), 1))
+PY
 fi
 install -m 0644 "${SERVICE_DIR}/systemd/netcore-sip-switch.service" /etc/systemd/system/netcore-sip-switch.service
 

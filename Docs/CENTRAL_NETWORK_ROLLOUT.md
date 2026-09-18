@@ -55,8 +55,9 @@ Der getrennte Core-Medienpfad transportiert bereits codierte TETRA-Sprachframes:
 
 Die folgenden Befehle werden **auf dem jeweils genannten Host** als root ausgeführt.
 Das Repository wird hier unter `/opt/netcore-tetra` angenommen. Bestehende TOML-
-Dateien werden von den Updates erhalten. Nur Installationsskripte übernehmen bei
-fehlenden Dateien die Beispiele. Tatsächliche LXC-Adressen aus der eigenen
+Dateien werden von den Updates erhalten. Der lokale Fallback-Installer erzeugt
+seine Konfiguration aus den übergebenen Parametern; eine vorhandene Datei wird
+gesichert und ersetzt. Deshalb nicht als normalen Update-Befehl verwenden. Tatsächliche LXC-Adressen aus der eigenen
 Installation verwenden; `10.0.1.XX` in Beispielen ist kein lauffähiger Endpunkt.
 
 Nach dem Merge auf jedem betroffenen Host:
@@ -79,6 +80,52 @@ Vor Backend-/TBS-Neustarts laufende Testgespräche beenden. Zuerst Call Control 
 Media Switch aktualisieren, anschließend die TBS. Der neue Zielrufbezug erfordert
 den passenden Media-Switch- und TBS-Stand. Node Gateway und Mobility Core brauchen
 für dieses Paket keinen eigenen Code-Update, müssen aber verbunden und erreichbar sein.
+
+## Asterisk auf Debian/Raspberry Pi OS Trixie
+
+Der lokale Fallback benötigt einen Asterisk auf der TBS; die bereits funktionierende
+native SIP-Verbindung zur PBX ersetzt diesen lokalen Dienst nicht. Trixie bietet
+in den Standardquellen derzeit keinen Asterisk-Paketkandidaten. Beide Installer
+(TBS-Fallback und zentraler SIP-Switch) verwenden deshalb denselben Helfer:
+
+1. Einen vorhandenen, ausführbaren Asterisk weiterverwenden.
+2. Andernfalls einen verfügbaren APT-Kandidaten aus den eingerichteten Quellen installieren.
+3. Ohne APT-Kandidaten Asterisk **22.11.0 LTS** aus dem offiziellen Release-Archiv
+   bauen, vor dem Entpacken gegen die im Repository hinterlegte SHA-256 prüfen
+   und mit gebündeltem PJPROJECT installieren.
+
+Der Helfer kann auf der **TBS oder dem SIP-Switch-LXC** separat ausgeführt werden:
+
+```bash
+cd /opt/netcore-tetra
+bash system-backend/sip-switch/install/ensure-asterisk.sh
+```
+
+Danach den jeweiligen vollständigen Installer mit den erforderlichen Parametern
+aufrufen. Ein wegen des fehlenden Pakets abgebrochener TBS-Installer hat noch keine
+Fallback-Konfiguration erzeugt; das Update-Skript ist deshalb weiterhin nicht der
+richtige nächste Schritt. Die Bibliotheken und Buildwerkzeuge kommen aus den
+bestehenden Paketquellen; der Helfer fügt keine anderen Debian-Suites hinzu.
+
+Der Quellbau verwendet standardmäßig zwei Build-Jobs. Bei knappem RAM oder parallel
+laufender Basisstation kann `NETCORE_ASTERISK_BUILD_JOBS=1` vorangestellt werden;
+den Build vorzugsweise außerhalb eines Funklasttests ausführen. Der Quellbau legt
+fehlende Grundkonfiguration und eine systemd-Unit an. Vorhandene Konfigurationsdateien
+und Service-Units werden erhalten, `make samples` wird nicht ausgeführt. Beim Quellbau
+startet der Helfer Asterisk noch nicht; das übernimmt der anschließende vollständige
+Installer. Beim APT-Weg können die Paket-Skripte den Dienst bereits starten.
+Eine abgebrochene Quellinstallation wird beim erneuten Aufruf vervollständigt,
+auch wenn die Asterisk-Binärdatei bereits vorhanden ist.
+
+Quellbau-Version und Prüfsumme stehen nach Installation in
+`/var/lib/netcore-asterisk/source-install.txt`. APT aktualisiert einen so installierten
+Asterisk nicht. Für spätere Asterisk-Updates sind ein eigener Wartungsschritt und
+eine geprüfte Release-Version/Prüfsumme erforderlich; gewöhnliche NetCore-Updates
+ersetzen einen vorhandenen Asterisk nicht automatisch.
+
+Quellen: [Debian-Paketstatus](https://security-tracker.debian.org/tracker/source-package/asterisk),
+[offizielle Asterisk-Releases](https://downloads.asterisk.org/pub/telephony/asterisk/),
+[Upstream-Buildanleitung](https://docs.asterisk.org/Getting-Started/Installing-Asterisk/Installing-Asterisk-From-Source/Building-and-Installing-Asterisk/).
 
 ## LXC: Call Control (8120)
 
@@ -162,8 +209,20 @@ Neuinstallation des lokalen Asterisk/Fallbacks:
 
 ```bash
 cd /opt/netcore-tetra
-bash system-backend/sip-switch/install/install-tbs-local-fallback.sh
+bash system-backend/sip-switch/tbs-fallback/install/install-tbs-local-fallback.sh \
+  '<NODE-ID>' '<TBS-IP>' '<SIP-SWITCH-IP>' \
+  '<CENTRAL-USER>' '<CENTRAL-PASSWORD>' \
+  '10.0.1.21' '<PBX-FALLBACK-ID>' '<PBX-AUTH-USER>' '<PBX-PASSWORD>'
 ```
+
+Die Platzhalter vor Ausführung ersetzen. Die letzten zwei Argumente bei einem
+PBX-Trunk ohne Authentifizierung weglassen. Zentraler Benutzer und Passwort müssen
+zum TBS-Eintrag des SIP-Switches passen, die PBX-Daten zur vorhandenen PBX.
+Der Installer richtet lokalen Asterisk ein und startet ihn neu.
+
+Fehlt `/etc/netcore/tbs-sip-fallback.toml`, ist ein Update noch nicht möglich.
+Bei früher eingerichteter Installation zuerst die vorhandene Konfiguration aus
+einer Sicherung wiederherstellen; sonst die obige Erstinstallation durchführen.
 
 In `/etc/netcore/tbs-sip-fallback.toml` den zentralen SIP-Endpunkt und den
 PBX-Ersatztrunk zur PBX `10.0.1.21` konfigurieren. Unter `[central]` bei abweichender

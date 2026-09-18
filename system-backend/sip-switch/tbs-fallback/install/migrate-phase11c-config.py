@@ -10,6 +10,8 @@ def main() -> int:
     parser.add_argument("--config", default="/etc/netcore/tbs-sip-fallback.toml")
     args = parser.parse_args()
     path = Path(args.config)
+    if not path.is_file():
+        parser.error(f"Konfiguration fehlt: {path}; zuerst installieren oder aus Sicherung wiederherstellen")
     text = path.read_text(encoding="utf-8")
     original = text
     text = text.replace('phase = "11b"', 'phase = "11c"', 1)
