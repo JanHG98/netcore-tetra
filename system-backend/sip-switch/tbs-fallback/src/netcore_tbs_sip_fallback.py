@@ -333,6 +333,7 @@ def render_extensions(cfg: dict[str, Any]) -> str:
         " same => n(unavailable),Congestion(5)",
         "",
         "[netcore-from-pbx-fallback]",
+        "exten => _[Tt]X!,1,Goto(${EXTEN:1},1)",
         "exten => _X!,1,NoOp(NetCore direct PBX fallback -> local TBS ${EXTEN})",
         " same => n,GotoIf($[\"${DB(netcore/failover_mode)}\"=\"pbx_direct\"]?fallback-active:fallback-blocked)",
         " same => n(fallback-blocked),Hangup(21)",
@@ -351,7 +352,9 @@ def render_extensions(cfg: dict[str, Any]) -> str:
         else:
             lines += [" same => n,Set(NETCORE_TETRA_NUMBER=${EXTEN})"]
         lines += [
-            f" same => n(deliver),Set(NETCORE_TBS_CONTACTS=${{PJSIP_DIAL_CONTACTS({n['native']},{n['native']},${{NETCORE_TETRA_NUMBER}})}})",
+            ' same => n(deliver),GotoIf(${REGEX("^[0-9]+$" ${NETCORE_TETRA_NUMBER})}?valid-number:invalid-number)',
+            " same => n(invalid-number),Hangup(28)",
+            f" same => n(valid-number),Set(NETCORE_TBS_CONTACTS=${{PJSIP_DIAL_CONTACTS({n['native']},{n['native']},${{NETCORE_TETRA_NUMBER}})}})",
             " same => n,GotoIf($[\"${NETCORE_TBS_CONTACTS}\"=\"\"]?unavailable)",
             f" same => n,Dial(${{NETCORE_TBS_CONTACTS}},{tto})",
             " same => n,Hangup()",

@@ -12,6 +12,7 @@ on:
       - crates/tetra-entities/src/net_control_room/**
       - crates/tetra-entities/src/mm/**
       - tools/test_sip_network_runtime.py
+      - tools/test_sip_number_routing.py
       - crates/tetra-entities/src/phy/**
       - crates/tetra-entities/src/lmac/**
       - crates/tetra-entities/src/umac/**
@@ -60,6 +61,7 @@ jobs:
           python3 tools/check_sip_switch_phase11.py
           python3 tools/check_sip_switch_phase11c.py
           python3 tools/test_sip_network_runtime.py
+          python3 tools/test_sip_number_routing.py
       - name: Test central call and media adapters
         run: |
           cargo test -p tetra-entities --features recording,asterisk --lib central_control -- --nocapture

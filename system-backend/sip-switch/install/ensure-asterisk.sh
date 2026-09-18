@@ -92,7 +92,7 @@ netcore_asterisk_build_source() (
     res_pjsip_authenticator_digest res_pjsip_outbound_authenticator_digest \
     res_pjsip_endpoint_identifier_user res_pjsip_endpoint_identifier_ip \
     res_pjsip_session res_pjsip_sdp_rtp res_rtp_asterisk codec_ulaw pbx_config \
-    app_dial app_stack func_callerid res_agi func_db func_pjsip_contact; do
+    app_dial app_stack func_callerid res_agi func_db func_pjsip_contact func_strings; do
     [[ -f "/usr/lib/asterisk/modules/${module}.so" ]] || {
       echo "Benötigtes Asterisk-Modul fehlt: ${module}" >&2; exit 1;
     }
