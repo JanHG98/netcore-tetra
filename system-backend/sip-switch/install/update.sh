@@ -2,6 +2,9 @@
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SERVICE_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+source "${SCRIPT_DIR}/check-host-role.sh"
+netcore_check_sip_host_role central
+
 install -m 0644 "${SERVICE_DIR}/src/netcore_sip_runtime.py" /usr/local/bin/netcore_sip_runtime.py
 install -m 0755 "${SERVICE_DIR}/src/netcore_sip_switch.py" /usr/local/bin/netcore-sip-switch
 install -m 0755 "${SERVICE_DIR}/agi/netcore-sip-route.py" /var/lib/asterisk/agi-bin/netcore-sip-route.py

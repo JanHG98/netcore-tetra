@@ -4,6 +4,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SERVICE_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 REPO_ROOT="$(cd "${SERVICE_DIR}/../.." && pwd)"
 
+source "${SCRIPT_DIR}/check-host-role.sh"
+netcore_check_sip_host_role central
+
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
   python3 mosquitto-clients ca-certificates curl

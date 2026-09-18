@@ -83,6 +83,23 @@ für dieses Paket keinen eigenen Code-Update, müssen aber verbunden und erreich
 
 ## Asterisk auf Debian/Raspberry Pi OS Trixie
 
+Die beiden SIP-Rollen gehören auf getrennte Hosts. Beide verwalten dieselben
+Asterisk-Hauptdateien und binden standardmäßig UDP 5060. Installations- und
+Update-Skripte brechen deshalb vor Änderungen ab, wenn die andere Rolle auf
+dem Host konfiguriert, geladen oder als Dienst aktiv/aktiviert ist.
+
+| Host im aktuellen Aufbau | Rolle | Installer |
+| --- | --- | --- |
+| TBS `SRV-M-TBS-01`, `10.0.1.20` | Lokaler SIP-Fallback | `sip-switch/tbs-fallback/install/install-tbs-local-fallback.sh` |
+| LXC `10.0.1.125` | Zentraler SIP-Switch | `sip-switch/install/install.sh` |
+| PBX `10.0.1.21` | Bestehende Telefonanlage | Kein NetCore-SIP-Installer |
+
+Alle Installer-Pfade beziehen sich auf `system-backend/`. Werte wie
+`<PBX-FALLBACK-ID>` sind vor Ausführung zu ersetzen. Für eine PBX-Nebenstelle
+104 ist die SIP-Registrierungskennung normalerweise `104`; `auth_username`
+ist separat die Digest-Anmeldekennung. Falls die PBX beide unterschiedlich
+konfiguriert, die tatsächliche Registrierungskennung verwenden.
+
 Der lokale Fallback benötigt einen Asterisk auf der TBS; die bereits funktionierende
 native SIP-Verbindung zur PBX ersetzt diesen lokalen Dienst nicht. Trixie bietet
 in den Standardquellen derzeit keinen Asterisk-Paketkandidaten. Beide Installer
@@ -126,6 +143,71 @@ ersetzen einen vorhandenen Asterisk nicht automatisch.
 Quellen: [Debian-Paketstatus](https://security-tracker.debian.org/tracker/source-package/asterisk),
 [offizielle Asterisk-Releases](https://downloads.asterisk.org/pub/telephony/asterisk/),
 [Upstream-Buildanleitung](https://docs.asterisk.org/Getting-Started/Installing-Asterisk/Installing-Asterisk-From-Source/Building-and-Installing-Asterisk/).
+
+### Zentralen SIP-Switch versehentlich auf der TBS installiert
+
+Nur auf der betroffenen **TBS**, nicht auf dem SIP-Switch-LXC ausführen. Die
+manuell laufende Basisstation für die Umstellung in ihrem Terminal mit Ctrl+C
+beenden. Sonst kann ihre bisherige direkte PBX-Registrierung noch parallel
+zum neuen lokalen Gateway laufen.
+
+Nach Übernahme des Fixes auf `mqtt` kann zunächst ohne Änderungen geprüft werden:
+
+```bash
+cd /opt/netcore-tetra
+git pull --ff-only origin mqtt
+python3 system-backend/sip-switch/install/repair-tbs-local-fallback.py \
+  --node-id SRV-M-TBS-01 --pbx-user 104
+```
+
+Wenn `104` die gewünschte PBX-Registrierungskennung ist, Reparatur ausführen:
+
+```bash
+python3 system-backend/sip-switch/install/repair-tbs-local-fallback.py \
+  --node-id SRV-M-TBS-01 --pbx-user 104 --apply
+```
+
+Das Werkzeug sichert die Asterisk-Konfiguration, die betroffenen NetCore-Dateien
+und den Fallback-Zustand unter `/var/backups/netcore-sip-repair/`. Es deaktiviert
+`netcore-sip-switch.service`, entfernt nur dessen drei Include-Verweise und
+archiviert die zentrale TOML-/AGI-Konfiguration. Andere Include-Verweise bleiben
+erhalten. Die drei PBX-Felder `username`, `from_user`, `contact_user` werden
+angepasst, Zugangspasswörter bleiben erhalten. Anschließend wird der lokale
+Fallback neu gerendert und Asterisk samt Fallback-Controller neu gestartet.
+Der Fallback-Zustand wird nicht auf Zentralbetrieb gezwungen. Bei einem Fehler
+wird abgebrochen und der Sicherungspfad ausgegeben; eine automatische Rückkehr
+zur kollidierenden Doppelinstallation erfolgt nicht.
+
+Danach die native SIP-Anbindung in der tatsächlich verwendeten TBS-Konfiguration
+umstellen (hier beispielhaft `/opt/netcore-tetra/config.toml`):
+
+```bash
+bash system-backend/sip-switch/install/apply-tbs-local-asterisk-config.sh \
+  --config /opt/netcore-tetra/config.toml
+bash system-backend/sip-switch/install/tbs-fallback-status.sh
+asterisk -rx 'pjsip show transports'
+asterisk -rx 'pjsip show registrations'
+```
+
+Die Basisstation anschließend wie bisher mit dieser Konfiguration starten.
+Für diese Installationskorrektur ist kein neuer Rust-Build nötig.
+Auf **LXC `10.0.1.125`** den zentralen Installer nur bei noch fehlender Installation
+ausführen; eine vorhandene Einrichtung mit `sip-switch/install/update.sh`
+aktualisieren. PBX-Trunk, Mobility-Core-Adresse und aktivierter TBS-Eintrag gehören
+in dessen `/etc/netcore/sip-switch.toml`. Der TBS-Eintrag verwendet
+`node_id = "SRV-M-TBS-01"`, `username = "tbs-srv-m-tbs-01"` und das lokal
+konfigurierte zentrale Passwort. Einen vorhandenen Eintrag bearbeiten statt
+einen zweiten mit gleicher Node-ID anzuhängen.
+
+Die Bereitschaft des zentralen Dienstes anschließend von der TBS prüfen:
+
+```bash
+curl -sS --max-time 5 -w '\nHTTP %{http_code}\n' http://10.0.1.125:8300/health/ready
+```
+
+HTTP 200, eine erfolgreiche zentrale SIP-Registrierung und ein erfolgreicher
+aktueller Fallback-Probe bestätigen Zentralbetrieb. Bei noch fehlender zentraler
+Bereitschaft kann `PBX_DIRECT_ACTIVE` der erwartete Zwischenzustand sein.
 
 ## LXC: Call Control (8120)
 
