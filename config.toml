@@ -770,20 +770,20 @@ timeout_ms = 2000
 # In the distributed LXC topology the TBS connects to the Node Gateway, not
 # directly to the Control Room. The gateway supplies the per-service health
 # matrix used by the local edge-fallback state machine.
-enabled = false
-host = "10.0.20.10"
+enabled = true
+host = "10.0.1.179"
 port = 8080
 use_tls = false
 endpoint_path = "/ws/node"
 
 # Optional, but recommended: stable and human-readable.
-node_id = "SRV-M_TBS-01"
-station_name = "SRV-M_TBS-01"
+node_id = "SRV-M-TBS-01"
+station_name = "SRV-M-TBS-01"
 site = "Main"
 
 # Route normal SDS and status traffic through the central SDS Router.
 # Keep disabled for a fully local standalone TBS.
-central_sds_routing = false
+central_sds_routing = true
 
 # Open-Lab phase: no token, username/password or TLS is configured here.
 # Keep this endpoint inside the isolated test/management network.
@@ -1068,9 +1068,6 @@ enabled = true
 outbound_prefix = "91"
 strip_outbound_prefix = true
 inbound_prefix = "T"
-# Local gateway SSI for incoming phone calls; match the radio's incoming PABX identity.
-# The caller's phone number is sent separately as External Subscriber Number.
-inbound_gateway_issi = 16777184
 register = true
 codec = "PCMU"
 service_numbers = ["*"]
@@ -1078,11 +1075,13 @@ rtp_port_min = 30000
 rtp_port_max = 30100
 bind_addr = "0.0.0.0"
 bind_port = 5062
-remote_host = "10.0.1.21"
+remote_host = "127.0.0.1"
 remote_port = 5060
 contact_host = "10.0.1.20"
-from_domain = "10.0.1.21"
-local_user = "101"
-auth_user = "101"
-password = "101"
+from_domain = "127.0.0.1"
+local_user = "netcore-native-srv-m-tbs-01"
+auth_user = "netcore-native-srv-m-tbs-01"
+password = "openlab-netcore-native-srv-m-tbs-01"
 realm = "asterisk"
+options_interval_secs = 10
+inbound_setup_timeout_secs = 30
