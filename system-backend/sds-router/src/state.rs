@@ -2460,7 +2460,9 @@ fn extract_message_reference(sds_type: u8, protocol_id: u8, payload: &[u8]) -> O
         && matches!(protocol_id, 0x82 | 0x89)
         && payload.len() >= 4
         && payload[1] != 0x10)
-        .then_some(payload[2])
+        // Status and short SDS payloads have no reference byte. Access it only
+        // after the length/type checks, otherwise the shared state is poisoned.
+        .then(|| payload[2])
 }
 
 // Was: Führt den Arbeitsschritt `next_message_reference` für next Nachricht reference aus.
@@ -2716,6 +2718,82 @@ mod tests {
         state.subscribers.insert(4_010_002, SubscriberLocation {
             issi: 4_010_002, node_id: "tbs-1".to_string(), last_seen: now_iso(),
         });
+    }
+
+    #[test]
+    fn status_submission_keeps_router_usable_and_dispatches_status() {
+        let config = test_config();
+        let router = SharedSdsRouter::load(config.clone()).unwrap();
+        add_serving_node(&router);
+        let input = serde_json::from_value(json!({
+            "source_issi": 4_010_001, "dest_issi": 4_010_002,
+            "sds_type": 0, "status_code": 1
+        })).unwrap();
+        let (message, requests) = router.create_message(input).unwrap();
+        assert_eq!(message.payload, vec![0, 1]);
+        assert_eq!(message.message_reference, None);
+        assert_eq!(requests.len(), 1);
+        assert!(matches!(&requests[0], BackendRequest::Command {
+            command: ControlCommand::SendStatus { pre_coded_status: 1, .. }, ..
+        }));
+        assert_eq!(router.status().messages_total, 1);
+        assert_eq!(router.nodes().len(), 1);
+        assert_eq!(load_database(&config).unwrap().messages[&message.id].status_code, Some(1));
+        assert!(router.tick().is_empty());
+        let (text, requests) = router.create_message(alert_input("alert:after-status")).unwrap();
+        assert_eq!(requests.len(), 1);
+        assert_eq!(text.message_reference, Some(text.payload[2]));
+    }
+
+    #[test]
+    fn short_sds_submissions_do_not_poison_router() {
+        let router = SharedSdsRouter::load(test_config()).unwrap();
+        for (sds_type, payload_hex) in [(1, "00 01"), (4, "82"), (4, "82 04"), (4, "82 04 21")] {
+            let input = serde_json::from_value(json!({
+                "source_issi": 4_010_001, "dest_issi": 4_010_002,
+                "sds_type": sds_type, "payload_hex": payload_hex
+            })).unwrap();
+            let (message, requests) = router.create_message(input).unwrap();
+            assert!(requests.is_empty());
+            assert_eq!(message.message_reference, None);
+            assert_eq!(router.message(&message.id).unwrap().payload, message.payload);
+        }
+        assert_eq!(router.status().messages_total, 4);
+        assert!(router.tick().is_empty());
+        assert_eq!(extract_message_reference(4, 0x82, &[0x82, 0x04, 0x21, 0x01]), Some(0x21));
+        assert_eq!(extract_message_reference(4, 0x82, &[0x82, 0x10, 0x00, 0x21]), None);
+    }
+
+    #[test]
+    fn short_radio_ingress_keeps_status_and_subsequent_delivery_usable() {
+        let router = SharedSdsRouter::load(test_config()).unwrap();
+        let cases = [
+            (0, vec![0, 1]), (1, vec![0, 1]),
+            (4, vec![]), (4, vec![0x82]), (4, vec![0x82, 0x04]), (4, vec![0x82, 0x04, 0x21]),
+        ];
+        for (index, (sds_type, payload)) in cases.into_iter().enumerate() {
+            let id = format!("short-ingress-{index}");
+            let requests = router.handle_backend_event(telemetry_event(TelemetryEvent::SdsEdgeIngress {
+                message_id: id.clone(), ingress: "radio".to_string(),
+                source_issi: 4_010_001, dest_issi: 4_010_003, is_group: false,
+                sds_type, protocol_id: 0x82, len_bits: (payload.len() * 8) as u16,
+                payload: payload.clone(), priority: 0,
+            }));
+            assert!(requests.is_empty());
+            let message = router.message(&id).unwrap();
+            assert_eq!(message.payload, payload);
+            assert_eq!(message.message_reference, None);
+            assert_eq!(router.status().messages_total, index + 1);
+        }
+        assert!(router.tick().is_empty());
+        add_serving_node(&router);
+        let (text, requests) = router.create_message(alert_input("alert:after-short-ingress")).unwrap();
+        assert_eq!(requests.len(), 1);
+        assert!(matches!(&requests[0], BackendRequest::Command {
+            command: ControlCommand::DeliverSds { dest_ssi: 4_010_002, .. }, ..
+        }));
+        assert_eq!(text.message_reference, Some(text.payload[2]));
+        assert_eq!(router.status().messages_total, 7);
     }
 
     #[test]
