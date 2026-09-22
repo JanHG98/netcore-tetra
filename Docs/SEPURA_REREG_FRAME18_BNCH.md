@@ -65,7 +65,14 @@ if pgrep -x bluestation-bs >/dev/null; then
     exit 1
 fi
 test -s ./config.toml
-git switch katwarn/nina
+git remote set-branches origin katwarn/nina
+git fetch origin
+if git show-ref --verify --quiet refs/heads/katwarn/nina; then
+    git switch katwarn/nina
+else
+    git switch --track -c katwarn/nina origin/katwarn/nina
+fi
+git branch --set-upstream-to=origin/katwarn/nina katwarn/nina
 git pull --ff-only origin katwarn/nina
 if [ -f /root/.cargo/env ]; then . /root/.cargo/env; fi
 cargo test -p tetra-entities --lib umac::subcomp::bs_sched::tests:: -- --nocapture
@@ -81,6 +88,8 @@ echo "Logdatei: $REREG_LOG"
 
 Der Befehl verwendet die vorhandene `config.toml`. Er setzt lokale Änderungen
 nicht zurück und bricht bei Pull-, Test- oder Buildfehlern ab.
+Die Fetch-Zuordnung wird zuerst auf `katwarn/nina` umgestellt. Das behebt auch
+`couldn't find remote ref refs/heads/mqtt` bei alten Single-Branch-Klonen.
 Auf den LXC-Diensten ist für diese Korrektur kein Update nötig.
 
 Für den Vergleich dieselbe Konfiguration, Antennenposition und dasselbe
