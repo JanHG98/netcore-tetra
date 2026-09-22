@@ -174,7 +174,26 @@ def run_smoke(binary):
             expect_error(client, 404, "GET", "/api/v1/idempotency/alert:expired-smoke")
             status = client.request("GET", "/api/v1/status")
             assert status["messages_total"] == 0 and status["node_gateway_connected"] is False
-            print("PASS: real AlertService/SDS HTTP submission, replay/conflict, absolute deadline, cancellation, two restarts, durable tombstone; no gateway or radio connected.")
+            # A two-byte status previously panicked while extracting a text
+            # reference. The process stayed live, but every state API lost its
+            # HTTP response because the shared mutex was poisoned.
+            short_messages = [
+                {"sds_type": 0, "status_code": 1},
+                {"sds_type": 1, "payload_hex": "0001"},
+                {"sds_type": 4, "payload_hex": "82"},
+            ]
+            for index, payload in enumerate(short_messages, 1):
+                message = client.request("POST", "/api/v1/messages", {
+                    "source_issi": 4_010_001, "dest_issi": 4_010_002, **payload,
+                })
+                assert message["message_reference"] is None
+                assert client.request("GET", "/health/live")["status"] == "live"
+                assert client.request("GET", "/api/v1/status")["messages_total"] == index
+                assert client.request("GET", "/api/v1/nodes") == []
+                # No gateway is connected in this test: readiness must answer
+                # with a valid HTTP 503, rather than closing the connection.
+                expect_error(client, 503, "GET", "/health/ready", contains="node_gateway_connected")
+            print("PASS: real AlertService/SDS HTTP submission, replay/conflict, absolute deadline, cancellation, two restarts, durable tombstone, short SDS/status without API failure; no gateway or radio connected.")
         finally:
             if service is not None:
                 service.store.close()
