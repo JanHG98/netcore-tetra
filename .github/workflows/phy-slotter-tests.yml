@@ -2,7 +2,7 @@ name: Radio traffic regression tests
 
 on:
   pull_request:
-    branches: [mqtt]
+    branches: [mqtt, 'katwarn/nina']
     paths:
       - system-backend/sip-switch/**
       - system-backend/media-switch/**
