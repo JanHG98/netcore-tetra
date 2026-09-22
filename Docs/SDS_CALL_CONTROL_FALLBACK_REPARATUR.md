@@ -1,5 +1,7 @@
 # SDS Router und Call Control: wechselnden Fallback reparieren
 
+**SDS-Router läuft, aber die WebUI zeigt einen Netzwerkfehler und das Protokoll meldet `index out of bounds` / `SDS router state poisoned`?** Dann gilt die [Reparatur für den Absturz nach einer Statusnachricht](SDS_ROUTER_STATUS_ABSTURZ_REPARATUR.md). Dafür wird ausschließlich der SDS-Router-LXC aktualisiert.
+
 Die TBS zeigt wiederholt **ausgefallen → Fallback → recovering** für SDS Router und Call Control. Bei der untersuchten Installation antwortete `/health/live` in wenigen Millisekunden, während `/health/ready` mehrere Sekunden benötigte oder nach sechs Sekunden noch nicht antwortete. Das Node Gateway wartete nur 1,5 Sekunden und meldete `read failed: Resource temporarily unavailable (os error 11)`.
 
 Beide Dienste schrieben bei Gateway-Telemetrie ihre vollständige Datenbank, auch ohne Änderung an gespeicherten Nachrichten oder Rufen. Währenddessen war der gemeinsame Zustand für die Bereitschaftsprüfung gesperrt. Die Korrektur vermeidet diese unveränderten Schreibvorgänge. Echte Nachrichten-, Zustell-, Ruf- und Wiederherstellungsänderungen werden weiterhin gespeichert. Beim SDS Router bleibt die dauerhafte Speicherung vor dem Versand erhalten.
