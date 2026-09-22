@@ -12,11 +12,11 @@
 | **Node-Gateway-LXC und übrige LXCs** | Keine Änderung |
 | **Neuer LXC** | Nicht erforderlich |
 
-Die bisherigen Warn- und Versandkorrekturen aus [PR #49](https://github.com/JanHG98/netcore-tetra/pull/49) sind bereits in **`katwarn/nina`** enthalten. Die neue Geräteübersicht liegt bis zu ihrer Zusammenführung auf **`fix/warning-device-overview`**; nur der Updateblock in Schritt 5 verwendet diesen neuen Branch. Die folgenden Einrichtungs- und Reparaturbefehle verwenden `katwarn/nina`.
+Die bisherigen Warn- und Versandkorrekturen aus [PR #49](https://github.com/JanHG98/netcore-tetra/pull/49) und die neue Geräteübersicht aus [PR #50](https://github.com/JanHG98/netcore-tetra/pull/50) sind in **`katwarn/nina`** enthalten. Alle Einrichtungs-, Update- und Reparaturbefehle verwenden diesen Branch. Die früheren Arbeitsbranches werden nicht mehr benötigt.
 
 ## Ersteinrichtung oder noch fehlende Reparaturen
 
-**Bei einer Ersteinrichtung diese Reihenfolge abarbeiten: SDS-Router-LXC aktualisieren → Control-Room-LXC aktualisieren und mit Node Gateway verbinden → neuen Warn-LXC erstellen → TBS aktualisieren und prüfen → Versand einschalten.** Anschließend Schritt 5 ausführen, wenn die neue Geräteübersicht noch nicht in `katwarn/nina` enthalten ist.
+**Bei einer Ersteinrichtung diese Reihenfolge abarbeiten: SDS-Router-LXC aktualisieren → Control-Room-LXC aktualisieren und mit Node Gateway verbinden → neuen Warn-LXC erstellen → TBS aktualisieren und prüfen → Versand einschalten.** Die neue Geräteübersicht wird dabei bereits mit installiert; Schritt 5 ist nur für bestehende Warn-LXCs erforderlich.
 
 | System | Was du machen musst |
 |---|---|
@@ -492,7 +492,7 @@ Nach dem nächsten Geräteabgleich müssen Gerätezahl und Karte die angemeldete
   test -s /etc/netcore/alert-service.toml
   test -s /etc/netcore/alert-service.env
   update_dir=$(mktemp -d /opt/netcore-warn-overview.XXXXXX)
-  git clone --single-branch --branch fix/warning-device-overview https://github.com/JanHG98/netcore-tetra.git "$update_dir"
+  git clone --single-branch --branch katwarn/nina https://github.com/JanHG98/netcore-tetra.git "$update_dir"
   cd "$update_dir"
   bash system-backend/alert-service/install/update.sh
   systemctl is-active netcore-alert-service
@@ -519,7 +519,7 @@ systemctl status netcore-alert-service --no-pager -l
 journalctl -u netcore-alert-service -n 60 --no-pager
 ```
 
-Nach Zusammenführung der Geräteübersicht kann bei späteren Updates im obigen Klonbefehl `--branch katwarn/nina` verwendet werden. Der alte Branch `feat/katwarn-nina-alerts` wird nicht mehr benötigt.
+**Falls ein älterer Updateblock mit `Remote branch fix/warning-device-overview not found` abbricht:** Der Arbeitsbranch wurde nach der Zusammenführung gelöscht. Den vollständigen korrigierten Block oben erneut ausführen; er verwendet `katwarn/nina` und erstellt einen neuen Arbeitsordner. Durch `set -e` wurde beim fehlgeschlagenen Klonen noch kein Updater ausgeführt und der laufende Dienst nicht verändert.
 
 **Diese Datenbanken behalten:** Auf dem Warn-LXC `/var/lib/netcore-alert-service/alerts.sqlite3`, auf dem SDS-Router-LXC `/var/lib/netcore-sds-router/messages.json` bzw. dein abweichender `storage.database_path`. Sie enthalten die Duplikatsperren. Nicht löschen oder mit einem alten Stand überschreiben.
 
