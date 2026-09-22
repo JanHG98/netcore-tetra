@@ -1,6 +1,6 @@
-//! FlowStation Telemetry channel: one-way BTS -> collector push of live
+//! Basestation Telemetry channel: one-way BTS -> collector push of live
 //! station state over a BTS-initiated WebSocket (subprotocol
-//! `bluestation-telemetry-v2`). See flowstation-telemetry-control-api.md.
+//! `basestation-telemetry-v2`). See basestation-telemetry-control-api.md.
 use crate::{fsnet, state::AppState};
 use axum::extract::ws::{Message, WebSocket};
 use futures_util::StreamExt;
@@ -12,7 +12,7 @@ use std::{
 };
 use tracing::{debug, info, warn};
 
-fn now_ms() -> u64 {
+pub fn now_ms() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_millis() as u64
 }
 
@@ -174,6 +174,19 @@ pub struct TelemetryCall {
     pub started_at_ms: u64,
 }
 
+/// One subscriber registration lifecycle event (register / deregister /
+/// timeout-drop) on a Basestation, kept as a rolling log so the dashboard can
+/// show registration activity over time rather than only the current
+/// registered set (see `registrations_list`).
+#[derive(Debug, Clone, Serialize)]
+pub struct RegLogEntry {
+    pub at_ms: u64,
+    pub issi: u32,
+    /// "register", "deregister", or "timeout" (a silent drop after the
+    /// subscriber stopped renewing its registration).
+    pub kind: &'static str,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct SdsLogEntry {
     pub at_ms: u64,
@@ -185,12 +198,44 @@ pub struct SdsLogEntry {
     pub text: String,
 }
 
-/// Live, in-memory picture of one connected FlowStation BTS derived from its
+/// A telemetry SDS log entry as persisted to the history store, tagged with the
+/// reporting station so it can be told apart on replay.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SdsTelemetryRecord {
+    pub bts: String,
+    pub at_ms: u64,
+    pub direction: String,
+    pub source_issi: u32,
+    pub dest_issi: u32,
+    pub is_group: bool,
+    pub protocol_id: u8,
+    pub text: String,
+}
+
+impl SdsTelemetryRecord {
+    fn from_entry(bts: &str, entry: &SdsLogEntry) -> Self {
+        Self {
+            bts: bts.to_string(),
+            at_ms: entry.at_ms,
+            direction: entry.direction.clone(),
+            source_issi: entry.source_issi,
+            dest_issi: entry.dest_issi,
+            is_group: entry.is_group,
+            protocol_id: entry.protocol_id,
+            text: entry.text.clone(),
+        }
+    }
+}
+
+/// Live, in-memory picture of one connected Basestation BTS derived from its
 /// telemetry stream. Resets when the connection drops (no persistence, mirrors
 /// the rest of this server's dashboard state).
 #[derive(Debug, Clone, Serialize)]
 pub struct TelemetryBts {
     pub id: String,
+    /// Remote IP address of the Basestation's telemetry connection, e.g.
+    /// "10.19.144.201". `None` if the peer address could not be determined.
+    pub ip: Option<String>,
     pub connected_at_ms: u64,
     pub last_event_at_ms: u64,
     pub health: Option<HealthSnapshot>,
@@ -198,6 +243,16 @@ pub struct TelemetryBts {
     #[serde(skip)]
     pub registrations: HashSet<u32>,
     pub registration_count: usize,
+    /// Sorted list of registered subscriber ISSIs, derived from `registrations`.
+    /// Exposed to the dashboard so it can show who is registered on this station
+    /// (the `registrations` HashSet itself is skipped for stable JSON ordering).
+    pub registrations_list: Vec<u32>,
+    /// Rolling log of registration lifecycle events (register/deregister/
+    /// timeout) on this station, newest first, capped like `recent_sds`.
+    #[serde(skip)]
+    pub recent_regs: VecDeque<RegLogEntry>,
+    /// Serialized view of `recent_regs` for the dashboard.
+    pub recent_regs_out: Vec<RegLogEntry>,
     pub active_calls: HashMap<u16, TelemetryCall>,
     pub emergencies: HashSet<u32>,
     pub last_tx_quality: Option<TxQuality>,
@@ -206,18 +261,72 @@ pub struct TelemetryBts {
     #[serde(skip)]
     pub recent_sds: VecDeque<SdsLogEntry>,
     pub recent_sds_out: Vec<SdsLogEntry>,
+    /// Latest decoded position per subscriber ISSI, from textual position
+    /// beacons seen in the SDS stream on this station. Binary LIP beacons carry
+    /// no recoverable coordinates (see the `position` module), so this only
+    /// contains subscribers that beacon a textual position.
+    #[serde(skip)]
+    pub positions: HashMap<u32, MsPosition>,
+    /// Serialized view of `positions` for the dashboard/map, newest first.
+    pub positions_out: Vec<MsPosition>,
+    /// Position beacons that were seen but could NOT be turned into coordinates,
+    /// keyed by ISSI: binary LIP with no payload on the telemetry channel, or
+    /// no-fix (all-zero) reports. Lets the dashboard show "beaconing but not
+    /// plottable" instead of the radio appearing silent.
+    #[serde(skip)]
+    pub undecoded_beacons: HashMap<u32, UndecodedBeacon>,
+    /// Serialized view of `undecoded_beacons`, newest first.
+    pub undecoded_beacons_out: Vec<UndecodedBeacon>,
+    /// Latest transmit EVM (error vector magnitude, %) from TxQuality. Lower is
+    /// better; shown as an SNR-adjacent quality indicator (not a true SNR).
+    pub evm_pct: Option<f32>,
+    /// Latest received signal strength (dBFS) reported for an MS via MsRssi.
+    /// This is RSSI, not SNR. Retained as the station's most-recent reading.
+    pub rssi_dbfs: Option<f32>,
+    /// Latest RSSI (dBFS) per subscriber ISSI, so a specific call's mobile
+    /// station can be shown with its own received-signal reading.
+    #[serde(skip)]
+    pub ms_rssi: HashMap<u32, f32>,
+    /// Serialized [issi, rssi_dbfs] pairs of `ms_rssi` for the dashboard.
+    pub ms_rssi_out: Vec<(u32, f32)>,
+}
+
+/// A position beacon that was observed but not decodable to coordinates.
+#[derive(Debug, Clone, Serialize)]
+pub struct UndecodedBeacon {
+    pub issi: u32,
+    pub at_ms: u64,
+    pub count: u32,
+    /// Why it could not be plotted (e.g. "binary LIP, no coordinates on
+    /// telemetry channel").
+    pub reason: String,
+}
+
+/// A decoded mobile-station position for the map.
+#[derive(Debug, Clone, Serialize)]
+pub struct MsPosition {
+    pub issi: u32,
+    pub lat: f64,
+    pub lon: f64,
+    pub at_ms: u64,
+    /// The raw SDS text the coordinates were parsed from (for the popup).
+    pub source_text: String,
 }
 
 impl TelemetryBts {
-    fn new(id: String) -> Self {
+    fn new(id: String, ip: Option<String>) -> Self {
         Self {
             id,
+            ip,
             connected_at_ms: now_ms(),
             last_event_at_ms: now_ms(),
             health: None,
             backhaul_connected: None,
             registrations: HashSet::new(),
             registration_count: 0,
+            registrations_list: Vec::new(),
+            recent_regs: VecDeque::new(),
+            recent_regs_out: Vec::new(),
             active_calls: HashMap::new(),
             emergencies: HashSet::new(),
             last_tx_quality: None,
@@ -225,27 +334,256 @@ impl TelemetryBts {
             last_sys_health: None,
             recent_sds: VecDeque::new(),
             recent_sds_out: Vec::new(),
+            positions: HashMap::new(),
+            positions_out: Vec::new(),
+            undecoded_beacons: HashMap::new(),
+            undecoded_beacons_out: Vec::new(),
+            evm_pct: None,
+            rssi_dbfs: None,
+            ms_rssi: HashMap::new(),
+            ms_rssi_out: Vec::new(),
         }
     }
 
     fn push_sds(&mut self, entry: SdsLogEntry) {
+        // If the SDS body carries a textual position (APRS/decimal/Maidenhead),
+        // record the latest coordinates for the sending subscriber so the map
+        // can plot it. Binary LIP beacons (empty text) yield nothing here.
+        if let Some(ll) = crate::position::parse_position(&entry.text) {
+            self.positions.insert(entry.source_issi, MsPosition {
+                issi: entry.source_issi,
+                lat: ll.lat,
+                lon: ll.lon,
+                at_ms: entry.at_ms,
+                source_text: entry.text.clone(),
+            });
+            self.undecoded_beacons.remove(&entry.source_issi);
+            self.sync_positions();
+            self.sync_undecoded();
+        } else if entry.protocol_id == 10 {
+            // A LIP position beacon arrived via telemetry, but with no decodable
+            // coordinates (binary LIP payloads are stripped to empty text on the
+            // telemetry channel; no-fix reports have no position). Track it so the
+            // dashboard can show the radio is beaconing-but-not-plottable rather
+            // than silent. If the same ISSI is already plotted from the Brew
+            // channel, don't overwrite that — just note the beacon.
+            let e = self.undecoded_beacons.entry(entry.source_issi).or_insert(UndecodedBeacon {
+                issi: entry.source_issi,
+                at_ms: entry.at_ms,
+                count: 0,
+                reason: "binary LIP / no coordinates on telemetry channel".to_string(),
+            });
+            e.at_ms = entry.at_ms;
+            e.count = e.count.saturating_add(1);
+            self.sync_undecoded();
+        }
         self.recent_sds.push_front(entry);
         while self.recent_sds.len() > 50 {
             self.recent_sds.pop_back();
         }
         self.recent_sds_out = self.recent_sds.iter().cloned().collect();
     }
+
+    /// Recomputes the serialized undecoded-beacon list (newest first).
+    fn sync_undecoded(&mut self) {
+        let mut list: Vec<UndecodedBeacon> = self.undecoded_beacons.values().cloned().collect();
+        list.sort_unstable_by(|a, b| b.at_ms.cmp(&a.at_ms));
+        self.undecoded_beacons_out = list;
+    }
+
+    /// Recomputes the serialized position list (newest first) after `positions`
+    /// changes.
+    fn sync_positions(&mut self) {
+        let mut list: Vec<MsPosition> = self.positions.values().cloned().collect();
+        list.sort_unstable_by(|a, b| b.at_ms.cmp(&a.at_ms));
+        self.positions_out = list;
+    }
+
+    /// Recomputes the serialized registration view (count + sorted ISSI list)
+    /// after the `registrations` set changes.
+    fn sync_registrations(&mut self) {
+        self.registration_count = self.registrations.len();
+        let mut list: Vec<u32> = self.registrations.iter().copied().collect();
+        list.sort_unstable();
+        self.registrations_list = list;
+    }
+
+    /// Appends a registration lifecycle event to the rolling log (newest
+    /// first, capped at 50 like `recent_sds`).
+    fn push_reg(&mut self, issi: u32, kind: &'static str) {
+        self.recent_regs.push_front(RegLogEntry { at_ms: now_ms(), issi, kind });
+        while self.recent_regs.len() > 50 {
+            self.recent_regs.pop_back();
+        }
+        self.recent_regs_out = self.recent_regs.iter().cloned().collect();
+    }
 }
 
 #[derive(Default)]
 pub struct TelemetryState {
     pub stations: HashMap<String, TelemetryBts>,
+    /// Positions decoded from the Brew SDS channel (LIP binary or text), keyed by
+    /// subscriber ISSI. This is the primary source when Basestation cannot be
+    /// modified: the raw SDS (incl. LIP payloads) is relayed over the Brew
+    /// protocol and decoded here, independent of the lossy telemetry SdsLog.
+    pub sds_positions: HashMap<u32, PositionFix>,
+    /// SDS entries observed on any Basestation telemetry channel, newest first,
+    /// persisted to the history store so this survives restarts (unlike the
+    /// per-station `recent_sds`, which resets when a BTS reconnects).
+    recent_sds: VecDeque<SdsTelemetryRecord>,
+    /// Serialized view of `recent_sds` for the dashboard.
+    pub recent_sds_out: Vec<SdsTelemetryRecord>,
+    /// Mobile-station registration lifecycle events (register/deregister)
+    /// observed on the Brew protocol channel directly, i.e. a `Terminal`-mode
+    /// client registering/deregistering an ISSI with this server — distinct
+    /// from the per-Basestation telemetry registrations in `stations`. Tagged
+    /// with a synthetic "brew" station id (see `RegLogEntry`/`bts` below) so
+    /// the dashboard's registration log can show both sources together.
+    /// Newest first, capped like the per-station logs; not persisted.
+    recent_brew_regs: VecDeque<RegLogEntry>,
+    /// Serialized view of `recent_brew_regs` for the dashboard.
+    pub recent_brew_regs_out: Vec<RegLogEntry>,
+    /// Latest per-ISSI RSSI reported directly on the main Brew protocol
+    /// channel (`CLASS_SERVICE` type `0x10`, `{"issi":N,"rssi_dbfs":F}`) --
+    /// not part of this server's original protocol coverage, but sent by at
+    /// least one real client (nexus-bs). Distinct from `TelemetryBts::ms_rssi`
+    /// (which comes from the separate Basestation Telemetry WebSocket): this
+    /// is keyed only by ISSI, with no BTS-id concept on the wire, so it isn't
+    /// nested under a station the way that one is.
+    pub brew_ms_rssi: HashMap<u32, f32>,
+    store: Option<Arc<crate::store::Store>>,
 }
 
 impl TelemetryState {
+    /// Creates a `TelemetryState` backed by an append-only store, replaying
+    /// persisted SDS telemetry history from disk.
+    pub fn with_store(store: Arc<crate::store::Store>) -> Self {
+        let mut recent_sds: VecDeque<SdsTelemetryRecord> = VecDeque::new();
+        if let Ok(records) = crate::store::Store::replay(store.path()) {
+            for rec in records {
+                if let crate::store::StoredRecord::SdsTelemetry(r) = rec {
+                    recent_sds.push_front(r);
+                    while recent_sds.len() > 200 { recent_sds.pop_back(); }
+                }
+            }
+        }
+        let recent_sds_out = recent_sds.iter().cloned().collect();
+        Self { recent_sds, recent_sds_out, store: Some(store), ..Self::default() }
+    }
+
+    fn persist(&self, rec: &crate::store::StoredRecord) {
+        if let Some(store) = &self.store {
+            if let Err(e) = store.append(rec) {
+                tracing::error!(error = %e, "failed to persist telemetry history record");
+            }
+        }
+    }
+
+    /// Records an SDS telemetry entry for `bts` in the durable, cross-restart
+    /// log (independent of the ephemeral per-station `recent_sds`).
+    fn record_sds_telemetry(&mut self, bts: &str, entry: &SdsLogEntry) {
+        let rec = SdsTelemetryRecord::from_entry(bts, entry);
+        self.persist(&crate::store::StoredRecord::SdsTelemetry(rec.clone()));
+        self.recent_sds.push_front(rec);
+        while self.recent_sds.len() > 200 { self.recent_sds.pop_back(); }
+        self.recent_sds_out = self.recent_sds.iter().cloned().collect();
+    }
+
     pub fn snapshot(&self) -> Vec<TelemetryBts> {
         self.stations.values().cloned().collect()
     }
+
+    /// Flat list of the latest decoded MS positions across all stations, each
+    /// tagged with the station that reported it, newest first. Only subscribers
+    /// that beacon a *textual* position appear (see the `position` module).
+    pub fn positions(&self) -> Vec<PositionFix> {
+        // Merge Brew-channel SDS positions (primary) with any per-station
+        // textual positions. On ISSI collision the newer fix wins.
+        let mut by_issi: HashMap<u32, PositionFix> = self.sds_positions.clone();
+        for s in self.stations.values() {
+            for p in s.positions.values() {
+                let fix = PositionFix {
+                    issi: p.issi, lat: p.lat, lon: p.lon, at_ms: p.at_ms,
+                    bts: s.id.clone(), source_text: p.source_text.clone(),
+                };
+                by_issi.entry(p.issi)
+                    .and_modify(|e| if fix.at_ms >= e.at_ms { *e = fix.clone(); })
+                    .or_insert(fix);
+            }
+        }
+        let mut out: Vec<PositionFix> = by_issi.into_values().collect();
+        out.sort_unstable_by(|a, b| b.at_ms.cmp(&a.at_ms));
+        out
+    }
+
+    /// Records a position decoded from the Brew SDS channel for `issi`.
+    pub fn record_sds_position(&mut self, issi: u32, lat: f64, lon: f64, at_ms: u64, source_text: String) {
+        self.sds_positions.insert(issi, PositionFix {
+            issi, lat, lon, at_ms, bts: "brew-sds".to_string(), source_text,
+        });
+        // This ISSI now has a real fix, so clear any "beaconing but not
+        // plottable" markers for it across all stations.
+        for s in self.stations.values_mut() {
+            if s.undecoded_beacons.remove(&issi).is_some() {
+                s.sync_undecoded();
+            }
+        }
+    }
+
+    /// Records a mobile-station registration lifecycle event seen directly on
+    /// the Brew protocol channel (a `Terminal`-mode client registering or
+    /// deregistering an ISSI with this server), so it appears in the same
+    /// registration log as Basestation telemetry registrations. `kind` is
+    /// "register" or "deregister".
+    pub fn record_brew_registration(&mut self, issi: u32, kind: &'static str) {
+        self.recent_brew_regs.push_front(RegLogEntry { at_ms: now_ms(), issi, kind });
+        while self.recent_brew_regs.len() > 50 {
+            self.recent_brew_regs.pop_back();
+        }
+        self.recent_brew_regs_out = self.recent_brew_regs.iter().cloned().collect();
+    }
+
+    /// Records an RSSI report for `issi` seen directly on the main Brew
+    /// protocol channel (see `brew_ms_rssi`'s doc comment).
+    pub fn record_brew_rssi(&mut self, issi: u32, rssi_dbfs: f32) {
+        self.brew_ms_rssi.insert(issi, rssi_dbfs);
+    }
+
+    /// Flat, newest-first list of registration lifecycle events across every
+    /// Basestation's telemetry channel *and* the Brew protocol channel
+    /// directly (tagged with the synthetic station id "brew"), for the
+    /// `/registrations` dashboard page. Capped to the most recent 100 entries.
+    pub fn registration_log(&self) -> Vec<RegLogRow> {
+        let mut out: Vec<RegLogRow> = self.stations.values()
+            .flat_map(|s| s.recent_regs_out.iter().map(|e| RegLogRow { bts: s.id.clone(), entry: e.clone() }))
+            .chain(self.recent_brew_regs.iter().map(|e| RegLogRow { bts: "brew".to_string(), entry: e.clone() }))
+            .collect();
+        out.sort_unstable_by(|a, b| b.entry.at_ms.cmp(&a.entry.at_ms));
+        out.truncate(100);
+        out
+    }
+}
+
+/// One row of the combined registration log served to the dashboard: a
+/// registration lifecycle event tagged with the station that reported it
+/// ("brew" for events seen directly on the Brew protocol channel, rather than
+/// via a Basestation's telemetry channel).
+#[derive(Debug, Clone, Serialize)]
+pub struct RegLogRow {
+    pub bts: String,
+    #[serde(flatten)]
+    pub entry: RegLogEntry,
+}
+
+/// A position fix as served to the map, including which station reported it.
+#[derive(Debug, Clone, Serialize)]
+pub struct PositionFix {
+    pub issi: u32,
+    pub lat: f64,
+    pub lon: f64,
+    pub at_ms: u64,
+    pub bts: String,
+    pub source_text: String,
 }
 
 pub async fn run(state: Arc<AppState>) -> anyhow::Result<()> {
@@ -259,20 +597,21 @@ pub async fn run(state: Arc<AppState>) -> anyhow::Result<()> {
         users: state.config.telemetry.users.clone(),
         tls: state.config.telemetry.tls.clone(),
     };
-    fsnet::serve(cfg, move |socket, identity| {
+    fsnet::serve(cfg, move |socket, identity, peer| {
         let state = state.clone();
-        async move { session(state, socket, identity).await }
+        async move { session(state, socket, identity, peer).await }
     })
     .await
 }
 
-async fn session(state: Arc<AppState>, socket: WebSocket, identity: Option<String>) {
+async fn session(state: Arc<AppState>, socket: WebSocket, identity: Option<String>, peer: Option<std::net::SocketAddr>) {
     let id = identity.unwrap_or_else(|| format!("telemetry-{}", uuid::Uuid::new_v4().simple()));
+    let ip = peer.map(|p| p.ip().to_string());
     {
         let mut t = state.telemetry.write().await;
-        t.stations.insert(id.clone(), TelemetryBts::new(id.clone()));
+        t.stations.insert(id.clone(), TelemetryBts::new(id.clone(), ip.clone()));
     }
-    info!(bts = %id, "FlowStation telemetry connected");
+    info!(bts = %id, ip = ip.as_deref().unwrap_or("unknown"), "Basestation telemetry connected");
 
     let (_tx, mut ws_rx) = socket.split();
     while let Some(item) = ws_rx.next().await {
@@ -287,7 +626,7 @@ async fn session(state: Arc<AppState>, socket: WebSocket, identity: Option<Strin
 
     state.telemetry.write().await.stations.remove(&id);
     state.monitor.emit("telemetry_disconnected", serde_json::json!({"id": id}));
-    info!(bts = %id, "FlowStation telemetry disconnected");
+    info!(bts = %id, "Basestation telemetry disconnected");
 }
 
 async fn handle_event(state: &Arc<AppState>, id: &str, data: &[u8]) {
@@ -311,10 +650,19 @@ async fn handle_event(state: &Arc<AppState>, id: &str, data: &[u8]) {
         | TelemetryEvent::SdrHealth(_) | TelemetryEvent::SysHealth(_)
         | TelemetryEvent::MsRssi { .. } | TelemetryEvent::TsVoiceActivity { .. });
 
+    let mut sds_entry: Option<SdsLogEntry> = None;
     match event {
-        TelemetryEvent::MsRegistration { issi } => { bts.registrations.insert(issi); bts.registration_count = bts.registrations.len(); }
-        TelemetryEvent::MsDeregistration { issi } | TelemetryEvent::MsTimeoutDrop { issi } => {
-            bts.registrations.remove(&issi); bts.registration_count = bts.registrations.len();
+        TelemetryEvent::MsRegistration { issi } => {
+            bts.registrations.insert(issi); bts.sync_registrations();
+            bts.push_reg(issi, "register");
+        }
+        TelemetryEvent::MsDeregistration { issi } => {
+            bts.registrations.remove(&issi); bts.sync_registrations();
+            bts.push_reg(issi, "deregister");
+        }
+        TelemetryEvent::MsTimeoutDrop { issi } => {
+            bts.registrations.remove(&issi); bts.sync_registrations();
+            bts.push_reg(issi, "timeout");
         }
         TelemetryEvent::GroupCallStarted { call_id, gssi, caller_issi, carrier_num, ts, priority } => {
             bts.active_calls.insert(call_id, TelemetryCall {
@@ -331,19 +679,315 @@ async fn handle_event(state: &Arc<AppState>, id: &str, data: &[u8]) {
         }
         TelemetryEvent::IndividualCallEnded { call_id } => { bts.active_calls.remove(&call_id); }
         TelemetryEvent::SdsLog { direction, source_issi, dest_issi, is_group, protocol_id, text } => {
-            bts.push_sds(SdsLogEntry { at_ms: now_ms(), direction, source_issi, dest_issi, is_group, protocol_id, text });
+            info!(bts = %id, channel = "telemetry", source_issi, dest_issi, is_group, protocol_id,
+                lip = (protocol_id == 10), has_text = !text.trim().is_empty(),
+                "SDS ({direction})");
+            let entry = SdsLogEntry { at_ms: now_ms(), direction, source_issi, dest_issi, is_group, protocol_id, text };
+            bts.push_sds(entry.clone());
+            sds_entry = Some(entry);
         }
-        TelemetryEvent::TxQuality(q) => bts.last_tx_quality = Some(q),
+        TelemetryEvent::TxQuality(q) => { bts.evm_pct = Some(q.evm_pct); bts.last_tx_quality = Some(q); }
         TelemetryEvent::SdrHealth(h) => bts.last_sdr_health = Some(h),
         TelemetryEvent::SysHealth(h) => bts.last_sys_health = Some(h),
         TelemetryEvent::HealthSnapshot(h) => bts.health = Some(h),
         TelemetryEvent::EmergencyAlarm { source_issi, .. } => { bts.emergencies.insert(source_issi); }
         TelemetryEvent::EmergencyCancel { source_issi } => { bts.emergencies.remove(&source_issi); }
         TelemetryEvent::BrewConnected { connected, .. } => bts.backhaul_connected = Some(connected),
+        TelemetryEvent::MsRssi { issi, rssi_dbfs } => {
+            bts.rssi_dbfs = Some(rssi_dbfs);
+            bts.ms_rssi.insert(issi, rssi_dbfs);
+            let mut v: Vec<(u32, f32)> = bts.ms_rssi.iter().map(|(k, val)| (*k, *val)).collect();
+            v.sort_unstable_by_key(|(k, _)| *k);
+            bts.ms_rssi_out = v;
+        }
         _ => {}
+    }
+    if let Some(entry) = sds_entry {
+        t.record_sds_telemetry(id, &entry);
     }
     drop(t);
     if notify {
         state.monitor.emit("telemetry", serde_json::json!({"id": id}));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sds(source_issi: u32, protocol_id: u8, text: &str, at_ms: u64) -> SdsLogEntry {
+        SdsLogEntry {
+            at_ms,
+            direction: "rx".to_string(),
+            source_issi,
+            dest_issi: 0,
+            is_group: false,
+            protocol_id,
+            text: text.to_string(),
+        }
+    }
+
+    #[test]
+    fn textual_position_beacon_is_stored() {
+        let mut bts = TelemetryBts::new("bts-1".to_string(), None);
+        bts.push_sds(sds(1001, 3, "44.4353, 26.1092", 100));
+        assert_eq!(bts.positions.len(), 1);
+        let p = &bts.positions[&1001];
+        assert!((p.lat - 44.4353).abs() < 0.01 && (p.lon - 26.1092).abs() < 0.01);
+        assert_eq!(bts.positions_out.len(), 1);
+    }
+
+    #[test]
+    fn empty_lip_beacon_stores_no_position() {
+        let mut bts = TelemetryBts::new("bts-1".to_string(), None);
+        // PID 10 with empty text (the binary-LIP case) yields no coordinates.
+        bts.push_sds(sds(1001, 10, "", 100));
+        assert!(bts.positions.is_empty());
+        assert!(bts.positions_out.is_empty());
+    }
+
+    #[test]
+    fn latest_position_replaces_older_for_same_issi() {
+        let mut bts = TelemetryBts::new("bts-1".to_string(), None);
+        bts.push_sds(sds(1001, 3, "44.00, 26.00", 100));
+        bts.push_sds(sds(1001, 3, "45.00, 27.00", 200));
+        assert_eq!(bts.positions.len(), 1);
+        let p = &bts.positions[&1001];
+        assert!((p.lat - 45.0).abs() < 0.01, "should keep newest");
+        assert_eq!(p.at_ms, 200);
+    }
+
+    #[test]
+    fn positions_across_stations_are_aggregated_and_tagged() {
+        let mut state = TelemetryState::default();
+        let mut a = TelemetryBts::new("BTS-A".to_string(), None);
+        a.push_sds(sds(1, 3, "44.0, 26.0", 100));
+        let mut b = TelemetryBts::new("BTS-B".to_string(), None);
+        b.push_sds(sds(2, 3, "45.0, 27.0", 200));
+        state.stations.insert("BTS-A".to_string(), a);
+        state.stations.insert("BTS-B".to_string(), b);
+        let fixes = state.positions();
+        assert_eq!(fixes.len(), 2);
+        // newest first
+        assert_eq!(fixes[0].issi, 2);
+        assert_eq!(fixes[0].bts, "BTS-B");
+        assert!(fixes.iter().any(|f| f.issi == 1 && f.bts == "BTS-A"));
+    }
+
+    #[test]
+    fn sync_registrations_sorts_and_counts() {
+        let mut bts = TelemetryBts::new("bts-1".to_string(), None);
+        bts.registrations.insert(300);
+        bts.registrations.insert(100);
+        bts.registrations.insert(200);
+        bts.sync_registrations();
+        assert_eq!(bts.registration_count, 3);
+        assert_eq!(bts.registrations_list, vec![100, 200, 300]);
+    }
+
+    #[test]
+    fn sync_registrations_after_removal() {
+        let mut bts = TelemetryBts::new("bts-1".to_string(), None);
+        for issi in [10u32, 20, 30] { bts.registrations.insert(issi); }
+        bts.sync_registrations();
+        bts.registrations.remove(&20);
+        bts.sync_registrations();
+        assert_eq!(bts.registration_count, 2);
+        assert_eq!(bts.registrations_list, vec![10, 30]);
+    }
+
+    #[test]
+    fn push_reg_logs_events_newest_first_and_capped() {
+        let mut bts = TelemetryBts::new("bts-1".to_string(), None);
+        bts.push_reg(1001, "register");
+        bts.push_reg(1002, "register");
+        bts.push_reg(1001, "deregister");
+        assert_eq!(bts.recent_regs_out.len(), 3);
+        assert_eq!(bts.recent_regs_out[0].issi, 1001);
+        assert_eq!(bts.recent_regs_out[0].kind, "deregister");
+        assert_eq!(bts.recent_regs_out[2].kind, "register");
+        for i in 0..60 {
+            bts.push_reg(i, "register");
+        }
+        assert_eq!(bts.recent_regs_out.len(), 50, "log capped at 50 entries");
+    }
+
+    #[test]
+    fn registration_events_recorded_via_handle_event_path() {
+        // Exercises the same transitions handle_event applies, directly on the
+        // TelemetryBts state, to confirm registrations and the event log agree.
+        let mut bts = TelemetryBts::new("bts-1".to_string(), None);
+        bts.registrations.insert(2001);
+        bts.sync_registrations();
+        bts.push_reg(2001, "register");
+        bts.registrations.remove(&2001);
+        bts.sync_registrations();
+        bts.push_reg(2001, "timeout");
+        assert!(bts.registrations_list.is_empty());
+        assert_eq!(bts.recent_regs_out.len(), 2);
+        assert_eq!(bts.recent_regs_out[0].kind, "timeout");
+        assert_eq!(bts.recent_regs_out[1].kind, "register");
+    }
+
+    #[test]
+    fn registrations_list_serialized_in_snapshot() {
+        let mut bts = TelemetryBts::new("bts-1".to_string(), None);
+        bts.registrations.insert(4242);
+        bts.sync_registrations();
+        let json = serde_json::to_string(&bts).unwrap();
+        assert!(json.contains("registrations_list"), "list must be serialized");
+        assert!(json.contains("4242"));
+        // the raw HashSet field stays skipped
+        assert!(!json.contains("\"registrations\":"), "raw set must be skipped");
+    }
+}
+
+#[cfg(test)]
+mod ip_snr_tests {
+    use super::*;
+
+    #[test]
+    fn bts_serializes_ip_evm_rssi() {
+        let mut bts = TelemetryBts::new("100000002".to_string(), Some("10.19.144.201".to_string()));
+        bts.evm_pct = Some(1.25);
+        bts.rssi_dbfs = Some(-3.3);
+        let json = serde_json::to_string(&bts).unwrap();
+        assert!(json.contains("10.19.144.201"), "ip serialized");
+        assert!(json.contains("\"evm_pct\":1.25"), "evm serialized");
+        assert!(json.contains("\"rssi_dbfs\":-3.3"), "rssi serialized");
+    }
+
+    #[test]
+    fn ms_rssi_per_issi_serializes() {
+        let mut bts = TelemetryBts::new("bts-1".to_string(), None);
+        // simulate two MsRssi events
+        bts.ms_rssi.insert(90, -3.3);
+        bts.ms_rssi.insert(100, -8.8);
+        let mut v: Vec<(u32,f32)> = bts.ms_rssi.iter().map(|(k,val)|(*k,*val)).collect();
+        v.sort_unstable_by_key(|(k,_)|*k);
+        bts.ms_rssi_out = v;
+        let json = serde_json::to_string(&bts).unwrap();
+        assert!(json.contains("ms_rssi_out"));
+        assert!(json.contains("90") && json.contains("-3.3"));
+        assert!(json.contains("100") && json.contains("-8.8"));
+    }
+
+    #[test]
+    fn bts_ip_optional() {
+        let bts = TelemetryBts::new("bts-x".to_string(), None);
+        let json = serde_json::to_string(&bts).unwrap();
+        assert!(json.contains("\"ip\":null"));
+    }
+}
+
+#[cfg(test)]
+mod sds_persist_tests {
+    use super::*;
+    use std::sync::Arc;
+
+    fn entry(source_issi: u32, text: &str) -> SdsLogEntry {
+        SdsLogEntry {
+            at_ms: now_ms(),
+            direction: "rx".to_string(),
+            source_issi,
+            dest_issi: 0,
+            is_group: false,
+            protocol_id: 3,
+            text: text.to_string(),
+        }
+    }
+
+    #[test]
+    fn sds_telemetry_survives_restart_via_store() {
+        let path = std::env::temp_dir().join(format!("brew-telemetry-test-{}.bin", uuid::Uuid::new_v4().simple()));
+        {
+            let store = Arc::new(crate::store::Store::open(&path).unwrap());
+            let mut t = TelemetryState::with_store(store);
+            t.record_sds_telemetry("bts-1", &entry(1001, "hello"));
+            assert_eq!(t.recent_sds_out.len(), 1);
+        }
+        // A new TelemetryState over the same file must replay the history.
+        {
+            let store = Arc::new(crate::store::Store::open(&path).unwrap());
+            let t = TelemetryState::with_store(store);
+            assert_eq!(t.recent_sds_out.len(), 1, "sds telemetry restored");
+            assert_eq!(t.recent_sds_out[0].bts, "bts-1");
+            assert_eq!(t.recent_sds_out[0].source_issi, 1001);
+            assert_eq!(t.recent_sds_out[0].text, "hello");
+        }
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn recent_sds_out_is_newest_first_and_capped() {
+        let mut t = TelemetryState::default();
+        for i in 0..205u32 {
+            t.record_sds_telemetry("bts-1", &entry(i, "x"));
+        }
+        assert_eq!(t.recent_sds_out.len(), 200, "capped at 200");
+        assert_eq!(t.recent_sds_out[0].source_issi, 204, "newest first");
+    }
+}
+
+#[cfg(test)]
+mod registration_log_tests {
+    use super::*;
+
+    #[test]
+    fn record_brew_registration_logs_newest_first_and_capped() {
+        let mut t = TelemetryState::default();
+        t.record_brew_registration(1001, "register");
+        t.record_brew_registration(1002, "register");
+        t.record_brew_registration(1001, "deregister");
+        assert_eq!(t.recent_brew_regs_out.len(), 3);
+        assert_eq!(t.recent_brew_regs_out[0].issi, 1001);
+        assert_eq!(t.recent_brew_regs_out[0].kind, "deregister");
+        for i in 0..60 {
+            t.record_brew_registration(i, "register");
+        }
+        assert_eq!(t.recent_brew_regs_out.len(), 50, "log capped at 50 entries");
+    }
+
+    #[test]
+    fn record_brew_rssi_keeps_latest_per_issi() {
+        let mut t = TelemetryState::default();
+        t.record_brew_rssi(4013, -12.5);
+        t.record_brew_rssi(4013, -8.0);
+        t.record_brew_rssi(5551, -20.0);
+        assert_eq!(t.brew_ms_rssi.get(&4013), Some(&-8.0));
+        assert_eq!(t.brew_ms_rssi.get(&5551), Some(&-20.0));
+    }
+
+    #[test]
+    fn registration_log_merges_and_tags_brew_and_basestation_events() {
+        let mut t = TelemetryState::default();
+        t.stations.insert("bts-1".to_string(), TelemetryBts::new("bts-1".to_string(), None));
+        t.stations.get_mut("bts-1").unwrap().push_reg(2001, "register");
+        // Ensure a distinct, later timestamp so ordering is deterministic
+        // rather than relying on both events landing in the same millisecond.
+        std::thread::sleep(std::time::Duration::from_millis(2));
+        t.record_brew_registration(3001, "register");
+
+        let log = t.registration_log();
+        assert_eq!(log.len(), 2);
+        // Newest first: the Brew-channel event was recorded after the
+        // Basestation one, so it must sort first.
+        assert_eq!(log[0].bts, "brew");
+        assert_eq!(log[0].entry.issi, 3001);
+        assert_eq!(log[1].bts, "bts-1");
+        assert_eq!(log[1].entry.issi, 2001);
+    }
+
+    #[test]
+    fn registration_log_caps_at_100_across_all_sources() {
+        let mut t = TelemetryState::default();
+        for i in 0..60u32 {
+            t.record_brew_registration(i, "register");
+        }
+        t.stations.insert("bts-1".to_string(), TelemetryBts::new("bts-1".to_string(), None));
+        for i in 0..60u32 {
+            t.stations.get_mut("bts-1").unwrap().push_reg(i, "register");
+        }
+        assert_eq!(t.registration_log().len(), 100);
     }
 }
