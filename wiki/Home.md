@@ -8,12 +8,12 @@
 
 | Ziel | Einstieg | Danach |
 |---|---|---|
-| Eine TBS aufbauen | [[Installation]] | [[Konfiguration|Configuration]] · [[Hardware und HF|Hardware-und-RF]] · [[Abnahme|Abnahme]] |
-| 24 Backend-Dienste verstehen | [[Architektur|Architecture]] | [[Dienstkatalog|Dienstkatalog]] · [[Netzwerk und Ports|Netzwerk-und-Ports]] |
-| LXCs bereitstellen | [[Open-Lab-Deployment]] | [[Provisioning|Provisioning]] · [[Sicherheit und Betrieb|Security-and-Operations]] |
-| Funk- und Datenwege prüfen | [[Rufe|Calls]] | [[SDS und Status|SDS-and-U-STATUS]] · [[Paketdaten und WAP|Paketdaten-und-WAP]] |
-| Leitstelle und Integrationen anbinden | [[Control Room|Control-Room]] | [[SIP und Brew|SIP-und-Brew]] · [[MQTT und Home Assistant|MQTT-und-Home-Assistant]] |
-| Fehler eingrenzen | [[Fehlersuche|Troubleshooting]] | [[Betrieb und Wartung|Betrieb-und-Wartung]] · [[Backup und Fallback|Backup-and-Fallback]] |
+| Eine TBS aufbauen | [[Installation]] | [Konfiguration](Configuration) · [Hardware und HF](Hardware-und-RF) · [Abnahme](Abnahme) |
+| 24 Backend-Dienste verstehen | [Architektur](Architecture) | [Dienstkatalog](Dienstkatalog) · [Netzwerk und Ports](Netzwerk-und-Ports) |
+| LXCs bereitstellen | [[Open-Lab-Deployment]] | [Provisioning](Provisioning) · [Sicherheit und Betrieb](Security-and-Operations) |
+| Funk- und Datenwege prüfen | [Rufe](Calls) | [SDS und Status](SDS-and-U-STATUS) · [Paketdaten und WAP](Paketdaten-und-WAP) |
+| Leitstelle und Integrationen anbinden | [Control Room](Control-Room) | [SIP und Brew](SIP-und-Brew) · [MQTT und Home Assistant](MQTT-und-Home-Assistant) |
+| Fehler eingrenzen | [Fehlersuche](Troubleshooting) | [Betrieb und Wartung](Betrieb-und-Wartung) · [Backup und Fallback](Backup-and-Fallback) |
 
 ## System in vier Ebenen
 
