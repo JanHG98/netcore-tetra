@@ -2,6 +2,8 @@
 
 NetCore Directory ist der zentrale Namens- und Metadatendienst für die Basisstation. Der Dienst läuft als Python-Anwendung mit SQLite-Datenbank und stellt Weboberfläche sowie HTTP-API bereit.
 
+Im verteilten Ausbau ist er **nicht identisch** mit Subscriber Core oder Group Core. Lesbare Namen/Statusgruppen aus Directory ersetzen keine zentrale Teilnehmerfreigabe, GSSI-Policy oder aktuelle RF-Affiliation. [[Provisioning]]
+
 ## Datenbereiche
 
 - Geräte

@@ -1,48 +1,51 @@
-**NetCore-Basisstation**
+**NetCore Tetra**
 
-* [[Startseite|Home]]
-* [[Architektur|Architecture]]
-* [[Sicherheit und Betrieb|Security-and-Operations]]
+- [[Start|Home]] · [[Projektstand]] · [[Glossar]]
 
-**Installation und Betrieb**
+**System**
 
-* [[Installation]]
-* [[Build und Update|Build-and-Update]]
-* [[Konfiguration|Configuration]]
-* [[Systemd-Service]]
-* [[Backup und Fallback|Backup-and-Fallback]]
+- [[Architektur|Architecture]]
+- [[Dienstkatalog]]
+- [[Netzwerk und Ports|Netzwerk-und-Ports]]
+- [[Bedienoberflächen|Bedienoberflaechen]]
+- [[Normen und Tests|Normen-und-Tests]]
 
-**Funkbetrieb**
+**Aufbau**
 
-* [[ISSI und GSSI|ISSI-and-GSSI]]
-* [[Registrierung und Gruppenbindung|Registration-and-Affiliation]]
-* [[Gruppen- und Einzelrufe|Calls]]
-* [[Dual Carrier|Dual-Carrier]]
-* [[SDS und U-STATUS|SDS-and-U-STATUS]]
-* [[Home-Mode-Display]]
-* [[LIP und GPS|LIP-and-GPS]]
+- [[Hardware und HF|Hardware-und-RF]]
+- [[Installation]]
+- [[Konfiguration|Configuration]]
+- [[Open-Lab-Deployment]]
+- [[Provisioning]]
+- [[Abnahme]]
 
-**Dashboard und Medien**
+**Funk und Daten**
 
-* [[Dashboard]]
-* [[Audio-Zentrale]]
+- [[ISSI und GSSI|ISSI-and-GSSI]]
+- [[Registrierung|Registration-and-Affiliation]]
+- [[Rufe|Calls]] · [[Dual Carrier|Dual-Carrier]]
+- [[SDS und U-STATUS|SDS-and-U-STATUS]]
+- [[Home Mode Display|Home-Mode-Display]]
+- [[LIP und GPS|LIP-and-GPS]]
+- [[Paketdaten und WAP|Paketdaten-und-WAP]]
+- [[Mehrzellenbetrieb|Mehrzellenbetrieb]]
 
-**NetCore Directory**
+**Bedienung und Integration**
 
-* [[Directory|NetCore-Directory]]
-* [[Directory API|Directory-API]]
-* [[Geräte|Devices]]
-* [[Basisstationen|Basestations]]
-* [[Gruppen|Groups]]
-* [[Geräte- und Statusgruppen|Device-Groups]]
-* [[Statusmeldungen|Status-Messages]]
+- [[Dashboard]] · [[Control Room|Control-Room]]
+- [[Directory|NetCore-Directory]] · [[Directory API|Directory-API]]
+- [[Geräte|Devices]] · [[Basisstationen|Basestations]]
+- [[Gruppen|Groups]] · [[Statusmeldungen|Status-Messages]]
+- [[Gerätegruppen|Device-Groups]]
+- [[Audio-Zentrale]] · [[Integrationen]]
+- [[SIP und Brew|SIP-und-Brew]]
+- [[MQTT und Home Assistant|MQTT-und-Home-Assistant]]
 
-**Leitstelle**
+**Betrieb und Hilfe**
 
-* [[NetCore Control Room|Control-Room]]
-
-**Fehlersuche**
-
-* [[Troubleshooting]]
-* [[Journalctl-Filter|Journalctl-Filters]]
-* [[Häufige Buildfehler|Common-Build-Errors]]
+- [[Systemd-Service]] · [[Build und Update|Build-and-Update]]
+- [[Wartung|Betrieb-und-Wartung]] · [[Backup und Fallback|Backup-and-Fallback]]
+- [[Sicherheit|Security-and-Operations]]
+- [[Fehlersuche|Troubleshooting]]
+- [[Journalctl-Filter|Journalctl-Filters]] · [[Buildfehler|Common-Build-Errors]]
+- [[FAQ]] · [[Roadmap]]

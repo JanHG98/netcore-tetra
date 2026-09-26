@@ -35,3 +35,7 @@ Status `0` und systemseitig zugeordnete Notfallwerte werden besonders behandelt.
 - Beschreibung für Bediener verständlich formulieren.
 - Farben nicht als einziges Unterscheidungsmerkmal verwenden.
 - Unsichtbare Statuswerte weiterhin dokumentieren, falls Endgeräte sie senden können.
+
+## Weiterführend
+
+[[Device-Groups]] · [[SDS-and-U-STATUS]] · [[Home-Mode-Display]]

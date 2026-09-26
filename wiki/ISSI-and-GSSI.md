@@ -32,3 +32,7 @@ Systemteilnehmer wie Basisstation, Audioaussendung, Asterisk-Gateway oder Status
 - Eigentümer und Verwendungszweck im Directory dokumentieren.
 - lokale SSI-Bereiche in `[cell_info].local_ssi_ranges` bewusst setzen.
 - Routing über Brew oder PBX getrennt von rein lokalen IDs planen.
+
+## Weiterführend
+
+[[Provisioning]] · [[Groups]] · [[Registration-and-Affiliation]]

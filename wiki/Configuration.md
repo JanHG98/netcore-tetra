@@ -1,132 +1,52 @@
-# Konfiguration
+# Konfiguration der TBS
 
-Die Basisstation nutzt TOML. Der aktuelle Parser erwartet:
+Die Basisstation nutzt TOML mit `config_version = "0.6"` und `stack_mode = "Bs"` im aktuellen [sanitisierten Beispiel](https://github.com/JanHG98/netcore-tetra/blob/main/Docs/basisstation.config.sanitized.example.toml). Die tatsächlich installierte Datei ist entscheidend; sie kann von `main` abweichen. Das Beispiel enthält **Dummy-Zugangsdaten und Beispiel-IP-Adressen** und darf nicht unverändert als Betriebsdatei verwendet werden.
 
-```toml
-config_version = "0.6"
-stack_mode = "Bs"
-```
+## Konfigurationsbereiche
 
-Die reale Konfiguration enthält standortspezifische und teilweise geheime Daten. Beispiele in diesem Wiki verwenden daher ausschließlich Platzhalter.
+| Abschnitt | Inhalt | Nach Änderung prüfen |
+|---|---|---|
+| `[phy_io]`, `[phy_io.soapysdr]` | SDR/Treiber, Gain, Sample-Rate, Center | RX/TX, Timing, Passband, Spektrum |
+| `[net_info]`, `[cell_info]` | MCC/MNC, Carrier, LA/CC, Registrierung, Rufe, Paketdaten | Endgeräte-Camping, Affiliation, Call/Release |
+| `[recovery]`, `[health]` | Replay, Re-Attract, Health und Watchdog | Join-Verhalten, keine Neustartschleife |
+| `[dashboard]` | Bind/Port, Anmeldung, Systemaktionen | Listener und Netzwerkgrenze |
+| `[recording]`, `[audio_player]`, `[media_library]`, `[tts]` | Aufnahme, Datei- und Medienpfade, Piper | Rechte, Cache, Ruf/Release, NFS |
+| `[netcore_directory]` | URL und Timeout des Directory | Namen/Status ohne Funkblockade |
+| `[control_room]`, `[edge_fallback]` | **Node Gateway** und lokale Autonomie | `/ws/node`, Service-Matrix und Rückkehr |
+| `[asterisk]`, `[brew]`, `[telegram_alerts]`, `[wx_service]` | optionale Anbindungen | Zielsystem, Zugang und Routing |
 
-## Wichtige Sektionen
-
-| Sektion | Zweck |
-|---|---|
-| `[phy_io]` / `[phy_io.soapysdr]` | SDR-Backend, Gerät, Sample-Rate, Verstärkung und Center-Frequenzen |
-| `[net_info]` | MCC und MNC |
-| `[cell_info]` | Carrier, Duplex, Zellkennung, Dienste und Rufparameter |
-| `[cell_info.sds_command_control]` | autorisierte U-STATUS-Systembefehle |
-| `[recovery]` | Cache-Replay und Re-Attract unbekannter Endgeräte |
-| `[health]` | Zustandsüberwachung und optionaler Watchdog |
-| `[dashboard]` | Bind-Adresse, Port, Anmeldung und Update-Arbeitsverzeichnis |
-| `[recording]` | lokale Sprachaufzeichnung und Archivierung |
-| `[audio_player]` | WAV-/MP3-Bibliothek und Funkaussendung |
-| `[tts]` | Piper-Endpunkt, Stimmen, Vorlagen und Cache |
-| `[netcore_directory]` | Directory-Anbindung |
-| `[control_room]` | Verbindung zur Leitstelle |
-| `[asterisk]`, `[brew]`, `[telegram_alerts]`, `[wx_service]` | optionale Integrationen |
-
-## Minimales Gerüst
+## Datenform und Werte
 
 ```toml
 config_version = "0.6"
 stack_mode = "Bs"
 
-[phy_io]
-backend = "SoapySdr"
-
-[phy_io.soapysdr]
-tx_freq = <DOWNLINK-HZ>
-rx_freq = <UPLINK-HZ>
-device = "driver=<TREIBER>"
-sample_rate = 600000
-tx_center_freq = <TX-CENTER-HZ>
-rx_center_freq = <RX-CENTER-HZ>
-
-[net_info]
-mcc = <MCC>
-mnc = <MNC>
-
-[cell_info]
-freq_band = 4
-main_carrier = <CARRIER>
-duplex_spacing = 0
-freq_offset = 0
-reverse_operation = false
-location_area = 1
-colour_code = 1
-timezone = "Europe/Berlin"
-registration = true
-deregistration = true
-voice_service = true
-
-[dashboard]
-bind = "0.0.0.0"
+[control_room]
+enabled = true
+host = "<NODE-GATEWAY-IP>"
 port = 8080
-username = "<BENUTZER>"
-password = "<LANGES-PASSWORT>"
+use_tls = false
+endpoint_path = "/ws/node"
+node_id = "TBS-LAB-01"
 ```
 
-Die genauen Feldnamen der SoapySDR-Sektion können vom Treiber abhängen. Die vorhandene Beispielkonfiguration im Repository ist die maßgebliche Vorlage für den eingesetzten Hardwarezweig.
+Das ist ein **Ausschnitt**, keine vollständige lauffähige TBS-Datei. Bei einem lokalen Einzelknoten `[control_room].enabled = false` setzen. Die Management-IP des Gateway ist nicht automatisch die Control-Room-IP `9010`. Konfigurations-Drift zwischen eingecheckter `config.toml` und Inventory kann zu irreführenden Verbindungsfehlern führen. [[Architecture]] · [[Netzwerk-und-Ports]]
 
-## Zellparameter
+## Carrier und SDR
 
-### Carrier und Frequenz
+`main_carrier` bezeichnet den Hauptträger; `dual_carrier_enabled` und `secondary_carrier` erweitern den RF-Pfad. `tx_center_freq` und `rx_center_freq` bezeichnen **SDR-Mittenfrequenzen**, nicht zwingend die exakt programmierte Trägerfrequenz. Sample-Rate, Filterreserve und Slot-Plan müssen zusammenpassen. [[Dual-Carrier]] · [[Hardware-und-RF]]
 
-`main_carrier` ist die TETRA-Carrier-Nummer. `secondary_carrier` aktiviert zusammen mit `dual_carrier_enabled` den zweiten Träger. Die tatsächlichen Frequenzen ergeben sich aus Band, Duplexspacing, Offset und Reverse-Betrieb.
+## Recovery, Status und Steuer-ISSI
 
-Center-Frequenzen und Sample-Rate müssen den gesamten genutzten Bereich abdecken. Eine formal gültige Carrier-Konfiguration kann sonst trotzdem am Passband-Check scheitern.
+Proaktives Replay und reaktives Re-Attract sind getrennte Mechanismen. `[cell_info.sds_command_control]` definiert autorisierte ISSIs und Aktionen für U-STATUS-Systembefehle; die Anwesenheit dieser Sektion ist relevant, ein frei erfundenes `enabled`-Feld nicht. `4010001` ist die im Beispiel verwendete System-ISSI, **kein MQTT-Topic**. Konfigurationswerte und Endgeräteprogrammierung aufeinander abstimmen. [[Registration-and-Affiliation]] · [[SDS-and-U-STATUS]]
 
-### Zeit und Standort
-
-`timezone` verwendet einen IANA-Namen, zum Beispiel `Europe/Berlin`. Damit kann die Basisstation UTC und lokalen Offset inklusive Sommerzeit senden.
-
-### Rufverhalten
-
-Wichtige optionale Parameter:
-
-- `hangtime_secs` – Offenhaltezeit eines Gruppenrufs nach Ende der Aussendung.
-- `call_timeout_secs` – maximale Rufdauer; `0` bedeutet ohne Zeitlimit.
-- `ul_inactivity_secs` – Abbruch einer Senderphase ohne Uplink-Sprachrahmen.
-- `periodic_registration_secs` – Intervall für periodische Re-Registrierung; `0` deaktiviert.
-- `release_group_on_same_speaker_retake` – Workaround für ältere Geräte bei erneutem PTT in der Hangtime.
-
-## Recovery
-
-`[recovery]` unterscheidet zwei Mechanismen:
-
-- **Proaktives Replay (`enabled`)**: bekannte Endgeräte werden nach Start anhand des Caches erneut angesprochen.
-- **Reaktives Re-Attract (`reactive_enabled`)**: ein unbekannt auftauchendes Endgerät wird zur Registrierung aufgefordert.
-
-Beides sollte zunächst konservativ getestet werden, besonders bei heterogenen Gerätegenerationen.
-
-## Health
-
-Der Health-Monitor ist beobachtend und kann Core-Liveness, Backhaul, registrierte Geräte und Überlastung zusammenfassen. Der optionale automatische Neustart bei Core-Stall ist ein RF-wirksamer Eingriff und sollte nur bewusst aktiviert werden.
-
-## Zugangsdaten
-
-Folgende Werte niemals veröffentlichen:
-
-- Dashboard-Passwort
-- Telegram-Bot-Token und Chat-IDs
-- Brew-/Asterisk-Zugangsdaten
-- Directory- oder Control-Room-Tokens
-- ActionURL-Token
-
-Dateirechte:
+## Änderungen sicher prüfen
 
 ```bash
-chmod 600 /etc/netcore/config.toml
-```
-
-## Prüfung vor Neustart
-
-```bash
-cp /etc/netcore/config.toml /etc/netcore/config.toml.pre-change
+sudo cp /etc/netcore/config.toml /etc/netcore/config.toml.pre-change
+python3 -c 'import pathlib,tomllib; tomllib.loads(pathlib.Path("/etc/netcore/config.toml").read_text()); print("TOML OK")'
 sudo systemctl restart tetra.service
-sudo journalctl -u tetra.service -n 200 --no-pager
+sudo journalctl -u tetra.service -b -n 200 --no-pager
 ```
 
-Bei einem Parserfehler nicht mehrfach neu starten, sondern die erste konkrete Fehlermeldung korrigieren. Danach prüfen, ob versehentlich die Fallback-Konfiguration aktiv wurde.
+Systemd-Unit-Namen und Pfad anpassen. Beim Start ausdrücklich prüfen, ob **die Primärdatei oder `.fallback`** geladen wurde. Kein Passwort oder Token in Wiki, Tickets, Screenshots oder Logauszüge übernehmen. [[Backup-and-Fallback]]

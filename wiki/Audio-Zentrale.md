@@ -1,6 +1,6 @@
 # Audio-Zentrale
 
-Die Audio-Zentrale bündelt Aufzeichnung, Medienverwaltung, Vorschau, TTS und Funkaussendung. Die Funktionen werden standardmäßig mit den Cargo-Features `recording` und `audio-player` gebaut.
+Die Audio-Zentrale bündelt lokale Aufzeichnung, Medienverwaltung, Vorschau, TTS und Funkaussendung. Die Funktionen werden standardmäßig mit den Cargo-Features `recording` und `audio-player` gebaut. Im verteilten Aufbau existieren zusätzlich ein zentraler **Recorder** und die **Media Library** als eigene Dienste. Ein lokal sichtbares Asset ist dadurch nicht automatisch zentral freigegeben oder archiviert. [[Dienstkatalog]]
 
 ## Aufzeichnungen
 
@@ -100,6 +100,10 @@ sudo install -d -o netcore -g netcore /var/cache/netcore/tts
 ```
 
 Benutzer und Gruppe müssen zur Systemd-Unit passen.
+
+## Zentraler Medienpfad
+
+Die [Media Library](https://github.com/JanHG98/netcore-tetra/tree/main/system-backend/media-library) verwaltet Audio-Assets, TTS-/Recorder-Import, Freigabe, Vorschau und Playout-Jobs; der [Recorder](https://github.com/JanHG98/netcore-tetra/tree/main/system-backend/recorder) hat eine eigene Aufbewahrung und Integritätsprüfung. Vor einer Aussendung die Asset-Version, Freigabe, Ziel-GSSI/ISSI, lokalen TBS-Cache und den zugehörigen Rufpfad prüfen. Die verteilten Dienste ersetzen nicht automatisch das lokale TBS-Recording. [[Architecture]] · [[Netzwerk-und-Ports]]
 
 ## Fehlersuche
 

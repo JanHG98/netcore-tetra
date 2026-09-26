@@ -1,95 +1,33 @@
-# Build und Update
+# Build, Update und Rollback
 
-## Grundsatz
+Ein Update beginnt mit **Ist-Stand, Sicherung und Testplan**. Die Basisstation und der LXC-Verbund haben unterschiedliche Installer; diesen Ablauf nur für die lokale TBS verwenden. [[Open-Lab-Deployment]] beschreibt die Backends.
 
-Bei dieser Basisstation werden alte Build-Artefakte grundsätzlich entfernt. Gerade bei geänderten Features, nativen Bibliotheken oder mehreren Branches sind inkrementelle Altlasten eine unnötige Fehlerquelle.
-
-## Sicheres Update aus Git
+## Version und Arbeitsbaum
 
 ```bash
-sudo systemctl stop tetra.service
-cd ~/netcore
-
-git status
-git branch --show-current
+cd /opt/netcore-tetra
+git status --short --branch
+git rev-parse HEAD
+git remote -v
 git fetch --all --prune
-git pull --ff-only
 ```
 
-Wenn `git pull --ff-only` abbricht, nicht erzwingen. Erst lokale Änderungen prüfen und sauber zusammenführen.
+Lokale Änderungen und installierte Konfiguration erhalten. Bei Branchwechseln oder divergierenden Branches kein `reset --hard` oder erzwungenes `pull` verwenden. Nach Sicherung kann für einen sauberen Tracking-Branch `git pull --ff-only` folgen.
 
-## Vollständiger Clean-Build
+## TBS bauen und installieren
 
 ```bash
-cd ~/netcore
-cargo clean
-rm -rf target
 cargo build --release -p bluestation-bs
-```
-
-Optional zusätzlich die Leitstellenwerkzeuge bauen:
-
-```bash
-cargo build --release -p netcore-control-room
-cargo build --release -p netcore-control-room-operator
-```
-
-## Installation der neuen Binärdatei
-
-Bei direktem Start aus dem Repository genügt der Neustart. Bei einer separaten Installation nach `/usr/local/bin`:
-
-```bash
-sudo install -m 0755 \
-  target/release/bluestation-bs \
-  /usr/local/bin/bluestation-bs
-```
-
-Anschließend:
-
-```bash
-sudo systemctl start tetra.service
-sudo systemctl status tetra.service --no-pager
-sudo journalctl -u tetra.service -n 200 --no-pager
-```
-
-## Update über das Dashboard
-
-Das Dashboard kann einen explizit ausgelösten Quellcode-Updatevorgang anstoßen. Dafür muss es ein gültiges Git-Arbeitsverzeichnis finden. Falls die automatische Erkennung nicht passt, kann in `[dashboard]` ein `source_dir` gesetzt werden.
-
-Vor einem Dashboard-Update gelten dieselben Regeln:
-
-- Konfiguration und Fallback sichern.
-- Lokale, nicht eingecheckte Änderungen vermeiden.
-- Genügend Speicherplatz für den Build bereitstellen.
-- Nach dem Neustart Logs und Versionsanzeige kontrollieren.
-
-## Branchwechsel
-
-```bash
 sudo systemctl stop tetra.service
-cd ~/netcore
-git status
-git fetch --all --prune
-git switch <BRANCH>
-git pull --ff-only
-cargo clean
-rm -rf target
-cargo build --release -p bluestation-bs
+sudo install -m 0755 target/release/bluestation-bs /usr/local/bin/bluestation-bs
 sudo systemctl start tetra.service
+sudo journalctl -u tetra.service -b -n 200 --no-pager
 ```
 
-## Rollback
+Die `systemd`-Unit muss **diese** Binärdatei und die tatsächlich geprüfte TOML starten. Nach Feature-/Toolchain-/nativen ABI-Wechseln oder rätselhaften Cache-Fehlern gezielt `cargo clean` und erneut bauen; das Löschen des gesamten Build-Verzeichnisses bei jeder kleinen Änderung ist nicht erforderlich. Default-Features umfassen Asterisk, Recording und Audio-Player. [[Common-Build-Errors]]
 
-Am saubersten ist ein bekannter Commit oder Tag:
+## Abnahme und Rückweg
 
-```bash
-sudo systemctl stop tetra.service
-cd ~/netcore
-git switch --detach <COMMIT-ODER-TAG>
-cargo clean
-rm -rf target
-cargo build --release -p bluestation-bs
-sudo systemctl start tetra.service
-```
+Version im Dashboard/Log, geladene Konfiguration, RF-/SDR-Erkennung, Registrierung, Gruppen-/Einzelruf, SDS, Audio und Release nach dem Neustart kontrollieren. Bei Fehlern die letzte **kompatible** Binärdatei und Konfiguration gemeinsam zurückstellen. Ein altes Binary mit migrierter Datenbank ist kein verlässlicher Rollback. [[Abnahme]] · [[Backup-and-Fallback]]
 
-Für den dauerhaften Betrieb danach einen passenden Branch anlegen oder auf den vorherigen Branch zurückwechseln. Ein Detached-HEAD-Zustand sollte nicht unbemerkt zum normalen Arbeitsstand werden.
+Dashboard-Updates können einen Quellcode-Updatevorgang anstoßen; die gleichen Sicherungs- und Prüfschritte gelten. Der Rust-Workspace-Wert `1.3.0` aus `Cargo.toml` ist nicht automatisch der Git-Release-Tag oder die Version eines entfernten Hosts. [[Projektstand]]

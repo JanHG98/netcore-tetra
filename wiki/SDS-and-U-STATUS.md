@@ -48,3 +48,7 @@ Die Statuscodes sind frei planbar, müssen aber zur Programmierung der Endgerät
 - Shutdown/Restart nur in einem kontrollierten Labornetz aktivieren.
 - Eingehende Befehle im SDS-Log und Journal protokollieren.
 - Eine ISSI ist keine kryptografische Identität; RF- und Netzzugang bleiben die eigentliche Schutzgrenze.
+
+## Zentraler Datenweg
+
+Der SDS Router kann Nachrichten/Quittungen zwischen TBS und zentralen Diensten vermitteln. Für MQTT/HA übernimmt der IoT Gateway die Normalisierung und Topic-Veröffentlichung. Eine SDS an `4010001` löst je nach lokaler TBS-Konfiguration einen Systempfad aus und wird nicht automatisch zur HA-Entität. Für einen Fehler denselben Payload an jedem Übergang suchen. [[MQTT-und-Home-Assistant]] · [[Troubleshooting]]

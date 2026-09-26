@@ -64,3 +64,7 @@ sudo journalctl -u tetra.service \
 ```
 
 Vor Weitergabe Zugangsdaten, Nachrichtentexte, ISSIs und Standorte prüfen und bei Bedarf schwärzen.
+
+## Weiterführend
+
+[[Troubleshooting]] · [[Abnahme]] · [[Betrieb-und-Wartung]]

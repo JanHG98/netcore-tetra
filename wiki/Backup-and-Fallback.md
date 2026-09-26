@@ -27,6 +27,10 @@ Vor dem Überschreiben durch den Konfigurationseditor wird zusätzlich eine `.ba
 - Recovery-Cache
 - Systemd-Units und Environment-Dateien
 - bei Bedarf Aufzeichnungen und JSON-Metadaten
+- im verteilten Aufbau die Persistenzdaten und Konfigurationen aller betroffenen Backend-LXCs
+- IoT-Command-Ledger/Outbox, Ruf- und Teilnehmerzustände nach den Dienst-Runbooks
+- SIP-/Asterisk-Konfiguration und Trunk-Zugangsdaten, getrennt vom Wiki
+- Security-/KMF-Schlüsselmaterial ausschließlich mit dem dafür vorgesehenen geschützten Verfahren
 
 ## Backup-Beispiel
 
@@ -58,3 +62,9 @@ diff -u /etc/netcore/config.toml.fallback /etc/netcore/config.toml
 ```
 
 Nicht die Fallback-Datei blind über die Primärdatei kopieren. Sie kann bewusst konservativ oder älter sein.
+
+## Zentrale Ausfallgrenzen
+
+Der lokale RF-Dienst kann bei einem Backend-Ausfall gemäß `[edge_fallback]` weiterlaufen. Das bedeutet **nicht**, dass netzweite Rufe, neue Schlüssel, SIP-Routing oder alle SDS-Zustellungen verfügbar bleiben. Der Zustand der Service-Matrix hat eine Lease; nach Wiederkehr Spool, Acks, Policies und tatsächliche Endgerätefunktion prüfen. [[Mehrzellenbetrieb]] · [[Betrieb-und-Wartung]]
+
+Eine Datei-Kopie einer SQLite-/Zustandsdatenbank während laufender Schreibzugriffe ist nicht automatisch konsistent. Für jeden Dienst die zugehörige Backup- oder Exportfunktion, Dienststopp beziehungsweise transaktionale Sicherung verwenden. Rücksicherung mit passender Software- und Schema-Version erproben.
