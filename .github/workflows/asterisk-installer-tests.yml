@@ -2,7 +2,7 @@ name: Asterisk installer tests
 
 on:
   pull_request:
-    branches: [mqtt]
+    branches: [main, mqtt, 'katwarn/nina']
     paths:
       - system-backend/sip-switch/install/**
       - system-backend/sip-switch/tbs-fallback/install/**

@@ -437,6 +437,7 @@ struct CallState {
     next_event_seq: u64,
     next_handle: u32,
     database_revision: u64,
+    last_persisted_content: Vec<u8>,
     media_revision: u64,
     media_required_revision: HashMap<String, u64>,
     media_ready_revision: HashMap<String, u64>,
@@ -455,6 +456,12 @@ impl SharedCalls {
     // Warum: Einlesen und Fehlerbehandlung bleiben dadurch an einer zentralen Stelle.
     pub fn load(config: CallControlConfig) -> Result<Self, Box<dyn std::error::Error>> {
         let database = load_database(&config)?;
+        // Retain the disk contents before recovery changes active calls/restores.
+        // A later backend event must still flush that recovery transition once.
+        let last_persisted_content = serde_json::to_vec(&(
+            database.calls.iter().map(|call| (&call.logical_call_id, call)).collect::<BTreeMap<_, _>>(),
+            database.restores.iter().map(|restore| (&restore.restore_id, restore)).collect::<BTreeMap<_, _>>(),
+        ))?;
         let now = now();
         let mut calls = BTreeMap::new();
         // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
@@ -509,6 +516,7 @@ impl SharedCalls {
             next_event_seq: 1,
             next_handle: 1,
             database_revision: database.revision,
+            last_persisted_content,
             media_revision: database.revision,
             media_required_revision,
             media_ready_revision: HashMap::new(),
@@ -2782,14 +2790,27 @@ impl CallState {
     // Was: Führt den Arbeitsschritt `bump_and_persist_if_changed` für bump and persist if changed aus.
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn bump_and_persist_if_changed(&mut self) {
-        // Backend messages are authoritative state changes. Persisting the compact
-        // logical-call database is cheap and keeps crash recovery deterministic.
-        self.bump_and_persist();
+        // Heartbeats, RF telemetry and participant presence do not change the
+        // durable call/restore database. Avoid holding the shared state lock for
+        // a backup, rewrite and fsync on each such high-rate backend message.
+        match self.durable_content() {
+            Ok(content) if content == self.last_persisted_content => {},
+            Ok(_) => self.bump_and_persist(),
+            Err(error) => tracing::error!("failed to serialize Call Control database: {}", error),
+        }
+    }
+
+    fn durable_content(&self) -> Result<Vec<u8>, String> {
+        // BTreeMap order is deterministic. Revision and transient network state
+        // are deliberately excluded; calls and restores are the persisted data.
+        serde_json::to_vec(&(&self.calls, &self.restores))
+            .map_err(|error| format!("database serialization failed: {error}"))
     }
 
     // Was: Diese Funktion speichert den vorgesehenen Arbeitsschritt.
     // Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
-    fn persist(&self) -> Result<(), String> {
+    fn persist(&mut self) -> Result<(), String> {
+        let content = self.durable_content()?;
         let database = PersistedDatabase {
             schema_version: DATABASE_SCHEMA_VERSION,
             revision: self.database_revision,
@@ -2817,6 +2838,9 @@ impl CallState {
             .map_err(|error| format!("sync temporary database failed: {error}"))?;
         fs::rename(&temporary, &self.config.storage.database_path)
             .map_err(|error| format!("replace database failed: {error}"))?;
+        // Failed persistence must leave the old baseline intact so the next
+        // event retries the durable change rather than considering it saved.
+        self.last_persisted_content = content;
         Ok(())
     }
 }
@@ -2950,4 +2974,198 @@ fn load_database(config: &CallControlConfig) -> Result<PersistedDatabase, Box<dy
 // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn now() -> String {
     Utc::now().to_rfc3339()
+}
+
+#[cfg(test)]
+mod persistence_tests {
+    use super::*;
+    use std::path::PathBuf;
+    use tetra_entities::net_control_room::{ControlRoomNodeHeartbeat, NodeTelemetryEnvelope};
+
+    struct TestStorage {
+        directory: PathBuf,
+        config: CallControlConfig,
+    }
+
+    impl TestStorage {
+        fn new() -> Self {
+            let directory = std::env::temp_dir().join(format!("netcore-call-persist-{}", Uuid::new_v4()));
+            fs::create_dir(&directory).unwrap();
+            let mut config = CallControlConfig::default();
+            config.storage.database_path = directory.join("calls.json");
+            config.storage.backup_path = directory.join("calls.backup.json");
+            Self { directory, config }
+        }
+
+        fn load(&self) -> SharedCalls {
+            SharedCalls::load(self.config.clone()).unwrap()
+        }
+
+        fn database(&self) -> PersistedDatabase {
+            serde_json::from_slice(&fs::read(&self.config.storage.database_path).unwrap()).unwrap()
+        }
+    }
+
+    impl Drop for TestStorage {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.directory);
+        }
+    }
+
+    fn telemetry(calls: &SharedCalls, event: TelemetryEvent) {
+        calls.handle_backend_event(BackendEvent::NodeMessage {
+            node_id: "tbs-one".to_string(),
+            message: NodeToControlRoomMessage::Telemetry {
+                envelope: NodeTelemetryEnvelope { node_id: "tbs-one".to_string(), seq: 1, timestamp: now(), event },
+            },
+        });
+    }
+
+    fn heartbeat(calls: &SharedCalls) {
+        calls.handle_backend_event(BackendEvent::NodeMessage {
+            node_id: "tbs-one".to_string(),
+            message: NodeToControlRoomMessage::Heartbeat {
+                heartbeat: ControlRoomNodeHeartbeat {
+                    node_id: "tbs-one".to_string(), seq: 1, timestamp: now(), connected: true,
+                },
+            },
+        });
+    }
+
+    fn start_call(calls: &SharedCalls) {
+        telemetry(calls, TelemetryEvent::GroupCallStarted {
+            call_id: 7, gssi: 100, caller_issi: 1234, ts: 1, carrier_num: 1,
+            priority: 0, source: "local".to_string(),
+        });
+    }
+
+    fn create_restore(calls: &SharedCalls) -> (RestoreOperation, Vec<BackendRequest>) {
+        {
+            let mut state = calls.0.lock().unwrap();
+            for node_id in ["tbs-one", "tbs-two"] {
+                state.nodes.insert(node_id.to_string(), NodeRecord {
+                    node_id: node_id.to_string(), station_name: node_id.to_string(), site: None,
+                    connected: true, stale: false, last_seen: now(), call_control_capable: true,
+                    call_restore_capable: true, mcc: 262, mnc: 1, location_area: 1, colour_code: 1,
+                });
+            }
+        }
+        calls.create_restore(RestoreInput {
+            logical_call_id: calls.calls()[0].logical_call_id.clone(),
+            source_node: "tbs-one".to_string(), target_node: "tbs-two".to_string(), source_call_id: Some(7),
+        }).unwrap()
+    }
+
+    #[test]
+    fn irrelevant_backend_traffic_never_creates_database_or_bumps_revision() {
+        let storage = TestStorage::new();
+        let calls = storage.load();
+        for _ in 0..100 {
+            heartbeat(&calls);
+            telemetry(&calls, TelemetryEvent::MsRegistration { issi: 1234 });
+            telemetry(&calls, TelemetryEvent::MsRssi { issi: 1234, rssi_dbfs: -40.0 });
+            telemetry(&calls, TelemetryEvent::TxVisual {
+                sample_rate: 36000.0, center_freq_hz: 0.0, rms_dbfs: -10.0, peak_dbfs: -2.0,
+                spectrum_db_tenths: vec![0; 512], constellation_iq: vec![0; 128],
+            });
+            calls.handle_backend_event(BackendEvent::ActionResult {
+                request_id: None, command_id: None, ok: true, message: "pong".to_string(),
+            });
+        }
+        assert_eq!(calls.status().database_revision, 0);
+        assert_eq!(calls.status().participants_registered, 1);
+        assert!(!storage.config.storage.database_path.exists());
+        assert!(!storage.config.storage.backup_path.exists());
+        assert_eq!(fs::read_dir(&storage.directory).unwrap().count(), 0);
+    }
+
+    #[test]
+    fn call_transitions_persist_but_interleaved_telemetry_does_not_rewrite() {
+        let storage = TestStorage::new();
+        let calls = storage.load();
+        start_call(&calls);
+        let database = storage.database();
+        assert_eq!(database.revision, 1);
+        assert_eq!(database.calls[0].phase, CallPhase::Active);
+        assert_eq!(database.calls[0].legs["tbs-one"].local_call_id, Some(7));
+        let original = fs::read(&storage.config.storage.database_path).unwrap();
+        fs::write(&storage.config.storage.backup_path, b"untouched backup marker").unwrap();
+        for _ in 0..100 {
+            heartbeat(&calls);
+            telemetry(&calls, TelemetryEvent::MsRssi { issi: 1234, rssi_dbfs: -35.0 });
+        }
+        assert_eq!(calls.status().database_revision, 1);
+        assert_eq!(fs::read(&storage.config.storage.database_path).unwrap(), original);
+        assert_eq!(fs::read(&storage.config.storage.backup_path).unwrap(), b"untouched backup marker");
+        telemetry(&calls, TelemetryEvent::GroupCallSpeakerChanged {
+            call_id: 7, gssi: 100, speaker_issi: 2345, source: "local".to_string(),
+        });
+        assert_eq!(storage.database().revision, 2);
+        assert_eq!(storage.database().calls[0].floor_holder, Some(2345));
+        telemetry(&calls, TelemetryEvent::GroupCallEnded { call_id: 7, gssi: 100 });
+        assert_eq!(storage.database().revision, 3);
+        assert!(storage.database().calls[0].phase.is_terminal());
+        let persisted = storage.database();
+        assert_eq!(storage.load().call(&persisted.calls[0].logical_call_id).unwrap().phase, persisted.calls[0].phase);
+    }
+
+    #[test]
+    fn restore_api_and_backend_failure_both_persist_without_heartbeat_rewrites() {
+        let storage = TestStorage::new();
+        let calls = storage.load();
+        start_call(&calls);
+        let (operation, requests) = create_restore(&calls);
+        assert_eq!(storage.database().restores[0].restore_id, operation.restore_id);
+        assert_eq!(storage.database().restores[0].phase, RestorePhase::ExportRequested);
+        let revision = calls.status().database_revision;
+        heartbeat(&calls);
+        assert_eq!(calls.status().database_revision, revision);
+        let request_id = match &requests[0] {
+            BackendRequest::Command { request_id, .. } => request_id.clone(),
+            _ => panic!("restore must queue a command"),
+        };
+        calls.handle_backend_event(BackendEvent::ActionResult {
+            request_id, command_id: None, ok: false, message: "target unreachable".to_string(),
+        });
+        assert_eq!(storage.database().revision, revision + 1);
+        assert_eq!(storage.database().restores[0].phase, RestorePhase::Failed);
+        heartbeat(&calls);
+        assert_eq!(calls.status().database_revision, revision + 1);
+    }
+
+    #[test]
+    fn restart_normalization_is_flushed_once_even_on_a_heartbeat() {
+        let storage = TestStorage::new();
+        let calls = storage.load();
+        start_call(&calls);
+        create_restore(&calls);
+        let revision = storage.database().revision;
+        let logical_call_id = calls.calls()[0].logical_call_id.clone();
+        let restarted = storage.load();
+        assert_eq!(restarted.call(&logical_call_id).unwrap().phase, CallPhase::Interrupted);
+        assert_eq!(restarted.restores()[0].phase, RestorePhase::Failed);
+        heartbeat(&restarted);
+        let database = storage.database();
+        assert_eq!(database.revision, revision + 1);
+        assert_eq!(database.calls[0].phase, CallPhase::Interrupted);
+        assert_eq!(database.restores[0].phase, RestorePhase::Failed);
+        heartbeat(&restarted);
+        assert_eq!(restarted.status().database_revision, revision + 1);
+    }
+
+    #[test]
+    fn failed_write_does_not_mark_changed_calls_as_saved() {
+        let storage = TestStorage::new();
+        let calls = storage.load();
+        let blocked_temporary_file = storage.config.storage.database_path.with_extension("json.tmp");
+        fs::create_dir(&blocked_temporary_file).unwrap();
+        start_call(&calls);
+        assert!(!storage.config.storage.database_path.exists());
+        fs::remove_dir(&blocked_temporary_file).unwrap();
+        heartbeat(&calls);
+        assert_eq!(storage.database().calls[0].phase, CallPhase::Active);
+        let revision = calls.status().database_revision;
+        heartbeat(&calls);
+        assert_eq!(calls.status().database_revision, revision);
+    }
 }

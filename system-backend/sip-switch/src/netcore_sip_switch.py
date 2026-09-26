@@ -11,6 +11,7 @@ import shlex
 import signal
 import subprocess
 import threading
+import tempfile
 import time
 import tomllib
 import uuid
@@ -24,6 +25,30 @@ from urllib.parse import parse_qs, urlparse
 from urllib.request import Request, urlopen
 
 from netcore_sip_runtime import SideEffects, available_contact, registration_status
+
+
+def write_asterisk_config(path: Path, content: str) -> None:
+    """Replace an include without inheriting root's restrictive update umask."""
+    fd, temporary = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            stream.write(content)
+            stream.flush()
+            if os.name == "posix":
+                if os.geteuid() == 0:
+                    import grp
+                    try:
+                        gid = grp.getgrnam("asterisk").gr_gid
+                    except KeyError:
+                        # Custom/non-installed render targets retain directory ownership.
+                        gid = path.parent.stat().st_gid
+                    os.fchown(stream.fileno(), -1, gid)
+                os.fchmod(stream.fileno(), 0o640)
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
 
 STATE_SCHEMA = "netcore-sip-switch-state-v1"
 EVENT_SCHEMA = "netcore-event-v1"
@@ -558,9 +583,7 @@ class SipSwitch:
             config_dir / "netcore-rtp.conf": rtp,
         }
         for path, content in files.items():
-            temp = path.with_suffix(path.suffix + ".tmp")
-            temp.write_text(content, encoding="utf-8")
-            temp.replace(path)
+            write_asterisk_config(path, content)
         self.audit("asterisk_render", "api", SERVICE, {"files": [str(path) for path in files]})
         self.emit_event("sip.asterisk_config_rendered", "info", "service", SERVICE, {"files": [str(path) for path in files]})
         return {"rendered": [str(path) for path in files], "tbs": len(self.config.tbs)}

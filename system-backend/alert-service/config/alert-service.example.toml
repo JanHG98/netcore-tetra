@@ -1,0 +1,39 @@
+# NetCore Warnzentrale: Warnungen und einmalige SDS-Zustellung anhand von GPS.
+[server]
+bind = "0.0.0.0"
+port = 8310
+# Bevorzugt in /etc/netcore/alert-service.env: NETCORE_ALERT_TOKEN=<geheim>
+admin_token = ""
+allow_unauthenticated = false
+
+[storage]
+# Nicht loeschen: hier liegt auch die dauerhafte Empfaengerliste je Warnung.
+database = "/var/lib/netcore-alert-service/alerts.sqlite3"
+
+[netcore]
+control_room_url = "http://control-room:9010"
+sds_router_url = "http://sds-router:8150"
+control_room_username = ""
+# Bei Control-Room-Anmeldung: NETCORE_CONTROL_ROOM_PASSWORD in der .env-Datei.
+control_room_password = ""
+# Eine im eigenen Netz freie/erlaubte Absender-ISSI eintragen.
+source_issi = 9999
+poll_seconds = 5
+gps_max_age_seconds = 3600
+node_max_age_seconds = 120
+http_timeout_seconds = 10
+
+[nina]
+enabled = true
+base_url = "https://warnung.bund.de/api31"
+# NINA-Bevoelkerungsschutz, KATWARN, BIWAPP, Wetter und Hochwasser.
+sources = ["mowas", "katwarn", "biwapp", "dwd", "lhp"]
+poll_seconds = 60
+# Bei laengerem Abruffehler keine neuen SDS aus veralteten NINA-Daten senden.
+max_stale_seconds = 300
+
+[delivery]
+# Erst nach Adress-, GPS- und Funktionstest bewusst aktivieren.
+enabled = false
+ttl_seconds = 300
+max_text_length = 120

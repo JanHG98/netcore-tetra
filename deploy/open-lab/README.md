@@ -1,6 +1,6 @@
 # NetCore Open-Lab LXC Deployment
 
-This directory is the final cross-LXC integration layer for the current lab phase. It does not turn the management plane into a production system: every backend WebUI remains reachable without login, token or TLS and therefore belongs on an isolated management VLAN only.
+This directory is the final cross-LXC integration layer for the current lab phase. It does not turn the management plane into a production system: existing backend WebUIs generally remain reachable without login, token or TLS and therefore belong on an isolated management VLAN only. The new `alert-service` (port 8310) requires a locally generated API token by default. Its delivery switch starts disabled; see [installation and update guide](../../Docs/KATWARN_NINA_INSTALL_UPDATE.md).
 
 ## Offline workflow
 
@@ -38,6 +38,8 @@ When services are installed manually, every installer detects the IPv4 address c
 - NFS mount prepared separately for Recorder/Media Library when archive features are used.
 
 The tool intentionally does not store passwords, tokens, TLS keys, KMF master material or connector secrets.
+
+`apply` installs rendered configuration templates over existing host configuration. For updates that must preserve local alert settings, delivery history and credentials, use `system-backend/alert-service/install/update.sh` as described in the guide. Adding the alert service to the inventory does not enable warning delivery automatically.
 
 ## Cross-LXC E2E validation
 

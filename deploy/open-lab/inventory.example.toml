@@ -644,3 +644,16 @@ config_template = "system-backend/sip-switch/config/sip-switch.example.toml"
 config_target = "/etc/netcore/sip-switch.toml"
 depends_on = ["iot-gateway", "mobility-core"]
 health_path = "/health/ready"
+
+# NINA / KATWARN warning centre; token is generated locally by the installer.
+[[services]]
+name = "alert-service"
+host = "10.0.20.34"
+port = 8310
+unit = "netcore-alert-service.service"
+user = "netcore-alert"
+install = "system-backend/alert-service/install/install.sh"
+config_template = "system-backend/alert-service/config/alert-service.example.toml"
+config_target = "/etc/netcore/alert-service.toml"
+depends_on = ["control-room", "sds-router"]
+health_path = "/health/ready"

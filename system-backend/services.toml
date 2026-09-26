@@ -678,3 +678,15 @@ token_auth = false
 tls = false
 depends_on = ["iot-gateway", "mobility-core"]
 warning = "OPEN LAB: no WebUI/API authentication or TLS; SIP credentials are lab secrets; Asterisk routes one PBX trunk to mobility-selected TBS contacts"
+
+# GPS-based warning delivery with durable per-alert/per-ISSI deduplication.
+[[services]]
+name = "alert-service"
+webui = true
+scheme = "http"
+management_port = 8310
+security_mode = "token"
+token_auth = true
+tls = false
+depends_on = ["control-room", "sds-router"]
+warning = "Management network only; API token required by default; delivery must be enabled explicitly"
