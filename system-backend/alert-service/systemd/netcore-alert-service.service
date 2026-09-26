@@ -1,0 +1,31 @@
+[Unit]
+Description=NetCore-TETRA GPS warning service (NINA / KATWARN)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=netcore-alert
+Group=netcore-alert
+WorkingDirectory=/usr/local/lib/netcore-alert-service
+EnvironmentFile=/etc/netcore/alert-service.env
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 /usr/local/lib/netcore-alert-service/main.py --config /etc/netcore/alert-service.toml
+Restart=on-failure
+RestartSec=5
+UMask=0027
+StateDirectory=netcore-alert-service
+StateDirectoryMode=0750
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/netcore-alert-service
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target

@@ -170,6 +170,112 @@ impl SharedControlRoom {
         node_id
     }
 
+    /// Observe Gateway identities without installing a command sender. An
+    /// existing direct TBS connection always owns its state while connected.
+    pub fn apply_gateway_snapshot(&self, nodes: &[crate::gateway::GatewayNodeSnapshot], max_age_secs: u64) {
+        let direct = self.node_senders.lock().expect("node sender map poisoned");
+        let mut state = self.inner.lock().expect("control room state poisoned");
+        let seen: HashSet<_> = nodes.iter().map(|node| node.node_id.as_str()).collect();
+        let missing: Vec<_> = state.gateway_sessions.keys()
+            .filter(|id| !seen.contains(id.as_str()) && !direct.contains_key(*id)).cloned().collect();
+        for id in missing {
+            state.mark_gateway_node_offline(&id);
+            state.gateway_sessions.remove(&id);
+        }
+        for snapshot in nodes {
+            if direct.contains_key(&snapshot.node_id) || snapshot.node_id != snapshot.identity.node_id {
+                continue;
+            }
+            let changed_session = state.gateway_sessions.get(&snapshot.node_id) != Some(&snapshot.session_id);
+            state.gateway_sessions.insert(snapshot.node_id.clone(), snapshot.session_id.clone());
+            if changed_session {
+                state.mark_gateway_node_offline(&snapshot.node_id);
+            }
+            let node = state.node_mut(&snapshot.node_id);
+            node.apply_hello(&ControlRoomNodeHello {
+                protocol_version: tetra_entities::net_control_room::CONTROL_ROOM_PROTOCOL_VERSION.to_string(),
+                node: snapshot.identity.clone(),
+                capabilities: snapshot.capabilities.clone(),
+                started_at: snapshot.connected_at.clone(),
+            });
+            // A snapshot describes Gateway observation time, not a fresh GPS
+            // fix or a newly received heartbeat from the radio.
+            node.last_seen = Some(snapshot.last_seen.clone());
+            if !snapshot.connected || snapshot.stale || !gateway_timestamp_fresh(&snapshot.last_seen, max_age_secs) {
+                state.mark_gateway_node_offline(&snapshot.node_id);
+            }
+        }
+        drop(state);
+        drop(direct);
+        self.broadcast_state();
+    }
+
+    pub fn handle_gateway_message(&self, node_id: &str, message: NodeToControlRoomMessage, max_age_secs: u64) {
+        // The TBS can replay an offline spool with old timestamps and new
+        // sequence numbers. Such events must not resurrect old presence/GPS.
+        let timestamp = match &message {
+            NodeToControlRoomMessage::Telemetry { envelope } => Some(envelope.timestamp.as_str()),
+            NodeToControlRoomMessage::Heartbeat { heartbeat } => Some(heartbeat.timestamp.as_str()),
+            _ => None,
+        };
+        if timestamp.is_some_and(|at| !gateway_timestamp_fresh(at, max_age_secs)) {
+            return;
+        }
+        let direct = self.node_senders.lock().expect("node sender map poisoned");
+        let mut state = self.inner.lock().expect("control room state poisoned");
+        if direct.contains_key(node_id) || !state.gateway_sessions.contains_key(node_id)
+            || crate::gateway::message_node_id(&message) != node_id {
+            return;
+        }
+        if let NodeToControlRoomMessage::Telemetry { envelope } = &message {
+            let at = chrono::DateTime::parse_from_rfc3339(&envelope.timestamp).expect("timestamp checked above");
+            if state.gateway_latest_telemetry.get(node_id).is_some_and(|previous| at < *previous) {
+                return;
+            }
+            state.gateway_latest_telemetry.insert(node_id.to_string(), at);
+        }
+        state.apply_node_message(&message);
+        let snapshot = state.snapshot();
+        drop(state);
+        drop(direct);
+        self.broadcast(UiMessage::NodeMessage { message });
+        self.broadcast(UiMessage::StateSnapshot { snapshot });
+    }
+
+    /// A lost observer stream invalidates presence but retains GPS history with
+    /// its original timestamp. Reconnection needs fresh subscriber telemetry.
+    pub fn gateway_disconnected(&self) {
+        let direct = self.node_senders.lock().expect("node sender map poisoned");
+        let mut state = self.inner.lock().expect("control room state poisoned");
+        let ids: Vec<_> = state.gateway_sessions.keys().filter(|id| !direct.contains_key(*id)).cloned().collect();
+        for id in ids {
+            state.mark_gateway_node_offline(&id);
+        }
+        state.gateway_sessions.clear();
+        drop(state);
+        drop(direct);
+        self.broadcast_state();
+    }
+
+    pub fn expire_gateway_nodes(&self, max_age_secs: u64) {
+        let direct = self.node_senders.lock().expect("node sender map poisoned");
+        let mut state = self.inner.lock().expect("control room state poisoned");
+        let ids: Vec<_> = state.gateway_sessions.keys().filter(|id| {
+            !direct.contains_key(*id) && state.nodes.get(*id).is_some_and(|node| {
+                node.connected && !node.last_seen.as_deref().is_some_and(|at| gateway_timestamp_fresh(at, max_age_secs))
+            })
+        }).cloned().collect();
+        let changed = !ids.is_empty();
+        for id in ids {
+            state.mark_gateway_node_offline(&id);
+        }
+        drop(state);
+        drop(direct);
+        if changed {
+            self.broadcast_state();
+        }
+    }
+
     // Was: Diese Funktion registriert Netzknoten sender.
     // Warum: Die Zuordnung bleibt dadurch eindeutig und kann später sauber wieder entfernt werden.
     pub fn register_node_sender(&self, node_id: String, tx: NodeCommandSender) {
@@ -1439,6 +1545,8 @@ struct ControlRoomState {
     started_at: String,
     history_limit: usize,
     nodes: HashMap<String, NodeState>,
+    gateway_sessions: HashMap<String, String>,
+    gateway_latest_telemetry: HashMap<String, chrono::DateTime<chrono::FixedOffset>>,
     recent_events: VecDeque<EventLogEntry>,
     recent_commands: VecDeque<CommandAuditEntry>,
     persistence: Option<PersistenceHandle>,
@@ -1454,6 +1562,8 @@ impl ControlRoomState {
             started_at: now_iso(),
             history_limit,
             nodes: HashMap::new(),
+            gateway_sessions: HashMap::new(),
+            gateway_latest_telemetry: HashMap::new(),
             recent_events: VecDeque::new(),
             recent_commands: VecDeque::new(),
             persistence: persistence.clone(),
@@ -1935,6 +2045,21 @@ impl ControlRoomState {
         }
     }
 
+    fn mark_gateway_node_offline(&mut self, node_id: &str) {
+        if let Some(node) = self.nodes.get_mut(node_id) {
+            node.connected = false;
+            node.transport_connected = false;
+            for subscriber in node.subscribers.values_mut() {
+                subscriber.online = false;
+            }
+            for group in node.groups.values_mut() {
+                group.members.clear();
+                group.active_call_id = None;
+            }
+            node.active_calls.clear();
+        }
+    }
+
     // Was: Führt den Arbeitsschritt `record_command_queued` für Datensatz command queued aus.
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn record_command_queued(&mut self, envelope: &ControlCommandEnvelope) {
@@ -2319,6 +2444,13 @@ fn call_involves_subscriber(call: &CallState, issi: u32) -> bool {
 
 // Was: Diese Funktion liest und prüft lip position.
 // Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
+fn gateway_timestamp_fresh(value: &str, max_age_secs: u64) -> bool {
+    chrono::DateTime::parse_from_rfc3339(value).is_ok_and(|at| {
+        let age = chrono::Utc::now().signed_duration_since(at).num_seconds();
+        (-60..=max_age_secs as i64).contains(&age)
+    })
+}
+
 fn parse_lip_position(text: &str) -> Option<(f64, f64)> {
     let trimmed = text.trim();
     let lower = trimmed.to_ascii_lowercase();

@@ -2008,6 +2008,26 @@ impl BsChannelScheduler {
     // Was: Diese Funktion erzeugt default blks.
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn generate_default_blks(&self, ts: TdmaTime) -> TmvUnitdataReq {
+        // EN 300 392-2 tables 9.27-9.29: the mandatory BNCH on a control or
+        // allocated traffic channel uses block 2 of a normal downlink burst,
+        // preceded by SCH/HD. BSCH + BNCH in a synchronization burst is only
+        // the filler mapping for an unallocated physical channel. In particular,
+        // MCCH TS1 must not turn into an extra BSCH at MN = 4, 8, ... .
+        // Use the allocation state, not ul_phy_chan: frame 18 temporarily marks
+        // traffic as control, and that uplink hint also labels idle slots as CP.
+        let allocated_channel = (self.downlink_mode == CarrierDownlinkMode::PrimaryMcch && ts.t == 1)
+            || self.circuits.is_active(Direction::Dl, ts.t)
+            || self.circuits.is_active(Direction::Ul, ts.t);
+        if ts.is_mandatory_bnch() && allocated_channel {
+            let mut buf = BitBuffer::new(SCH_HD_CAP);
+            MacResource::null_pdu().to_bitbuf(&mut buf);
+            return TmvUnitdataReq {
+                logical_channel: LogicalChannel::SchHd,
+                mac_block: buf,
+                scrambling_code: self.scrambling_code,
+            };
+        }
+
         // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
         // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match (ts.f, ts.t) {
@@ -2407,9 +2427,108 @@ mod tests {
                     let time = TdmaTime { h: 0, m, f: 18, t };
                     let slot = finish_at(&mut sched, time);
                     if allocated || t == 1 || time.is_mandatory_bsch() || time.is_mandatory_bnch() {
-                        assert_eq!(slot.blk1.unwrap().logical_channel, LogicalChannel::Bsch);
+                        let expected = if allocated && t != 1 && time.is_mandatory_bnch() {
+                            LogicalChannel::SchHd
+                        } else {
+                            LogicalChannel::Bsch
+                        };
+                        assert_eq!(slot.blk1.unwrap().logical_channel, expected);
                         assert!(slot.blk2.is_some());
                         assert!(slot.bbk.is_some());
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn mandatory_frame18_bnch_uses_normal_burst_through_lmac() {
+        use crate::{lmac::lmac_bs::LmacBs, MessageQueue, TetraEntityTrait};
+        use tetra_config::bluestation::SharedConfig;
+        use tetra_core::{tetra_entities::TetraEntity, BurstType, Sap, TrainingSequence};
+        use tetra_saps::{tmv::TmvUnitdataReqSlots, SapMsg, SapMsgInner};
+
+        let cfg = tetra_config::bluestation::parsing::from_toml_str(r#"
+config_version = "0.6"
+stack_mode = "Bs"
+[phy_io]
+backend = "None"
+[net_info]
+mcc = 204
+mnc = 1337
+[cell_info]
+main_carrier = 1001
+freq_band = 4
+freq_offset = 0
+duplex_spacing = 4
+reverse_operation = false
+location_area = 2
+"#).unwrap();
+        let mut lmac = LmacBs::new(SharedConfig::from_parts(cfg, None));
+
+        // Independent table 9.33 reference, indexed by (MN - 1) % 4.
+        // Test all 60 multiframes, including the hyperframe boundary, rather
+        // than deriving the expected slots from the scheduler's predicates.
+        let mandatory_slots = [(2, 4), (1, 3), (4, 2), (3, 1)];
+        for mode in [CarrierDownlinkMode::PrimaryMcch, CarrierDownlinkMode::SecondaryBcchNoMcch, CarrierDownlinkMode::TrafficOnly] {
+            // No allocation, downlink only, uplink only, and both directions.
+            for allocation in 0..4 {
+                let mut sched = get_testing_slotter();
+                let carrier = if mode == CarrierDownlinkMode::PrimaryMcch { 1001 } else { 1002 };
+                sched.set_carrier_num(carrier);
+                sched.set_downlink_mode(mode);
+                let first_bearer = if mode == CarrierDownlinkMode::TrafficOnly { 1 } else { 2 };
+                for t in first_bearer..=4 {
+                    if allocation & 1 != 0 {
+                        sched.create_circuit(Direction::Dl, test_circuit(Direction::Dl, t));
+                    }
+                    if allocation & 2 != 0 {
+                        sched.create_circuit(Direction::Ul, test_circuit(Direction::Ul, t));
+                    }
+                }
+
+                for index in 0..=60 {
+                    let m = (index % 60 + 1) as u8;
+                    let h = 7 + (index / 60) as u16;
+                    let (bsch_t, bnch_t) = mandatory_slots[(m as usize - 1) % 4];
+                    for t in [bsch_t, bnch_t] {
+                        let time = TdmaTime { h, m, f: 18, t };
+                        let mut slot = finish_at(&mut sched, time);
+                        let control = mode == CarrierDownlinkMode::PrimaryMcch && t == 1;
+                        let bearer = allocation != 0 && t >= first_bearer;
+                        let normal = t == bnch_t && (control || bearer);
+                        let expected_channel = if normal { LogicalChannel::SchHd } else { LogicalChannel::Bsch };
+                        assert_eq!(slot.blk1.as_ref().unwrap().logical_channel, expected_channel,
+                            "mode={mode:?} allocation={allocation} time={time}");
+                        // Preserve existing SYSINFO contents even at the BSCH
+                        // positions, whose second-half mapping is outside this fix.
+                        let second = slot.blk2.as_mut().expect("broadcast payload missing");
+                        assert_eq!(second.logical_channel, LogicalChannel::Bnch);
+                        let sysinfo = MacSysinfo::from_bitbuf(&mut second.mac_block).unwrap();
+                        assert_eq!(sysinfo.main_carrier, 1001);
+                        assert_eq!(sysinfo.hyperframe_number, Some(h));
+                        second.mac_block.seek(0);
+
+                        // Exercise the actual multi-carrier LMAC route, including
+                        // channel encoding and the PHY burst/training selection.
+                        let mut queue = MessageQueue::new();
+                        lmac.rx_prim(&mut queue, SapMsg {
+                            sap: Sap::TmvSap,
+                            src: TetraEntity::Umac,
+                            dest: TetraEntity::Lmac,
+                            msg: SapMsgInner::TmvUnitdataReqSlots(TmvUnitdataReqSlots { slots: vec![slot] }),
+                        });
+                        let message = queue.pop_front().expect("LMAC dropped broadcast batch");
+                        let SapMsgInner::TpUnitdataReqSlots(batch) = message.msg else {
+                            panic!("expected PHY batch");
+                        };
+                        assert_eq!(batch.slots.len(), 1);
+                        let phy = &batch.slots[0];
+                        assert_eq!(phy.carrier_num, carrier);
+                        assert_eq!(phy.burst_type, if normal { BurstType::NDB } else { BurstType::SDB });
+                        assert_eq!(phy.train_type, if normal { TrainingSequence::NormalTrainSeq2 } else { TrainingSequence::SyncTrainSeq });
+                        assert!(phy.bbk.is_some() && phy.blk1.is_some() && phy.blk2.is_some());
+                        assert!(queue.is_empty());
                     }
                 }
             }

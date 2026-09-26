@@ -19,6 +19,16 @@ ui_path = "/ui"
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 history_limit = 2000
 
+# Read-only telemetry from TBS connected to Node Gateway. Required for the
+# warning service's GPS/subscriber view in the central backend topology.
+# Enable after replacing the address with the same gateway used by SDS Router.
+[node_gateway]
+enabled = false
+url = "ws://node-gateway:8080/ws/backend"
+reconnect_secs = 3
+timeout_secs = 10
+stale_after_secs = 30
+
 # Was: Öffnet den Konfigurationsabschnitt `persistence`.
 # Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [persistence]

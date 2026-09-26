@@ -7,6 +7,7 @@ mod auth;
 // Was: Bindet das Untermodul Konfiguration in diesen Bereich ein.
 // Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod config;
+mod gateway;
 // Was: Bindet das Untermodul HTTP in diesen Bereich ein.
 // Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod http;
@@ -151,6 +152,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!(services = config.services.len(), "Core-service federation configured");
 
     let state = state::SharedControlRoom::new_with_persistence(config.server.history_limit, persistence);
+    gateway::spawn(config.node_gateway.clone(), state.clone())?;
     let server = server::ControlRoomServer::new(
         config.server.bind,
         config.server.node_path,
