@@ -1,6 +1,6 @@
 # Dual Carrier
 
-Dual Carrier erweitert die Basisstation um einen zweiten TETRA-Träger. Im Dashboard werden dadurch insgesamt acht logische Zeitschlitze dargestellt: vier pro Carrier. Die genaue Nutzbarkeit hängt von Control-Channel-Belegung, Scheduler und Endgeräteeigenschaften ab.
+Dual Carrier erweitert die Basisstation um einen zweiten TETRA-Träger. Im Dashboard werden damit acht logische Zeitschlitze dargestellt: vier pro Carrier. Das ist keine Zusage für acht gleichzeitig nutzbare Sprachkanäle. Die tatsächliche Kapazität hängt von Control-Channel-Belegung, Scheduler, Reservierungen und Endgeräten ab.
 
 ## Voraussetzungen
 
@@ -32,7 +32,7 @@ Bei zwei Carriern reicht es nicht, nur `secondary_carrier` einzutragen. Die Basi
 
 ## Control Channel und Traffic
 
-Der Hauptträger führt regulär den primären Control Channel. Je nach aktuellem Netzausbau kann der zweite Träger zusätzlich Control-Aufgaben übernehmen oder als Traffic-Träger dienen. Endgeräte ohne parallelen Multicarrier-Zugriff können auf dem Sekundärträger nicht beliebig Random Access oder CCCH nutzen; diese Einschränkung muss bei der Scheduler-Planung berücksichtigt werden.
+Der Hauptträger führt im beschriebenen Aufbau den primären Control Channel. Der zweite Träger ist zunächst eine zusätzliche Traffic-Ressource; ob und welche Control-Aufgaben er übernimmt, muss mit der **konkreten Laufzeitversion und Air-Logs** nachgewiesen werden. Ein Funkgerät muss daher nicht pauschal beide Frequenzen als zwei getrennte Kontrollkanäle programmiert bekommen. Für ein Gerät zunächst die belegte Kontrollträgerfrequenz und korrekte Netz-/Zellparameter setzen, danach Verhalten bei Traffic-Zuweisung auf den zweiten Träger testen. Endgeräte ohne parallelen Multicarrier-Zugriff können auf dem Sekundärträger nicht beliebig Random Access oder CCCH nutzen.
 
 ## Dashboard-Schalter
 
@@ -69,3 +69,5 @@ Das Dashboard kann Dual Carrier ein- oder ausschalten und die Carrier-Nummer in 
 5. Bis zur geplanten Maximalbelegung steigern.
 6. Release aller Calls und erneute Registrierung kontrollieren.
 7. Logs carrier- und timeslotbezogen sichern.
+
+[[Hardware-und-RF]] beschreibt die HF-Prüfung; [[Abnahme]] enthält den vollständigen Funk- und Integrationstest. Werte aus einem alten Log sind keine Freigabe für eine aktuelle Konfiguration.

@@ -29,3 +29,7 @@ Mit jeder eingesetzten Gerätegeneration mindestens testen:
 - Neustart/Re-Registrierung
 - Offline-Mitglied einer Statusgruppe
 - Notfallstatus und anschließende Rücknahme
+
+## Weiterführend
+
+[[SDS-and-U-STATUS]] · [[Status-Messages]] · [[Dashboard]]

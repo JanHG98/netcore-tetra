@@ -30,3 +30,7 @@ Standort:  Technikraum Nord
 ```
 
 Hostnamen können zusätzlich in `node_id` oder `station_name` der Control-Room-Konfiguration geführt werden. Directory-Name und Node-ID sollten stabil und eindeutig sein.
+
+## Weiterführend
+
+[[NetCore-Directory]] · [[Configuration]] · [[Mehrzellenbetrieb]]

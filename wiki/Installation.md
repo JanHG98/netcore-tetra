@@ -1,114 +1,65 @@
-# Installation
+# Installation der lokalen Basisstation
 
-Die folgenden Schritte beschreiben eine quellbasierte Installation auf Debian oder Raspberry Pi OS. Pfade und Benutzer sind Beispiele und müssen zum Zielsystem passen.
+Diese Anleitung beschreibt eine **quellbasierte TBS-Installation** auf Debian/Raspberry Pi OS. Sie installiert keine der 24 Backend-LXCs. Die lokale Umgebung muss zu Hardware, Treiber, Codec und Konfiguration passen. Für einen großen Aufbau anschließend [[Open-Lab-Deployment]] lesen.
 
-## Voraussetzungen
+## 1. System und SDR vorbereiten
 
-- 64-Bit Linux auf Raspberry Pi 4/5 oder vergleichbarer Hardware
-- Rust-Toolchain mit Cargo
-- C/C++-Buildwerkzeuge und `pkg-config`
-- SoapySDR und der passende SDR-Gerätetreiber
-- Git
-- `ffmpeg`, wenn Audio-Zentrale, MP3/WAV-Wiedergabe oder TTS genutzt werden
-- nativer TETRA-Sprachcodec, wenn Asterisk oder Audiofunktionen gebaut werden
+- 64-Bit-Linux, ausreichend RAM/Storage, stabile Versorgung und Zeitquelle;
+- Rust/Cargo mit Unterstützung für Edition 2024, C/C++-Toolchain, `pkg-config`;
+- SoapySDR und passender **konkreter SDR-Treiber**; native Codec-Abhängigkeiten für Default-Build mit Asterisk/Audio;
+- `ffmpeg` für Medien-/TTS-Pfade, Netzwerkzugriff zu bewusst aktivierten Diensten.
 
 ```bash
 sudo apt update
-sudo apt install -y \
-  git curl build-essential pkg-config cmake clang \
-  libsoapysdr-dev soapysdr-tools ffmpeg
-```
-
-Rust installieren:
-
-```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-source "$HOME/.cargo/env"
-rustup update stable
-```
-
-## Repository bereitstellen
-
-```bash
-cd ~
-git clone <REPOSITORY-URL> netcore
-cd ~/netcore
-```
-
-Bei einem bereits vorhandenen Arbeitsverzeichnis zuerst prüfen:
-
-```bash
-git status
-git branch --show-current
-git remote -v
-```
-
-Lokale Änderungen niemals blind mit `reset --hard` verwerfen. Zuerst sichern oder committen.
-
-## SDR prüfen
-
-```bash
-SoapySDRUtil --info
+sudo apt install -y git curl build-essential pkg-config cmake clang libsoapysdr-dev soapysdr-tools ffmpeg
 SoapySDRUtil --find
-SoapySDRUtil --probe="driver=<TREIBER>"
+SoapySDRUtil --probe="driver=<DEIN-TREIBER>"
 ```
 
-Die Basisstation sollte erst gestartet werden, wenn das SDR zuverlässig erkannt wird und die konfigurierte Sample-Rate unterstützt.
+Die Cargofeatures sind in [`bins/bluestation-bs/Cargo.toml`](https://github.com/JanHG98/netcore-tetra/blob/main/bins/bluestation-bs/Cargo.toml) definiert; der Default-Build enthält `asterisk`, `recording` und `audio-player`. Falls eine native Codec-Bibliothek fehlt, ist ein erfolgreich gebautes Minimal-Binary nicht gleichbedeutend mit aktivierter SIP-/Audiofunktion. [[Common-Build-Errors]]
 
-## Konfiguration anlegen
-
-Die Basisstation erwartet beim Start einen Pfad zur Konfiguration:
+## 2. Quellcode und lokalen Stand sichern
 
 ```bash
-cp config.toml config.local.toml
+git clone https://github.com/JanHG98/netcore-tetra.git /opt/netcore-tetra
+cd /opt/netcore-tetra
+git status --short --branch
+git rev-parse HEAD
+```
+
+Für eine bereits bestehende Installation **keinen neuen Clone über Daten und lokale Änderungen schreiben**. Vor Updates Branch/Commit, Konfiguration, Units und Persistenz sichern. [[Backup-and-Fallback]]
+
+## 3. TBS-Konfiguration erstellen
+
+```bash
+cp Docs/basisstation.config.sanitized.example.toml config.local.toml
 chmod 600 config.local.toml
+python3 -c 'import pathlib,tomllib; tomllib.loads(pathlib.Path("config.local.toml").read_text()); print("TOML OK")'
 ```
 
-Zugangsdaten, Tokens und standortspezifische Frequenzen nur in der lokalen Datei pflegen. Hinweise zu den Sektionen stehen unter [[Configuration]].
+Die Datei ist **nur ein syntaktisch lesbares Beispiel**. Die markierten Werte für SDR, Funk, Netz, Directory, SIP, Brew, Control Room und Zugangsdaten gegen den echten Standort prüfen; ungenutzte Integrationen deaktivieren. Die TOML-Syntaxprüfung ersetzt nicht die Laufzeitvalidierung. Falls `[control_room]` für das verteilte Backend aktiviert wird: `host` auf den Node Gateway setzen und `endpoint_path = "/ws/node"`. [[Configuration]] · [[Netzwerk-und-Ports]]
 
-## Build
-
-Der Standard-Build enthält Asterisk, Recording und Audio-Player:
+## 4. Bauen und zuerst manuell starten
 
 ```bash
-cargo clean
-rm -rf target
+cd /opt/netcore-tetra
 cargo build --release -p bluestation-bs
-```
-
-Die Binärdatei liegt anschließend unter:
-
-```text
-target/release/bluestation-bs
-```
-
-Minimaler Build ohne Standard-Medienfunktionen:
-
-```bash
-cargo clean
-rm -rf target
-cargo build --release -p bluestation-bs --no-default-features
-```
-
-## Erster manueller Start
-
-```bash
 RUST_LOG=info ./target/release/bluestation-bs ./config.local.toml
 ```
 
-Prüfen:
+Bei fehlenden nativen Default-Abhängigkeiten lässt sich für **einen bewusst eingeschränkten Test** `cargo build --release -p bluestation-bs --no-default-features` verwenden. Für den gewünschten Audio-/SIP-Betrieb müssen die Features später korrekt gebaut werden. Vor dem Senden RF-Kette messen und Betriebsvoraussetzungen prüfen. Beim Start auf Konfigurations-Fallback, SDR-Identität, RX/TX-Center, Sample-Rate, Downlink und Time-Skips achten. Danach Registrierung, SDS, Ruf, Release und Dashboard testen. [[Hardware-und-RF]] · [[Abnahme]]
 
-- Konfiguration wird ohne Fallback geladen.
-- SDR und Center-Frequenzen sind korrekt.
-- Downlink startet stabil.
-- Dashboard bindet auf der erwarteten Adresse und dem erwarteten Port.
-- Keine dauerhaften Buffer-, Timing- oder Passband-Fehler erscheinen.
+## 5. Systemd erst nach dem manuellen Test
 
-Mit `Ctrl+C` sauber beenden und erst danach den Systemd-Dienst einrichten.
+Die getestete Binärdatei an einen festen Ort installieren, Konfiguration nach `/etc/netcore/` übernehmen und den Dienstbenutzer passend für SDR, Audio- und Cache-Pfade berechtigen. Die Beispiel-Unit unter [[Systemd-Service]] an diese echten Pfade anpassen. **Nicht gleichzeitig** einen manuellen und einen systemd-TBS-Prozess mit denselben RF- und Dashboard-Ressourcen starten.
 
-## Zusätzliche Dienste
+## 6. Weitere Komponenten
 
-- [[NetCore-Directory]] für Namen, Status und Statusgruppen
-- [[Audio-Zentrale]] und NetCore Piper für TTS
-- [[Control-Room]] für den zentralen Leitstellenbetrieb
-- NFS-Mount für Aufnahme- und TTS-Archive
+| Bedarf | Weiterführende Seite |
+|---|---|
+| 24 Backend-LXCs | [[Open-Lab-Deployment]] |
+| Directory-Namen/Status | [[NetCore-Directory]] |
+| Teilnehmer/Gruppen | [[Provisioning]] |
+| TTS/Medien | [[Audio-Zentrale]] |
+| Telefonie | [[SIP-und-Brew]] |
+| Leitstelle | [[Control-Room]] |

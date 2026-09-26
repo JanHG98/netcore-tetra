@@ -28,3 +28,7 @@ Bei `recording.mode = "selected_groups"` müssen die aufzuzeichnenden GSSIs zus�
 - volle Bezeichnung für Bedienoberflächen
 - kurze, eindeutige Abkürzung für kompakte Ansichten
 - GSSI nicht aus dem Namen ableiten, sondern als eigenes Primärfeld pflegen
+
+## Weiterführend
+
+[[Device-Groups]] · [[Provisioning]] · [[Calls]]

@@ -86,3 +86,5 @@ Nach einem Dashboard-Update kann alter JavaScript-/CSS-Code im Browser verbleibe
 - Windows/Linux: `Ctrl` + `F5`
 - alternativ Cache für die Dashboard-Seite löschen
 - bei installierter Web-App zusätzlich Service-Worker prüfen
+
+Das lokale TBS-Dashboard und die 24 Fach-WebUIs sind eigenständige Oberflächen mit unterschiedlichen Authentisierungs- und Netzgrenzen. [[Bedienoberflaechen]] · [[Security-and-Operations]]

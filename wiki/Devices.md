@@ -32,3 +32,7 @@ Ein Gerät kann Mitglied mehrerer Gerätegruppen sein. Ist für eine Gruppe `sta
 ## Anzeige in der Basisstation
 
 Ist Directory erreichbar, ersetzt das Dashboard die nackte ISSI durch Name, Kurzname, Farbe und Icon. Die ISSI bleibt die technische Primäridentität.
+
+## Weiterführend
+
+[[Provisioning]] · [[NetCore-Directory]] · [[Registration-and-Affiliation]]

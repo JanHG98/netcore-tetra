@@ -1,36 +1,40 @@
-# NetCore-Basisstation
+# NetCore Tetra · Systemwiki
 
-Dieses Wiki beschreibt den aktuellen Stand der **NetCore-Basisstation** und der zugehörigen Dienste. Es richtet sich an Betrieb, Entwicklung und Fehlersuche im eigenen TETRA-Labornetz.
+**Softwarebasierte TETRA-Basisstation, verteilte Netzdienste und Leitstellenwerkzeuge für ein kontrolliertes Open Lab.** Dieses Wiki führt vom ersten Start einer TBS über den Betrieb der zentralen Dienste bis zur Fehlersuche. Die Seiten beschreiben den [Repository-Stand `main` vom 26.09.2026 (`d518c97`)](https://github.com/JanHG98/netcore-tetra/tree/d518c9733b6d0474021792d4883206dc42035c2d). Die tatsächlich installierte Version und Konfiguration einer Anlage können davon abweichen.
 
-> **Dokumentationsstand:** NetCore 1.3.0 · Konfigurationsformat 0.6 · NetCore Directory 0.2.0
+> **Betriebsgrenze:** Die Beispiel-Backends im Modus `open_lab` besitzen nach dem aktuellen Inventory und den Dienstvorlagen vielfach **keine Anmeldung, Management-Tokens oder TLS**. Sie gehören ausschließlich in ein isoliertes, kontrolliertes Managementnetz. Der Quellcode und ein erfolgreicher Komponententest sind kein Nachweis eines vollständig abgenommenen Funknetzes. [[Projektstand und Grenzen|Projektstand]]
 
-## Was gehört zum System?
+## Hier anfangen
 
-Die Basisstation besteht nicht nur aus dem RF-Prozess. Im aktuellen Ausbau gehören mehrere Bausteine zusammen:
+| Ziel | Einstieg | Danach |
+|---|---|---|
+| Eine TBS aufbauen | [[Installation]] | [[Konfiguration|Configuration]] · [[Hardware und HF|Hardware-und-RF]] · [[Abnahme|Abnahme]] |
+| 24 Backend-Dienste verstehen | [[Architektur|Architecture]] | [[Dienstkatalog|Dienstkatalog]] · [[Netzwerk und Ports|Netzwerk-und-Ports]] |
+| LXCs bereitstellen | [[Open-Lab-Deployment]] | [[Provisioning|Provisioning]] · [[Sicherheit und Betrieb|Security-and-Operations]] |
+| Funk- und Datenwege prüfen | [[Rufe|Calls]] | [[SDS und Status|SDS-and-U-STATUS]] · [[Paketdaten und WAP|Paketdaten-und-WAP]] |
+| Leitstelle und Integrationen anbinden | [[Control Room|Control-Room]] | [[SIP und Brew|SIP-und-Brew]] · [[MQTT und Home Assistant|MQTT-und-Home-Assistant]] |
+| Fehler eingrenzen | [[Fehlersuche|Troubleshooting]] | [[Betrieb und Wartung|Betrieb-und-Wartung]] · [[Backup und Fallback|Backup-and-Fallback]] |
 
-- **Basisstation (`bluestation-bs`)** – TETRA-Luftschnittstelle, Registrierung, Gruppen- und Einzelrufe, SDS, U-STATUS und RF-Verarbeitung.
-- **Web-Dashboard** – Bedienung, Überwachung, Konfiguration, Updates, Audio-Zentrale und Systemfunktionen.
-- **NetCore Directory** – zentrale Bezeichnungen für Geräte, Basisstationen, Gruppen, Statusmeldungen und Statusgruppen.
-- **NetCore Control Room** – optionale zentrale Leitstelle für mehrere Basisstationen.
-- **NetCore Piper** – optionaler lokaler TTS-Dienst für deutschsprachige Sprachdateien.
-- **Asterisk/Brew/Telegram/WX** – optionale Integrationen für Telefonie, Netzkopplung, Alarmierung und Wetterdaten.
+## System in vier Ebenen
 
-## Schnellstart
+1. **Funkkante:** `bluestation-bs` betreibt SDR, Luftschnittstelle, lokale Registrierung, Rufe, SDS, Dashboard und Edge-Fallback. [[Basisstation und Träger|Dual-Carrier]]
+2. **Netzkern:** Node Gateway verbindet TBS und zentrale Fachkerne. Subscriber, Group, Mobility, Call Control, Media Switch, SDS Router, Packet Core und weitere Dienste teilen sich die Aufgaben. [[Dienstkatalog|Dienstkatalog]]
+3. **Anwendungen:** SIP Switch, IoT Gateway, Media Library, Workflows und andere Adapter binden Telefonie, MQTT, Medien und betriebliche Prozesse an. [[Integrationen|Integrationen]]
+4. **Bedienung:** lokales TBS-Dashboard, Directory, Provisioning Core, Control Room und Observability bedienen unterschiedliche Zuständigkeiten. [[Bedienoberflächen|Bedienoberflaechen]]
 
-1. [[Installation]] lesen und Systemabhängigkeiten installieren.
-2. Eine geprüfte `config.toml` anlegen; siehe [[Configuration]].
-3. Die Basisstation einmal manuell starten und RF-/SDR-Erkennung prüfen.
-4. Anschließend den [[Systemd-Service]] einrichten.
-5. Dashboard aufrufen und [[Backup-and-Fallback]] kontrollieren.
+## Was diese Doku tatsächlich belegt
 
-## Wichtige Betriebsregeln
+- `Cargo.toml` nennt für den Rust-Workspace `1.3.0`; das ist **keine Aussage über den Tag oder die Version deiner laufenden TBS**.
+- `deploy/open-lab/inventory.example.toml` enthält **24** Backend-Einträge. Provisioning Core liegt zusätzlich außerhalb dieses Inventories. Die lokale TBS, das Python-Directory, Piper und ein separater Brew-Server haben eigene Betriebswege.
+- Quellcode, Installer, Konfigurationsbeispiele und Tests liegen im Repository. Ohne Zugriff auf Live-LXC, SDR, Funkgeräte und Messdaten können wir den aktuellen Betriebszustand nicht pauschal bestätigen.
+- ETSI-PDFs dienen als Normreferenz; die eigene PDU-Matrix ist eine **statische Bestandsaufnahme**, keine Zertifizierung. [[Normen und Tests|Normen-und-Tests]]
+- Imagebuilder, durchgängige automatische Dienstsuche und ein vollständiger Zero-Touch-Wizard sind [[Ausbauziele|Roadmap]] und werden hier nicht als fertig dargestellt.
 
-- Frequenzen, Sendeleistung und Antennenaufbau müssen zum zulässigen Versuchsaufbau passen.
-- Zugangsdaten, Tokens und Passwörter gehören nicht ins Repository oder Wiki.
-- Vor Updates immer Konfiguration, Fallback-Datei, Directory-Datenbank und Medien sichern.
-- Nach Änderungen an RF, Carrier oder Audio immer einen vollständigen Clean-Build durchführen.
-- Dual Carrier benötigt passende RF-Bandbreite, Center-Frequenzen und Endgeräte-Konfiguration; siehe [[Dual-Carrier]].
+## Lesepfade
 
-## Begriffe
+- **Projekt und Architektur:** [[Projektstand]] · [[Architecture]] · [[Dienstkatalog]] · [[Netzwerk-und-Ports]] · [[Glossar]]
+- **Aufbau und Konfiguration:** [[Hardware-und-RF]] · [[Installation]] · [[Configuration]] · [[Open-Lab-Deployment]] · [[Abnahme]]
+- **Betrieb:** [[Dashboard]] · [[Control-Room]] · [[Betrieb-und-Wartung]] · [[Troubleshooting]] · [[Backup-and-Fallback]]
+- **Protokolle und Schnittstellen:** [[Calls]] · [[SDS-and-U-STATUS]] · [[Paketdaten-und-WAP]] · [[SIP-und-Brew]] · [[MQTT-und-Home-Assistant]]
 
-Im Wiki bezeichnet **NetCore** die gesamte Software- und Dienstlandschaft. **Basisstation** meint den konkreten TETRA-RF-Dienst bzw. das dazugehörige Gerät. Der technische Binärname `bluestation-bs` bleibt aus Kompatibilitätsgründen bestehen.
+Die [ausführliche Systemhandbuch-Ausgabe im Repository](https://github.com/JanHG98/netcore-tetra/blob/main/Docs/NetCore-Tetra-Systemhandbuch.md) ist ein tieferes Nachschlagewerk. Bei Widersprüchen sind **installierte Konfiguration und beobachtete Laufzeit** für die konkrete Anlage zu prüfen; für diese Wiki-Ausgabe wurden der oben angegebene Commit und die dortigen Vorlagen herangezogen.

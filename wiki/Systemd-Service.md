@@ -60,3 +60,7 @@ Keine pauschalen Root-Rechte vergeben, wenn gezielte Gruppen- oder PolicyKit-Reg
 - `netcore-control-room.service`
 
 NFS-Mounts sollten als eigene Mount-Unit oder über `/etc/fstab` mit netzwerktauglichen Optionen bereitgestellt werden. Die Basisstation darf nicht davon abhängen, dass ein langsames NFS den Start unbegrenzt blockiert.
+
+## Weiterführend
+
+[[Installation]] · [[Betrieb-und-Wartung]] · [[Troubleshooting]]

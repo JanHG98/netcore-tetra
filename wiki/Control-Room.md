@@ -1,66 +1,34 @@
-# NetCore Control Room
+# Control Room und Node Gateway
 
-NetCore Control Room ist die optionale zentrale Leitstelle für eine oder mehrere Basisstationen. Sie besteht aus einem headless Core, einem Operator-Werkzeug und einer nativen UI.
+Im verteilten Aufbau sind **Node Gateway** und **Control Room** verschiedene Dienste. Die TBS verbindet sich über `[control_room]` per WebSocket mit dem Node Gateway (`/ws/node`, Managementport im Beispiel `8080`). Control Room (`9010` im Inventory) zeigt netzweite Zustände und verarbeitet Operatoraktionen. Ein TBS-WebSocket direkt zur Control-Room-WebUI ist in dieser Topologie der falsche Zielpfad.
 
-## Komponenten
+## Daten- und Befehlsweg
 
-- `netcore-control-room` – Server/Core
-- `netcore-control-room-operator` – CLI und Operator-Dashboard
-- `system-backend/control-room/ui` – native Bedienoberfläche
+```text
+TBS ── /ws/node ──> Node Gateway ── Fach-APIs/Backend-Sessions ──> Control Room
+  <─────────────── Health-Matrix und autorisierte Kommandos ───────────────
+```
 
-## Basisstationskonfiguration
+`node_id` bezeichnet die TBS stabil im Backend. Control Room besitzt Operatorprofile, Rollen und Arbeitsplatzansichten; die lokale TBS bleibt RF- und CMCE-Instanz. Der vollständige [Control-Room-Quellort](https://github.com/JanHG98/netcore-tetra/tree/main/system-backend/control-room) enthält Core, UI, Auth-/Profil- und Deploymentunterlagen. Daneben gibt es [`bins/netcore-control-room`](https://github.com/JanHG98/netcore-tetra/tree/main/bins/netcore-control-room); beim Deployment nicht ältere Standalone-Beispiele mit dem 24-Dienst-Inventory vermischen.
+
+## TBS-Anbindung im Open Lab
 
 ```toml
 [control_room]
 enabled = true
-host = "<CONTROL-ROOM-IP>"
-port = 9010
+host = "<NODE-GATEWAY-IP>"
+port = 8080
 use_tls = false
-endpoint_path = "/node"
-node_id = "BTS-01"
-station_name = "Basisstation 01"
-site = "Standort A"
-token = "<NODE-TOKEN>"
+endpoint_path = "/ws/node"
+node_id = "TBS-LAB-01"
+station_name = "TBS-LAB-01"
+site = "Lab"
 ```
 
-Alternativ kann explizites Basic Auth mit Benutzername und Passwort verwendet werden. Bei aktivierter Leitstellen-Authentifizierung muss das Node-Token mit der Serverkonfiguration übereinstimmen.
+Nur diesen Block in eine **vollständige und passende** TBS-TOML übernehmen. Die [sanitisierte Vorlage](https://github.com/JanHG98/netcore-tetra/blob/main/Docs/basisstation.config.sanitized.example.toml) deaktiviert die Anbindung zunächst. Bei aktivem Open-Lab-Modus sind Node- und Managementverbindungen im isolierten Testnetz zu halten. Bei gesicherter Bereitstellung müssen Authentisierung und TLS für alle beteiligten Endpunkte gemeinsam geplant werden. [[Security-and-Operations]]
 
-## Rollen
+## Bedienung und Grenzen
 
-- **Viewer** – lesen
-- **Operator** – lesen und Befehle ausführen
-- **Admin** – Benutzer- und Dienstverwaltung
+Operatorrollen und Profile des Control Room steuern menschliche Zugriffe. Ein Node-Token (falls konfiguriert) dient dagegen der **TBS-Identität**. Der UI-Arbeitsplatz ersetzt weder die Teilnehmerdaten des Subscriber Core noch die Gruppenpolicy des Group Core. Bei Ausfall des Control Room kann die TBS lokal weiterarbeiten; bei Node-Gateway-Ausfall folgt sie dem [[Mehrzellenbetrieb]]- und [[Fallback|Backup-and-Fallback]]-Verhalten.
 
-Die Basisstation selbst authentifiziert sich als Node und nicht als menschlicher Operator.
-
-## Build
-
-Auf einem Leitstellen-LXC nur die benötigten Pakete bauen. Dadurch werden unnötige SDR- und Audio-Abhängigkeiten vermieden:
-
-```bash
-cargo clean
-rm -rf target
-cargo build --release -p netcore-control-room
-cargo build --release -p netcore-control-room-operator
-```
-
-## Startbeispiel
-
-```bash
-./target/release/netcore-control-room --bind 127.0.0.1:9010
-```
-
-Operator-Dashboard:
-
-```bash
-./target/release/netcore-control-room-operator \
-  --api http://<CONTROL-ROOM-IP>:9010 dashboard
-```
-
-## Betrieb
-
-- Leitstelle und Basisstation über ein Managementnetz verbinden.
-- Node-Token und Operator-Anmeldungen getrennt halten.
-- Reverse Proxy/TLS verwenden, sobald die Verbindung das vertrauenswürdige LAN verlässt.
-- Reconnects sind normal; dauerhafte Auth- oder TLS-Fehler hingegen nicht.
-- Nicht gleichzeitig alte und neue Command-Worker aktivieren, wenn dadurch doppelte Antworten entstehen könnten.
+Für einen Fehler zuerst Gateway-Listener, `/ws/node`, Service-Matrix und TBS-Logs prüfen, anschließend Control Room und dessen Fach-APIs. [[Netzwerk-und-Ports]] · [[Troubleshooting]]

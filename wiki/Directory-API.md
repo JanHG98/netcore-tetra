@@ -58,3 +58,7 @@ curl -fsS -X POST \
 ## Praxisregel
 
 API-Clients sollten Timeouts setzen und einen Directory-Ausfall nicht mit einem Ausfall der RF-Basisstation gleichsetzen. Namensauflösung darf den kritischen Funkpfad nicht blockieren.
+
+## Weiterführend
+
+[[NetCore-Directory]] · [[Provisioning]] · [[Netzwerk-und-Ports]]

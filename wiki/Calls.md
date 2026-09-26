@@ -45,8 +45,10 @@ Nicht nur den Rufaufbau testen, sondern auch:
 - Einzelruf ohne Antwort
 - vollständige Freigabe aller Timeslots danach
 
-## v21 radio compatibility rule
+## Funkkompatibilität im Main-Pfad
 
-For locally accepted RF calls, Core policy may decide admission before setup, but it must not alter
-the `main` CMCE floor/release state machine, hangtime timing, FACCH/MCCH release sequence or UMAC
-circuit-drain behavior.
+Eine zentrale Policy darf vor einem lokal angenommenen Ruf über die Zulassung entscheiden. Sie darf danach die bestehende CMCE-Zustandsmaschine für Floor und Release, das Hangtime-Timing, die FACCH/MCCH-Release-Folge und das UMAC-Auslaufen des belegten Sprachpfads nicht unbemerkt verändern. Gerade bei älteren Endgeräten den erneuten PTT und die vollständige Freigabe messen.
+
+## Zentrale Rufe und Telefonie
+
+Call Control verwaltet zentrale Rufzweige; Media Switch transportiert codierte Sprachframes zwischen verbundenen TBS. Die lokale TBS behält den CMCE-/Floor-/Release-Pfad für ihr Funkgerät. Bei SIP läuft zusätzlich ein eigenständiger PBX-/RTP-Pfad über den **lokalen TBS-Asterisk** und den zentralen SIP Switch. Eine im Backend angelegte ISSI beweist keine aktuelle Serving-TBS und eine SIP-Registrierung keine hörbare Sprache. [[Architecture]] · [[SIP-und-Brew]] · [[Mehrzellenbetrieb]]

@@ -24,3 +24,7 @@ Positionsdaten sind betriebliche und potenziell personenbezogene Daten. Zugriff,
 - GPS-Fix direkt am Funkgerät prüfen.
 - Zeitstempel und Zeitzone vergleichen.
 - Directory-/Control-Room-Export getrennt vom lokalen Empfang testen.
+
+## Weiterführend
+
+[[Dashboard]] · [[MQTT-und-Home-Assistant]] · [[Security-and-Operations]]

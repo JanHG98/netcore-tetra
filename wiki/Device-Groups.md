@@ -36,3 +36,7 @@ Die Mitgliedschaften werden periodisch aus Directory aktualisiert. Änderungen k
 - Nicht erreichbare Mitglieder können erst nach erneuter Registrierung versorgt werden.
 - Die Statusgruppe ersetzt keine Sprachgruppe und keine GSSI-Affiliation.
 - Falsche oder zyklische Zuordnungen können unnötigen SDS-Verkehr erzeugen.
+
+## Weiterführend
+
+[[Status-Messages]] · [[SDS-and-U-STATUS]] · [[NetCore-Directory]]
