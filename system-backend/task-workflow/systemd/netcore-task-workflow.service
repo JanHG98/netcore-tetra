@@ -1,0 +1,20 @@
+[Unit]
+Description=NetCore-TETRA Task Workflow (OPEN LAB MODE)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/netcore-task-workflow --config /etc/netcore/task-workflow.toml
+Restart=on-failure
+RestartSec=2
+User=root
+Group=root
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/var/lib/netcore-task-workflow
+
+[Install]
+WantedBy=multi-user.target

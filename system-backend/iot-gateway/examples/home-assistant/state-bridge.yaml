@@ -1,0 +1,26 @@
+# Beispiel für Home Assistant packages/automations.yaml
+# Nur die gewünschten Homematic-/Gebäude-Entitäten eintragen.
+- id: netcore_selected_entity_state_bridge
+  alias: NetCore – ausgewählte Zustände an IoT Gateway
+  mode: queued
+  max: 50
+  trigger:
+    - platform: state
+      entity_id:
+        - binary_sensor.wassermelder_technikraum
+        - sensor.rack_temperatur
+        - binary_sensor.rack_tuer
+  action:
+    - service: mqtt.publish
+      data:
+        topic: netcore/v1/integrations/homeassistant/state
+        qos: 1
+        retain: false
+        payload: >-
+          {{ {
+            "entity_id": trigger.entity_id,
+            "state": trigger.to_state.state,
+            "attributes": trigger.to_state.attributes,
+            "device": {},
+            "observed_at": trigger.to_state.last_updated.isoformat()
+          } | to_json }}

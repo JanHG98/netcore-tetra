@@ -1,0 +1,292 @@
+// NETCORE-KOMMENTAR – Was: Enthält die Logik oder Einstellungen für ws.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+use std::net::TcpStream;
+use std::sync::{Arc, Mutex, mpsc};
+use std::time::Duration;
+
+use tetra_entities::net_control_room::{
+    CONTROL_ROOM_PROTOCOL_VERSION, ControlRoomCodecJson, ControlRoomToNodeMessage, NodeToControlRoomMessage,
+};
+use tungstenite::handshake::server::{ErrorResponse, Request, Response};
+use tungstenite::{Message, WebSocket, accept_hdr};
+use tungstenite::http::StatusCode;
+
+use crate::auth::{AuthRole, AuthState};
+use crate::state::{SharedControlRoom, UiMessage, now_iso};
+
+// Was: Legt den festen Wert `WS_READ_TIMEOUT` für ws read timeout fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
+const WS_READ_TIMEOUT: Duration = Duration::from_millis(100);
+// Was: Legt den festen Wert `NODE_PING_INTERVAL` für Netzknoten ping interval fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
+const NODE_PING_INTERVAL: Duration = Duration::from_secs(15);
+
+// Was: Führt den Arbeitsschritt `reject_websocket` für reject websocket aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn reject_websocket(status: StatusCode, message: &str) -> ErrorResponse {
+    tungstenite::http::Response::builder()
+        .status(status)
+        .header("Content-Type", "text/plain; charset=utf-8")
+        .header("Content-Length", message.len().to_string())
+        .header("Connection", "close")
+        .body(Some(message.to_string()))
+        .expect("valid websocket rejection response")
+}
+
+// Was: Diese Funktion verarbeitet websocket stream.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
+pub fn handle_websocket_stream(stream: TcpStream, state: SharedControlRoom, node_path: String, ui_path: String, auth: AuthState) {
+    let peer = stream.peer_addr().ok();
+    let selected_path = Arc::new(Mutex::new(String::new()));
+    let selected_path_cb = selected_path.clone();
+    let node_path_cb = node_path.clone();
+    let ui_path_cb = ui_path.clone();
+    let auth_cb = auth.clone();
+
+    let callback = move |req: &Request, mut response: Response| {
+        let path = req.uri().path().to_string();
+        *selected_path_cb.lock().expect("ws path mutex poisoned") = path.clone();
+
+        let role = if path == node_path_cb {
+            AuthRole::Node
+        } else if path == ui_path_cb {
+            AuthRole::Viewer
+        } else {
+            tracing::warn!(?peer, path = %path, "websocket handshake rejected: unknown endpoint");
+            return Err(reject_websocket(StatusCode::NOT_FOUND, "unknown websocket endpoint"));
+        };
+
+        if auth_cb.authorize_ws_request(role, req).is_err() {
+            // Reject during the HTTP upgrade instead of accepting with 101 and
+            // immediately closing. The latter looks like a successful connection
+            // to the node and only fails on its first Hello with EPIPE/Broken pipe.
+            tracing::warn!(?peer, path = %path, role = %role, "websocket handshake rejected: unauthorized");
+            return Err(reject_websocket(StatusCode::UNAUTHORIZED, "unauthorized websocket request"));
+        }
+
+        // The BS requests a subprotocol. Echo it when it is the expected one so
+        // strict clients and future tooling can see the negotiated protocol.
+        if let Some(requested) = req.headers().get("sec-websocket-protocol").and_then(|h| h.to_str().ok()) {
+            if requested
+                .split(',')
+                .map(str::trim)
+                .any(|proto| proto == CONTROL_ROOM_PROTOCOL_VERSION)
+            {
+                response.headers_mut().insert(
+                    "Sec-WebSocket-Protocol",
+                    CONTROL_ROOM_PROTOCOL_VERSION.parse().expect("valid ws protocol header"),
+                );
+            }
+        }
+
+        // A strict marker lets nodes distinguish this Control Room implementation
+        // from an older binary or an unrelated reverse-proxy WebSocket endpoint.
+        // The node verifies it before declaring the transport connected.
+        response.headers_mut().insert(
+            "x-netcore-control-room",
+            "1".parse().expect("valid control-room marker header"),
+        );
+        Ok(response)
+    };
+
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+    let ws = match accept_hdr(stream, callback) {
+        Ok(ws) => ws,
+        Err(e) => {
+            tracing::warn!(?peer, "websocket handshake failed: {}", e);
+            return;
+        }
+    };
+
+    let path = selected_path.lock().expect("ws path mutex poisoned").clone();
+    tracing::info!(?peer, path = %path, "websocket connected");
+
+    if path == node_path {
+        handle_node_websocket(ws, state);
+    } else if path == ui_path {
+        handle_ui_websocket(ws, state);
+    } else {
+        tracing::warn!(?peer, path = %path, "websocket path rejected");
+        let mut ws = ws;
+        let _ = ws.close(None);
+    }
+}
+
+// Was: Diese Funktion verarbeitet Netzknoten websocket.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
+fn handle_node_websocket(mut ws: WebSocket<TcpStream>, state: SharedControlRoom) {
+    let _ = ws.get_mut().set_read_timeout(Some(WS_READ_TIMEOUT));
+    let _ = ws.get_mut().set_nodelay(true);
+
+    let codec = ControlRoomCodecJson;
+    let (tx, rx) = mpsc::channel::<ControlRoomToNodeMessage>();
+    let mut node_id: Option<String> = None;
+    let mut last_ping = std::time::Instant::now();
+
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
+    loop {
+        // First drain commands that were queued by the HTTP/API side.
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+        while let Ok(msg) = rx.try_recv() {
+            let payload = codec.encode_downlink(&msg);
+            if let Err(e) = ws.send(Message::Binary(payload.into())) {
+                tracing::warn!(node_id = ?node_id, "node send failed: {}", e);
+                cleanup_node(&state, &node_id);
+                return;
+            }
+        }
+
+        if last_ping.elapsed() >= NODE_PING_INTERVAL {
+            let ping = ControlRoomToNodeMessage::Ping {
+                seq: chrono::Utc::now().timestamp_millis() as u64,
+                timestamp: now_iso(),
+            };
+            let payload = codec.encode_downlink(&ping);
+            if let Err(e) = ws.send(Message::Binary(payload.into())) {
+                tracing::warn!(node_id = ?node_id, "node app-ping failed: {}", e);
+                cleanup_node(&state, &node_id);
+                return;
+            }
+            last_ping = std::time::Instant::now();
+        }
+
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+        match ws.read() {
+            Ok(Message::Binary(data)) => match codec.decode_uplink(data.as_ref()) {
+                Ok(message) => {
+                    let is_hello = matches!(message, NodeToControlRoomMessage::Hello { .. });
+                    let seen_node_id = state.handle_node_message(message);
+                    if is_hello {
+                        if let Some(id) = seen_node_id {
+                            if node_id.as_deref() != Some(id.as_str()) {
+                                node_id = Some(id.clone());
+                                state.register_node_sender(id.clone(), tx.clone());
+                            }
+                            let ack = ControlRoomToNodeMessage::HelloAck {
+                                accepted: true,
+                                message: Some("NetCore Control Room accepted node".to_string()),
+                            };
+                            let payload = codec.encode_downlink(&ack);
+                            if let Err(e) = ws.send(Message::Binary(payload.into())) {
+                                tracing::warn!(node_id = ?node_id, "hello ack send failed: {}", e);
+                                cleanup_node(&state, &node_id);
+                                return;
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!(node_id = ?node_id, "node message decode failed: {}", e);
+                    let error = ControlRoomToNodeMessage::HelloAck {
+                        accepted: false,
+                        message: Some(format!("decode failed: {}", e)),
+                    };
+                    let payload = codec.encode_downlink(&error);
+                    let _ = ws.send(Message::Binary(payload.into()));
+                }
+            },
+            Ok(Message::Text(text)) => {
+                tracing::warn!(node_id = ?node_id, bytes = text.len(), "unexpected node text message");
+            }
+            Ok(Message::Ping(payload)) => {
+                let _ = ws.send(Message::Pong(payload));
+            }
+            Ok(Message::Pong(_)) => {}
+            Ok(Message::Close(_)) => {
+                tracing::info!(node_id = ?node_id, "node websocket closed");
+                cleanup_node(&state, &node_id);
+                return;
+            }
+            Ok(_) => {}
+            Err(tungstenite::Error::Io(ref e))
+                if e.kind() == std::io::ErrorKind::WouldBlock || e.kind() == std::io::ErrorKind::TimedOut => {}
+            Err(tungstenite::Error::ConnectionClosed) => {
+                cleanup_node(&state, &node_id);
+                return;
+            }
+            Err(e) => {
+                tracing::warn!(node_id = ?node_id, "node websocket read failed: {}", e);
+                cleanup_node(&state, &node_id);
+                return;
+            }
+        }
+    }
+}
+
+// Was: Diese Funktion räumt Netzknoten.
+// Warum: Zurückgelassene Ressourcen würden sonst spätere Starts oder Verbindungen stören.
+fn cleanup_node(state: &SharedControlRoom, node_id: &Option<String>) {
+    if let Some(id) = node_id {
+        state.unregister_node_sender(id);
+    }
+}
+
+// Was: Diese Funktion verarbeitet ui websocket.
+// Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
+fn handle_ui_websocket(mut ws: WebSocket<TcpStream>, state: SharedControlRoom) {
+    let _ = ws.get_mut().set_read_timeout(Some(WS_READ_TIMEOUT));
+    let _ = ws.get_mut().set_nodelay(true);
+
+    let (ui_id, rx) = state.register_ui();
+    tracing::info!(ui_id = %ui_id, "ui websocket registered");
+
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
+    loop {
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+        while let Ok(msg) = rx.try_recv() {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+            let payload = match serde_json::to_vec(&msg) {
+                Ok(payload) => payload,
+                Err(e) => {
+                    tracing::warn!(ui_id = %ui_id, "ui message serialisation failed: {}", e);
+                    continue;
+                }
+            };
+            if let Err(e) = ws.send(Message::Binary(payload.into())) {
+                tracing::warn!(ui_id = %ui_id, "ui send failed: {}", e);
+                state.unregister_ui(&ui_id);
+                return;
+            }
+        }
+
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+        match ws.read() {
+            Ok(Message::Ping(payload)) => {
+                let _ = ws.send(Message::Pong(payload));
+            }
+            Ok(Message::Close(_)) => {
+                state.unregister_ui(&ui_id);
+                return;
+            }
+            Ok(Message::Text(text)) => {
+                if text.trim() == "state" {
+                    let msg = UiMessage::StateSnapshot { snapshot: state.snapshot() };
+                    if let Ok(payload) = serde_json::to_vec(&msg) {
+                        let _ = ws.send(Message::Binary(payload.into()));
+                    }
+                }
+            }
+            Ok(_) => {}
+            Err(tungstenite::Error::Io(ref e))
+                if e.kind() == std::io::ErrorKind::WouldBlock || e.kind() == std::io::ErrorKind::TimedOut => {}
+            Err(tungstenite::Error::ConnectionClosed) => {
+                state.unregister_ui(&ui_id);
+                return;
+            }
+            Err(e) => {
+                tracing::warn!(ui_id = %ui_id, "ui websocket read failed: {}", e);
+                state.unregister_ui(&ui_id);
+                return;
+            }
+        }
+    }
+}

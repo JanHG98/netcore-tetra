@@ -1,0 +1,42 @@
+# NetCore-TETRA Asset Management · Phase 10 · OPEN LAB
+
+[service]
+name = "netcore-asset-management"
+phase = 10
+mode = "open_lab"
+
+[server]
+bind = "0.0.0.0:8290"
+
+[security]
+mode = "open_lab"
+# Kein Login, kein Token, kein TLS. Nur im isolierten Testnetz betreiben.
+
+[storage]
+state_file = "/var/lib/netcore-asset-management/state.json"
+event_log = "/var/lib/netcore-asset-management/events.ndjson"
+audit_log = "/var/lib/netcore-asset-management/audit.ndjson"
+
+[mqtt]
+enabled = true
+host = "127.0.0.1"
+port = 1883
+topic_prefix = "netcore/v1"
+client_id = "netcore-asset-management"
+
+[management]
+event_history_limit = 3000
+upstream_sync_interval_secs = 60
+
+[upstreams.subscriber_core]
+enabled = true
+base_url = "http://10.0.20.12:8100"
+
+[upstreams.mobility_core]
+enabled = true
+base_url = "http://10.0.20.11:8090"
+
+[upstreams.task_workflow]
+enabled = true
+base_url = "http://10.0.20.31:8280"
+default_gssi = 15201

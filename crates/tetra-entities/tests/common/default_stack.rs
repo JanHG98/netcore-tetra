@@ -1,0 +1,129 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+use tetra_config::bluestation::{
+    CfgAsterisk, CfgAudioPlayer, CfgCellInfo, CfgDapnet, CfgEcholink, CfgEmergency, CfgGeoalarm, CfgHealth, CfgMeshcom, CfgMediaLibrary, CfgNetInfo, CfgPhyIo, CfgRecording, CfgRecovery,
+    CfgSecurity, CfgSnomNotify, CfgEdgeFallback, CfgWapIp, CfgPacketDataGateway, CfgTpg2200Action, CfgTts, CfgWxService, PhyBackend, StackConfig, StackMode,
+};
+use tetra_core::{freqs::FreqInfo, ranges::SortedDisjointSsiRanges};
+
+/// Creates a default config for testing. It can still be modified as needed
+/// before passing it to the ComponentTest constructor
+// Was: Führt den Arbeitsschritt `default_test_config_bs` für default test Konfiguration Basisstation aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+pub fn default_test_config_bs() -> StackConfig {
+    let phy_io = default_phy_io();
+    let net_info = default_net_info();
+    let freq_info = FreqInfo::from_components(4, 1521, 0, false, 4, None).unwrap();
+    let cell_info = default_cell_info(freq_info);
+
+    // Put together components and return this proto config
+    StackConfig {
+        stack_mode: StackMode::Bs,
+        debug_log: None,
+        service_name: None,
+        phy_io,
+        net: net_info,
+        cell: cell_info,
+        brew: None,
+        brew2: None,
+        asterisk: CfgAsterisk::default(),
+        dapnet: CfgDapnet::default(),
+        echolink: CfgEcholink::default(),
+        meshcom: CfgMeshcom::default(),
+        geoalarm: CfgGeoalarm::default(),
+        tpg2200_action: CfgTpg2200Action::default(),
+        snom_notify: CfgSnomNotify::default(),
+        dashboard: None,
+        media_library: CfgMediaLibrary::default(),
+        recording: CfgRecording::default(),
+        audio_player: CfgAudioPlayer::default(),
+        tts: CfgTts::default(),
+        telemetry: None,
+        control: None,
+        control_room: None,
+        edge_fallback: CfgEdgeFallback::default(),
+        security: CfgSecurity::default(),
+        wx_service: CfgWxService::default(),
+        recovery: CfgRecovery::default(),
+        telegram: None,
+        health: CfgHealth::default(),
+        emergency: CfgEmergency::default(),
+    }
+}
+
+// Was: Führt den Arbeitsschritt `default_phy_io` für default phy io aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+pub fn default_phy_io() -> CfgPhyIo {
+    CfgPhyIo {
+        backend: PhyBackend::None,
+        dl_tx_file: None,
+        ul_rx_file: None,
+        ul_input_file: None,
+        dl_input_file: None,
+        soapysdr: None,
+    }
+}
+
+// Was: Führt den Arbeitsschritt `default_net_info` für default net info aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+pub fn default_net_info() -> CfgNetInfo {
+    CfgNetInfo { mcc: 204, mnc: 1337 }
+}
+
+// Was: Führt den Arbeitsschritt `default_cell_info` für default cell info aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+pub fn default_cell_info(freq_info: FreqInfo) -> CfgCellInfo {
+    CfgCellInfo {
+        colour_code: 1,
+        location_area: 2,
+        main_carrier: freq_info.carrier,
+        secondary_carrier: None,
+        freq_band: freq_info.band,
+        freq_offset_hz: freq_info.freq_offset_hz,
+        duplex_spacing_id: freq_info.duplex_spacing_id,
+        custom_duplex_spacing: None,
+        reverse_operation: freq_info.reverse_operation,
+        neighbor_cell_broadcast: 0,
+        late_entry_supported: false,
+        subscriber_class: 65535, // All subscriber classes allowed
+        registration: true,
+        deregistration: true,
+        priority_cell: false,
+        no_minimum_mode: false,
+        migration: false,
+        system_wide_services: true,
+        voice_service: true,
+        circuit_mode_data_service: false,
+        sndcp_service: false,
+        aie_service: false,
+        advanced_link: false,
+        wap_ip: CfgWapIp::default(),
+        packet_data_gateway: CfgPacketDataGateway::default(),
+        system_code: 3, // 3 = ETSI EN 300 392-2 V3.1.1
+        sharing_mode: 0,
+        ts_reserved_frames: 0,
+        u_plane_dtx: false,
+        frame_18_ext: false,
+        ms_txpwr_max_cell: 4,
+        local_ssi_ranges: SortedDisjointSsiRanges::from_vec_ssirange(vec![]),
+        timezone: None,
+        home_mode_display: None,
+        sds_broadcast: None,
+        neighbor_cells_ca: Vec::new(),
+        hangtime_secs: 5,
+        call_timeout_secs: 120,
+        ul_inactivity_secs: 3,
+        periodic_registration_secs: 3600,
+        sds_command_control: None,
+        release_group_on_same_speaker_retake: false,
+    }
+}
+
+// Was: Führt den Arbeitsschritt `default_test_config_ms` für default test Konfiguration ms aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+pub fn default_test_config_ms() -> StackConfig {
+    let mut config = default_test_config_bs();
+    config.stack_mode = StackMode::Ms;
+    config
+}

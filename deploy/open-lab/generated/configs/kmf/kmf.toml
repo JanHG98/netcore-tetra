@@ -1,0 +1,128 @@
+# NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Schlüsselverwaltung und Schlüsselverteilung.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+# Was: Öffnet den Konfigurationsabschnitt `server`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[server]
+# Was: Setzt die Einstellung `bind` für server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+bind = "0.0.0.0:8190"
+# Was: Setzt die Einstellung `history_limit` für server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+history_limit = 5000
+
+# Was: Öffnet den Konfigurationsabschnitt `storage`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[storage]
+# Was: Setzt die Einstellung `database_path` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+database_path = "/var/lib/netcore-kmf/state.json"
+# Was: Setzt die Einstellung `vault_path` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+vault_path = "/var/lib/netcore-kmf/vault.json"
+# Was: Setzt die Einstellung `master_key_path` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+master_key_path = "/var/lib/netcore-kmf/master.key"
+# Was: Setzt die Einstellung `backup_dir` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+backup_dir = "/var/lib/netcore-kmf/backups"
+# Was: Setzt die Einstellung `bootstrap_dir` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+bootstrap_dir = "/var/lib/netcore-kmf/bootstrap"
+
+# Was: Öffnet den Konfigurationsabschnitt `policy`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[policy]
+# shadow: Workflows and OTAR actions are prepared but never released to an Edge.
+# authoritative: approved and queued OTAR actions can be claimed by matching TBS nodes.
+# Was: Setzt die Einstellung `operating_mode` für policy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+operating_mode = "shadow"
+# Was: Setzt die Einstellung `default_key_bytes` für policy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+default_key_bytes = 16
+# Was: Setzt die Einstellung `default_crypto_period_secs` für policy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+default_crypto_period_secs = 86400
+# Was: Setzt die Einstellung `rotation_lead_secs` für policy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+rotation_lead_secs = 3600
+# Was: Setzt die Einstellung `require_dual_approval` für policy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+require_dual_approval = true
+# Was: Setzt die Einstellung `allow_overlapping_crypto_periods` für policy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+allow_overlapping_crypto_periods = true
+# Was: Setzt die Einstellung `auto_retire_predecessor` für policy.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+auto_retire_predecessor = true
+
+# Was: Öffnet den Konfigurationsabschnitt `vault`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[vault]
+# Integration provider only. It keeps encrypted blobs separate from metadata.
+# It is not a production HSM and the lab envelope is not a certified cipher.
+# Was: Setzt die Einstellung `provider` für vault.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+provider = "lab_file_vault"
+# Was: Setzt die Einstellung `master_key_bytes` für vault.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+master_key_bytes = 32
+# Was: Setzt die Einstellung `fsync` für vault.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+fsync = true
+# hsm_library = "/usr/lib/x86_64-linux-gnu/pkcs11/vendor.so"
+# hsm_slot = 0
+
+# Was: Öffnet den Konfigurationsabschnitt `otar`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[otar]
+# Was: Setzt die Einstellung `action_ttl_secs` für otar.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+action_ttl_secs = 600
+# Was: Setzt die Einstellung `max_attempts` für otar.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_attempts = 5
+# Was: Setzt die Einstellung `retry_backoff_secs` für otar.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+retry_backoff_secs = 15
+# Was: Setzt die Einstellung `max_claim_batch` für otar.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_claim_batch = 100
+
+# Was: Öffnet den Konfigurationsabschnitt `security`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[security]
+# Current isolated test-lab stage: deliberately no login, token or TLS.
+# Was: Setzt die Einstellung `mode` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+mode = "open_lab"
+# Was: Setzt die Einstellung `allow_remote_management` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+allow_remote_management = true
+# Hard invariant in this package. Setting true is rejected by design later if introduced.
+# Was: Setzt die Einstellung `expose_raw_keys` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+expose_raw_keys = false
+
+# Was: Öffnet den Konfigurationsabschnitt `limits`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[limits]
+# Was: Setzt die Einstellung `max_body_bytes` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_body_bytes = 1048576
+# Was: Setzt die Einstellung `max_keys` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_keys = 100000
+# Was: Setzt die Einstellung `max_nodes` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_nodes = 10000
+# Was: Setzt die Einstellung `max_jobs` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_jobs = 100000
+# Was: Setzt die Einstellung `max_actions` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_actions = 500000
+# Was: Setzt die Einstellung `max_audit` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_audit = 100000

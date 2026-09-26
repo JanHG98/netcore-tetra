@@ -1,0 +1,116 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Einlesen und Prüfen der TETRA-Konfiguration.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+use serde::Deserialize;
+use std::collections::HashMap;
+use toml::Value;
+
+/// SoapySDR configuration
+#[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für cfg soapy sdr in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct CfgSoapySdr {
+    /// Uplink frequency in Hz
+    pub ul_freq: f64,
+    /// Downlink frequency in Hz
+    pub dl_freq: f64,
+    /// PPM frequency error correction
+    pub ppm_err: f64,
+    /// Optional explicit SDR RX center frequency in Hz.
+    ///
+    /// When unset, legacy behaviour is used (RX tuned from `rx_freq`, including
+    /// the PHY-specific offset applied by the Soapy backend). For dual-carrier
+    /// operation, set this to the midpoint of the uplink carriers.
+    pub rx_center_freq: Option<f64>,
+    /// Optional explicit SDR TX center frequency in Hz.
+    ///
+    /// When unset, legacy behaviour is used (TX tuned to `tx_freq`). For
+    /// dual-carrier operation, set this to the midpoint of the downlink carriers.
+    pub tx_center_freq: Option<f64>,
+    /// Argument string to select a specific SDR device.
+    /// If None, devices will be enumerated until the first supported device is found.
+    pub device: Option<String>,
+    /// RX antenna. Device specific default will be used if None.
+    pub rx_ant: Option<String>,
+    /// TX antenna. Device specific default will be used if None.
+    pub tx_ant: Option<String>,
+    /// RX gain values.
+    /// Device specific defaults will be used for gains that are not set.
+    pub rx_gains: HashMap<String, f64>,
+    /// TX gain values.
+    /// Device specific defaults will be used for gains that are not set.
+    pub tx_gains: HashMap<String, f64>,
+    /// RX and TX sample rate. Device specific default will be used if None.
+    pub fs: Option<f64>,
+    /// RX channel number
+    pub rx_ch: Option<usize>,
+    /// TX channel number
+    pub tx_ch: Option<usize>,
+}
+
+// Was: Implementiert das zugehörige Verhalten für `CfgSoapySdr`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
+impl CfgSoapySdr {
+    /// Get corrected UL frequency with PPM error applied
+    // Was: Führt den Arbeitsschritt `ul_freq_corrected` für ul freq corrected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn ul_freq_corrected(&self) -> (f64, f64) {
+        let ppm = self.ppm_err;
+        let err = (self.ul_freq / 1_000_000.0) * ppm;
+        (self.ul_freq + err, err)
+    }
+
+    /// Get corrected DL frequency with PPM error applied
+    // Was: Führt den Arbeitsschritt `dl_freq_corrected` für dl freq corrected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn dl_freq_corrected(&self) -> (f64, f64) {
+        let ppm = self.ppm_err;
+        let err = (self.dl_freq / 1_000_000.0) * ppm;
+        (self.dl_freq + err, err)
+    }
+
+    /// Get corrected explicit RX center frequency with PPM error applied.
+    // Was: Führt den Arbeitsschritt `rx_center_freq_corrected` für rx center freq corrected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn rx_center_freq_corrected(&self) -> Option<(f64, f64)> {
+        self.rx_center_freq.map(|center_freq| {
+            let ppm = self.ppm_err;
+            let err = (center_freq / 1_000_000.0) * ppm;
+            (center_freq + err, err)
+        })
+    }
+
+    /// Get corrected explicit TX center frequency with PPM error applied.
+    // Was: Führt den Arbeitsschritt `tx_center_freq_corrected` für tx center freq corrected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn tx_center_freq_corrected(&self) -> Option<(f64, f64)> {
+        self.tx_center_freq.map(|center_freq| {
+            let ppm = self.ppm_err;
+            let err = (center_freq / 1_000_000.0) * ppm;
+            (center_freq + err, err)
+        })
+    }
+}
+
+#[derive(Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für soapy sdr dto in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct SoapySdrDto {
+    pub rx_freq: f64,
+    pub tx_freq: f64,
+    pub ppm_err: Option<f64>,
+    pub rx_center_freq: Option<f64>,
+    pub tx_center_freq: Option<f64>,
+
+    pub device: Option<String>,
+
+    pub rx_antenna: Option<String>,
+    pub tx_antenna: Option<String>,
+
+    pub sample_rate: Option<f64>,
+    pub rx_channel: Option<usize>,
+    pub tx_channel: Option<usize>,
+
+    #[serde(flatten)]
+    pub extra: HashMap<String, Value>,
+}

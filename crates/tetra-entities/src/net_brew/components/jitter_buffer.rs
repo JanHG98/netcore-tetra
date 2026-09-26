@@ -1,0 +1,243 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+use std::{
+    collections::VecDeque,
+    time::{Duration, Instant},
+};
+
+use uuid::Uuid;
+
+/// Minimum playout buffer depth in frames.
+// Was: Legt den festen Wert `BREW_JITTER_MIN_FRAMES` für Brew-Verbindung Laufzeitschwankung min frames fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
+const BREW_JITTER_MIN_FRAMES: usize = 2;
+/// Default playout buffer depth in frames.
+// Was: Legt den festen Wert `BREW_JITTER_BASE_FRAMES` für Brew-Verbindung Laufzeitschwankung base frames fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
+const BREW_JITTER_BASE_FRAMES: usize = 4;
+/// Maximum adaptive playout target depth in frames.
+// Was: Legt den festen Wert `BREW_JITTER_TARGET_MAX_FRAMES` für Brew-Verbindung Laufzeitschwankung target max frames fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
+const BREW_JITTER_TARGET_MAX_FRAMES: usize = 12;
+/// Maximum queued frames kept per call before oldest frames are dropped.
+// Was: Legt den festen Wert `BREW_JITTER_MAX_FRAMES` für Brew-Verbindung Laufzeitschwankung max frames fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
+const BREW_JITTER_MAX_FRAMES: usize = 24;
+/// Expected receive interval for one TCH/S frame in microseconds (~56.67 ms).
+// Was: Legt den festen Wert `BREW_EXPECTED_FRAME_INTERVAL_US` für Brew-Verbindung expected Funkrahmen interval us fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
+const BREW_EXPECTED_FRAME_INTERVAL_US: f64 = 56_667.0;
+/// Warn threshold for excessive adaptive playout depth.
+// Was: Legt den festen Wert `BREW_JITTER_WARN_TARGET_FRAMES` für Brew-Verbindung Laufzeitschwankung warn target frames fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
+const BREW_JITTER_WARN_TARGET_FRAMES: usize = 8;
+/// Rate-limit warning logs per call.
+// Was: Legt den festen Wert `BREW_JITTER_WARN_INTERVAL` für Brew-Verbindung Laufzeitschwankung warn interval fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
+const BREW_JITTER_WARN_INTERVAL: Duration = Duration::from_secs(5);
+
+#[derive(Debug)]
+// Was: Bündelt die zusammengehörigen Werte für Laufzeitschwankung Funkrahmen in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct JitterFrame {
+    pub rx_seq: u64,
+    pub rx_at: Instant,
+    pub acelp_data: Vec<u8>,
+}
+
+#[derive(Debug, Default)]
+// Was: Bündelt die zusammengehörigen Werte für voice Laufzeitschwankung buffer in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct VoiceJitterBuffer {
+    frames: VecDeque<JitterFrame>,
+    next_rx_seq: u64,
+    started: bool,
+    target_frames: usize,
+    prev_rx_at: Option<Instant>,
+    jitter_us_ewma: f64,
+    underrun_boost: usize,
+    stable_pops: u32,
+    dropped_overflow: u64,
+    underruns: u64,
+    /// Value of `underruns` at the time of the last unhealthy warning. Used so we only
+    /// re-warn when *new* underruns have occurred since — `underruns` is cumulative, so
+    /// gating on `underruns != 0` would spam the log forever after a single transient
+    /// underrun, even once the stream has stabilised.
+    last_warn_underruns: u64,
+    last_warn_at: Option<Instant>,
+    initial_latency_frames: usize,
+}
+
+// Was: Implementiert das zugehörige Verhalten für `VoiceJitterBuffer`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
+impl VoiceJitterBuffer {
+    // Was: Führt den Arbeitsschritt `with_initial_latency` für with initial Latenz aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn with_initial_latency(initial_latency_frames: usize) -> Self {
+        let initial = initial_latency_frames.min(BREW_JITTER_TARGET_MAX_FRAMES - BREW_JITTER_MIN_FRAMES);
+        Self {
+            target_frames: BREW_JITTER_BASE_FRAMES + initial,
+            initial_latency_frames: initial,
+            ..Default::default()
+        }
+    }
+
+    // Was: Diese Funktion legt den vorgesehenen Arbeitsschritt.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn push(&mut self, acelp_data: Vec<u8>) {
+        if self.target_frames == 0 {
+            self.target_frames = BREW_JITTER_BASE_FRAMES + self.initial_latency_frames;
+        }
+        let now = Instant::now();
+        if let Some(prev) = self.prev_rx_at {
+            let delta_us = now.duration_since(prev).as_micros() as f64;
+            let deviation_us = (delta_us - BREW_EXPECTED_FRAME_INTERVAL_US).abs();
+            self.jitter_us_ewma += (deviation_us - self.jitter_us_ewma) / 16.0;
+        }
+        self.prev_rx_at = Some(now);
+
+        let frame = JitterFrame {
+            rx_seq: self.next_rx_seq,
+            rx_at: now,
+            acelp_data,
+        };
+        self.next_rx_seq = self.next_rx_seq.wrapping_add(1);
+        self.frames.push_back(frame);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+        while self.frames.len() > BREW_JITTER_MAX_FRAMES {
+            self.frames.pop_front();
+            self.dropped_overflow += 1;
+        }
+        self.recompute_target();
+    }
+
+    // Was: Führt den Arbeitsschritt `pop_ready` für pop ready aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn pop_ready(&mut self) -> Option<JitterFrame> {
+        if self.target_frames == 0 {
+            self.target_frames = BREW_JITTER_BASE_FRAMES + self.initial_latency_frames;
+        }
+
+        if !self.started {
+            if self.frames.len() < self.target_frames {
+                return None;
+            }
+            self.started = true;
+        }
+
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+        match self.frames.pop_front() {
+            Some(frame) => {
+                if self.frames.len() >= self.target_frames {
+                    self.stable_pops = self.stable_pops.saturating_add(1);
+                    if self.stable_pops >= 80 {
+                        self.stable_pops = 0;
+                        if self.underrun_boost > 0 {
+                            self.underrun_boost -= 1;
+                            self.recompute_target();
+                        }
+                    }
+                } else {
+                    self.stable_pops = 0;
+                }
+                Some(frame)
+            }
+            None => {
+                self.started = false;
+                self.underruns += 1;
+                self.underrun_boost = (self.underrun_boost + 1).min(4);
+                self.stable_pops = 0;
+                self.recompute_target();
+                None
+            }
+        }
+    }
+
+    // Was: Führt den Arbeitsschritt `target_frames` für target frames aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn target_frames(&self) -> usize {
+        self.target_frames.max(BREW_JITTER_MIN_FRAMES)
+    }
+
+    // Was: Prüft, ob empty zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
+    pub fn is_empty(&self) -> bool {
+        self.frames.is_empty()
+    }
+
+    // Was: Führt den Arbeitsschritt `len` für len aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn len(&self) -> usize {
+        self.frames.len()
+    }
+
+    /// Pop a frame unconditionally — used when draining after GROUP_IDLE.
+    /// Unlike pop_ready, this does not wait for target_frames to accumulate;
+    /// it returns None only when the buffer is truly empty.
+    // Was: Führt den Arbeitsschritt `pop_drain` für pop drain aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn pop_drain(&mut self) -> Option<JitterFrame> {
+        self.frames.pop_front()
+    }
+
+    // Was: Führt den Arbeitsschritt `recompute_target` für recompute target aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn recompute_target(&mut self) {
+        let jitter_component = ((self.jitter_us_ewma * 2.0) / BREW_EXPECTED_FRAME_INTERVAL_US).ceil() as usize;
+        let target = BREW_JITTER_BASE_FRAMES + self.initial_latency_frames + jitter_component + self.underrun_boost;
+        self.target_frames = target.clamp(BREW_JITTER_MIN_FRAMES, BREW_JITTER_TARGET_MAX_FRAMES);
+    }
+
+    // Was: Führt den Arbeitsschritt `maybe_warn_unhealthy` für maybe warn unhealthy aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn maybe_warn_unhealthy(&mut self, uuid: Uuid) {
+        let now = Instant::now();
+        if let Some(last_warn) = self.last_warn_at {
+            if now.duration_since(last_warn) < BREW_JITTER_WARN_INTERVAL {
+                return;
+            }
+        }
+
+        // Warn only when the buffer is genuinely unhealthy: either the target depth is
+        // elevated, or *new* underruns have occurred since our last warning. Comparing
+        // against `last_warn_underruns` (rather than `== 0`) stops a single transient
+        // underrun at call setup from spamming the log every interval for the call's life.
+        if self.target_frames() < BREW_JITTER_WARN_TARGET_FRAMES && self.underruns == self.last_warn_underruns {
+            return;
+        }
+
+        self.last_warn_at = Some(now);
+        self.last_warn_underruns = self.underruns;
+        tracing::warn!(
+            "BrewEntity: high jitter on uuid={} target_frames={} queue={} underruns={} overflow_drops={} jitter_ms={:.1}",
+            uuid,
+            self.target_frames(),
+            self.frames.len(),
+            self.underruns,
+            self.dropped_overflow,
+            self.jitter_us_ewma / 1000.0
+        );
+    }
+}
+
+// Was: Implementiert das zugehörige Verhalten für `VoiceJitterBuffer`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
+impl VoiceJitterBuffer {
+    /// Flush all buffered frames immediately, returning the count of dropped frames.
+    /// Called on speaker change or circuit teardown to prevent stale audio playout.
+    // Was: Diese Funktion schreibt den vorgesehenen Arbeitsschritt.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn flush(&mut self) -> usize {
+        let count = self.frames.len();
+        self.frames.clear();
+        self.started = false;
+        self.underrun_boost = 0;
+        self.stable_pops = 0;
+        // Reset target to base — fresh start for new speaker
+        self.target_frames = BREW_JITTER_BASE_FRAMES + self.initial_latency_frames;
+        count
+    }
+}

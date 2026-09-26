@@ -1,0 +1,355 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+//! Dashboard "Dual-Carrier ON/OFF" support.
+//!
+//! Toggling dual carrier is a config-file operation applied via a controlled restart: the secondary
+//! carrier is fixed at startup (PHY/SDR tuning, UMAC schedulers and the timeslot allocator all read
+//! it once at construction), so it cannot be reconfigured live. The toggle therefore edits
+//! `[cell_info]` in the TOML and the service restarts to pick up the new carrier set.
+//!
+//! Representation: `secondary_carrier = N` is the *configured* carrier number (kept across OFF so it
+//! is remembered), and `dual_carrier_enabled = true|false` is the operational switch. The config
+//! loader (`cell_dto_to_cfg`) collapses these into the effective `CfgCellInfo::secondary_carrier`
+//! (`None` when disabled), so the rest of the stack is unchanged.
+
+/// Current dual-carrier configuration as read straight from the TOML file.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Bündelt die zusammengehörigen Werte für dual carrier Zustand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct DualCarrierState {
+    /// The `dual_carrier_enabled` switch (absent = true for backward compatibility).
+    pub enabled: bool,
+    /// The configured `secondary_carrier` number, if any (preserved even while disabled).
+    pub secondary_carrier: Option<u16>,
+}
+
+// Was: Implementiert das zugehörige Verhalten für `DualCarrierState`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
+impl DualCarrierState {
+    /// Dual carrier is operationally active only when switched on AND a carrier is configured.
+    // Was: Führt den Arbeitsschritt `active` für active aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn active(&self) -> bool {
+        self.enabled && self.secondary_carrier.is_some()
+    }
+}
+
+/// Read the dual-carrier switch + configured secondary carrier from the TOML file.
+/// Tolerant of a missing/garbled file: defaults to enabled=true, no secondary carrier. Uses a
+/// line scan of the active `[cell_info]` keys (no extra TOML dependency, mirrors `compute_toml`).
+// Was: Diese Funktion liest dual carrier.
+// Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
+pub fn read_dual_carrier(config_path: &str) -> DualCarrierState {
+    let txt = std::fs::read_to_string(config_path).unwrap_or_default();
+    let mut in_cell = false;
+    let mut enabled = true;
+    let mut secondary_carrier = None;
+
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+    for line in txt.lines() {
+        let trimmed = line.trim_start();
+        if let Some(name) = table_name(trimmed) {
+            in_cell = is_cell_info_table(name);
+            continue;
+        }
+        if !in_cell || trimmed.starts_with('#') {
+            continue;
+        }
+        if let Some(v) = active_value(trimmed, "secondary_carrier") {
+            secondary_carrier = value_token(v).parse::<u16>().ok();
+        } else if let Some(v) = active_value(trimmed, "dual_carrier_enabled") {
+            enabled = value_token(v) == "true";
+        }
+    }
+    DualCarrierState { enabled, secondary_carrier }
+}
+
+/// For an active (uncommented) `key = <value>` line, return the trimmed value part; else None.
+// Was: Führt den Arbeitsschritt `active_value` für active value aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn active_value<'a>(trimmed: &'a str, key: &str) -> Option<&'a str> {
+    if !trimmed.starts_with(key) {
+        return None;
+    }
+    trimmed[key.len()..].trim_start().strip_prefix('=').map(str::trim)
+}
+
+/// Strip a trailing `# inline comment` and surrounding whitespace from a TOML scalar value.
+// Was: Führt den Arbeitsschritt `value_token` für value Zugriffsschlüssel aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn value_token(v: &str) -> &str {
+    v.split('#').next().unwrap_or(v).trim()
+}
+
+/// Return the TOML table name for real table headers (`[cell_info]`,
+/// `[cell_info.sds_command_control]`, `[[cell_info.neighbor_cells_ca]]`).
+///
+/// Important: ordinary array values such as `local_ssi_ranges = [` followed by
+/// `    [0, 90],` also start with `[` after trimming. Treating those as section
+/// headers corrupts the array by inserting keys inside it. We therefore accept
+/// only bare dotted TOML table names made from identifier characters used in this
+/// config, not comma-separated array literals.
+// Was: Führt den Arbeitsschritt `table_name` für table name aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn table_name(trimmed: &str) -> Option<&str> {
+    let head = value_token(trimmed);
+    let inner = if let Some(rest) = head.strip_prefix("[[") {
+        rest.strip_suffix("]]" )?
+    } else if let Some(rest) = head.strip_prefix('[') {
+        rest.strip_suffix(']')?
+    } else {
+        return None;
+    };
+
+    let name = inner.trim();
+    if name.is_empty() {
+        return None;
+    }
+
+    if name
+        .bytes()
+        .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'-' | b'.'))
+    {
+        Some(name)
+    } else {
+        None
+    }
+}
+
+// Was: Prüft, ob cell info table zutrifft.
+// Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
+fn is_cell_info_table(name: &str) -> bool {
+    name == "cell_info"
+}
+
+/// Produce a new TOML body with `dual_carrier_enabled` (and, when `secondary_carrier` is `Some`,
+/// the active `secondary_carrier` key) set inside `[cell_info]`, preserving everything else
+/// including comments. When `secondary_carrier` is `None`, any existing `secondary_carrier` line is
+/// left untouched (so the configured number is remembered while the switch is off).
+// Was: Führt den Arbeitsschritt `compute_toml` für compute toml aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+pub fn compute_toml(original: &str, enabled: bool, secondary_carrier: Option<u16>) -> String {
+    let enabled_line = format!("dual_carrier_enabled = {enabled}");
+    let secondary_line = secondary_carrier.map(|c| format!("secondary_carrier = {c}"));
+
+    let mut out: Vec<String> = Vec::new();
+    let mut in_cell = false;
+    let mut cell_seen = false;
+    let mut wrote_enabled = false;
+    // Nothing to write for secondary if the caller passed None.
+    let mut wrote_secondary = secondary_line.is_none();
+
+    // True if `trimmed` is an active (uncommented) `key = ...` assignment.
+    let is_active_key = |trimmed: &str, key: &str| {
+        !trimmed.starts_with('#')
+            && trimmed.starts_with(key)
+            && trimmed[key.len()..].trim_start().starts_with('=')
+    };
+
+    let flush_missing = |out: &mut Vec<String>, wrote_enabled: &mut bool, wrote_secondary: &mut bool| {
+        if !*wrote_enabled {
+            out.push(enabled_line.clone());
+            *wrote_enabled = true;
+        }
+        if !*wrote_secondary {
+            if let Some(ref s) = secondary_line {
+                out.push(s.clone());
+            }
+            *wrote_secondary = true;
+        }
+    };
+
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+    for line in original.lines() {
+        let trimmed = line.trim_start();
+
+        if let Some(name) = table_name(trimmed) {
+            // Leaving the top-level [cell_info] table without having written every key:
+            // append them at section end. Do not treat array rows such as `[0, 90],`
+            // as table headers.
+            if in_cell {
+                flush_missing(&mut out, &mut wrote_enabled, &mut wrote_secondary);
+            }
+            in_cell = is_cell_info_table(name);
+            if in_cell {
+                cell_seen = true;
+            }
+            out.push(line.to_string());
+            continue;
+        }
+
+        if in_cell {
+            if !wrote_enabled && is_active_key(trimmed, "dual_carrier_enabled") {
+                out.push(enabled_line.clone());
+                wrote_enabled = true;
+                continue;
+            }
+            if !wrote_secondary && is_active_key(trimmed, "secondary_carrier") {
+                if let Some(ref s) = secondary_line {
+                    out.push(s.clone());
+                }
+                wrote_secondary = true;
+                continue;
+            }
+        }
+
+        out.push(line.to_string());
+    }
+
+    // File ended while still inside [cell_info].
+    if in_cell {
+        flush_missing(&mut out, &mut wrote_enabled, &mut wrote_secondary);
+    }
+
+    // No [cell_info] section at all — append one.
+    if !cell_seen {
+        if !out.is_empty() && !out.last().map(|l| l.is_empty()).unwrap_or(true) {
+            out.push(String::new());
+        }
+        out.push("[cell_info]".to_string());
+        out.push(enabled_line.clone());
+        if let Some(ref s) = secondary_line {
+            out.push(s.clone());
+        }
+    }
+
+    let mut new_content = out.join("\n");
+    if original.ends_with('\n') {
+        new_content.push('\n');
+    }
+    new_content
+}
+
+/// Apply the toggle to the config file (backup, then write). Pair with `compute_toml`'s rules.
+// Was: Diese Funktion schreibt dual carrier.
+// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
+pub fn write_dual_carrier(config_path: &str, enabled: bool, secondary_carrier: Option<u16>) -> std::io::Result<()> {
+    let original = std::fs::read_to_string(config_path)?;
+    let new_content = compute_toml(&original, enabled, secondary_carrier);
+    let backup = format!("{config_path}.dualcarrier.bak");
+    let _ = std::fs::copy(config_path, &backup);
+    std::fs::write(config_path, new_content)
+}
+
+#[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
+mod tests {
+    use super::*;
+
+    // Was: Legt den festen Wert `SAMPLE` für sample fest.
+    // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
+    const SAMPLE: &str = "\
+[net]
+mcc = 1
+
+[cell_info]
+main_carrier = 1521                 # comment kept
+# secondary_carrier = 1522          # optional, commented by default
+duplex_spacing = 4
+
+[security]
+issi_whitelist = []
+";
+
+    #[test]
+    // Was: Diese Funktion aktiviert inserts both keys and keeps comments.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn enable_inserts_both_keys_and_keeps_comments() {
+        let out = compute_toml(SAMPLE, true, Some(1522));
+        assert!(out.contains("dual_carrier_enabled = true"));
+        assert!(out.contains("secondary_carrier = 1522"));
+        // The documenting comment line is preserved.
+        assert!(out.contains("# secondary_carrier = 1522          # optional, commented by default"));
+        // Untouched sections survive.
+        assert!(out.contains("[security]"));
+        assert!(out.contains("main_carrier = 1521"));
+        // The inserted keys land inside [cell_info], before the next section.
+        let cell_idx = out.find("[cell_info]").unwrap();
+        let sec_idx = out.find("[security]").unwrap();
+        let enabled_idx = out.find("dual_carrier_enabled = true").unwrap();
+        assert!(cell_idx < enabled_idx && enabled_idx < sec_idx);
+    }
+
+    #[test]
+    // Was: Führt den Arbeitsschritt `local_ssi_ranges_array_is_not_treated_as_section_header` für local TETRA-Teilnehmerkennung (SSI) ranges array is not treated und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn local_ssi_ranges_array_is_not_treated_as_section_header() {
+        let sample = "\
+[cell_info]
+main_carrier = 720
+local_ssi_ranges = [
+    [0, 90],
+]
+system_wide_services = true
+
+[cell_info.sds_command_control]
+authorized_issis = [2010001]
+";
+
+        let out = compute_toml(sample, true, Some(721));
+        let local_idx = out.find("local_ssi_ranges = [").unwrap();
+        let local_end = out[local_idx..].find("\n]").unwrap() + local_idx;
+        let enabled_idx = out.find("dual_carrier_enabled = true").unwrap();
+        let sds_section_idx = out.find("[cell_info.sds_command_control]").unwrap();
+
+        assert!(enabled_idx > local_end, "dual_carrier_enabled must not be inserted inside local_ssi_ranges");
+        assert!(enabled_idx < sds_section_idx, "dual carrier keys should stay in top-level [cell_info]");
+        assert!(out.contains("local_ssi_ranges = [\n    [0, 90],\n]"));
+    }
+
+    #[test]
+    // Was: Diese Funktion deaktiviert sets flag and keeps existing secondary.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn disable_sets_flag_and_keeps_existing_secondary() {
+        // First enable to get an active secondary_carrier line.
+        let enabled = compute_toml(SAMPLE, true, Some(1522));
+        // Now disable without passing a number: flag flips, the number is remembered.
+        let disabled = compute_toml(&enabled, false, None);
+        assert!(disabled.contains("dual_carrier_enabled = false"));
+        assert!(!disabled.contains("dual_carrier_enabled = true"));
+        assert!(disabled.contains("secondary_carrier = 1522"));
+    }
+
+    #[test]
+    // Was: Führt den Arbeitsschritt `toggling_is_idempotent_no_duplicate_keys` für toggling is idempotent no duplicate keys aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn toggling_is_idempotent_no_duplicate_keys() {
+        let once = compute_toml(SAMPLE, true, Some(1522));
+        let twice = compute_toml(&once, true, Some(1530));
+        assert_eq!(twice.matches("dual_carrier_enabled =").count(), 1);
+        // Exactly one ACTIVE secondary_carrier line (the commented example does not count).
+        assert_eq!(
+            twice.lines().filter(|l| l.trim_start().starts_with("secondary_carrier =")).count(),
+            1
+        );
+        assert!(twice.contains("secondary_carrier = 1530"));
+    }
+
+    #[test]
+    // Was: Diese Funktion liest back round trips.
+    // Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
+    fn read_back_round_trips() {
+        let dir = std::env::temp_dir();
+        let path = dir.join("dc_test_roundtrip.toml");
+        let path_str = path.to_str().unwrap();
+        std::fs::write(&path, compute_toml(SAMPLE, true, Some(1522))).unwrap();
+        let st = read_dual_carrier(path_str);
+        assert_eq!(st, DualCarrierState { enabled: true, secondary_carrier: Some(1522) });
+        assert!(st.active());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    // Was: Führt den Arbeitsschritt `missing_cell_section_is_appended` für missing cell section is appended aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn missing_cell_section_is_appended() {
+        let out = compute_toml("[net]\nmcc = 1\n", true, Some(1522));
+        assert!(out.contains("[cell_info]"));
+        assert!(out.contains("dual_carrier_enabled = true"));
+        assert!(out.contains("secondary_carrier = 1522"));
+    }
+}

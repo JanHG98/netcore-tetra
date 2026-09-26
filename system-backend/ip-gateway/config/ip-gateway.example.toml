@@ -1,0 +1,193 @@
+# NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für die Kopplung von TETRA-Paketdaten an IP-Netze.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+# Was: Öffnet den Konfigurationsabschnitt `server`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[server]
+# Was: Setzt die Einstellung `bind` für server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+bind = "0.0.0.0:8170"
+
+# Was: Öffnet den Konfigurationsabschnitt `packet_core`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[packet_core]
+# Was: Setzt die Einstellung `url` für Datenpaket core.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+url = "http://127.0.0.1:8160"
+# Was: Setzt die Einstellung `poll_interval_ms` für Datenpaket core.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+poll_interval_ms = 250
+# Was: Setzt die Einstellung `context_refresh_ms` für Datenpaket core.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+context_refresh_ms = 1000
+# Was: Setzt die Einstellung `request_timeout_ms` für Datenpaket core.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+request_timeout_ms = 2000
+# Was: Setzt die Einstellung `outbox_batch` für Datenpaket core.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+outbox_batch = 250
+
+# Was: Öffnet den Konfigurationsabschnitt `storage`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[storage]
+# Was: Setzt die Einstellung `database_path` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+database_path = "/var/lib/netcore-ip-gateway/state.json"
+# Was: Setzt die Einstellung `backup_path` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+backup_path = "/var/lib/netcore-ip-gateway/state.json.bak"
+
+# Was: Öffnet den Konfigurationsabschnitt `interface`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[interface]
+# shadow: Packet Core, Regeln und Kernel-Plan beobachten, aber kein TUN öffnen.
+# authoritative: /dev/net/tun öffnen, IP-Pakete transportieren und Kernelregeln anwenden.
+# Was: Setzt die Einstellung `mode` für interface.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+mode = "shadow"
+# Was: Legt den technischen Namen des Pakets oder Dienstes fest.
+# Warum: Build-Werkzeuge und andere Komponenten können es dadurch eindeutig ansprechen.
+name = "ntc-tun0"
+# Was: Setzt die Einstellung `address` für interface.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+address = "10.0.0.1/24"
+# Was: Setzt die Einstellung `network` für interface.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+network = "10.0.0.0/24"
+# Was: Setzt die Einstellung `mtu` für interface.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+mtu = 480
+# Was: Setzt die Einstellung `owner_user` für interface.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+owner_user = "netcore"
+# Was: Setzt die Einstellung `delete_on_exit` für interface.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+delete_on_exit = true
+
+# Was: Öffnet den Konfigurationsabschnitt `routing`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[routing]
+# Was: Setzt die Einstellung `enable_ipv4_forwarding` für routing.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+enable_ipv4_forwarding = true
+# Was: Setzt die Einstellung `reconcile_interval_secs` für routing.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+reconcile_interval_secs = 5
+# Was: Setzt die Einstellung `install_connected_route` für routing.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+install_connected_route = true
+
+# Was: Öffnet den Konfigurationsabschnitt `nat`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[nat]
+# Was: Setzt die Einstellung `enabled` für nat.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+enabled = true
+# Was: Setzt die Einstellung `masquerade` für nat.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+masquerade = true
+# Was: Setzt die Einstellung `egress_interface` für nat.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+egress_interface = "eth0"
+
+# Was: Öffnet den Konfigurationsabschnitt `firewall`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[firewall]
+# Was: Setzt die Einstellung `enabled` für firewall.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+enabled = true
+# Was: Setzt die Einstellung `default_forward_policy` für firewall.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+default_forward_policy = "drop"
+# Was: Setzt die Einstellung `allow_established` für firewall.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+allow_established = true
+# Im isolierten Labor standardmäßig freie Fahrt nach außen; vor Produktivbetrieb einschränken.
+# Was: Setzt die Einstellung `allow_general_internet` für firewall.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+allow_general_internet = true
+# Was: Setzt die Einstellung `allow_icmp` für firewall.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+allow_icmp = true
+# Was: Setzt die Einstellung `log_drops` für firewall.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+log_drops = false
+
+# Was: Öffnet den Konfigurationsabschnitt `dns`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[dns]
+# Was: Setzt die Einstellung `enabled` für dns.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+enabled = true
+# Nur am Packet-Data-Gateway binden; 0.0.0.0 wird zur Laufzeit ebenfalls
+# automatisch auf diese TUN-Adresse eingegrenzt.
+# Was: Setzt die Einstellung `bind` für dns.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+bind = "10.0.0.1:53"
+# Was: Setzt die Einstellung `upstream` für dns.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+upstream = "1.1.1.1:53"
+# Was: Setzt die Einstellung `local_domain` für dns.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+local_domain = "netcore.test"
+# Was: Setzt die Einstellung `ttl_secs` für dns.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+ttl_secs = 30
+# Was: Setzt die Einstellung `query_timeout_ms` für dns.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+query_timeout_ms = 2000
+
+# Was: Öffnet den Konfigurationsabschnitt `test_server`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[test_server]
+# Was: Setzt die Einstellung `enabled` für test server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+enabled = true
+# Was: Setzt die Einstellung `bind` für test server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+bind = "0.0.0.0:8088"
+# Was: Setzt die Einstellung `udp_echo_bind` für test server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+udp_echo_bind = "0.0.0.0:7007"
+
+# Was: Öffnet den Konfigurationsabschnitt `capture`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[capture]
+# Was: Setzt die Einstellung `directory` für capture.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+directory = "/var/lib/netcore-ip-gateway/captures"
+# Was: Setzt die Einstellung `max_captures` für capture.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_captures = 64
+# Was: Setzt die Einstellung `max_file_bytes` für capture.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_file_bytes = 268435456
+# Was: Setzt die Einstellung `snaplen` für capture.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+snaplen = 65535
+
+# Was: Öffnet den Konfigurationsabschnitt `security`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[security]
+# Was: Setzt die Einstellung `mode` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+mode = "open_lab"
+# Was: Setzt die Einstellung `allow_remote_management` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+allow_remote_management = true
+
+# Was: Öffnet den Konfigurationsabschnitt `limits`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[limits]
+# Was: Setzt die Einstellung `max_body_bytes` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_body_bytes = 2097152
+# Was: Setzt die Einstellung `max_events` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_events = 100000
+# Was: Setzt die Einstellung `max_flows` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_flows = 100000
+# Was: Setzt die Einstellung `max_packet_bytes` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_packet_bytes = 65535

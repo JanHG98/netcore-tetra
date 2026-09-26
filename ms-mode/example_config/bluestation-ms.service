@@ -1,0 +1,74 @@
+# Sample systemd unit for the TETRA BlueStation MS stack with supervisor-based
+# config-apply restart (NON-STANDARD, Plane B management interface).
+#
+# The MS management interface (external UI over the control transport) can stage
+# a new configuration (SetConfig, validated + written to the TOML file) and then
+# apply it (ApplyConfig). On ApplyConfig the stack performs its graceful
+# de-registration drain (U-ITSI DETACH, ETSI TS 100 392-2 cl. 16.6.1) and then
+# exits with code 75 (EXIT_RESTART). This unit tells systemd to treat that exit
+# code as a restart request, so the process is respawned and reloads the new
+# configuration from the same TOML file. A normal shutdown (Ctrl+C / SIGINT)
+# exits 0 and is NOT restarted.
+#
+# Adjust User/Group/paths for your deployment. Install to
+# /etc/systemd/system/bluestation-ms.service, then:
+#   systemctl daemon-reload && systemctl enable --now bluestation-ms
+
+[Unit]
+Description=TETRA BlueStation MS stack
+After=network.target
+
+[Service]
+Type=simple
+# Path to the bluestation-bs binary and the MS TOML config it should load.
+ExecStart=/usr/local/bin/bluestation-bs /etc/bluestation/config-ms.toml
+# Default log verbosity. The stack logs via `tracing`; steady-state runs quiet at
+# `info` (registration/call/cell events + warnings/errors only). Bump on demand
+# for troubleshooting — e.g. `RUST_LOG=debug` (per-PDU decodes) or `RUST_LOG=trace`
+# (per-frame/per-burst firehose), or target one module: `RUST_LOG=tetra_entities::mm=debug`.
+Environment=RUST_LOG=info
+# Treat EXIT_RESTART (75) as a restart trigger for the config-apply flow, and
+# also restart on unexpected failures. A clean exit (0) stops the service.
+Restart=on-failure
+RestartForceExitStatus=75
+RestartSec=1
+# A clean Ctrl+C / management shutdown is SIGINT (exit 0, not restarted).
+KillSignal=SIGINT
+
+# --- Real-time scheduling & CPU isolation (IMPORTANT on a shared host) --------
+# The MS is receive-timed: the SDR RX pipeline must consume the sample stream
+# (e.g. 600 kSa/s) every TDMA slot or samples are dropped ("Lost N samples,
+# skipping ..."), which makes the demodulator lose sync and the MLE declare a
+# serving-cell downlink failure (MLE-BREAK) — the radio then flaps in and out of
+# service and can never complete registration. This is almost always CPU/
+# scheduling starvation, NOT an RF problem, and it is easy to hit when a UI, a
+# desktop/display compositor, or anything else heavy runs on the same board.
+#
+# Run the stack under the real-time FIFO scheduler so the RX thread preempts the
+# UI/desktop and meets its per-slot deadline. Priority 73 mirrors the BS unit;
+# keep it below any kernel IRQ threads.
+CPUSchedulingPolicy=fifo
+CPUSchedulingPriority=73
+# Give real-time I/O priority to the SDR/USB reads as well.
+IOSchedulingClass=realtime
+IOSchedulingPriority=0
+# Fallback niceness for any non-RT helper threads.
+Nice=-10
+# Allow the process to actually obtain RT priority and to lock memory (avoids
+# page-fault jitter if the binary calls mlockall). Needed when User= is not root.
+LimitRTPRIO=99
+LimitMEMLOCK=infinity
+# Pin the stack to dedicated CPUs so the UI/desktop cannot steal them. On a
+# 4-core Pi this dedicates cores 2-3 to the radio and leaves 0-1 for the UI.
+# Tune to your core count; comment out on a single-core board. For hard
+# isolation also add `isolcpus=2,3 nohz_full=2,3` to the kernel cmdline and pin
+# the UI/desktop to cores 0-1 (e.g. its own unit's CPUAffinity=0 1 or taskset).
+CPUAffinity=2 3
+
+# Recommended hardening / RF device access — tune for your SDR and user.
+# SoapySDR/USB device access typically needs the process to reach /dev/bus/usb.
+# User=bluestation
+# Group=plugdev
+
+[Install]
+WantedBy=multi-user.target

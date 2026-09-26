@@ -1,0 +1,970 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Einlesen und Prüfen der TETRA-Konfiguration.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+use std::collections::HashMap;
+use std::fs::File;
+use std::io::{BufReader, Read};
+use std::path::Path;
+
+use serde::Deserialize;
+use toml::Value;
+
+use crate::bluestation::sec_cell::{CfgNeighborCellCa, SdsCommandControlDto};
+use crate::bluestation::{CellInfoDto, CfgControlDto, CfgControlRoomDto, CfgEdgeFallbackDto, NetInfoDto, apply_control_patch, apply_control_room_patch, apply_edge_fallback_patch, cell_dto_to_cfg, net_dto_to_cfg};
+
+use super::config::{StackConfig, StackMode};
+use super::sec_asterisk::{CfgAsteriskDto, apply_asterisk_patch};
+use super::sec_brew::{CfgBrewDto, apply_brew_patch};
+use super::sec_dapnet::{CfgDapnetDto, apply_dapnet_patch};
+use super::sec_dashboard::{CfgDashboardDto, apply_dashboard_patch};
+use super::sec_echolink::{CfgEcholinkDto, apply_echolink_patch};
+use super::sec_emergency::{CfgEmergencyDto, apply_emergency_patch};
+use super::sec_geoalarm::{CfgGeoalarmDto, apply_geoalarm_patch};
+use super::sec_health::{CfgHealthDto, apply_health_patch};
+use super::sec_meshcom::{CfgMeshcomDto, apply_meshcom_patch};
+use super::sec_recovery::{CfgRecoveryDto, apply_recovery_patch};
+use super::sec_audio_player::{CfgAudioPlayerDto, apply_audio_player_patch};
+use super::sec_tts::{CfgTtsDto, apply_tts_patch};
+use super::sec_recording::{CfgRecordingDto, apply_recording_patch};
+use super::sec_media_library::{CfgMediaLibraryDto, apply_media_library_patch};
+use super::sec_security::{CfgSecurityDto, apply_security_patch};
+use super::sec_snom_notify::{CfgSnomNotifyDto, apply_snom_notify_patch};
+use super::sec_telegram::{CfgTelegramDto, apply_telegram_patch};
+use super::sec_telemetry::{CfgTelemetryDto, apply_telemetry_patch};
+use super::sec_tpg2200_action::{CfgTpg2200ActionDto, apply_tpg2200_action_patch};
+use super::sec_wx::{CfgWxServiceDto, apply_wx_service_patch};
+use super::{PhyIoDto, phy_dto_to_cfg};
+
+/// Build `StackConfig` from a TOML configuration file
+// Was: Wandelt Eingangsdaten in toml str um.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+pub fn from_toml_str(toml_str: &str) -> Result<StackConfig, Box<dyn std::error::Error>> {
+    // Parse once as raw Value so we can extract neighbor_cells_ca before
+    // deserializing into typed DTOs. This avoids a conflict between serde's
+    // #[flatten] HashMap (used for unrecognised-field detection) and an array-of-
+    // tables field: the flatten map would capture neighbor_cells_ca as an opaque
+    // Value, causing the "unrecognised field" check to fire.
+    let mut raw: toml::Table = toml::from_str(toml_str)?;
+
+    // Extract neighbor_cells_ca from cell_info before typed deserialisation.
+    let neighbor_cells_ca: Vec<CfgNeighborCellCa> = raw
+        .get_mut("cell_info")
+        .and_then(|ci| {
+            if let Value::Table(t) = ci {
+                t.remove("neighbor_cells_ca")
+            } else {
+                None
+            }
+        })
+        .map(|v| {
+            // v is a Value::Array of Value::Table — deserialise via serde
+            v.try_into::<Vec<toml::Table>>()
+                .map_err(|e| format!("cell_info.neighbor_cells_ca: {}", e))
+                .and_then(|tables| {
+                    tables
+                        .into_iter()
+                        .enumerate()
+                        .map(|(i, t)| {
+                            Value::Table(t)
+                                .try_into::<CfgNeighborCellCa>()
+                                .map_err(|e| format!("cell_info.neighbor_cells_ca[{}]: {}", i, e))
+                        })
+                        .collect::<Result<Vec<_>, _>>()
+                })
+        })
+        .transpose()?
+        .unwrap_or_default();
+
+    if neighbor_cells_ca.len() > 7 {
+        return Err("cell_info.neighbor_cells_ca: at most 7 entries allowed".into());
+    }
+
+    // Extract sds_command_control from cell_info before typed deserialisation
+    // (same reason as neighbor_cells_ca: serde #[flatten] would capture it as opaque Value)
+    let sds_command_control_raw = raw.get_mut("cell_info").and_then(|ci| {
+        if let Value::Table(t) = ci {
+            t.remove("sds_command_control")
+        } else {
+            None
+        }
+    });
+
+    // Extract the dashboard-only NetCore Directory block before typed deserialisation.
+    // The dashboard server reads this block directly from the active config file;
+    // removing it here keeps the strict top-level unknown-field guard intact without
+    // plumbing these UI-only fields through the whole StackConfig yet.
+    let _netcore_directory_raw = raw.remove("netcore_directory");
+
+    // Now deserialise the (mutated) Value into the typed root — neighbor_cells_ca
+    // has been removed so it will not appear in the flatten HashMap.
+    let root: TomlConfigRoot = Value::Table(raw).try_into()?;
+
+    // Various sanity checks
+    let expected_config_version = "0.6";
+    if !root.config_version.eq(expected_config_version) {
+        return Err(format!(
+            "Unrecognized config_version: {}, expect {}",
+            root.config_version, expected_config_version
+        )
+        .into());
+    }
+    if !root.extra.is_empty() {
+        return Err(format!("Unrecognized top-level fields: {:?}", sorted_keys(&root.extra)).into());
+    }
+
+    if !root.phy_io.extra.is_empty() {
+        return Err(format!("Unrecognized fields: phy_io::{:?}", sorted_keys(&root.phy_io.extra)).into());
+    }
+    if let Some(ref soapy) = root.phy_io.soapysdr {
+        let extra_keys = sorted_keys(&soapy.extra);
+        let extra_keys_filtered = extra_keys
+            .iter()
+            .filter(|key| !(key.starts_with("rx_gain_") || key.starts_with("tx_gain_")))
+            .collect::<Vec<&&str>>();
+        if !extra_keys_filtered.is_empty() {
+            return Err(format!("Unrecognized fields: phy_io.soapysdr::{:?}", extra_keys_filtered).into());
+        }
+    }
+    if !root.net_info.extra.is_empty() {
+        return Err(format!("Unrecognized fields in net_info: {:?}", sorted_keys(&root.net_info.extra)).into());
+    }
+    if !root.cell_info.extra.is_empty() {
+        return Err(format!("Unrecognized fields in cell_info: {:?}", sorted_keys(&root.cell_info.extra)).into());
+    }
+
+    // Optional brew section
+    if let Some(ref brew) = root.brew
+        && !brew.extra.is_empty()
+    {
+        return Err(format!("Unrecognized fields in brew config: {:?}", sorted_keys(&brew.extra)).into());
+    }
+    if let Some(ref brew2) = root.brew2
+        && !brew2.extra.is_empty()
+    {
+        return Err(format!("Unrecognized fields in brew2 config: {:?}", sorted_keys(&brew2.extra)).into());
+    }
+
+    // Optional asterisk section
+    if let Some(ref asterisk) = root.asterisk
+        && !asterisk.extra.is_empty()
+    {
+        return Err(format!("Unrecognized fields in asterisk config: {:?}", sorted_keys(&asterisk.extra)).into());
+    }
+
+    // Optional dapnet section
+    if let Some(ref dapnet) = root.dapnet
+        && !dapnet.extra.is_empty()
+    {
+        return Err(format!("Unrecognized fields in dapnet config: {:?}", sorted_keys(&dapnet.extra)).into());
+    }
+
+    // Optional echolink section
+    if let Some(ref echolink) = root.echolink
+        && !echolink.extra.is_empty()
+    {
+        return Err(format!("Unrecognized fields in echolink config: {:?}", sorted_keys(&echolink.extra)).into());
+    }
+
+    // Optional meshcom section
+    if let Some(ref meshcom) = root.meshcom
+        && !meshcom.extra.is_empty()
+    {
+        return Err(format!("Unrecognized fields in meshcom config: {:?}", sorted_keys(&meshcom.extra)).into());
+    }
+
+    // Optional geoalarm section
+    if let Some(ref geoalarm) = root.geoalarm
+        && !geoalarm.extra.is_empty()
+    {
+        return Err(format!("Unrecognized fields in geoalarm config: {:?}", sorted_keys(&geoalarm.extra)).into());
+    }
+
+    // Optional tpg2200_action section
+    if let Some(ref action) = root.tpg2200_action
+        && !action.extra.is_empty()
+    {
+        return Err(format!("Unrecognized fields in tpg2200_action config: {:?}", sorted_keys(&action.extra)).into());
+    }
+
+    // Optional snom_notify section
+    if let Some(ref snom) = root.snom_notify
+        && !snom.extra.is_empty()
+    {
+        return Err(format!("Unrecognized fields in snom_notify config: {:?}", sorted_keys(&snom.extra)).into());
+    }
+
+    // Optional media_library section
+    if let Some(ref media_library) = root.media_library
+        && !media_library.extra.is_empty()
+    {
+        return Err(format!("Unrecognized fields in media_library config: {:?}", sorted_keys(&media_library.extra)).into());
+    }
+
+    // Optional recording section
+    if let Some(ref recording) = root.recording
+        && !recording.extra.is_empty()
+    {
+        return Err(format!("Unrecognized fields in recording config: {:?}", sorted_keys(&recording.extra)).into());
+    }
+
+    // Optional audio_player section
+    if let Some(ref audio_player) = root.audio_player
+        && !audio_player.extra.is_empty()
+    {
+        return Err(format!("Unrecognized fields in audio_player config: {:?}", sorted_keys(&audio_player.extra)).into());
+    }
+
+    // Optional tts section
+    if let Some(ref tts) = root.tts
+        && !tts.extra.is_empty()
+    {
+        return Err(format!("Unrecognized fields in tts config: {:?}", sorted_keys(&tts.extra)).into());
+    }
+
+    // Optional telemetry section
+    if let Some(ref telemetry) = root.telemetry
+        && !telemetry.extra.is_empty()
+    {
+        return Err(format!("Unrecognized fields in telemetry config: {:?}", sorted_keys(&telemetry.extra)).into());
+    }
+
+    // Optional control_room section
+    if let Some(ref control_room) = root.control_room
+        && !control_room.extra.is_empty()
+    {
+        return Err(format!("Unrecognized fields in control_room config: {:?}", sorted_keys(&control_room.extra)).into());
+    }
+
+    // Optional edge_fallback section — reject misspelled safety controls.
+    if let Some(ref edge_fallback) = root.edge_fallback
+        && !edge_fallback.extra.is_empty()
+    {
+        return Err(format!("Unrecognized fields in edge_fallback config: {:?}", sorted_keys(&edge_fallback.extra)).into());
+    }
+
+    // Optional telegram_alerts section
+    if let Some(ref telegram) = root.telegram_alerts
+        && !telegram.extra.is_empty()
+    {
+        return Err(format!("Unrecognized fields in telegram_alerts config: {:?}", sorted_keys(&telegram.extra)).into());
+    }
+
+    // Optional recovery section — reject typos so the RF-affecting feature can't be left dormant.
+    if let Some(ref recovery) = root.recovery
+        && !recovery.extra.is_empty()
+    {
+        return Err(format!("Unrecognized fields in recovery config: {:?}", sorted_keys(&recovery.extra)).into());
+    }
+
+    // Optional health section — reject typos so a mis-spelled watchdog/threshold key is caught.
+    if let Some(ref health) = root.health
+        && !health.extra.is_empty()
+    {
+        return Err(format!("Unrecognized fields in health config: {:?}", sorted_keys(&health.extra)).into());
+    }
+
+    // Optional emergency section — reject typos so a mis-spelled toggle isn't silently ignored.
+    if let Some(ref emergency) = root.emergency
+        && !emergency.extra.is_empty()
+    {
+        return Err(format!("Unrecognized fields in emergency config: {:?}", sorted_keys(&emergency.extra)).into());
+    }
+
+    // Build cell config, then inject the separately-parsed neighbor cells and sds_command_control
+    let mut cell_cfg = cell_dto_to_cfg(root.cell_info);
+    cell_cfg.neighbor_cells_ca = neighbor_cells_ca;
+    if let Some(v) = sds_command_control_raw {
+        let dto = v
+            .try_into::<SdsCommandControlDto>()
+            .map_err(|e| format!("cell_info.sds_command_control: {}", e))?;
+        if !dto.extra.is_empty() {
+            return Err(format!(
+                "Unrecognized fields in cell_info.sds_command_control: {:?}",
+                dto.extra.keys().collect::<Vec<_>>()
+            )
+            .into());
+        }
+        use crate::bluestation::sec_cell::{CfgSdsCommandControl, CfgSdsCommandEntry};
+        cell_cfg.sds_command_control = Some(CfgSdsCommandControl {
+            authorized_issis: dto.authorized_issis,
+            commands: dto
+                .commands
+                .into_iter()
+                .map(|e| CfgSdsCommandEntry {
+                    status_code: e.status_code,
+                    action: e.action,
+                })
+                .collect(),
+        });
+    }
+
+    let net = net_dto_to_cfg(root.net_info);
+    let asterisk = apply_asterisk_patch(root.asterisk.unwrap_or_default())?;
+    asterisk.validate_gateway_network(net.mcc, net.mnc)?;
+
+    // Build config from required and optional values
+    let mut cfg = StackConfig {
+        stack_mode: root.stack_mode,
+        debug_log: root.debug_log,
+        service_name: root.service_name,
+        phy_io: phy_dto_to_cfg(root.phy_io),
+        net,
+        cell: cell_cfg,
+        brew: None,
+        brew2: None,
+        asterisk,
+        dapnet: apply_dapnet_patch(root.dapnet.unwrap_or_default())?,
+        echolink: apply_echolink_patch(root.echolink.unwrap_or_default())?,
+        meshcom: apply_meshcom_patch(root.meshcom.unwrap_or_default())?,
+        geoalarm: apply_geoalarm_patch(root.geoalarm.unwrap_or_default())?,
+        tpg2200_action: apply_tpg2200_action_patch(root.tpg2200_action.unwrap_or_default())?,
+        snom_notify: apply_snom_notify_patch(root.snom_notify.unwrap_or_default())?,
+        dashboard: None,
+        media_library: apply_media_library_patch(root.media_library.unwrap_or_default())?,
+        recording: apply_recording_patch(root.recording.unwrap_or_default())?,
+        audio_player: apply_audio_player_patch(root.audio_player.unwrap_or_default())?,
+        tts: apply_tts_patch(root.tts.unwrap_or_default())?,
+        telemetry: None,
+        control: None,
+        control_room: None,
+        edge_fallback: apply_edge_fallback_patch(root.edge_fallback.unwrap_or_default())?,
+        security: apply_security_patch(root.security.unwrap_or_default()),
+        wx_service: apply_wx_service_patch(root.wx_service.unwrap_or_default()),
+        recovery: apply_recovery_patch(root.recovery.unwrap_or_default()),
+        telegram: None,
+        health: apply_health_patch(root.health.unwrap_or_default()),
+        emergency: apply_emergency_patch(root.emergency.unwrap_or_default()),
+    };
+
+    if let Some(brew) = root.brew {
+        cfg.brew = Some(apply_brew_patch(brew));
+    }
+    if let Some(brew2) = root.brew2 {
+        cfg.brew2 = Some(apply_brew_patch(brew2));
+    }
+
+    if let Some(dashboard) = root.dashboard {
+        cfg.dashboard = Some(apply_dashboard_patch(dashboard)?);
+    }
+
+    if let Some(telemetry) = root.telemetry {
+        cfg.telemetry = Some(apply_telemetry_patch(telemetry)?);
+    }
+
+    if let Some(command) = root.command {
+        cfg.control = Some(apply_control_patch(command)?);
+    }
+
+    if let Some(control_room) = root.control_room {
+        cfg.control_room = Some(apply_control_room_patch(control_room)?);
+    }
+
+    if let Some(telegram) = root.telegram_alerts {
+        cfg.telegram = Some(apply_telegram_patch(telegram));
+    }
+
+    Ok(cfg)
+}
+
+/// Build `SharedConfig` from any reader.
+// Was: Wandelt Eingangsdaten in reader um.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+pub fn from_reader<R: Read>(reader: R) -> Result<StackConfig, Box<dyn std::error::Error>> {
+    let mut contents = String::new();
+    let mut reader = BufReader::new(reader);
+    reader.read_to_string(&mut contents)?;
+    from_toml_str(&contents)
+}
+
+/// Build `SharedConfig` from a file path.
+// Was: Wandelt Eingangsdaten in file um.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+pub fn from_file<P: AsRef<Path>>(path: P) -> Result<StackConfig, Box<dyn std::error::Error>> {
+    let f = File::open(path)?;
+    let r = BufReader::new(f);
+    let cfg = from_reader(r)?;
+    Ok(cfg)
+}
+
+// Was: Führt den Arbeitsschritt `sorted_keys` für sorted keys aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn sorted_keys(map: &HashMap<String, Value>) -> Vec<&str> {
+    let mut v: Vec<&str> = map.keys().map(|s| s.as_str()).collect();
+    v.sort_unstable();
+    v
+}
+
+/// ----------------------- DTOs for input shape -----------------------
+
+#[derive(Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für toml Konfiguration root in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+struct TomlConfigRoot {
+    config_version: String,
+    stack_mode: StackMode,
+    debug_log: Option<String>,
+    #[serde(default)]
+    service_name: Option<String>,
+
+    phy_io: PhyIoDto,
+    net_info: NetInfoDto,
+    cell_info: CellInfoDto,
+
+    brew: Option<CfgBrewDto>,
+    brew2: Option<CfgBrewDto>,
+    asterisk: Option<CfgAsteriskDto>,
+    dapnet: Option<CfgDapnetDto>,
+    echolink: Option<CfgEcholinkDto>,
+    meshcom: Option<CfgMeshcomDto>,
+    geoalarm: Option<CfgGeoalarmDto>,
+    tpg2200_action: Option<CfgTpg2200ActionDto>,
+    snom_notify: Option<CfgSnomNotifyDto>,
+    dashboard: Option<CfgDashboardDto>,
+    media_library: Option<CfgMediaLibraryDto>,
+    recording: Option<CfgRecordingDto>,
+    audio_player: Option<CfgAudioPlayerDto>,
+    tts: Option<CfgTtsDto>,
+    telemetry: Option<CfgTelemetryDto>,
+    command: Option<CfgControlDto>,
+    control_room: Option<CfgControlRoomDto>,
+    edge_fallback: Option<CfgEdgeFallbackDto>,
+    security: Option<CfgSecurityDto>,
+    #[serde(rename = "wx_service")]
+    wx_service: Option<CfgWxServiceDto>,
+    recovery: Option<CfgRecoveryDto>,
+    #[serde(rename = "telegram_alerts")]
+    telegram_alerts: Option<CfgTelegramDto>,
+    health: Option<CfgHealthDto>,
+    emergency: Option<CfgEmergencyDto>,
+
+    #[serde(flatten)]
+    extra: HashMap<String, Value>,
+}
+
+#[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
+mod tests {
+    use super::*;
+
+    /// The shipped example config must always parse cleanly through the real loader. This guards
+    /// against config-documentation drift: every option documented (or set) in example_config must
+    /// stay valid against the DTOs, and the strict `extra`/`deny`-style flatten maps must not reject
+    /// any uncommented key.
+    #[test]
+    // Was: Führt den Arbeitsschritt `example_config_parses` für example Konfiguration parses aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn example_config_parses() {
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../example_config/config.toml");
+        from_file(path).unwrap_or_else(|e| panic!("example_config/config.toml must parse: {e}"));
+    }
+
+    /// Gold-standard guard: every optional block documented (commented) in example_config must
+    /// parse against the DTOs when a user UNCOMMENTS it — field names and types must match.
+    #[test]
+    // Was: Führt den Arbeitsschritt `documented_optional_blocks_parse_when_uncommented` für documented optional blocks parse when uncommented aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn documented_optional_blocks_parse_when_uncommented() {
+        let toml = r#"
+config_version = "0.6"
+stack_mode = "Bs"
+
+[phy_io]
+backend = "None"
+ul_input_file = "./ul.bin"
+dl_input_file = "./dl.bin"
+
+[net_info]
+mcc = 901
+mnc = 9999
+
+[cell_info]
+main_carrier = 1584
+freq_band = 4
+freq_offset = 0
+duplex_spacing = 4
+reverse_operation = false
+location_area = 1
+registration = true
+deregistration = true
+priority_cell = false
+no_minimum_mode = false
+migration = false
+circuit_mode_data_service = false
+aie_service = false
+neighbor_cell_broadcast = 0
+late_entry_supported = false
+system_code = 3
+sharing_mode = 0
+ts_reserved_frames = 0
+u_plane_dtx = false
+frame_18_ext = false
+ms_txpwr_max_cell = 4
+subscriber_class = 0xFFFF
+
+[[cell_info.neighbor_cells_ca]]
+cell_identifier_ca = 1
+cell_reselection_types_supported = 1
+neighbor_cell_synchronized = false
+cell_load_ca = 0
+main_carrier_number = 1525
+
+[cell_info.neighbor_cells_ca.bs_service_details]
+registration = true
+deregistration = true
+priority_cell = false
+no_minimum_mode = false
+migration = false
+system_wide_services = false
+voice_service = true
+circuit_mode_data_service = false
+sndcp_service = false
+aie_service = false
+advanced_link = false
+
+[telemetry]
+host = "t.example.com"
+port = 443
+use_tls = true
+ca_cert = "/tmp/ca.der"
+username = "bts"
+password = "x"
+
+[command]
+host = "c.example.com"
+port = 443
+use_tls = true
+ca_cert = "/tmp/ca.der"
+username = "station"
+password = "x"
+
+[asterisk]
+enabled = true
+outbound_prefix = "91"
+strip_outbound_prefix = true
+inbound_prefix = "T"
+register = true
+codec = "PCMU"
+service_numbers = ["600", "601"]
+rtp_port_min = 30000
+rtp_port_max = 30100
+bind_addr = "0.0.0.0"
+bind_port = 5062
+remote_host = "127.0.0.1"
+remote_port = 5060
+contact_host = "127.0.0.1"
+from_domain = "127.0.0.1"
+local_user = "flowstation"
+auth_user = "flowstation"
+password = ""
+realm = "asterisk"
+
+[dapnet]
+enabled = true
+api_url = "https://hampager.de/api/calls"
+username = "dl1abc"
+password = "example"
+poll_interval_secs = 30
+forward_sds = true
+forward_callout = true
+forward_telegram = true
+sds_source_issi = 9999
+sds_dest_issi = 1234567
+sds_dest_is_group = false
+ric_issi_routes = { "0632585" = 2632585, "0x9A70A" = 2632586 }
+ric_gssi_routes = { "0004520" = 80 }
+sds_allowed_rics = ["0632585", "0004520"]
+callout_allowed_rics = ["0004520"]
+telegram_allowed_rics = ["0000200", "0x1C40"]
+callout_source_issi = 9999
+callout_dest_issi = 1234567
+callout_tpg_ric = 593168
+callout_id_base = 33
+callout_priority = 15
+callout_issi_priorities = { "1234567" = 4 }
+callout_tpg_ric_priorities = { "0x00090D10" = 15 }
+callout_text_prefix = "DAPNET"
+telegram_prefix = "DAPNET"
+rwth_core_enabled = true
+rwth_core_host = "dapnet.afu.rwth-aachen.de"
+rwth_core_port = 43434
+rwth_core_device = "FlowStation"
+rwth_core_version = "1.0"
+rwth_core_callsign = "DL1ABC"
+rwth_core_authkey = "example"
+rwth_messages_limit = 100
+
+[echolink]
+enabled = true
+callsign = "DL1ABC-L"
+password = "example"
+location = "FlowStation"
+status_text = "FlowStation EchoLink bridge"
+directory_servers = ["servers.echolink.org", "backup.echolink.org"]
+directory_port = 5200
+bind_addr = "0.0.0.0"
+audio_port = 5198
+control_port = 5199
+inbound_enabled = true
+outbound_enabled = true
+outbound_prefix = "92"
+strip_outbound_prefix = true
+service_numbers = ["700"]
+default_tetra_source_issi = 9999
+default_tetra_dest_issi = 80
+default_tetra_dest_is_group = false
+routes = { "700" = "ECHOTEST", "701" = "DL1ABC-L" }
+allowed_callsigns = ["ECHOTEST", "DL1ABC-L"]
+allowed_node_ids = [9999]
+auto_connect = ""
+reconnect_interval_secs = 30
+max_session_secs = 3600
+
+[meshcom]
+enabled = true
+bind_addr = "0.0.0.0"
+bind_port = 1799
+tx_host = "255.255.255.255"
+tx_port = 1799
+allow_broadcast = true
+max_messages = 500
+max_nodes = 1000
+forward_sds = true
+forward_sip = true
+forward_telegram = true
+sds_source_issi = 9999
+sds_dest_issi = 2632585
+sds_dest_is_group = false
+sds_allowed_sources = ["DJ2TH", "OE1ABC-12"]
+sip_title_prefix = "MeshCom"
+sip_allowed_sources = ["DJ2TH"]
+telegram_prefix = "MeshCom"
+telegram_allowed_sources = ["OE1ABC-12"]
+
+[tpg2200_action]
+enabled = true
+token = "example-token"
+source_issi = 9999
+dest_issi = 1234567
+tpg_ric = 0x00090D10
+incident_base = 1
+priority = 15
+tpg_issi_priorities = { "1234567" = 12 }
+tpg_ric_priorities = { "0x00090D10" = 15 }
+default_text = "ALARM"
+max_text_chars = 80
+
+[snom_notify]
+enabled = true
+ami_host = "127.0.0.1"
+ami_port = 5038
+ami_username = "flowstation"
+ami_password = "example"
+endpoints = ["385"]
+notify_sds = true
+notify_dapnet = true
+notify_telegram = true
+sds_directions = ["rx", "net", "tx"]
+dapnet_allowed_rics = ["0632585", "0000200"]
+sds_allowed_issis = [2632585, 9999]
+title_prefix = "FlowStation"
+notify_event = "xml"
+content_type = "application/snomxml"
+subscription_state = "active;expires=30000"
+max_text_chars = 240
+connect_timeout_secs = 3
+
+[recovery]
+enabled = true
+issi_allowlist = []
+max_replay_attempts = 150
+replay_per_frame = 1
+debounce_secs = 5
+max_cached_issis = 1024
+
+[health]
+enabled = true
+snapshot_interval_secs = 5
+restart_on_core_stall = false
+core_stall_secs = 10
+restart_after_critical_secs = 30
+restart_cooldown_secs = 600
+radios_silent_secs = 900
+dl_queue_degraded = 64
+dl_queue_critical = 192
+sds_queue_degraded = 32
+sds_queue_critical = 128
+"#;
+        let cfg = from_toml_str(toml).unwrap_or_else(|e| panic!("documented optional blocks must parse when uncommented: {e}"));
+        assert!(cfg.recovery.enabled);
+        assert!(cfg.tpg2200_action.enabled);
+        assert_eq!(cfg.tpg2200_action.dest_issi, 1234567);
+        assert!(cfg.snom_notify.enabled);
+        assert_eq!(cfg.snom_notify.endpoints, vec!["385"]);
+        assert!(cfg.snom_notify.notify_sds);
+        assert!(cfg.snom_notify.sds_directions.iter().any(|d| d == "tx"));
+        assert!(cfg.snom_notify.dapnet_allowed_rics.contains(&632585));
+        assert!(cfg.snom_notify.sds_allowed_issis.contains(&2632585));
+        assert_eq!(cfg.snom_notify.content_type, "application/snomxml");
+        assert_eq!(cfg.recovery.max_replay_attempts, 150);
+        assert!(cfg.health.enabled);
+        assert_eq!(cfg.health.core_stall_secs, 10);
+        assert!(cfg.asterisk.enabled);
+        assert_eq!(cfg.asterisk.service_numbers, vec!["600".to_string(), "601".to_string()]);
+        assert!(cfg.dapnet.enabled);
+        assert!(cfg.dapnet.rwth_core_enabled);
+        assert_eq!(cfg.tpg2200_action.incident_base, 1);
+        assert_eq!(cfg.tpg2200_action.priority, 15);
+        assert_eq!(cfg.tpg2200_action.tpg_ric, 593168);
+        assert_eq!(cfg.tpg2200_action.tpg_issi_priorities.get(&1234567), Some(&12));
+        assert_eq!(cfg.tpg2200_action.tpg_ric_priorities.get(&0x0009_0D10), Some(&15));
+        assert_eq!(cfg.dapnet.callout_incident_base, 33);
+        assert_eq!(cfg.dapnet.callout_tpg_ric, 593168);
+        assert_eq!(cfg.dapnet.callout_priority, 15);
+        assert_eq!(cfg.dapnet.callout_issi_priorities.get(&1234567), Some(&4));
+        assert_eq!(cfg.dapnet.callout_tpg_ric_priorities.get(&0x0009_0D10), Some(&15));
+        assert_eq!(cfg.dapnet.ric_issi_routes.get(&632585), Some(&2632585));
+        assert_eq!(cfg.dapnet.ric_issi_routes.get(&632586), Some(&2632586));
+        assert_eq!(cfg.dapnet.ric_gssi_routes.get(&4520), Some(&80));
+        assert!(cfg.dapnet.sds_allowed_rics.contains(&632585));
+        assert!(cfg.dapnet.sds_allowed_rics.contains(&4520));
+        assert!(cfg.dapnet.callout_allowed_rics.contains(&4520));
+        assert!(cfg.dapnet.telegram_allowed_rics.contains(&200));
+        assert!(cfg.dapnet.telegram_allowed_rics.contains(&0x1C40));
+        assert!(cfg.echolink.enabled);
+        assert_eq!(cfg.echolink.callsign, "DL1ABC-L");
+        assert!(cfg.meshcom.enabled);
+        assert_eq!(cfg.meshcom.bind_port, 1799);
+        assert_eq!(cfg.meshcom.tx_host, "255.255.255.255");
+        assert!(cfg.meshcom.forward_sds);
+        assert!(cfg.meshcom.forward_sip);
+        assert!(cfg.meshcom.forward_telegram);
+        assert_eq!(cfg.meshcom.sds_dest_issi, 2632585);
+        assert!(cfg.meshcom.sds_allowed_sources.contains("DJ2TH"));
+        assert!(cfg.meshcom.sip_allowed_sources.contains("DJ2TH"));
+        assert!(cfg.meshcom.telegram_allowed_sources.contains("OE1ABC-12"));
+        assert_eq!(cfg.echolink.routes.get("700"), Some(&"ECHOTEST".to_string()));
+        assert_eq!(cfg.echolink.default_tetra_dest_issi, 80);
+        assert!(!cfg.echolink.default_tetra_dest_is_group);
+    }
+
+    // Was: Führt den Arbeitsschritt `minimal_toml` für minimal toml aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn minimal_toml(extra_cell: &str) -> String {
+        format!(
+            r#"
+config_version = "0.6"
+stack_mode = "Bs"
+
+[phy_io]
+backend = "None"
+
+[net_info]
+mcc = 901
+mnc = 9999
+
+[cell_info]
+main_carrier = 1584
+freq_band = 4
+freq_offset = 0
+duplex_spacing = 4
+reverse_operation = false
+location_area = 1
+{}
+"#,
+            extra_cell
+        )
+    }
+
+    fn gateway_network_toml(mcc: u16, mnc: u16, full_tsi: bool) -> String {
+        minimal_toml("")
+            .replace("mcc = 901", &format!("mcc = {mcc}"))
+            .replace("mnc = 9999", &format!("mnc = {mnc}"))
+            + &format!("\n[asterisk]\ninbound_gateway_full_tsi = {full_tsi}\n")
+    }
+
+    #[test]
+    fn inbound_gateway_full_tsi_accepts_valid_local_network_identity() {
+        for (mcc, mnc) in [(901, 1510), (0, 0), (999, 16383)] {
+            let cfg = from_toml_str(&gateway_network_toml(mcc, mnc, true))
+                .expect("valid local network identity should parse with full TSI enabled");
+            assert!(cfg.asterisk.inbound_gateway_full_tsi);
+            assert_eq!((cfg.net.mcc, cfg.net.mnc), (mcc, mnc));
+        }
+    }
+
+    #[test]
+    fn inbound_gateway_full_tsi_rejects_reserved_mcc_and_oversized_mnc() {
+        for (mcc, mnc, expected_error) in [
+            (1000, 1510, "asterisk: inbound_gateway_full_tsi requires net_info.mcc between 0 and 999 (got 1000)"),
+            (901, 16384, "asterisk: inbound_gateway_full_tsi requires net_info.mnc between 0 and 16383 (got 16384)"),
+        ] {
+            let error = from_toml_str(&gateway_network_toml(mcc, mnc, true))
+                .expect_err("invalid local network identity must not be sent in a full gateway TSI");
+            assert_eq!(error.to_string(), expected_error);
+        }
+    }
+
+    #[test]
+    fn inbound_gateway_full_tsi_opt_out_preserves_existing_network_validation() {
+        let default_cfg = from_toml_str(&minimal_toml(""))
+            .expect("configuration without an asterisk section should still parse");
+        assert!(!default_cfg.asterisk.inbound_gateway_full_tsi);
+        for (mcc, mnc) in [(1000, 1510), (901, 16384)] {
+            let cfg = from_toml_str(&gateway_network_toml(mcc, mnc, false))
+                .expect("full TSI opt-out must preserve the previous parser behavior");
+            assert!(!cfg.asterisk.inbound_gateway_full_tsi);
+            assert_eq!((cfg.net.mcc, cfg.net.mnc), (mcc, mnc));
+        }
+    }
+
+    #[test]
+    // Was: Prüft automatisch den Fall no neighbor cells.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
+    fn test_no_neighbor_cells() {
+        let toml = minimal_toml("");
+        let cfg = from_toml_str(&toml).expect("parse failed");
+        assert_eq!(cfg.cell.neighbor_cells_ca.len(), 0);
+    }
+
+    #[test]
+    // Was: Prüft automatisch den Fall two neighbor cells.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
+    fn test_two_neighbor_cells() {
+        let toml = minimal_toml(
+            r#"
+neighbor_cell_broadcast = 2
+
+[[cell_info.neighbor_cells_ca]]
+cell_identifier_ca = 1
+cell_reselection_types_supported = 0
+neighbor_cell_synchronized = false
+cell_load_ca = 0
+main_carrier_number = 1585
+mcc = 901
+mnc = 9999
+location_area = 1
+
+[[cell_info.neighbor_cells_ca]]
+cell_identifier_ca = 2
+cell_reselection_types_supported = 0
+neighbor_cell_synchronized = false
+cell_load_ca = 1
+main_carrier_number = 1586
+"#,
+        );
+        let cfg = from_toml_str(&toml).expect("parse failed");
+        assert_eq!(cfg.cell.neighbor_cells_ca.len(), 2);
+        assert_eq!(cfg.cell.neighbor_cells_ca[0].cell_identifier_ca, 1);
+        assert_eq!(cfg.cell.neighbor_cells_ca[0].main_carrier_number, 1585);
+        assert_eq!(cfg.cell.neighbor_cells_ca[1].cell_identifier_ca, 2);
+        assert_eq!(cfg.cell.neighbor_cells_ca[1].cell_load_ca, 1);
+        assert_eq!(cfg.cell.neighbor_cell_broadcast, 2);
+    }
+
+    #[test]
+    // Was: Prüft automatisch den Fall too many neighbor cells rejected.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
+    fn test_too_many_neighbor_cells_rejected() {
+        // 8 entries — should fail validation
+        let entries: String = (1u8..=8)
+            .map(|i| format!(
+                "\n[[cell_info.neighbor_cells_ca]]\ncell_identifier_ca = {}\ncell_reselection_types_supported = 0\nneighbor_cell_synchronized = false\ncell_load_ca = 0\nmain_carrier_number = {}\n",
+                i, 1584 + i as u16
+            ))
+            .collect();
+        let toml = minimal_toml(&entries);
+        assert!(from_toml_str(&toml).is_err(), "should reject >7 neighbours");
+    }
+
+    #[test]
+    // Was: Prüft automatisch den Fall unrecognized cell info field still rejected.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
+    fn test_unrecognized_cell_info_field_still_rejected() {
+        let toml = minimal_toml("bogus_field = 42");
+        assert!(from_toml_str(&toml).is_err(), "should reject unknown field");
+    }
+
+    #[test]
+    // Was: Führt den Arbeitsschritt `telegram_alerts_section_parses` für telegram alerts section parses aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn telegram_alerts_section_parses() {
+        let toml = minimal_toml("")
+            + r#"
+[telegram_alerts]
+enabled = true
+bot_token = "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
+chat_ids = [987654321, -1001234567890]
+alert_connect = true
+alert_critical_logs = false
+"#;
+        let cfg = from_toml_str(&toml).expect("telegram_alerts must parse");
+        let tg = cfg.telegram.expect("telegram section present");
+        assert!(tg.enabled);
+        assert_eq!(tg.chat_ids, vec![987654321, -1001234567890]);
+        // Explicit override is respected …
+        assert!(!tg.alert_critical_logs);
+        // … while unspecified toggles default to on.
+        assert!(tg.alert_disconnect);
+        assert!(tg.is_deliverable());
+    }
+
+    #[test]
+    // Was: Führt den Arbeitsschritt `telegram_alerts_unknown_field_rejected` für telegram alerts unknown field rejected aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn telegram_alerts_unknown_field_rejected() {
+        let toml = minimal_toml("")
+            + r#"
+[telegram_alerts]
+enabled = true
+bogus = 1
+"#;
+        assert!(from_toml_str(&toml).is_err(), "should reject unknown telegram_alerts field");
+    }
+    #[test]
+    fn media_library_top_level_section_parses() {
+        let toml = minimal_toml("")
+            + r#"
+[media_library]
+enabled = true
+base_url = "http://10.0.1.154:8230"
+station_id = "SRV-M-TBS-01"
+publish_recordings = true
+recording_source_base_url = "http://10.0.1.20:8080"
+auto_approve_recordings = false
+audio_source_enabled = true
+only_ready = true
+only_approved = true
+retry_seconds = 60
+request_timeout_seconds = 15
+download_timeout_seconds = 120
+max_list_entries = 1000
+"#;
+
+        let cfg = from_toml_str(&toml).expect("[media_library] must be a recognized top-level section");
+        assert!(cfg.media_library.enabled);
+        assert!(cfg.media_library.publish_recordings);
+        assert!(cfg.media_library.audio_source_enabled);
+        assert_eq!(cfg.media_library.base_url, "http://10.0.1.154:8230");
+        assert_eq!(
+            cfg.media_library.recording_source_base_url,
+            "http://10.0.1.20:8080"
+        );
+    }
+
+    #[test]
+    fn media_library_unknown_field_is_rejected() {
+        let toml = minimal_toml("")
+            + r#"
+[media_library]
+enabled = false
+bogus = true
+"#;
+        let error = from_toml_str(&toml).expect_err("unknown media_library fields must remain rejected");
+        assert!(
+            error.to_string().contains("Unrecognized fields in media_library config"),
+            "unexpected error: {error}"
+        );
+    }
+
+}

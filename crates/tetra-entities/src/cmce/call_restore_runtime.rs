@@ -1,0 +1,908 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+//! Local CMCE call-restoration transaction and context registry.
+//!
+//! The registry is deliberately local to the TBS. A future mobility/call core may
+//! transport [`CallRestoreContext`] values between nodes, but the air-interface
+//! transaction, endpoint/link binding and timeout remain owned by the target TBS.
+
+use std::collections::HashMap;
+
+use tetra_core::{SsiType, TdmaTime, TetraAddress, tetra_entities::TetraEntity};
+use tetra_pdus::cmce::enums::{call_timeout::CallTimeout, transmission_grant::TransmissionGrant};
+use tetra_saps::control::{
+    call_control::NetworkCircuitCall,
+    enums::{circuit_mode_type::CircuitModeType, communication_type::CommunicationType},
+};
+
+use crate::net_control::{
+    ManagedCallRestoreContextPayload, ManagedNetworkCircuitCallPayload,
+};
+
+/// Bounded lifetime of an unanswered CMCE restore transaction (~6.1 seconds).
+// Was: Legt den festen Wert `CALL_RESTORE_TRANSACTION_TIMEOUT_SLOTS` für Ruf Wiederherstellung transaction timeout slots fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
+pub const CALL_RESTORE_TRANSACTION_TIMEOUT_SLOTS: i32 = 432;
+/// Keep terminal results briefly so retransmitted U-RESTORE requests are idempotent.
+// Was: Legt den festen Wert `CALL_RESTORE_REPLAY_WINDOW_SLOTS` für Ruf Wiederherstellung replay window slots fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
+pub const CALL_RESTORE_REPLAY_WINDOW_SLOTS: i32 = 18 * 4 * 4;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für Wiederherstellung Ruf kind auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
+pub enum RestoreCallKind {
+    Group,
+    Individual,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für Wiederherstellung phase auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
+pub enum RestorePhase {
+    Requested,
+    ContextMatched,
+    Queued,
+    ResourceAllocated,
+    Restored,
+    Rejected,
+    TimedOut,
+    Superseded,
+}
+
+// Was: Implementiert das zugehörige Verhalten für `RestorePhase`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
+impl RestorePhase {
+    #[inline]
+    // Was: Prüft, ob terminal zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
+    pub fn is_terminal(self) -> bool {
+        matches!(self, Self::Restored | Self::Rejected | Self::TimedOut | Self::Superseded)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für Wiederherstellung reject reason auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
+pub enum RestoreRejectReason {
+    MalformedPdu,
+    UnknownCall,
+    ParticipantMismatch,
+    ServiceMismatch,
+    NoRadioResource,
+    InvalidState,
+    DuplicateRequest,
+    Timeout,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für Gruppe Wiederherstellung origin auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
+pub enum GroupRestoreOrigin {
+    Local { caller: TetraAddress },
+    Network { network_entity: TetraEntity, brew_uuid: uuid::Uuid },
+}
+
+#[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für Gruppe Ruf Wiederherstellung Kontext in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct GroupCallRestoreContext {
+    pub call_id: u16,
+    pub dest_gssi: u32,
+    pub source_issi: u32,
+    pub floor_holder: Option<u32>,
+    pub priority: u8,
+    pub call_timeout: CallTimeout,
+    /// Original T310 start reference; call length continues across restoration.
+    pub created_at: TdmaTime,
+    pub tx_active: bool,
+    pub origin: GroupRestoreOrigin,
+    pub communication_type: CommunicationType,
+    pub circuit_mode_type: CircuitModeType,
+    pub speech_service: Option<u8>,
+    pub etee_encrypted: bool,
+}
+
+#[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für individual Ruf Wiederherstellung Kontext in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct IndividualCallRestoreContext {
+    pub call_id: u16,
+    pub calling_addr: TetraAddress,
+    pub called_addr: TetraAddress,
+    pub simplex_duplex: bool,
+    pub priority: u8,
+    pub call_timeout: CallTimeout,
+    /// Original active-call T310 start reference.
+    pub active_timer_started: Option<TdmaTime>,
+    pub floor_holder: Option<u32>,
+    pub called_over_brew: bool,
+    pub calling_over_brew: bool,
+    pub brew_uuid: Option<uuid::Uuid>,
+    pub network_entity: Option<TetraEntity>,
+    pub network_call: Option<NetworkCircuitCall>,
+    pub communication_type: CommunicationType,
+    pub circuit_mode_type: CircuitModeType,
+    pub speech_service: Option<u8>,
+    pub etee_encrypted: bool,
+}
+
+#[derive(Debug, Clone)]
+// Was: Listet die möglichen Varianten für Ruf Wiederherstellung Kontext auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
+pub enum CallRestoreContext {
+    Group(GroupCallRestoreContext),
+    Individual(IndividualCallRestoreContext),
+}
+
+// Was: Implementiert das zugehörige Verhalten für `CallRestoreContext`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
+impl CallRestoreContext {
+    #[inline]
+    // Was: Führt den Arbeitsschritt `call_id` für Ruf Kennung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn call_id(&self) -> u16 {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+        match self {
+            Self::Group(context) => context.call_id,
+            Self::Individual(context) => context.call_id,
+        }
+    }
+
+    #[inline]
+    // Was: Führt den Arbeitsschritt `kind` für kind aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn kind(&self) -> RestoreCallKind {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+        match self {
+            Self::Group(_) => RestoreCallKind::Group,
+            Self::Individual(_) => RestoreCallKind::Individual,
+        }
+    }
+
+    // Was: Führt den Arbeitsschritt `permits_subscriber` für permits Teilnehmer aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn permits_subscriber(&self, subscriber: TetraAddress, other_party_ssi: Option<u32>) -> bool {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+        match self {
+            Self::Group(context) => {
+                other_party_ssi.map_or(true, |ssi| ssi == context.dest_gssi)
+                    && (subscriber.ssi == context.source_issi || subscriber.ssi_type == SsiType::Issi)
+            }
+            Self::Individual(context) => {
+                let is_party = subscriber.ssi == context.calling_addr.ssi || subscriber.ssi == context.called_addr.ssi;
+                let peer = if subscriber.ssi == context.calling_addr.ssi {
+                    context.called_addr.ssi
+                } else {
+                    context.calling_addr.ssi
+                };
+                is_party && other_party_ssi.map_or(true, |ssi| ssi == peer)
+            }
+        }
+    }
+
+    /// Convert the local runtime context into the protocol-only payload transported
+    /// through Node Gateway and Call Control. No media frames or secrets are included.
+    // Was: Wandelt den vorhandenen Wert in managed payload um oder stellt ihn in dieser Form bereit.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn to_managed_payload(&self) -> ManagedCallRestoreContextPayload {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+        match self {
+            Self::Group(context) => {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+                let (origin_local_caller, network_entity, network_uuid) = match &context.origin {
+                    GroupRestoreOrigin::Local { caller } => (Some(caller.ssi), None, None),
+                    GroupRestoreOrigin::Network { network_entity, brew_uuid } => {
+                        (None, Some(*network_entity), Some(brew_uuid.to_string()))
+                    }
+                };
+                ManagedCallRestoreContextPayload::Group {
+                    call_id: context.call_id,
+                    dest_gssi: context.dest_gssi,
+                    source_issi: context.source_issi,
+                    floor_holder: context.floor_holder,
+                    priority: context.priority,
+                    call_timeout: context.call_timeout.into_raw() as u8,
+                    created_at: context.created_at,
+                    tx_active: context.tx_active,
+                    communication_type: context.communication_type.into_raw() as u8,
+                    circuit_mode_type: context.circuit_mode_type.into_raw() as u8,
+                    speech_service: context.speech_service,
+                    etee_encrypted: context.etee_encrypted,
+                    origin_local_caller,
+                    network_entity,
+                    network_uuid,
+                }
+            }
+            Self::Individual(context) => ManagedCallRestoreContextPayload::Individual {
+                call_id: context.call_id,
+                calling_issi: context.calling_addr.ssi,
+                called_issi: context.called_addr.ssi,
+                simplex_duplex: context.simplex_duplex,
+                priority: context.priority,
+                call_timeout: context.call_timeout.into_raw() as u8,
+                active_timer_started: context.active_timer_started,
+                floor_holder: context.floor_holder,
+                called_over_network: context.called_over_brew,
+                calling_over_network: context.calling_over_brew,
+                network_uuid: context.brew_uuid.map(|value| value.to_string()),
+                network_entity: context.network_entity,
+                network_call: context.network_call.as_ref().map(network_call_to_payload),
+                communication_type: context.communication_type.into_raw() as u8,
+                circuit_mode_type: context.circuit_mode_type.into_raw() as u8,
+                speech_service: context.speech_service,
+                etee_encrypted: context.etee_encrypted,
+            },
+        }
+    }
+
+    /// Rebuild a local restore context from the central protocol payload. Invalid
+    /// enum values or UUIDs are rejected instead of silently selecting a service.
+    // Was: Wandelt Eingangsdaten in managed payload um.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn from_managed_payload(payload: ManagedCallRestoreContextPayload) -> Result<Self, String> {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+        match payload {
+            ManagedCallRestoreContextPayload::Group {
+                call_id, dest_gssi, source_issi, floor_holder, priority, call_timeout,
+                created_at, tx_active, communication_type, circuit_mode_type,
+                speech_service, etee_encrypted, origin_local_caller, network_entity,
+                network_uuid,
+            } => {
+                let call_timeout = CallTimeout::try_from(call_timeout as u64)
+                    .map_err(|_| format!("invalid call timeout {call_timeout}"))?;
+                let communication_type = CommunicationType::try_from(communication_type as u64)
+                    .map_err(|_| format!("invalid communication type {communication_type}"))?;
+                let circuit_mode_type = CircuitModeType::try_from(circuit_mode_type as u64)
+                    .map_err(|_| format!("invalid circuit mode {circuit_mode_type}"))?;
+                let origin = if let Some(caller) = origin_local_caller {
+                    GroupRestoreOrigin::Local {
+                        caller: TetraAddress::new(caller, SsiType::Issi),
+                    }
+                } else {
+                    let network_entity = network_entity.unwrap_or(TetraEntity::AudioPlayer);
+                    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+                    let brew_uuid = match network_uuid {
+                        Some(value) => uuid::Uuid::parse_str(&value)
+                            .map_err(|error| format!("invalid network UUID: {error}"))?,
+                        None => uuid::Uuid::new_v4(),
+                    };
+                    GroupRestoreOrigin::Network { network_entity, brew_uuid }
+                };
+                Ok(Self::Group(GroupCallRestoreContext {
+                    call_id, dest_gssi, source_issi, floor_holder, priority, call_timeout,
+                    created_at, tx_active, origin, communication_type, circuit_mode_type,
+                    speech_service, etee_encrypted,
+                }))
+            }
+            ManagedCallRestoreContextPayload::Individual {
+                call_id, calling_issi, called_issi, simplex_duplex, priority,
+                call_timeout, active_timer_started, floor_holder, called_over_network,
+                calling_over_network, network_uuid, network_entity, network_call,
+                communication_type, circuit_mode_type, speech_service, etee_encrypted,
+            } => {
+                let call_timeout = CallTimeout::try_from(call_timeout as u64)
+                    .map_err(|_| format!("invalid call timeout {call_timeout}"))?;
+                let communication_type = CommunicationType::try_from(communication_type as u64)
+                    .map_err(|_| format!("invalid communication type {communication_type}"))?;
+                let circuit_mode_type = CircuitModeType::try_from(circuit_mode_type as u64)
+                    .map_err(|_| format!("invalid circuit mode {circuit_mode_type}"))?;
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+                let brew_uuid = match network_uuid {
+                    Some(value) => Some(uuid::Uuid::parse_str(&value)
+                        .map_err(|error| format!("invalid network UUID: {error}"))?),
+                    None => None,
+                };
+                Ok(Self::Individual(IndividualCallRestoreContext {
+                    call_id,
+                    calling_addr: TetraAddress::new(calling_issi, SsiType::Issi),
+                    called_addr: TetraAddress::new(called_issi, SsiType::Issi),
+                    simplex_duplex, priority, call_timeout, active_timer_started,
+                    floor_holder, called_over_brew: called_over_network,
+                    calling_over_brew: calling_over_network, brew_uuid, network_entity,
+                    network_call: network_call.map(network_call_from_payload),
+                    communication_type, circuit_mode_type, speech_service, etee_encrypted,
+                }))
+            }
+        }
+    }
+}
+
+// Was: Führt den Arbeitsschritt `network_call_to_payload` für network Ruf to payload aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn network_call_to_payload(call: &NetworkCircuitCall) -> ManagedNetworkCircuitCallPayload {
+    ManagedNetworkCircuitCallPayload {
+        source_issi: call.source_issi,
+        destination: call.destination,
+        number: call.number.clone(),
+        priority: call.priority,
+        service: call.service,
+        mode: call.mode,
+        duplex: call.duplex,
+        method: call.method,
+        communication: call.communication,
+        grant: call.grant,
+        permission: call.permission,
+        timeout: call.timeout,
+        ownership: call.ownership,
+        queued: call.queued,
+    }
+}
+
+// Was: Führt den Arbeitsschritt `network_call_from_payload` für network Ruf from payload aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn network_call_from_payload(call: ManagedNetworkCircuitCallPayload) -> NetworkCircuitCall {
+    NetworkCircuitCall {
+        source_issi: call.source_issi,
+        destination: call.destination,
+        number: call.number,
+        priority: call.priority,
+        service: call.service,
+        mode: call.mode,
+        duplex: call.duplex,
+        method: call.method,
+        communication: call.communication,
+        grant: call.grant,
+        permission: call.permission,
+        timeout: call.timeout,
+        ownership: call.ownership,
+        queued: call.queued,
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+// Was: Bündelt die zusammengehörigen Werte für Wiederherstellung transaction key in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct RestoreTransactionKey {
+    pub subscriber: TetraAddress,
+    pub old_call_id: u16,
+}
+
+#[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für Ruf Wiederherstellung request in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct CallRestoreRequest {
+    pub subscriber: TetraAddress,
+    pub old_call_id: u16,
+    pub endpoint_id: u32,
+    pub link_id: u32,
+    pub request_to_transmit: bool,
+    pub other_party_ssi: Option<u32>,
+    pub previous_mcc: Option<u16>,
+    pub previous_mnc: Option<u16>,
+    pub previous_location_area: Option<u16>,
+}
+
+// Was: Implementiert das zugehörige Verhalten für `CallRestoreRequest`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
+impl CallRestoreRequest {
+    #[inline]
+    // Was: Führt den Arbeitsschritt `key` für key aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn key(&self) -> RestoreTransactionKey {
+        RestoreTransactionKey {
+            subscriber: self.subscriber,
+            old_call_id: self.old_call_id,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für Ruf Wiederherstellung transaction in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct CallRestoreTransaction {
+    pub key: RestoreTransactionKey,
+    pub endpoint_id: u32,
+    pub link_id: u32,
+    pub request_to_transmit: bool,
+    pub other_party_ssi: Option<u32>,
+    pub previous_mcc: Option<u16>,
+    pub previous_mnc: Option<u16>,
+    pub previous_location_area: Option<u16>,
+    pub kind: Option<RestoreCallKind>,
+    pub phase: RestorePhase,
+    pub new_call_id: Option<u16>,
+    pub timeslot: Option<u8>,
+    pub usage: Option<u8>,
+    pub transmission_grant: Option<TransmissionGrant>,
+    pub reject_reason: Option<RestoreRejectReason>,
+    pub started_at: TdmaTime,
+    pub updated_at: TdmaTime,
+}
+
+#[derive(Debug, Clone, Default)]
+// Was: Bündelt die zusammengehörigen Werte für Ruf Wiederherstellung counters in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct CallRestoreCounters {
+    pub requests: u64,
+    pub duplicate_requests: u64,
+    pub contexts_installed: u64,
+    pub contexts_matched: u64,
+    pub queued_restores: u64,
+    pub resources_allocated: u64,
+    pub queued_allocations_completed: u64,
+    pub group_restores: u64,
+    pub individual_restores: u64,
+    pub rejects: u64,
+    pub timeouts: u64,
+    pub call_id_changes: u64,
+    pub floor_grants: u64,
+    pub floor_grants_to_other: u64,
+    /// A queued restoring participant issued or refreshed U-TX DEMAND.
+    pub queued_tx_requests: u64,
+    /// A queued restoring participant cancelled its transmission request with U-TX CEASED.
+    pub queued_tx_cancellations: u64,
+}
+
+#[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für Ruf Wiederherstellung transaction snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct CallRestoreTransactionSnapshot {
+    pub subscriber: TetraAddress,
+    pub old_call_id: u16,
+    pub new_call_id: Option<u16>,
+    pub kind: Option<RestoreCallKind>,
+    pub phase: RestorePhase,
+    pub endpoint_id: u32,
+    pub link_id: u32,
+    pub timeslot: Option<u8>,
+    pub usage: Option<u8>,
+    pub request_to_transmit: bool,
+    pub transmission_grant: Option<TransmissionGrant>,
+    pub reject_reason: Option<RestoreRejectReason>,
+    pub age_slots: i32,
+}
+
+#[derive(Debug, Clone, Default)]
+// Was: Bündelt die zusammengehörigen Werte für Ruf Wiederherstellung Laufzeit snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct CallRestoreRuntimeSnapshot {
+    pub contexts: usize,
+    pub transactions: Vec<CallRestoreTransactionSnapshot>,
+    pub counters: CallRestoreCounters,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Was: Listet die möglichen Varianten für Ruf Wiederherstellung Laufzeit error auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
+pub enum CallRestoreRuntimeError {
+    DuplicatePending(RestoreTransactionKey),
+    DuplicateQueued(RestoreTransactionKey),
+    DuplicateTerminal(RestoreTransactionKey),
+    UnknownTransaction(RestoreTransactionKey),
+    InvalidPhase {
+        key: RestoreTransactionKey,
+        phase: RestorePhase,
+    },
+}
+
+#[derive(Default)]
+// Was: Bündelt die zusammengehörigen Werte für Ruf Wiederherstellung Laufzeit in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct CallRestoreRuntime {
+    contexts: HashMap<u16, CallRestoreContext>,
+    transactions: HashMap<RestoreTransactionKey, CallRestoreTransaction>,
+    /// Old call identifier to the call identifier allocated on this cell.
+    call_id_aliases: HashMap<u16, u16>,
+    counters: CallRestoreCounters,
+}
+
+// Was: Implementiert das zugehörige Verhalten für `CallRestoreRuntime`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
+impl CallRestoreRuntime {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    // Was: Führt den Arbeitsschritt `install_context` für install Kontext aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn install_context(&mut self, context: CallRestoreContext) {
+        self.contexts.insert(context.call_id(), context);
+        self.counters.contexts_installed = self.counters.contexts_installed.saturating_add(1);
+    }
+
+    // Was: Diese Funktion entfernt Kontext.
+    // Warum: Das Entfernen bleibt damit vollständig und hinterlässt keinen widersprüchlichen Zustand.
+    pub fn remove_context(&mut self, call_id: u16) -> Option<CallRestoreContext> {
+        let aliases: Vec<u16> = self
+            .call_id_aliases
+            .iter()
+            .filter_map(|(old, local)| ((*old == call_id) || (*local == call_id)).then_some(*old))
+            .collect();
+        let mut removed = self.contexts.remove(&call_id);
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+        for old in aliases {
+            self.call_id_aliases.remove(&old);
+            if removed.is_none() {
+                removed = self.contexts.remove(&old);
+            } else {
+                self.contexts.remove(&old);
+            }
+        }
+        removed
+    }
+
+    // Was: Führt den Arbeitsschritt `context` für Kontext aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn context(&self, call_id: u16) -> Option<&CallRestoreContext> {
+        self.contexts.get(&call_id)
+    }
+
+    /// Resolve an old call identifier to the call identifier currently used on this cell.
+    // Was: Führt den Arbeitsschritt `resolved_call_id` für resolved Ruf Kennung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn resolved_call_id(&self, old_call_id: u16) -> Option<u16> {
+        self.call_id_aliases.get(&old_call_id).copied()
+    }
+
+    // Was: Führt den Arbeitsschritt `begin` für begin aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn begin(
+        &mut self,
+        request: CallRestoreRequest,
+        now: TdmaTime,
+    ) -> Result<RestoreTransactionKey, CallRestoreRuntimeError> {
+        let key = request.key();
+        if let Some(existing) = self.transactions.get(&key) {
+            self.counters.duplicate_requests = self.counters.duplicate_requests.saturating_add(1);
+            if existing.phase == RestorePhase::Queued {
+                return Err(CallRestoreRuntimeError::DuplicateQueued(key));
+            }
+            if existing.phase.is_terminal() && existing.updated_at.age(now) <= CALL_RESTORE_REPLAY_WINDOW_SLOTS {
+                return Err(CallRestoreRuntimeError::DuplicateTerminal(key));
+            }
+            if !existing.phase.is_terminal() {
+                return Err(CallRestoreRuntimeError::DuplicatePending(key));
+            }
+        }
+
+        self.transactions.insert(
+            key,
+            CallRestoreTransaction {
+                key,
+                endpoint_id: request.endpoint_id,
+                link_id: request.link_id,
+                request_to_transmit: request.request_to_transmit,
+                other_party_ssi: request.other_party_ssi,
+                previous_mcc: request.previous_mcc,
+                previous_mnc: request.previous_mnc,
+                previous_location_area: request.previous_location_area,
+                kind: None,
+                phase: RestorePhase::Requested,
+                new_call_id: None,
+                timeslot: None,
+                usage: None,
+                transmission_grant: None,
+                reject_reason: None,
+                started_at: now,
+                updated_at: now,
+            },
+        );
+        self.counters.requests = self.counters.requests.saturating_add(1);
+        Ok(key)
+    }
+
+    // Was: Diese Funktion kennzeichnet Kontext matched.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn mark_context_matched(
+        &mut self,
+        key: RestoreTransactionKey,
+        kind: RestoreCallKind,
+        now: TdmaTime,
+    ) -> Result<(), CallRestoreRuntimeError> {
+        {
+            let transaction = self.transaction_in_phase_mut(key, RestorePhase::Requested)?;
+            transaction.kind = Some(kind);
+            transaction.phase = RestorePhase::ContextMatched;
+            transaction.updated_at = now;
+        }
+        self.counters.contexts_matched = self.counters.contexts_matched.saturating_add(1);
+        Ok(())
+    }
+
+    // Was: Führt den Arbeitsschritt `reserve_call_id` für reserve Ruf Kennung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn reserve_call_id(&mut self, old_call_id: u16, local_call_id: u16) {
+        self.call_id_aliases.insert(old_call_id, local_call_id);
+    }
+
+    // Was: Diese Funktion kennzeichnet queued.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn mark_queued(
+        &mut self,
+        key: RestoreTransactionKey,
+        call_id: u16,
+        grant: TransmissionGrant,
+        now: TdmaTime,
+    ) -> Result<(), CallRestoreRuntimeError> {
+        {
+            let transaction = self.transaction_in_phase_mut(key, RestorePhase::ContextMatched)?;
+            transaction.new_call_id = Some(call_id);
+            transaction.transmission_grant = Some(grant);
+            transaction.phase = RestorePhase::Queued;
+            transaction.updated_at = now;
+        }
+        self.call_id_aliases.insert(key.old_call_id, call_id);
+        self.counters.queued_restores = self.counters.queued_restores.saturating_add(1);
+        if call_id != key.old_call_id {
+            self.counters.call_id_changes = self.counters.call_id_changes.saturating_add(1);
+        }
+        Ok(())
+    }
+
+    // Was: Führt den Arbeitsschritt `queued_transactions` für queued transactions aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn queued_transactions(&self) -> Vec<CallRestoreTransaction> {
+        self.transactions
+            .values()
+            .filter(|transaction| transaction.phase == RestorePhase::Queued)
+            .cloned()
+            .collect()
+    }
+
+    /// Find a queued restore transaction by either its old or target-cell call identifier.
+    // Was: Führt den Arbeitsschritt `queued_key_for_call` für queued key for Ruf aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn queued_key_for_call(
+        &self,
+        subscriber: TetraAddress,
+        call_id: u16,
+    ) -> Option<RestoreTransactionKey> {
+        self.transactions.values().find_map(|transaction| {
+            (transaction.phase == RestorePhase::Queued
+                && transaction.key.subscriber == subscriber
+                && (transaction.key.old_call_id == call_id
+                    || transaction.new_call_id == Some(call_id)))
+            .then_some(transaction.key)
+        })
+    }
+
+    /// Update the transmission request associated with a queued restoration.
+    ///
+    /// ETSI permits a queued restoring MS to issue U-TX DEMAND or cancel the
+    /// request with U-TX CEASED while it is still waiting for a traffic bearer.
+    // Was: Diese Funktion setzt queued transmission request.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
+    pub fn set_queued_transmission_request(
+        &mut self,
+        key: RestoreTransactionKey,
+        requested: bool,
+        now: TdmaTime,
+    ) -> Result<TransmissionGrant, CallRestoreRuntimeError> {
+        let grant = if requested {
+            TransmissionGrant::RequestQueued
+        } else {
+            TransmissionGrant::NotGranted
+        };
+        {
+            let transaction = self.transaction_in_phase_mut(key, RestorePhase::Queued)?;
+            transaction.request_to_transmit = requested;
+            transaction.transmission_grant = Some(grant);
+            transaction.updated_at = now;
+        }
+        if requested {
+            self.counters.queued_tx_requests =
+                self.counters.queued_tx_requests.saturating_add(1);
+        } else {
+            self.counters.queued_tx_cancellations =
+                self.counters.queued_tx_cancellations.saturating_add(1);
+        }
+        Ok(grant)
+    }
+
+    // Was: Diese Funktion kennzeichnet resource allocated.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn mark_resource_allocated(
+        &mut self,
+        key: RestoreTransactionKey,
+        call_id: u16,
+        timeslot: u8,
+        usage: u8,
+        now: TdmaTime,
+    ) -> Result<(), CallRestoreRuntimeError> {
+        let old_call_id = key.old_call_id;
+        let call_id_alias_changed = self.call_id_aliases.get(&old_call_id).copied() != Some(call_id);
+        let was_queued = self
+            .transactions
+            .get(&key)
+            .ok_or(CallRestoreRuntimeError::UnknownTransaction(key))?
+            .phase
+            == RestorePhase::Queued;
+        {
+            let transaction = self
+                .transactions
+                .get_mut(&key)
+                .ok_or(CallRestoreRuntimeError::UnknownTransaction(key))?;
+            if !matches!(transaction.phase, RestorePhase::ContextMatched | RestorePhase::Queued) {
+                return Err(CallRestoreRuntimeError::InvalidPhase {
+                    key,
+                    phase: transaction.phase,
+                });
+            }
+            transaction.new_call_id = Some(call_id);
+            transaction.timeslot = Some(timeslot);
+            transaction.usage = Some(usage);
+            transaction.phase = RestorePhase::ResourceAllocated;
+            transaction.updated_at = now;
+        }
+        self.counters.resources_allocated = self.counters.resources_allocated.saturating_add(1);
+        if was_queued {
+            self.counters.queued_allocations_completed =
+                self.counters.queued_allocations_completed.saturating_add(1);
+        }
+        self.call_id_aliases.insert(old_call_id, call_id);
+        if call_id != old_call_id && call_id_alias_changed {
+            self.counters.call_id_changes = self.counters.call_id_changes.saturating_add(1);
+        }
+        Ok(())
+    }
+
+    // Was: Diese Funktion kennzeichnet restored.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn mark_restored(
+        &mut self,
+        key: RestoreTransactionKey,
+        call_id: u16,
+        grant: TransmissionGrant,
+        now: TdmaTime,
+    ) -> Result<(), CallRestoreRuntimeError> {
+        let phase = self
+            .transactions
+            .get(&key)
+            .ok_or(CallRestoreRuntimeError::UnknownTransaction(key))?
+            .phase;
+        if !matches!(
+            phase,
+            RestorePhase::ContextMatched | RestorePhase::Queued | RestorePhase::ResourceAllocated
+        ) {
+            return Err(CallRestoreRuntimeError::InvalidPhase { key, phase });
+        }
+        let kind = {
+            let transaction = self.transactions.get_mut(&key).expect("transaction checked above");
+            transaction.new_call_id = Some(call_id);
+            transaction.transmission_grant = Some(grant);
+            transaction.phase = RestorePhase::Restored;
+            transaction.updated_at = now;
+            transaction.kind
+        };
+        self.call_id_aliases.insert(key.old_call_id, call_id);
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+        match kind {
+            Some(RestoreCallKind::Group) => self.counters.group_restores = self.counters.group_restores.saturating_add(1),
+            Some(RestoreCallKind::Individual) => {
+                self.counters.individual_restores = self.counters.individual_restores.saturating_add(1)
+            }
+            None => {}
+        }
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+        match grant {
+            TransmissionGrant::Granted => self.counters.floor_grants = self.counters.floor_grants.saturating_add(1),
+            TransmissionGrant::GrantedToOtherUser => {
+                self.counters.floor_grants_to_other = self.counters.floor_grants_to_other.saturating_add(1)
+            }
+            TransmissionGrant::NotGranted | TransmissionGrant::RequestQueued => {}
+        }
+        Ok(())
+    }
+
+    // Was: Führt den Arbeitsschritt `reject` für reject aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn reject(
+        &mut self,
+        key: RestoreTransactionKey,
+        reason: RestoreRejectReason,
+        now: TdmaTime,
+    ) -> Result<(), CallRestoreRuntimeError> {
+        {
+            let transaction = self
+                .transactions
+                .get_mut(&key)
+                .ok_or(CallRestoreRuntimeError::UnknownTransaction(key))?;
+            if transaction.phase.is_terminal() {
+                return Err(CallRestoreRuntimeError::InvalidPhase {
+                    key,
+                    phase: transaction.phase,
+                });
+            }
+            transaction.phase = RestorePhase::Rejected;
+            transaction.reject_reason = Some(reason);
+            transaction.updated_at = now;
+        }
+        self.counters.rejects = self.counters.rejects.saturating_add(1);
+        Ok(())
+    }
+
+    // Was: Diese Funktion bearbeitet den vorgesehenen Arbeitsschritt.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn tick(&mut self, now: TdmaTime) -> Vec<RestoreTransactionKey> {
+        let mut expired = Vec::new();
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+        for (key, transaction) in self.transactions.iter_mut() {
+            if !transaction.phase.is_terminal()
+                && transaction.started_at.age(now) >= CALL_RESTORE_TRANSACTION_TIMEOUT_SLOTS
+            {
+                transaction.phase = RestorePhase::TimedOut;
+                transaction.reject_reason = Some(RestoreRejectReason::Timeout);
+                transaction.updated_at = now;
+                self.counters.timeouts = self.counters.timeouts.saturating_add(1);
+                expired.push(*key);
+            }
+        }
+        self.transactions.retain(|_, transaction| {
+            !transaction.phase.is_terminal()
+                || transaction.updated_at.age(now) <= CALL_RESTORE_REPLAY_WINDOW_SLOTS
+        });
+        expired
+    }
+
+    // Was: Führt den Arbeitsschritt `transaction` für transaction aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn transaction(&self, key: RestoreTransactionKey) -> Option<&CallRestoreTransaction> {
+        self.transactions.get(&key)
+    }
+
+    // Was: Diese Funktion erzeugt den vorgesehenen Arbeitsschritt.
+    // Warum: Die Oberfläche und andere Dienste erhalten dadurch eine in sich stimmige Momentaufnahme.
+    pub fn snapshot(&self, now: TdmaTime) -> CallRestoreRuntimeSnapshot {
+        let mut transactions: Vec<_> = self
+            .transactions
+            .values()
+            .map(|transaction| CallRestoreTransactionSnapshot {
+                subscriber: transaction.key.subscriber,
+                old_call_id: transaction.key.old_call_id,
+                new_call_id: transaction.new_call_id,
+                kind: transaction.kind,
+                phase: transaction.phase,
+                endpoint_id: transaction.endpoint_id,
+                link_id: transaction.link_id,
+                timeslot: transaction.timeslot,
+                usage: transaction.usage,
+                request_to_transmit: transaction.request_to_transmit,
+                transmission_grant: transaction.transmission_grant,
+                reject_reason: transaction.reject_reason,
+                age_slots: transaction.started_at.age(now),
+            })
+            .collect();
+        transactions.sort_by_key(|transaction| (transaction.subscriber.ssi, transaction.old_call_id));
+        CallRestoreRuntimeSnapshot {
+            contexts: self.contexts.len(),
+            transactions,
+            counters: self.counters.clone(),
+        }
+    }
+
+    // Was: Führt den Arbeitsschritt `transaction_in_phase_mut` für transaction in phase mut aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn transaction_in_phase_mut(
+        &mut self,
+        key: RestoreTransactionKey,
+        expected: RestorePhase,
+    ) -> Result<&mut CallRestoreTransaction, CallRestoreRuntimeError> {
+        let transaction = self
+            .transactions
+            .get_mut(&key)
+            .ok_or(CallRestoreRuntimeError::UnknownTransaction(key))?;
+        if transaction.phase != expected {
+            return Err(CallRestoreRuntimeError::InvalidPhase {
+                key,
+                phase: transaction.phase,
+            });
+        }
+        Ok(transaction)
+    }
+}

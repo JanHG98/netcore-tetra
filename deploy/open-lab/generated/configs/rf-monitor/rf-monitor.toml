@@ -1,0 +1,47 @@
+[server]
+bind = "0.0.0.0:8260"
+
+[security]
+mode = "open_lab"
+
+[mqtt]
+enabled = true
+host = "127.0.0.1"
+port = 1883
+topic_prefix = "netcore/v1"
+client_id = "netcore-rf-monitor"
+
+[storage]
+state_file = "/var/lib/netcore-rf-monitor/state.json"
+event_log = "/var/lib/netcore-rf-monitor/events.ndjson"
+
+[monitoring]
+heartbeat_timeout_secs = 20
+event_memory_limit = 1000
+max_spectrum_bins = 512
+max_payload_bytes = 524288
+
+[thresholds]
+vswr_warning = 1.8
+vswr_critical = 2.5
+reflected_ratio_warning_percent = 10.0
+reflected_ratio_critical_percent = 20.0
+pa_temp_warning_c = 70.0
+pa_temp_critical_c = 85.0
+sdr_temp_warning_c = 65.0
+sdr_temp_critical_c = 80.0
+cabinet_temp_warning_c = 45.0
+cabinet_temp_critical_c = 60.0
+evm_warning_pct = 6.0
+evm_critical_pct = 10.0
+papr_warning_db = 7.0
+papr_critical_db = 9.0
+# 0.0 deaktiviert die Mindestleistungsprüfung. Erst nach Kalibrierung setzen.
+forward_power_warning_below_w = 0.0
+forward_power_critical_below_w = 0.0
+# 0.0 deaktiviert die Spannungsprüfung. Für dein PA-Netz passend setzen.
+pa_voltage_warning_below_v = 0.0
+pa_voltage_critical_below_v = 0.0
+# 0 deaktiviert die Lüfterprüfung. Erst mit realem Tachosignal aktivieren.
+fan_warning_below_rpm = 0
+fan_critical_below_rpm = 0

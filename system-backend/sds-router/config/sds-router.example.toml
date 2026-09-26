@@ -1,0 +1,94 @@
+# NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Weiterleitung von SDS- und Statusnachrichten.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+# NetCore SDS Router – offener Testbetrieb.
+# Keine Benutzerkonten, keine Tokens und kein TLS. Nur im isolierten Labornetz verwenden.
+
+# Was: Öffnet den Konfigurationsabschnitt `server`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[server]
+# Was: Setzt die Einstellung `bind` für server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+bind = "0.0.0.0:8150"
+# Was: Setzt die Einstellung `history_limit` für server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+history_limit = 4000
+
+# Was: Öffnet den Konfigurationsabschnitt `node_gateway`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[node_gateway]
+# Was: Setzt die Einstellung `url` für Netzknoten Gateway.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+url = "ws://10.0.1.20:8080/ws/backend"
+# Was: Setzt die Einstellung `reconnect_secs` für Netzknoten Gateway.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+reconnect_secs = 5
+
+# Was: Öffnet den Konfigurationsabschnitt `storage`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[storage]
+# Was: Setzt die Einstellung `database_path` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+database_path = "/var/lib/netcore-sds-router/messages.json"
+# Was: Setzt die Einstellung `backup_path` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+backup_path = "/var/lib/netcore-sds-router/messages.json.bak"
+
+# Was: Öffnet den Konfigurationsabschnitt `routing`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[routing]
+# Was: Setzt die Einstellung `default_ttl_secs` für routing.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+default_ttl_secs = 300
+# Was: Setzt die Einstellung `max_ttl_secs` für routing.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_ttl_secs = 86400
+# Was: Setzt die Einstellung `max_attempts` für routing.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_attempts = 5
+# Was: Setzt die Einstellung `initial_retry_secs` für routing.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+initial_retry_secs = 2
+# Was: Setzt die Einstellung `max_retry_secs` für routing.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_retry_secs = 60
+# Was: Setzt die Einstellung `dedupe_window_secs` für routing.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+dedupe_window_secs = 30
+# Was: Setzt die Einstellung `presence_timeout_secs` für routing.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+presence_timeout_secs = 90
+# true: ordinary SDS/STATUS ingress is decided centrally.
+# Safety-critical local handlers in the TBS stay local.
+# Was: Setzt die Einstellung `authoritative_ingress` für routing.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+authoritative_ingress = true
+
+# Was: Öffnet den Konfigurationsabschnitt `security`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[security]
+# Was: Setzt die Einstellung `mode` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+mode = "open_lab"
+# Was: Setzt die Einstellung `allow_remote_management` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+allow_remote_management = true
+# Was: Setzt die Einstellung `mask_payload_in_list` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+mask_payload_in_list = false
+
+# Was: Öffnet den Konfigurationsabschnitt `limits`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[limits]
+# Was: Setzt die Einstellung `max_body_bytes` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_body_bytes = 2097152
+# Was: Setzt die Einstellung `max_payload_bytes` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_payload_bytes = 2048
+# Was: Setzt die Einstellung `max_messages` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_messages = 100000
+# Was: Setzt die Einstellung `max_routes` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_routes = 4096

@@ -1,0 +1,148 @@
+# NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Verbindungen zu anderen Netzen und Systemen.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+# Was: Öffnet den Konfigurationsabschnitt `server`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[server]
+# Was: Setzt die Einstellung `bind` für server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+bind = "0.0.0.0:8200"
+# Was: Setzt die Einstellung `history_limit` für server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+history_limit = 5000
+
+# Was: Öffnet den Konfigurationsabschnitt `storage`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[storage]
+# Was: Setzt die Einstellung `database_path` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+database_path = "/var/lib/netcore-transit/state.json"
+# Was: Setzt die Einstellung `backup_path` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+backup_path = "/var/lib/netcore-transit/state.json.bak"
+
+# Was: Öffnet den Konfigurationsabschnitt `region`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[region]
+# Was: Setzt die Einstellung `region_id` für region.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+region_id = "region-a"
+# Was: Setzt die Einstellung `swmi_id` für region.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+swmi_id = "netcore-swmi-a"
+# Was: Setzt die Einstellung `display_name` für region.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+display_name = "NetCore Region A"
+# Was: Setzt die Einstellung `advertised_endpoint` für region.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+advertised_endpoint = "http://10.0.10.12:8200"
+# Was: Setzt die Einstellung `protocol_version` für region.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+protocol_version = "netcore-transit-v1"
+# Was: Setzt die Einstellung `operating_mode` für region.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+operating_mode = "shadow"
+# Was: Setzt die Einstellung `capabilities` für region.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+capabilities = [
+  "mobility",
+  "individual_call",
+  "group_call",
+  "sds",
+  "media",
+  "supplementary_service",
+]
+
+# Was: Öffnet den Konfigurationsabschnitt `routing`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[routing]
+# Was: Setzt die Einstellung `max_hops` für routing.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_hops = 8
+# Was: Setzt die Einstellung `dedupe_ttl_secs` für routing.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+dedupe_ttl_secs = 900
+# Was: Setzt die Einstellung `session_idle_ttl_secs` für routing.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+session_idle_ttl_secs = 3600
+# Was: Setzt die Einstellung `route_stale_secs` für routing.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+route_stale_secs = 120
+# Was: Setzt die Einstellung `prefer_direct_region_peer` für routing.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+prefer_direct_region_peer = true
+# Was: Setzt die Einstellung `allow_transitive_routing` für routing.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+allow_transitive_routing = true
+# Was: Setzt die Einstellung `allow_dynamic_peers` für routing.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+allow_dynamic_peers = false
+# Was: Setzt die Einstellung `fail_closed_on_loop` für routing.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+fail_closed_on_loop = true
+
+# Was: Öffnet den Konfigurationsabschnitt `transport`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[transport]
+# Was: Setzt die Einstellung `connect_timeout_ms` für transport.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+connect_timeout_ms = 2000
+# Was: Setzt die Einstellung `io_timeout_ms` für transport.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+io_timeout_ms = 5000
+# Was: Setzt die Einstellung `heartbeat_interval_secs` für transport.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+heartbeat_interval_secs = 5
+# Was: Setzt die Einstellung `peer_timeout_secs` für transport.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+peer_timeout_secs = 20
+# Was: Setzt die Einstellung `retry_backoff_secs` für transport.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+retry_backoff_secs = 3
+# Was: Setzt die Einstellung `max_attempts` für transport.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_attempts = 5
+# Was: Setzt die Einstellung `max_batch` für transport.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_batch = 100
+
+# Was: Öffnet den Konfigurationsabschnitt `security`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[security]
+# Was: Setzt die Einstellung `mode` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+mode = "open_lab"
+# Was: Setzt die Einstellung `allow_remote_management` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+allow_remote_management = true
+# Was: Setzt die Einstellung `tls` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+tls = false
+# Was: Setzt die Einstellung `token_auth` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+token_auth = false
+
+# Was: Öffnet den Konfigurationsabschnitt `limits`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[limits]
+# Was: Setzt die Einstellung `max_body_bytes` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_body_bytes = 4194304
+# Was: Setzt die Einstellung `max_peers` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_peers = 1000
+# Was: Setzt die Einstellung `max_routes` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_routes = 100000
+# Was: Setzt die Einstellung `max_sessions` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_sessions = 100000
+# Was: Setzt die Einstellung `max_envelopes` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_envelopes = 500000
+# Was: Setzt die Einstellung `max_local_deliveries` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_local_deliveries = 500000
+# Was: Setzt die Einstellung `max_events` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_events = 100000

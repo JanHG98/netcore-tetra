@@ -1,0 +1,14 @@
+[server]
+bind = "0.0.0.0:8125"
+
+[upstream]
+subscriber_core = "http://10.0.1.181:8100"
+group_core = "http://10.0.1.182:8110"
+timeout_secs = 5
+
+[security]
+mode = "open_lab"
+allow_remote_management = true
+
+[limits]
+max_body_bytes = 2097152

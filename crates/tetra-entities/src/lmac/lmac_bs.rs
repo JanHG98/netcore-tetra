@@ -1,0 +1,754 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+use std::collections::HashMap;
+
+use tetra_config::bluestation::{SharedConfig, StackMode};
+use tetra_core::tetra_entities::TetraEntity;
+use tetra_core::{BurstType, PhyBlockNum, PhysicalChannel, Sap, TdmaTime, TrainingSequence};
+use tetra_saps::tmv::TmvUnitdataInd;
+use tetra_saps::tmv::enums::logical_chans::LogicalChannel;
+use tetra_saps::tp::{TpUnitdataInd, TpUnitdataReqSlot, TpUnitdataReqSlots};
+use tetra_saps::{SapMsg, SapMsgInner};
+
+use crate::lmac::components::{errorcontrol, scrambler};
+use crate::{MessagePrio, MessageQueue, TetraEntityTrait};
+
+#[derive(Debug, Clone, Copy)]
+// Was: Bündelt die zusammengehörigen Werte für lmac Nutzdatenverkehr chan in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct LmacTrafficChan {
+    pub is_active: bool,
+    pub logical_channel: LogicalChannel,
+    // TODO FIXME: extend with all required fields
+}
+
+// Was: Implementiert das zugehörige Verhalten für `Default for LmacTrafficChan`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
+impl Default for LmacTrafficChan {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn default() -> Self {
+        Self {
+            is_active: false,
+            logical_channel: LogicalChannel::TchS,
+        }
+    }
+}
+
+// #[derive(Default)]
+// pub struct CurBurst {
+//     pub is_traffic: bool,
+//     pub usage: Option<u8>,
+//     pub blk1_stolen: bool,
+//     pub blk2_stolen: HashMap<(u16, u8), bool>,
+// }
+
+// Was: Bündelt die zusammengehörigen Werte für lmac Basisstation in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct LmacBs {
+    /// Timeslot time, provided by upper layer and then maintained in sync here
+    dltime: TdmaTime,
+    config: SharedConfig,
+
+    /// Cached from global config
+    stack_mode: StackMode,
+    scrambling_code: u32,
+
+    /// Traffic channels and associated state
+    // ul_circuits: [Option<LmacTrafficChan>; 4],
+    // dl_circuits: [Option<LmacTrafficChan>; 4],
+
+    /// Per-timeslot UL physical channel indicator from UMAC.
+    /// UL bursts arrive 2 timeslots after the corresponding DL slot, so we must
+    /// keep this keyed by timeslot rather than a single "latest" value.
+    uplink_phy_chan: HashMap<(u16, u8), PhysicalChannel>,
+
+    /// Signalled by Umac per timeslot. Set to true when in a traffic burst, the 1st stolen block shows that the 2nd slot is also stolen
+    blk2_stolen: HashMap<(u16, u8), bool>,
+    // Details about current burst, parsed from BBK broadcast block
+    // cur_burst: CurBurst,
+}
+
+// Was: Implementiert das zugehörige Verhalten für `LmacBs`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
+impl LmacBs {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
+    pub fn new(config: SharedConfig) -> Self {
+        // Retrieve initial basic network params from config
+        let (stack_mode, sc) = {
+            let c = config.config();
+            tracing::info!(
+                "LmacBs: initialized with stack mode {:?}, mcc {} mnc {} cc {}",
+                c.stack_mode,
+                c.net.mcc,
+                c.net.mnc,
+                c.cell.colour_code
+            );
+            (
+                c.stack_mode,
+                scrambler::tetra_scramb_get_init(c.net.mcc, c.net.mnc, c.cell.colour_code),
+            )
+        };
+
+        Self {
+            config,
+            stack_mode,
+            scrambling_code: sc,
+
+            dltime: TdmaTime::default(),
+            uplink_phy_chan: HashMap::new(),
+            blk2_stolen: HashMap::new(),
+        }
+    }
+
+    // fn determine_phy_chan_ul(&self) -> PhysicalChannel {
+    //     let ultime = self.dltime.add_timeslots(-2);
+    //     // Frame 18 is always CP (I think)
+    //     if ultime.f == 18 {
+    //         return PhysicalChannel::Control;
+    //     }
+    //     if self.ul_circuits[ultime.t as usize - 1].is_some() {
+    //         return PhysicalChannel::Traffic;
+    //     }
+    //     PhysicalChannel::Unallocated
+    // }
+
+    // fn determine_phy_chan_dl(&self) -> PhysicalChannel {
+
+    //     // Frame 18 is always CP (I think)
+    //     if self.dltime.f == 18 {
+    //         return PhysicalChannel::Control;
+    //     }
+    //     // Slot 1 is primary control channel
+    //     if self.dltime.t == 1 {
+    //         return PhysicalChannel::Control;
+    //     }
+    //     // Slots 2-4 may contain traffic or are unallocated
+    //     if self.dl_circuits[self.dltime.t as usize - 1].is_some() {
+    //         return PhysicalChannel::Traffic;
+    //     } else {
+    //         PhysicalChannel::Unallocated
+    //     }
+    // }
+
+    /// Yields logical channel for given block. Based on Clause 9.5.1
+    // Was: Führt den Arbeitsschritt `determine_logical_channel_ul` für determine logical Kanal ul aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn determine_logical_channel_ul(blk: &TpUnitdataInd, burst_is_traffic: bool, block2_stolen: bool) -> LogicalChannel {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+        match blk.burst_type {
+            BurstType::CUB => {
+                // CUB is always SCH/HU
+                if blk.train_type != TrainingSequence::ExtendedTrainSeq {
+                    tracing::warn!("LMAC: CUB without ExtendedTrainSeq (got {:?}), treating as SchHu", blk.train_type);
+                }
+                LogicalChannel::SchHu
+            }
+            BurstType::NUB => {
+                // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+                // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+                match blk.train_type {
+                    TrainingSequence::NormalTrainSeq1 => {
+                        // TCH or SCH/F
+                        if blk.block_num != PhyBlockNum::Both {
+                            tracing::warn!("LMAC: NUB/NormalTrainSeq1 unexpected block_num {:?} (expected Both)", blk.block_num);
+                        }
+                        if burst_is_traffic {
+                            // Only support TCH/S speech channel for now
+                            LogicalChannel::TchS
+                        } else {
+                            // Full slot signalling
+                            LogicalChannel::SchF
+                        }
+                    }
+                    TrainingSequence::NormalTrainSeq2 => {
+                        // Clause 9.4.4.3.2:
+                        // STCH+TCH
+                        // STCH+STCH (if blk1 has resource stating 2nd block stolen)
+                        if !burst_is_traffic {
+                            tracing::debug!("NUB with NormalTrainSeq2 but non-traffic burst");
+                            // tracing::warn!("NUB with NormalTrainSeq2 but non-traffic burst, unexpected");
+                        }
+
+                        if blk.block_num == PhyBlockNum::Block1 {
+                            LogicalChannel::Stch
+                        } else if blk.block_num == PhyBlockNum::Block2 {
+                            if !burst_is_traffic || block2_stolen {
+                                // TODO FIXME remove !burst_is_traffic guard, temporary fix only
+                                tracing::debug!("NUB blk2 in STCH?");
+                                LogicalChannel::Stch
+                            } else {
+                                LogicalChannel::TchS
+                            }
+                        } else {
+                            tracing::warn!(
+                                "LMAC: NUB/NormalTrainSeq2 unexpected block_num {:?}, treating as Stch",
+                                blk.block_num
+                            );
+                            LogicalChannel::Stch
+                        }
+                    }
+                    other => {
+                        // Demodulator can classify a NUB with an unexpected training
+                        // sequence (Seq3/Sync/NotFound) on a noisy or colliding signal.
+                        // Treat as SchHu and let higher-layer CRC reject it, rather than
+                        // unreachable!()-panicking on wire-derived data.
+                        tracing::warn!("LMAC: NUB with unexpected train_type {:?}, treating as SchHu", other);
+                        LogicalChannel::SchHu
+                    }
+                }
+            }
+            other => {
+                // Any burst type other than CUB/NUB reaching UL classification is
+                // unexpected (SDB is downlink). Drop-safe: treat as SchHu so CRC rejects.
+                tracing::warn!("LMAC: unexpected UL burst_type {:?}, treating as SchHu", other);
+                LogicalChannel::SchHu
+            }
+        }
+    }
+
+    // Was: Führt den Arbeitsschritt `rx_blk_traffic` für rx blk Nutzdatenverkehr aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn rx_blk_traffic(&mut self, queue: &mut MessageQueue, blk: TpUnitdataInd, lchan: LogicalChannel, ul_time: TdmaTime) {
+        // Only full-slot TCH/S supported for now
+        if lchan != LogicalChannel::TchS || blk.block_num != PhyBlockNum::Both {
+            tracing::trace!(
+                "rx_blk_traffic: ignoring partial/unsupported lchan={:?} blk_num={:?}",
+                lchan,
+                blk.block_num
+            );
+            return;
+        }
+
+        let (decoded, crc_ok) = errorcontrol::decode_tp(lchan, blk.block, self.scrambling_code);
+        let Some(acelp_bits) = decoded else {
+            tracing::warn!("rx_blk_traffic: decode_tp returned None");
+            return;
+        };
+
+        if !crc_ok {
+            tracing::trace!("rx_blk_traffic: CRC fail (BFI), still forwarding for concealment");
+        }
+
+        // Convert ACELP BitBuffer to Vec<u8> (one bit per byte, 274 bytes)
+        let mut data = vec![0u8; acelp_bits.get_len()];
+        let mut bb = acelp_bits;
+        bb.seek(0);
+        bb.to_bitarr(&mut data);
+
+        let msg = SapMsg {
+            sap: Sap::TmdSap,
+            src: TetraEntity::Lmac,
+            dest: TetraEntity::Umac,
+            msg: SapMsgInner::TmdCircuitDataInd(tetra_saps::tmd::TmdCircuitDataInd { carrier_num: blk.carrier_num, ts: ul_time.t, data }),
+        };
+        queue.push_back(msg);
+    }
+
+    // Was: Führt den Arbeitsschritt `rx_blk_control` für rx blk Steuerung aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn rx_blk_control(
+        &mut self,
+        queue: &mut MessageQueue,
+        blk: TpUnitdataInd,
+        lchan: LogicalChannel,
+        ul_time: TdmaTime,
+    ) {
+        // AACH is a control channel but uses a completely different decode path
+        // (decode_aach); decode_cp() below explicitly rejects it. Guard here so a future
+        // routing change that sends AACH this way logs and drops instead of panicking.
+        if !lchan.is_control_channel() || lchan == LogicalChannel::Aach {
+            tracing::warn!("LMAC: rx_blk_control called with unsupported channel {:?}, ignoring", lchan);
+            return;
+        }
+
+        let block_num = blk.block_num;
+        let carrier_num = blk.carrier_num;
+        let rssi_dbfs = blk.rssi_dbfs;
+        let (type1bits, crc_pass) = errorcontrol::decode_cp(lchan, blk, Some(self.scrambling_code));
+        // decode_cp only returns None when no scrambling code is available; we always pass
+        // Some() here, so this is guaranteed. Use let-else instead of unwrap to stay
+        // panic-free if that contract ever changes.
+        let Some(type1bits) = type1bits else {
+            tracing::warn!(
+                "LMAC: decode_cp returned None for {:?} despite scrambling code set, dropping",
+                lchan
+            );
+            return;
+        };
+
+        // tracing::debug!("rx_blk_cp {:?} CRC: {} type1 {:?}",
+        //     lchan,
+        //     if crc_pass { "ok" } else { "WRONG" },
+        //     type1bits
+        // );
+        tracing::debug!(
+            carrier = carrier_num,
+            ul_time = %ul_time,
+            air_ts = ul_time.t,
+            logical_channel = ?lchan,
+            block = ?block_num,
+            rssi_dbfs = rssi_dbfs,
+            crc = if crc_pass { "ok" } else { "WRONG" },
+            "LMAC: decoded uplink control block"
+        );
+
+        // TODO FIXME, for now, we're not passing broken CRC msgs up to Lmac
+        // If we see purpose, we may pass it up in the future
+        if !crc_pass {
+            return;
+        }
+
+        // Pass block to the upper mac
+        let m = SapMsg {
+            sap: Sap::TmvSap,
+            src: TetraEntity::Lmac,
+            dest: TetraEntity::Umac,
+            msg: SapMsgInner::TmvUnitdataInd(TmvUnitdataInd {
+                carrier_num,
+                pdu: type1bits,
+                logical_channel: lchan,
+                block_num,
+                crc_pass,
+                scrambling_code: self.scrambling_code,
+                rssi_dbfs,
+            }),
+        };
+
+        // Suppose we've just parsed blk1 in a stolen traffic burst.
+        // We then don't know whether blk2 is also stolen, as that will be shown by the Umac
+        // We thus push this with prio, and the umac will signal with prio if blk2 is stolen too
+        queue.push_prio(m, MessagePrio::Immediate);
+    }
+
+    // Was: Führt den Arbeitsschritt `rx_tp_prim` für rx tp prim aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn rx_tp_prim(&mut self, queue: &mut MessageQueue, message: SapMsg) {
+        tracing::debug!("rx_tp_prim: msg {:?}", message);
+
+        let SapMsgInner::TpUnitdataInd(prim) = message.msg else {
+            tracing::error!("BUG: unexpected message or state -- routing error");
+            return;
+        };
+
+        let msg_dltime = self.dltime.add_timeslots(-2); // Msg on uplink was sent two timeslots ago.
+        let key = (prim.carrier_num, msg_dltime.t);
+        let pchan = self.uplink_phy_chan.get(&key).copied().unwrap_or(PhysicalChannel::Unallocated);
+
+        // Keep secondary TS1 closed to common-control ghost copies, but accept
+        // assigned control on secondary traffic bearers during hangtime.
+        let main_carrier = self.config.config().cell.main_carrier;
+        if !Self::accepts_uplink(prim.carrier_num == main_carrier, msg_dltime.t, pchan) {
+            tracing::debug!(
+                carrier=prim.carrier_num,
+                main_carrier,
+                ts=msg_dltime.t,
+                pchan=?pchan,
+                train_type=?prim.train_type,
+                burst_type=?prim.burst_type,
+                "LMAC: dropping secondary-carrier non-traffic/control uplink burst"
+            );
+            return;
+        }
+
+        // A stolen second half belongs to one burst, never to the next frame or
+        // to an assigned-control burst after a traffic/control transition.
+        if prim.block_num != PhyBlockNum::Block2 || pchan != PhysicalChannel::Tp {
+            self.blk2_stolen.remove(&key);
+        }
+        let blk2_stolen = self.blk2_stolen.remove(&key).unwrap_or(false);
+        let lchan = Self::determine_logical_channel_ul(&prim, pchan == PhysicalChannel::Tp, blk2_stolen);
+
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+        match lchan {
+            LogicalChannel::Clch => {}
+            LogicalChannel::TchS | LogicalChannel::Tch24 | LogicalChannel::Tch48 | LogicalChannel::Tch72 => {
+                self.rx_blk_traffic(queue, prim, lchan, msg_dltime)
+            }
+            LogicalChannel::SchF | LogicalChannel::SchHu | LogicalChannel::Stch => {
+                self.rx_blk_control(queue, prim, lchan, msg_dltime);
+            }
+            _ => {
+                tracing::error!("BUG: unexpected message or state -- routing error");
+                return;
+            }
+        }
+    }
+
+    fn accepts_uplink(is_main_carrier: bool, air_ts: u8, pchan: PhysicalChannel) -> bool {
+        is_main_carrier || ((2..=4).contains(&air_ts) && matches!(pchan, PhysicalChannel::Tp | PhysicalChannel::Cp))
+    }
+
+    // Was: Führt den Arbeitsschritt `rx_tmv_configure_req` für rx tmv configure req aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn rx_tmv_configure_req(&mut self, _queue: &mut MessageQueue, message: SapMsg) {
+        let SapMsgInner::TmvConfigureReq(prim) = &message.msg else {
+            tracing::error!("BUG: unexpected message or state -- routing error");
+            return;
+        };
+        let carrier_num = prim.carrier_num.unwrap_or(self.config.config().cell.main_carrier);
+        if let (Some(time), Some(stolen)) = (prim.time, prim.blk2_stolen) {
+            self.blk2_stolen.insert((carrier_num, time.t), stolen);
+        }
+    }
+
+    /// Request from Umac to transmit a message
+    // Was: Führt den Arbeitsschritt `rx_tmv_unitdata_req_slot` für rx tmv unitdata req slot aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn rx_tmv_unitdata_req_slot(&mut self, queue: &mut MessageQueue, mut message: SapMsg) {
+        tracing::debug!("rx_tmv_unitdata_req_slot");
+        let SapMsgInner::TmvUnitdataReq(prim) = &mut message.msg else {
+            tracing::error!("BUG: unexpected message or state -- routing error");
+            return;
+        };
+
+        self.uplink_phy_chan.insert((prim.carrier_num, prim.ts.t), prim.ul_phy_chan);
+
+        let Some(bbk) = prim.bbk.take() else {
+            tracing::error!("LMAC: rx_tmv_unitdata_req_slot: bbk missing, dropping slot");
+            return;
+        };
+        let Some(blk1) = prim.blk1.take() else {
+            tracing::error!("LMAC: rx_tmv_unitdata_req_slot: blk1 missing, dropping slot");
+            return;
+        };
+        let blk2 = prim.blk2.take();
+
+        // Determine train and burst type
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+        let (burst_type, train_type) = match blk1.logical_channel {
+            LogicalChannel::Bsch => {
+                // Synchronization Downlink Burst
+                if blk2.is_none() {
+                    tracing::warn!("LMAC: Bsch slot missing blk2, dropping");
+                    return;
+                }
+                (BurstType::SDB, TrainingSequence::SyncTrainSeq)
+            }
+
+            LogicalChannel::SchF => {
+                // Single full block
+                if blk2.is_some() {
+                    tracing::warn!("LMAC: SchF slot has unexpected blk2, ignoring blk2");
+                }
+                (BurstType::NDB, TrainingSequence::NormalTrainSeq1)
+            }
+            LogicalChannel::TchS | LogicalChannel::Tch24 | LogicalChannel::Tch48 | LogicalChannel::Tch72 => {
+                // Traffic burst
+                if blk2.is_some() {
+                    tracing::warn!("LMAC: TCH slot has unexpected blk2, ignoring blk2");
+                }
+                (BurstType::NDB, TrainingSequence::NormalTrainSeq1)
+            }
+            LogicalChannel::SchHd | LogicalChannel::Stch | LogicalChannel::Bnch => {
+                // Two half-blocks
+                if blk2.is_none() {
+                    tracing::warn!("LMAC: {:?} slot missing blk2, dropping", blk1.logical_channel);
+                    return;
+                }
+                (BurstType::NDB, TrainingSequence::NormalTrainSeq2)
+            }
+            _ => {
+                tracing::warn!(
+                    "LMAC: unsupported logical channel {:?} in rx_tmv_unitdata_req_slot, dropping",
+                    blk1.logical_channel
+                );
+                return;
+            }
+        };
+
+        let mut prim_phy = TpUnitdataReqSlot {
+            carrier_num: prim.carrier_num,
+            train_type,
+            burst_type,
+            bbk: None,
+            blk1: None,
+            blk2: None,
+        };
+
+        // Encode blk1 and optionally blk2
+        prim_phy.bbk = Some(errorcontrol::encode_aach(bbk.mac_block, bbk.scrambling_code));
+        if blk1.logical_channel.is_traffic() {
+            prim_phy.blk1 = Some(errorcontrol::encode_tp(blk1, 1));
+        } else {
+            prim_phy.blk1 = Some(errorcontrol::encode_cp(blk1));
+        }
+        if let Some(blk2) = blk2 {
+            if blk2.logical_channel.is_traffic() {
+                prim_phy.blk2 = Some(errorcontrol::encode_tp(blk2, 2));
+            } else {
+                prim_phy.blk2 = Some(errorcontrol::encode_cp(blk2));
+            }
+        }
+
+        // Pass timeslot worth of blocks to Phy
+        let m = SapMsg {
+            sap: Sap::TpSap,
+            src: TetraEntity::Lmac,
+            dest: TetraEntity::Phy,
+            msg: SapMsgInner::TpUnitdataReq(prim_phy),
+        };
+        queue.push_back(m);
+    }
+
+    // Was: Führt den Arbeitsschritt `rx_tmv_unitdata_req_slots` für rx tmv unitdata req slots aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn rx_tmv_unitdata_req_slots(&mut self, queue: &mut MessageQueue, message: SapMsg) {
+        let SapMsgInner::TmvUnitdataReqSlots(batch) = message.msg else {
+            tracing::error!("BUG: unexpected message or state -- routing error");
+            return;
+        };
+
+        let mut phy_slots = Vec::with_capacity(batch.slots.len());
+        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+        for prim in batch.slots {
+            self.uplink_phy_chan.insert((prim.carrier_num, prim.ts.t), prim.ul_phy_chan);
+
+            // NetCore dual-carrier traffic-only hardening:
+            // Secondary schedulers may intentionally return a completely empty slot
+            // (no BBK/AACH and no payload blocks) while idle. This means: do not
+            // transmit anything on that carrier/slot. Treat that as a normal skip,
+            // not as a scheduler error.
+            if prim.bbk.is_none() && prim.blk1.is_none() && prim.blk2.is_none() {
+                tracing::trace!(
+                    carrier = prim.carrier_num,
+                    ts = prim.ts.t,
+                    time = %prim.ts,
+                    "LMAC: skipping empty batched slot"
+                );
+                continue;
+            }
+
+            let Some(bbk) = prim.bbk else {
+                tracing::warn!("LMAC: batched slot missing bbk on carrier={} ts={}, dropping non-empty slot", prim.carrier_num, prim.ts.t);
+                continue;
+            };
+            let Some(blk1) = prim.blk1 else {
+                tracing::warn!("LMAC: batched slot missing blk1 on carrier={} ts={}, dropping non-empty slot", prim.carrier_num, prim.ts.t);
+                continue;
+            };
+            let blk2 = prim.blk2;
+
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+            let (burst_type, train_type) = match blk1.logical_channel {
+                LogicalChannel::Bsch => {
+                    if blk2.is_none() {
+                        tracing::warn!("LMAC: Bsch slot missing blk2, dropping");
+                        continue;
+                    }
+                    (BurstType::SDB, TrainingSequence::SyncTrainSeq)
+                }
+                LogicalChannel::SchF | LogicalChannel::TchS | LogicalChannel::Tch24 | LogicalChannel::Tch48 | LogicalChannel::Tch72 => {
+                    (BurstType::NDB, TrainingSequence::NormalTrainSeq1)
+                }
+                LogicalChannel::SchHd | LogicalChannel::Stch | LogicalChannel::Bnch => {
+                    if blk2.is_none() {
+                        tracing::warn!("LMAC: {:?} slot missing blk2, dropping", blk1.logical_channel);
+                        continue;
+                    }
+                    (BurstType::NDB, TrainingSequence::NormalTrainSeq2)
+                }
+                _ => {
+                    tracing::warn!(
+                        "LMAC: unsupported logical channel {:?} in batched slot, dropping",
+                        blk1.logical_channel
+                    );
+                    continue;
+                }
+            };
+
+            let mut prim_phy = TpUnitdataReqSlot {
+                carrier_num: prim.carrier_num,
+                train_type,
+                burst_type,
+                bbk: Some(errorcontrol::encode_aach(bbk.mac_block, bbk.scrambling_code)),
+                blk1: None,
+                blk2: None,
+            };
+
+            prim_phy.blk1 = Some(if blk1.logical_channel.is_traffic() {
+                errorcontrol::encode_tp(blk1, 1)
+            } else {
+                errorcontrol::encode_cp(blk1)
+            });
+            if let Some(blk2) = blk2 {
+                prim_phy.blk2 = Some(if blk2.logical_channel.is_traffic() {
+                    errorcontrol::encode_tp(blk2, 2)
+                } else {
+                    errorcontrol::encode_cp(blk2)
+                });
+            }
+
+            phy_slots.push(prim_phy);
+        }
+
+        queue.push_back(SapMsg {
+            sap: Sap::TpSap,
+            src: TetraEntity::Lmac,
+            dest: TetraEntity::Phy,
+            msg: SapMsgInner::TpUnitdataReqSlots(TpUnitdataReqSlots { slots: phy_slots }),
+        });
+    }
+
+    // Was: Führt den Arbeitsschritt `rx_tmv_prim` für rx tmv prim aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn rx_tmv_prim(&mut self, queue: &mut MessageQueue, message: SapMsg) {
+        tracing::trace!("rx_tmv_prim");
+
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+        match message.msg {
+            SapMsgInner::TmvConfigureReq(_) => {
+                self.rx_tmv_configure_req(queue, message);
+            }
+            SapMsgInner::TmvUnitdataReq(_) => {
+                self.rx_tmv_unitdata_req_slot(queue, message);
+            }
+            SapMsgInner::TmvUnitdataReqSlots(_) => {
+                self.rx_tmv_unitdata_req_slots(queue, message);
+            }
+            // SapMsgInner::CmceCallControl(_) => {
+            //     self.rx_control(queue, message);
+            // }
+            _ => {
+                tracing::error!("BUG: unexpected message or state -- routing error");
+                return;
+            }
+        }
+    }
+
+    // fn rx_control(&mut self, queue: &mut MessageQueue, message: SapMsg) {
+
+    //     tracing::trace!("rx_control");
+    //     let SapMsgInner::CmceCallControl(prim) = message.msg else {panic!()};
+
+    //     match prim {
+    //         CallControl::Open(_) => {
+    //             self.rx_control_circuit_open(queue, prim);
+    //         },
+    //         CallControl::Close(_, _) => {
+    //             self.rx_control_circuit_close(queue, prim);
+
+    //         },
+    //     }
+    // }
+}
+
+// Was: Implementiert das zugehörige Verhalten für `TetraEntityTrait for LmacBs`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
+impl TetraEntityTrait for LmacBs {
+    // Was: Führt den Arbeitsschritt `entity` für entity aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn entity(&self) -> TetraEntity {
+        TetraEntity::Lmac
+    }
+
+    // Was: Diese Funktion setzt Konfiguration.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
+    fn set_config(&mut self, config: SharedConfig) {
+        self.config = config;
+    }
+
+    // Was: Führt den Arbeitsschritt `rx_prim` für rx prim aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn rx_prim(&mut self, queue: &mut MessageQueue, message: SapMsg) {
+        tracing::debug!("rx_prim: {:?}", message);
+        // tracing::debug!(ts=%message.dltime, "rx_prim: {:?}", message);
+
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+        match message.sap {
+            Sap::TpSap => {
+                self.rx_tp_prim(queue, message);
+            }
+            Sap::TmvSap => {
+                self.rx_tmv_prim(queue, message);
+            }
+            other => {
+                tracing::error!("LMAC: unexpected SAP {:?} -- routing error, dropping", other);
+            }
+        }
+    }
+
+    // Was: Diese Funktion bearbeitet start.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn tick_start(&mut self, _queue: &mut MessageQueue, ts: TdmaTime) {
+        self.dltime = ts;
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tetra_core::{BitBuffer, PhyBlockType};
+    use tetra_saps::tmv::TmvUnitdataReq;
+
+    fn receiver() -> LmacBs {
+        let cfg = tetra_config::bluestation::parsing::from_toml_str(r#"
+config_version = "0.6"
+stack_mode = "Bs"
+[phy_io]
+backend = "None"
+[net_info]
+mcc = 901
+mnc = 1510
+[cell_info]
+main_carrier = 720
+freq_band = 4
+freq_offset = 0
+duplex_spacing = 4
+reverse_operation = false
+location_area = 1
+"#).unwrap();
+        LmacBs::new(SharedConfig::from_parts(cfg, None))
+    }
+
+    fn receive_cub(lmac: &mut LmacBs, ts: u8, channel: PhysicalChannel) -> MessageQueue {
+        lmac.dltime = TdmaTime { h: 0, m: 2, f: 5, t: ts }.add_timeslots(2);
+        lmac.uplink_phy_chan.insert((721, ts), channel);
+        // A stale flag from an earlier traffic burst must not poison control reception.
+        lmac.blk2_stolen.insert((721, ts), true);
+        let block = errorcontrol::encode_cp(TmvUnitdataReq {
+            logical_channel: LogicalChannel::SchHu,
+            mac_block: BitBuffer::new(92),
+            scrambling_code: lmac.scrambling_code,
+        });
+        let mut queue = MessageQueue::new();
+        lmac.rx_tp_prim(&mut queue, SapMsg {
+            sap: Sap::TpSap, src: TetraEntity::Phy, dest: TetraEntity::Lmac,
+            msg: SapMsgInner::TpUnitdataInd(TpUnitdataInd {
+                carrier_num: 721, train_type: TrainingSequence::ExtendedTrainSeq,
+                burst_type: BurstType::CUB, block_type: PhyBlockType::NUB,
+                block_num: PhyBlockNum::Block1, block, rssi_dbfs: -20.0,
+            }),
+        });
+        queue
+    }
+
+    #[test]
+    fn secondary_assigned_control_reaches_umac_with_valid_crc() {
+        let mut lmac = receiver();
+        let mut queue = receive_cub(&mut lmac, 3, PhysicalChannel::Cp);
+        let message = queue.pop_front().expect("assigned-control access was dropped");
+        let SapMsgInner::TmvUnitdataInd(ind) = message.msg else { panic!("expected control PDU") };
+        assert_eq!(ind.carrier_num, 721);
+        assert_eq!(ind.logical_channel, LogicalChannel::SchHu);
+        assert!(ind.crc_pass);
+        assert!(!lmac.blk2_stolen.contains_key(&(721, 3)));
+    }
+
+    #[test]
+    fn secondary_guard_and_unallocated_slots_still_drop_access() {
+        let mut lmac = receiver();
+        assert!(receive_cub(&mut lmac, 1, PhysicalChannel::Cp).is_empty());
+        assert!(receive_cub(&mut lmac, 3, PhysicalChannel::Unallocated).is_empty());
+    }
+}

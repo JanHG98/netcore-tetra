@@ -1,0 +1,258 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Nachrichten an den Schnittstellen zwischen TETRA-Protokollschichten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+use core::fmt::Display;
+
+use tetra_core::Sap;
+use tetra_core::tetra_entities::TetraEntity;
+
+use crate::control::brew::MmSubscriberUpdate;
+use crate::control::call_control::CallControl;
+use crate::control::mle_cell_change::MleCellChangeControl;
+use crate::control::sds::CmceSdsData;
+use crate::tmd::TmdCircuitDataInd;
+use crate::tmd::TmdCircuitDataReq;
+use crate::tnmm::TnmmTestDemand;
+use crate::tnmm::TnmmTestResponse;
+
+use super::lcmc::*;
+use super::lmm::*;
+use super::ltpd::*;
+use super::tla::*;
+use super::tlmb::*;
+use super::tlmc::*;
+use super::tma::*;
+use super::tmv::*;
+use super::tp::*;
+
+/// Exhaustive list of SapMsgType structs for use in the SapMsg struct
+/// See Clause 19.2.1 for an overview of all lower-layer SAPs
+#[derive(Debug, Clone)]
+// Was: Listet die möglichen Varianten für sap msg inner auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
+pub enum SapMsgInner {
+    // TODO FIXME and all that stuff
+    // PhyControlUpdateNetinfo(PhyControlUpdateNetinfo),
+
+    // LmacControlUpdateNetinfo(LmacControlUpdateNetinfo),
+    /// TP-SAP (Contents not defined in standard)
+    TpUnitdataInd(TpUnitdataInd),
+    TpUnitdataReq(TpUnitdataReqSlot),
+    TpUnitdataReqSlots(TpUnitdataReqSlots),
+
+    // TMV-SAP
+    TmvUnitdataReq(TmvUnitdataReqSlot),
+    TmvUnitdataReqSlots(TmvUnitdataReqSlots),
+    TmvUnitdataInd(TmvUnitdataInd),
+    TmvConfigureReq(TmvConfigureReq),
+    TmvConfigureConf(TmvConfigureConf),
+
+    // TMA-SAP
+    TmaUnitdataInd(TmaUnitdataInd),
+    TmaUnitdataReq(TmaUnitdataReq),
+    TmaReportInd(TmaReportInd),
+
+    // TMB-SAP / TLB-SAP (merged to TLMB-SAP)
+    TlmbSyncInd(TlmbSyncInd),
+    TlmbSysinfoInd(TlmbSysinfoInd),
+
+    // TLC/TMC-SAP (merged to TLMC-SAP)
+    TlmcAssessmentInd(TlmcAssessmentInd),
+    TlmcAssessmentListReq(TlmcAssessmentListReq),
+    TlmcCellReadReq(TlmcCellReadReq),
+    TlmcCellReadConf(TlmcCellReadConf),
+    TlmcConfigureInd(TlmcConfigureInd),
+    TlmcConfigureReq(TlmcConfigureReq),
+    TlmcConfigureConf(TlmcConfigureConf),
+    TlmcMeasurementInd(TlmcMeasurementInd),
+    TlmcMonitorInd(TlmcMonitorInd),
+    TlmcMonitorListReq(TlmcMonitorListReq),
+    TlmcReportInd(TlmcReportInd),
+    TlmcScanReq(TlmcScanReq),
+    TlmcScanConf(TlmcScanConf),
+    TlmcScanReportInd(TlmcScanReportInd),
+    TlmcSelectReq(TlmcSelectReq),
+    TlmcSelectInd(TlmcSelectInd),
+    TlmcSelectResp(TlmcSelectResp),
+    TlmcSelectConf(TlmcSelectConf),
+
+    // TMD-SAP (Uplane traffic and signalling)
+    TmdCircuitDataReq(TmdCircuitDataReq),
+    TmdCircuitDataInd(TmdCircuitDataInd),
+
+    // TLB-SAP
+    // TlmbSyncInd(TlmbSyncInd),
+    // TlmbSysinfoInd(TlmbSysinfoInd),
+
+    // TLA-SAP
+    TlaTlDataIndBl(TlaTlDataIndBl),
+    TlaTlDataReqBl(TlaTlDataReqBl),
+    TlaTlReportInd(TlaTlReportInd),
+    TlaTlUnitdataIndBl(TlaTlUnitdataIndBl),
+    TlaTlUnitdataReqBl(TlaTlUnitdataReqBl),
+
+    // LMM-SAP (MLE-MM)
+    LmmMlePrepareInd(LmmMlePrepareInd),
+    LmmMleUnitdataInd(LmmMleUnitdataInd),
+    LmmMleUnitdataReq(LmmMleUnitdataReq),
+
+    // LCMC-SAP (MLE-CMCE)
+    LcmcMleUnitdataInd(LcmcMleUnitdataInd),
+    LcmcMleUnitdataReq(LcmcMleUnitdataReq),
+    LcmcMleRestoreInd(LcmcMleRestoreInd),
+
+    // CMCE -> UMAC control
+    CmceCallControl(CallControl),
+
+    // MM/CMCE/Core -> infrastructure MLE cell-change control
+    MleCellChangeControl(MleCellChangeControl),
+
+    // MM -> Brew/CMCE subscriber update
+    MmSubscriberUpdate(MmSubscriberUpdate),
+
+    /// CMCE -> MM: dashboard-originated DGNA (Dynamic Group Number Assignment). The dashboard's
+    /// control channel terminates at CMCE, but the group attach/detach machinery lives in MM, so
+    /// CMCE forwards the request here. `attach` = true assigns the GSSI, false deassigns it.
+    MmDgnaRequest {
+        issi: u32,
+        gssi: u32,
+        attach: bool,
+    },
+
+    /// Sent by UMAC to MM when a UL burst is received from a known MS.
+    /// MM stores the RSSI value per MS for logging and future handover decisions.
+    MsRssiUpdate {
+        issi: u32,
+        rssi_dbfs: f32,
+    },
+
+    /// Sent by BrewEntity to MM when the Brew backhaul reconnects.
+    /// MM responds by sending D-LOCATION-UPDATE-COMMAND to all locally registered MS,
+    /// forcing them to re-affiliate. Without this, MS units registered before a
+    /// Brew disconnect do not re-register and PTT calls are denied until power-cycle.
+    BrewReconnected,
+
+    // CMCE SDS <-> Brew SDS routing
+    CmceSdsData(CmceSdsData),
+
+    // LTPD-SAP (MLE-SNDCP)
+    LtpdMleActivityReq(LtpdMleActivityReq),
+    LtpdMleBreakInd(LtpdMleBreakInd),
+    LtpdMleBusyInd(LtpdMleBusyInd),
+    LtpdMleCancelReq(LtpdMleCancelReq),
+    LtpdMleCloseInd(LtpdMleCloseInd),
+    LtpdMleConfigureReq(LtpdMleConfigureReq),
+    LtpdMleConfigureInd(LtpdMleConfigureInd),
+    LtpdMleConnectReq(LtpdMleConnectReq),
+    LtpdMleConnectInd(LtpdMleConnectInd),
+    LtpdMleConnectResp(LtpdMleConnectResp),
+    LtpdMleConnectConfirm(LtpdMleConnectConfirm),
+    LtpdMleDisableInd(LtpdMleDisableInd),
+    LtpdMleDisconnectReq(LtpdMleDisconnectReq),
+    LtpdMleDisconnectInd(LtpdMleDisconnectInd),
+    LtpdMleEnableInd(LtpdMleEnableInd),
+    LtpdMleInfoInd(LtpdMleInfoInd),
+    LtpdMleIdleInd(LtpdMleIdleInd),
+    LtpdMleOpenInd(LtpdMleOpenInd),
+    LtpdMleReceiveInd(LtpdMleReceiveInd),
+    LtpdMleReconnectReq(LtpdMleReconnectReq),
+    LtpdMleReconnectConfirm(LtpdMleReconnectConfirm),
+    LtpdMleReconnectInd(LtpdMleReconnectInd),
+    LtpdMleReleaseReq(LtpdMleReleaseReq),
+    LtpdMleReportInd(LtpdMleReportInd),
+    LtpdMleResumeInd(LtpdMleResumeInd),
+    LtpdMleUnitdataReq(LtpdMleUnitdataReq),
+    LtpdMleUnitdataInd(LtpdMleUnitdataInd),
+
+    // TNMM-SAP (MM-User)
+    TnmmTestDemand(TnmmTestDemand),
+    TnmmTestResponse(TnmmTestResponse),
+}
+
+// Was: Implementiert das zugehörige Verhalten für `Display for SapMsgInner`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
+impl Display for SapMsgInner {
+    // Was: Führt den Arbeitsschritt `fmt` für fmt aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+        match self {
+            // TP-SAP
+            SapMsgInner::TpUnitdataInd(_) => write!(f, "TpUnitdataInd"),
+            SapMsgInner::TpUnitdataReq(_) => write!(f, "TpUnitdataReq"),
+            SapMsgInner::TpUnitdataReqSlots(_) => write!(f, "TpUnitdataReqSlots"),
+
+            // TMV-SAP
+            SapMsgInner::TmvUnitdataReq(_) => write!(f, "TmvUnitdataReq"),
+            SapMsgInner::TmvUnitdataReqSlots(_) => write!(f, "TmvUnitdataReqSlots"),
+            SapMsgInner::TmvUnitdataInd(_) => write!(f, "TmvUnitdataInd"),
+            SapMsgInner::TmvConfigureReq(_) => write!(f, "TmvConfigureReq"),
+            SapMsgInner::TmvConfigureConf(_) => write!(f, "TmvConfigureConf"),
+
+            // TMA-SAP
+            SapMsgInner::TmaUnitdataInd(_) => write!(f, "TmaUnitdataInd"),
+            SapMsgInner::TmaUnitdataReq(_) => write!(f, "TmaUnitdataReq"),
+
+            // TMB-SAP
+            SapMsgInner::TlmbSyncInd(_) => write!(f, "TmbSyncInd"),
+            SapMsgInner::TlmbSysinfoInd(_) => write!(f, "TmbSysinfoInd"),
+
+            SapMsgInner::LmmMlePrepareInd(_) => write!(f, "LmmMlePrepareInd"),
+
+            // Control/Brew
+            SapMsgInner::MmSubscriberUpdate(_) => write!(f, "MmSubscriberUpdate"),
+            SapMsgInner::MmDgnaRequest { issi, gssi, attach } => {
+                write!(f, "MmDgnaRequest(issi={}, gssi={}, attach={})", issi, gssi, attach)
+            }
+            SapMsgInner::MsRssiUpdate { issi, rssi_dbfs } => write!(f, "MsRssiUpdate(issi={}, rssi={:.1}dBFS)", issi, rssi_dbfs),
+
+            // TLB-SAP
+            // SapMsgInner::TlbTlSyncInd(_) => write!(f, "TlbTlSyncInd"),
+            // SapMsgInner::TlbTlSysinfoInd(_) => write!(f, "TlbTlSysinfoInd"),
+            _ => write!(f, "{self:?}"),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für sap msg in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct SapMsg {
+    pub sap: Sap,
+    pub src: TetraEntity,
+    pub dest: TetraEntity,
+    pub msg: SapMsgInner,
+}
+
+// Was: Implementiert das zugehörige Verhalten für `SapMsg`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
+impl SapMsg {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
+    pub fn new(sap: Sap, src: TetraEntity, dest: TetraEntity, msg: SapMsgInner) -> Self {
+        Self { sap, src, dest, msg }
+    }
+
+    // Was: Diese Funktion liest source.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
+    pub fn get_source(&self) -> &TetraEntity {
+        &self.src
+    }
+    // Was: Diese Funktion liest dest.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
+    pub fn get_dest(&self) -> &TetraEntity {
+        &self.dest
+    }
+    // Was: Diese Funktion liest sap.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
+    pub fn get_sap(&self) -> &Sap {
+        &self.sap
+    }
+    // pub fn get_prim(&self) -> &SapPrim {
+    //     &self.prim
+    // }
+    // pub fn get_subprim(&self) -> &SapSubPrim {
+    //     &self.subprim
+    // }
+}

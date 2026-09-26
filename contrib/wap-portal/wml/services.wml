@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE wml PUBLIC "-//WAPFORUM//DTD WML 1.1//EN" "http://www.wapforum.org/DTD/wml_1.1.xml">
+<wml>
+<card id="main" title="Dienste">
+<p>
+<b>Dienste</b><br/>
+Voice, SDS, WAP, IP und Backend-Dienste.<br/>
+<a href="gateway.wml">P</a> <a href="diagnostics.wml">N</a> <a href="index.wml">H</a>
+</p>
+</card>
+</wml>

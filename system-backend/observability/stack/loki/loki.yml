@@ -1,0 +1,87 @@
+# NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Metriken, Protokolle und Betriebsüberwachung.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+# Was: Legt den YAML-Bereich oder Wert `auth_enabled` fest.
+# Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+auth_enabled: false
+# Was: Legt den YAML-Bereich oder Wert `server` fest.
+# Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+server:
+  # Was: Legt den YAML-Bereich oder Wert `http_listen_port` fest.
+  # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+  http_listen_port: 3100
+# Was: Legt den YAML-Bereich oder Wert `common` fest.
+# Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+common:
+  # Was: Legt den YAML-Bereich oder Wert `path_prefix` fest.
+  # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+  path_prefix: /var/lib/loki
+  # Was: Legt den YAML-Bereich oder Wert `storage` fest.
+  # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+  storage:
+    # Was: Legt den YAML-Bereich oder Wert `filesystem` fest.
+    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+    filesystem:
+      # Was: Legt den YAML-Bereich oder Wert `chunks_directory` fest.
+      # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+      chunks_directory: /var/lib/loki/chunks
+      # Was: Legt den YAML-Bereich oder Wert `rules_directory` fest.
+      # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+      rules_directory: /var/lib/loki/rules
+  # Was: Legt den YAML-Bereich oder Wert `replication_factor` fest.
+  # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+  replication_factor: 1
+  # Was: Legt den YAML-Bereich oder Wert `ring` fest.
+  # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+  ring:
+    # Was: Legt den YAML-Bereich oder Wert `instance_addr` fest.
+    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+    instance_addr: 127.0.0.1
+    # Was: Legt den YAML-Bereich oder Wert `kvstore` fest.
+    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+    kvstore:
+      # Was: Legt den YAML-Bereich oder Wert `store` fest.
+      # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+      store: inmemory
+# Was: Legt den YAML-Bereich oder Wert `schema_config` fest.
+# Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+schema_config:
+  # Was: Legt den YAML-Bereich oder Wert `configs` fest.
+  # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+  configs:
+    # Was: Legt den YAML-Bereich oder Wert `from` fest.
+    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+    - from: 2024-01-01
+      # Was: Legt den YAML-Bereich oder Wert `store` fest.
+      # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+      store: tsdb
+      # Was: Legt den YAML-Bereich oder Wert `object_store` fest.
+      # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+      object_store: filesystem
+      # Was: Legt den YAML-Bereich oder Wert `schema` fest.
+      # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+      schema: v13
+      # Was: Legt den YAML-Bereich oder Wert `index` fest.
+      # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+      index:
+        # Was: Legt den YAML-Bereich oder Wert `prefix` fest.
+        # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+        prefix: index_
+        # Was: Legt den YAML-Bereich oder Wert `period` fest.
+        # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+        period: 24h
+# Was: Legt den YAML-Bereich oder Wert `limits_config` fest.
+# Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+limits_config:
+  # Was: Legt den YAML-Bereich oder Wert `retention_period` fest.
+  # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+  retention_period: 168h
+# Was: Legt den YAML-Bereich oder Wert `compactor` fest.
+# Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+compactor:
+  # Was: Legt den YAML-Bereich oder Wert `working_directory` fest.
+  # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+  working_directory: /var/lib/loki/compactor
+  # Was: Legt den YAML-Bereich oder Wert `retention_enabled` fest.
+  # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+  retention_enabled: true

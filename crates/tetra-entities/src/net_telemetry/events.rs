@@ -1,0 +1,366 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+// ---------------------------------------------------------------------------
+// TelemetryEvent — concrete enum sent through the channel
+//
+// Small, hot-path variants are inline (no heap allocation).
+// Rare / large variants use heap-allocated payload so the enum stays small.
+// ---------------------------------------------------------------------------
+
+use bitcode::{Decode, Encode};
+use serde::{Deserialize, Serialize};
+use tetra_core::tetra_entities::TetraEntity;
+
+// Was: Führt den Arbeitsschritt `telemetry_source_for_entity` für Telemetrie source for entity aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+pub fn telemetry_source_for_entity(entity: TetraEntity) -> &'static str {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+    match entity {
+        TetraEntity::Brew => "brew",
+        TetraEntity::Brew2 => "brew2",
+        TetraEntity::Asterisk => "asterisk",
+        TetraEntity::Echolink => "echolink",
+        TetraEntity::Cmce => "core",
+        _ => "local",
+    }
+}
+
+/// TelemetryEvent enum sent by a TetraEntity through the TelemetrySink
+/// then, serializable by any codec for transmission over the network,
+/// using any Transport.
+#[derive(Debug, Clone, Encode, Decode, Serialize, Deserialize)]
+// Was: Listet die möglichen Varianten für Telemetrie Ereignis auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
+pub enum TelemetryEvent {
+    /// MS registered on BS
+    MsRegistration { issi: u32 },
+    /// MS deregistered. Also counts as deregistration for all groups.
+    MsDeregistration { issi: u32 },
+    /// MS dropped because it did not answer the periodic registration (T351). Emitted in
+    /// addition to `MsDeregistration` for the same ISSI — consumers that distinguish the reason
+    /// (e.g. Telegram alerts) should coalesce the two. LIP/APRS position beacons are detected
+    /// separately from `SdsLog { protocol_id: 10 }`, so no dedicated event is needed for them.
+    MsTimeoutDrop { issi: u32 },
+    /// MS affiliated to groups
+    MsGroupAttach { issi: u32, gssis: Vec<u32> },
+    /// Full snapshot of all currently attached groups — emitted after any attach/detach
+    MsGroupsSnapshot { issi: u32, gssis: Vec<u32> },
+    /// MS detached from groups
+    MsGroupDetach { issi: u32, gssis: Vec<u32> },
+    /// RSSI measurement for a known MS (dBFS)
+    MsRssi { issi: u32, rssi_dbfs: f32 },
+    /// Group call started. `priority` is the ETSI call priority (0..=15) from the originating
+    /// U-SETUP / network call start; 15 denotes an emergency call (`priority` appended last so
+    /// existing leading fields stay wire-stable for the bitcode codec).
+    GroupCallStarted {
+        call_id: u16,
+        gssi: u32,
+        caller_issi: u32,
+        ts: u8,
+        /// Carrier number on which the traffic channel was allocated.
+        /// Defaults to the main carrier for current CMCE allocation logic.
+        carrier_num: u16,
+        priority: u8,
+        source: String,
+    },
+    /// Group call ended
+    GroupCallEnded { call_id: u16, gssi: u32 },
+    /// Speaker changed on active group call
+    GroupCallSpeakerChanged {
+        call_id: u16,
+        gssi: u32,
+        speaker_issi: u32,
+        source: String,
+    },
+    /// Individual (P2P) call started. `priority` is the ETSI call priority (0..=15) from the
+    /// originating U-SETUP; 15 denotes an emergency call (appended last for bitcode wire-stability).
+    IndividualCallStarted {
+        call_id: u16,
+        calling_issi: u32,
+        called_issi: u32,
+        simplex: bool,
+        ts: u8,
+        /// Carrier number on which the traffic channel was allocated.
+        carrier_num: u16,
+        priority: u8,
+        source: String,
+    },
+    /// Individual call ended
+    IndividualCallEnded { call_id: u16 },
+    /// Energy saving mode updated for MS (0=StayAlive, 1=Eg1..7=Eg7)
+    MsEnergySaving { issi: u32, mode: u8 },
+    /// Brew (TetraPack) backhaul connection status changed
+    BrewConnected { connected: bool, server_version: u8 },
+    /// SDS message activity (local delivery or group)
+    SdsActivity { source_issi: u32, dest_issi: u32, source: String },
+    /// One SDS message handled by the BS, for the dashboard SDS Log tab. `direction`:
+    /// "rx" = uplink received from a local MS over the air, "net" = arrived from the
+    /// network (Brew/SwMI) for local delivery, "tx" = injected by the dashboard operator.
+    /// `text` is the best-effort decoded message body (empty for status/report/binary
+    /// payloads); `protocol_id` is the leading SDS protocol-identifier byte.
+    SdsLog {
+        direction: String,
+        source_issi: u32,
+        dest_issi: u32,
+        is_group: bool,
+        protocol_id: u8,
+        text: String,
+    },
+    /// Voice frame activity on a traffic timeslot (UL or DL)
+    TsVoiceActivity { carrier_num: u16, ts: u8 },
+    /// Fast visual feed for the RF dashboard: spectrum + constellation + RMS/peak.
+    /// Emitted ~5 times per second so spectrum/constellation/waterfall feel fluid.
+    /// Cheap to compute (FFT + magnitude). Constellation symbol recovery is the
+    /// only non-trivial bit, but it's still well under 1 ms on a Pi 5.
+    ///
+    /// Works on any radio (LimeSDR, SXceiver, µCell, USRP, Pluto) because the
+    /// analysis runs on the complex baseband samples FlowStation generates
+    /// internally, BEFORE they reach the SDR — no receive-side feedback required.
+    TxVisual {
+        sample_rate: f32,
+        center_freq_hz: f64,
+        /// RMS amplitude in dBFS (0 = full scale). Shown smoothed in the UI.
+        rms_dbfs: f32,
+        /// Peak amplitude in dBFS. Shown smoothed in the UI.
+        peak_dbfs: f32,
+        /// 512-bin spectrum, magnitude in tenths of a dB (i16 to keep the WS message compact).
+        spectrum_db_tenths: Vec<i16>,
+        /// Recovered symbol-rate IQ samples, interleaved I,Q,I,Q,... scaled to fit i16.
+        constellation_iq: Vec<i16>,
+    },
+    /// Slow, expensive signal-quality metrics. Emitted once per second so the
+    /// numbers on the RF dashboard sit still instead of flickering. The values
+    /// are aggregates over multiple symbol blocks — averaging is done in the DSP,
+    /// not in the browser, so a single message is already a stable reading.
+    TxQuality {
+        /// Peak-to-Average Power Ratio in dB. Typical π/4-DQPSK target ≈ 3.5-4 dB.
+        /// Higher values indicate clipping or modulation problems.
+        papr_db: f32,
+        /// RMS-normalized Error Vector Magnitude as a percentage. Per 3GPP TS 36.104
+        /// methodology: compare measured IQ to ideal constellation, normalize by RMS
+        /// of ideal symbols. Lower is better (≤5% professional, ≤12% acceptable).
+        evm_pct: f32,
+        /// Mean of the I component across captured samples (DC offset on I).
+        /// Should be ~0; non-zero indicates DC bias from the SDR front-end.
+        dc_offset_i: f32,
+        /// Mean of the Q component (DC offset on Q).
+        dc_offset_q: f32,
+        /// Amplitude imbalance between I and Q in dB. 0 dB = balanced.
+        iq_amplitude_imbalance_db: f32,
+        /// Phase imbalance between I and Q in degrees (deviation from ideal 90°).
+        iq_phase_imbalance_deg: f32,
+        /// Carrier (LO) leakage in dB relative to total signal power. More negative
+        /// is better. Direct-conversion SDRs (SXceiver, µCell) typically show this.
+        carrier_leakage_db: f32,
+        /// Occupied bandwidth in Hz — width containing 99% of total power.
+        occupied_bandwidth_hz: f32,
+    },
+    /// SDR hardware health snapshot. Emitted every ~5 seconds. Some fields may be
+    /// absent (None) depending on what the radio exposes via Soapy.
+    SdrHealth {
+        /// Sensor reading in °C if the device exposes it (LimeSDR ✓, USRP ✓, Pluto ✓, SXceiver ✗)
+        temperature_c: Option<f32>,
+        /// Actually-set TX gain values per gain stage, queried back from the radio.
+        /// Vec of (name, dB) — e.g. [("PAD", 40.0), ("IAMP", 6.0)] for LimeSDR.
+        tx_gains: Vec<(String, f32)>,
+        /// Same for RX gain stages.
+        rx_gains: Vec<(String, f32)>,
+    },
+    /// Host system health: temperatures, voltages, currents, power consumption.
+    /// Aggregated from whatever sysfs exposes — works on RPi 5 (full PMIC),
+    /// x86 with RAPL, RPi 4 (CPU temp only), laptops (battery), and degrades
+    /// gracefully on anything else. Emitted every ~2 seconds.
+    SysHealth {
+        /// Estimated total system power draw in watts, if we can compute it.
+        /// On RPi 5 this is the sum of all PMIC rails (~5-12W typical).
+        /// On x86 it's RAPL package power (CPU only, not whole system).
+        /// On laptop/battery devices it's the battery discharge rate.
+        /// None when no power-capable source is detected.
+        total_power_w: Option<f32>,
+        /// Individual sensor readings, in display order.
+        sensors: Vec<SysSensor>,
+    },
+    /// Lite stack-health roll-up (Service / Backhaul / Radios / Congestion), emitted by the
+    /// health monitor every few seconds. Rendered as the dashboard "System Health" tile and used
+    /// by the Telegram alerter to notify on health-level transitions. Appended last so existing
+    /// telemetry variant indices stay wire-stable.
+    HealthSnapshot(crate::health::HealthSnapshot),
+    /// A radio ENTERED active emergency — it sent an emergency status (U-STATUS, pre-coded status
+    /// Emergency) to `dest_ssi`. Emitted once per session (on enter), not on the radio's periodic
+    /// re-sends. Drives the dashboard emergency banner + Telegram alert. Appended last for
+    /// bitcode wire-stability. (Emergency-priority CALLS are surfaced separately in the Active
+    /// Calls table via the call's `priority`, not through this event.)
+    EmergencyAlarm { source_issi: u32, dest_ssi: u32 },
+    /// A radio's emergency was CLEARED (non-emergency status, clear-timeout, or operator clear).
+    EmergencyCancel { source_issi: u32 },
+    /// DAPNET message activity for the dashboard DAPNET tab. `direction` is "rx" for messages
+    /// received from the RWTH core feed and "tx" for messages sent through the Hampager API.
+    /// Appended last for bitcode wire-stability.
+    DapnetLog {
+        direction: String,
+        id: String,
+        callsign: String,
+        recipient: String,
+        text: String,
+        priority: Option<u8>,
+        paths: Vec<String>,
+    },
+    /// MeshCom packet activity for the dashboard MeshCom Messages table. Appended last for
+    /// bitcode wire-stability.
+    MeshcomMessageLog {
+        ts: String,
+        direction: String,
+        msg_type: String,
+        src_type: Option<String>,
+        src: Option<String>,
+        dst: Option<String>,
+        msg: Option<String>,
+        msg_id: Option<String>,
+        paths: Vec<String>,
+        lat: Option<f64>,
+        lon: Option<f64>,
+        alt: Option<f64>,
+        batt: Option<f64>,
+        rssi: Option<i64>,
+        snr: Option<i64>,
+        /// MeshCom relay path after the originating node. Appended last for bitcode wire-stability.
+        via: Vec<String>,
+    },
+    /// MeshCom node directory update for the dashboard MeshCom Nodes table. Appended last for
+    /// bitcode wire-stability.
+    MeshcomNodeUpdate {
+        src: String,
+        last_seen: String,
+        last_type: String,
+        lat: Option<f64>,
+        lon: Option<f64>,
+        alt: Option<f64>,
+        batt: Option<f64>,
+        rssi: Option<i64>,
+        snr: Option<i64>,
+        firmware: Option<String>,
+        fw_sub: Option<String>,
+        hw_id: Option<String>,
+        /// MeshCom relay path after the originating node. Appended last for bitcode wire-stability.
+        via: Vec<String>,
+    },
+    /// External ISSI registered through a Brew/TetraPack backhaul. Appended last for bitcode
+    /// wire-stability. Used for optional Telegram alerts without relying on noisy log lines.
+    BrewSubscriberRegistered { issi: u32, source: String },
+    /// External ISSI deregistered through a Brew/TetraPack backhaul. Appended last for bitcode
+    /// wire-stability so consumers can re-arm one-shot REGISTER alerts after a real departure.
+    BrewSubscriberDeregistered { issi: u32, source: String },
+    /// Complete SNDCP/packet-data operations snapshot. Appended last for
+    /// bitcode wire-stability. It is emitted roughly once per second and is
+    /// consumed by both the local dashboard and the standalone Control Room.
+    PacketDataSnapshot {
+        gateway: PacketDataGatewayTelemetry,
+        contexts: Vec<PacketDataContextTelemetry>,
+        bearers: Vec<PdchBearerTelemetry>,
+    },
+    /// Lossless SDS/STATUS ingress handed from the local Air-Interface edge to
+    /// the central SDS Router. Appended last for bitcode wire stability.
+    SdsEdgeIngress {
+        message_id: String,
+        ingress: String,
+        source_issi: u32,
+        dest_issi: u32,
+        is_group: bool,
+        /// 0 = pre-coded status, 1..=4 = SDS data type.
+        sds_type: u8,
+        protocol_id: u8,
+        len_bits: u16,
+        payload: Vec<u8>,
+        priority: u8,
+    },
+}
+
+#[derive(Debug, Clone, Encode, Decode, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Datenpaket data Gateway Telemetrie in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct PacketDataGatewayTelemetry {
+    pub enabled: bool,
+    pub running: bool,
+    pub interface_name: String,
+    pub gateway_address: String,
+    pub prefix_len: u8,
+    pub packets_from_mobile: u64,
+    pub bytes_from_mobile: u64,
+    pub packets_to_mobile: u64,
+    pub bytes_to_mobile: u64,
+    pub dropped_from_mobile: u64,
+    pub dropped_to_mobile: u64,
+    pub io_errors: u64,
+    pub queued_packets: u64,
+    pub queued_bytes: u64,
+    pub active_contexts: u32,
+    pub active_bearers: u32,
+    pub bearer_capacity: u8,
+    pub traffic_slots_free: u8,
+    pub reserved_voice_slots: u8,
+}
+
+#[derive(Debug, Clone, Encode, Decode, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Datenpaket data Kontext Telemetrie in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct PacketDataContextTelemetry {
+    pub issi: u32,
+    pub nsapi: u8,
+    pub ipv4: String,
+    pub state: String,
+    pub primary_nsapi: Option<u8>,
+    pub snei: Option<u16>,
+    pub mtu: u16,
+    pub priority: u8,
+    pub queued_packets: u32,
+    pub queued_bytes: u64,
+    pub carrier_num: Option<u16>,
+    pub logical_ts: Option<u8>,
+    pub air_ts: Option<u8>,
+    pub age_secs: u64,
+    pub idle_secs: u64,
+}
+
+#[derive(Debug, Clone, Encode, Decode, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für Paketdatenkanal (PDCH) Übertragungskanal Telemetrie in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct PdchBearerTelemetry {
+    pub issi: u32,
+    pub carrier_num: u16,
+    pub logical_ts: u8,
+    pub air_ts: u8,
+    pub nsapis: Vec<u8>,
+    pub age_secs: u64,
+    pub idle_secs: u64,
+}
+
+/// A single host-system sensor reading. Kept flat for easy JSON serialisation
+/// and rendering in tables.
+#[derive(Debug, Clone, Encode, Decode, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für sys sensor in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct SysSensor {
+    /// Human label, e.g. "CPU package", "VDD_CORE", "Battery", "NVMe".
+    pub name: String,
+    /// What kind of measurement this is — drives the unit and the display column.
+    pub kind: SysSensorKind,
+    /// Numeric value in the unit implied by `kind`.
+    pub value: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Encode, Decode, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+// Was: Listet die möglichen Varianten für sys sensor kind auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
+pub enum SysSensorKind {
+    /// Degrees Celsius
+    Temperature,
+    /// Volts
+    Voltage,
+    /// Amperes
+    Current,
+    /// Watts (rail power = V × I, or RAPL energy/time)
+    Power,
+}

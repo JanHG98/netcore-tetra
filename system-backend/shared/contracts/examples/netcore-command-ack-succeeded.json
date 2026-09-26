@@ -1,0 +1,26 @@
+{
+  "schema": "netcore-command-ack-v1",
+  "ack_id": "cfed9152-7314-4d7b-910e-a43c1fb4d807",
+  "command_id": "8a72d9ec-a366-4eca-b7e1-cdfb3cbf8436",
+  "command_type": "virtual.relay.set",
+  "status": "succeeded",
+  "source": {
+    "service": "netcore-iot-gateway",
+    "instance": "iot-gateway-01"
+  },
+  "timestamp": "2026-08-01T13:30:00.150Z",
+  "target": {
+    "type": "virtual_relay",
+    "id": "lab-relay-01"
+  },
+  "policy_id": "allow-openlab-virtual-relays",
+  "reason_code": "executed",
+  "message": "virtual relay state updated",
+  "result": {
+    "state": true,
+    "dry_run": false
+  },
+  "labels": {
+    "security_mode": "open_lab"
+  }
+}

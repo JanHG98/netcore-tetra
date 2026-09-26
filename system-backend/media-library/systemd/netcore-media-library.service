@@ -1,0 +1,114 @@
+# NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für gespeicherte Aufzeichnungen, TTS- und Mediendateien.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+# Was: Beginnt den Abschnitt `Unit`.
+# Warum: Zusammengehörige Start-, Laufzeit- oder Installationswerte bleiben dadurch geordnet.
+[Unit]
+# Was: Beschreibt den Dienst für systemd und Administratoren.
+# Warum: Statusausgaben zeigen dadurch sofort, wofür die Einheit zuständig ist.
+Description=NetCore-Tetra Media Library (OPEN LAB)
+# Was: Verweist auf ergänzende Betriebsdokumentation.
+# Warum: Administratoren finden dadurch die vorgesehenen Installations- und Fehlerhinweise.
+Documentation=file:/opt/netcore-media-library/README.md
+# Was: Legt die Startreihenfolge gegenüber anderen Einheiten fest.
+# Warum: Abhängige Netzwerk- oder Systemfunktionen müssen zuerst verfügbar sein.
+After=network-online.target netcore-piper.service
+# Was: Nennt Einheiten, die gemeinsam gestartet werden sollen.
+# Warum: Zusammengehörige Dienste stehen dadurch beim Start möglichst vollständig bereit.
+Wants=network-online.target netcore-piper.service
+
+# Was: Beginnt den Abschnitt `Service`.
+# Warum: Zusammengehörige Start-, Laufzeit- oder Installationswerte bleiben dadurch geordnet.
+[Service]
+# Was: Legt fest, wie systemd den Startzustand des Prozesses bewertet.
+# Warum: Systemd kann dadurch korrekt erkennen, wann die Einheit als gestartet gilt.
+Type=simple
+# Was: Legt das Betriebssystemkonto des Dienstes fest.
+# Warum: Der Prozess erhält dadurch nur die vorgesehenen Dateirechte und Berechtigungen.
+User=netcore-media-library
+# Was: Legt die Betriebssystemgruppe des Dienstes fest.
+# Warum: Gemeinsam benötigte Ressourcen können dadurch kontrolliert freigegeben werden.
+Group=netcore-media-library
+# Was: Legt den eigentlichen Startbefehl des Dienstes fest.
+# Warum: Systemd kann den Prozess dadurch mit einem eindeutigen und reproduzierbaren Kommando starten.
+ExecStart=/opt/netcore-media-library/bin/netcore-media-library --config /etc/netcore/media-library.toml
+# Was: Bestimmt das Neustartverhalten nach einem Prozessende.
+# Warum: Der Dienst kann sich dadurch entsprechend seiner Betriebsanforderung selbst erholen.
+Restart=on-failure
+# Was: Legt die Wartezeit vor einem Neustart fest.
+# Warum: Eine kurze Pause verhindert schnelle Endlosschleifen bei dauerhaftem Fehler.
+RestartSec=2
+# Was: Setzt `TimeoutStopSec` im Abschnitt `Service`.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit der Dienst auf jedem System gleich und nachvollziehbar arbeitet.
+TimeoutStopSec=30
+# Was: Legt das Arbeitsverzeichnis des Prozesses fest.
+# Warum: Relative Pfade werden dadurch immer vom erwarteten Ort aus aufgelöst.
+WorkingDirectory=/var/lib/netcore-media-library
+# Was: Setzt `StateDirectory` im Abschnitt `Service`.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit der Dienst auf jedem System gleich und nachvollziehbar arbeitet.
+StateDirectory=netcore-media-library
+# Was: Setzt `RuntimeDirectory` im Abschnitt `Service`.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit der Dienst auf jedem System gleich und nachvollziehbar arbeitet.
+RuntimeDirectory=netcore-media-library
+# Was: Setzt `ConfigurationDirectory` im Abschnitt `Service`.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit der Dienst auf jedem System gleich und nachvollziehbar arbeitet.
+ConfigurationDirectory=netcore
+# Was: Hält lokale Zustands-, Cache- und Arbeitsdateien standardmäßig privat.
+# Warum: Die freigegebenen NFS/SMB-Archivdateien erhalten im Archivcode gezielt 0777/0666;
+# lokale state.json-, Cache- und Asset-Dateien dürfen dadurch nicht versehentlich offen werden.
+UMask=0077
+# Was: Setzt `NoNewPrivileges` im Abschnitt `Service`.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit der Dienst auf jedem System gleich und nachvollziehbar arbeitet.
+NoNewPrivileges=true
+# Was: Setzt `PrivateTmp` im Abschnitt `Service`.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit der Dienst auf jedem System gleich und nachvollziehbar arbeitet.
+PrivateTmp=true
+# Was: Setzt `PrivateDevices` im Abschnitt `Service`.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit der Dienst auf jedem System gleich und nachvollziehbar arbeitet.
+PrivateDevices=true
+# Was: Setzt `ProtectSystem` im Abschnitt `Service`.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit der Dienst auf jedem System gleich und nachvollziehbar arbeitet.
+ProtectSystem=strict
+# Was: Setzt `ProtectHome` im Abschnitt `Service`.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit der Dienst auf jedem System gleich und nachvollziehbar arbeitet.
+ProtectHome=true
+# Was: Setzt `ProtectKernelTunables` im Abschnitt `Service`.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit der Dienst auf jedem System gleich und nachvollziehbar arbeitet.
+ProtectKernelTunables=true
+# Was: Setzt `ProtectKernelModules` im Abschnitt `Service`.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit der Dienst auf jedem System gleich und nachvollziehbar arbeitet.
+ProtectKernelModules=true
+# Was: Setzt `ProtectKernelLogs` im Abschnitt `Service`.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit der Dienst auf jedem System gleich und nachvollziehbar arbeitet.
+ProtectKernelLogs=true
+# Was: Setzt `ProtectControlGroups` im Abschnitt `Service`.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit der Dienst auf jedem System gleich und nachvollziehbar arbeitet.
+ProtectControlGroups=true
+# Was: Setzt `RestrictSUIDSGID` im Abschnitt `Service`.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit der Dienst auf jedem System gleich und nachvollziehbar arbeitet.
+RestrictSUIDSGID=true
+# Was: Setzt `RestrictRealtime` im Abschnitt `Service`.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit der Dienst auf jedem System gleich und nachvollziehbar arbeitet.
+RestrictRealtime=true
+# Was: Setzt `LockPersonality` im Abschnitt `Service`.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit der Dienst auf jedem System gleich und nachvollziehbar arbeitet.
+LockPersonality=true
+# Was: Setzt `MemoryDenyWriteExecute` im Abschnitt `Service`.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit der Dienst auf jedem System gleich und nachvollziehbar arbeitet.
+MemoryDenyWriteExecute=true
+# Was: Setzt `SystemCallArchitectures` im Abschnitt `Service`.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit der Dienst auf jedem System gleich und nachvollziehbar arbeitet.
+SystemCallArchitectures=native
+# Was: Setzt `ReadWritePaths` im Abschnitt `Service`.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit der Dienst auf jedem System gleich und nachvollziehbar arbeitet.
+ReadWritePaths=/var/lib/netcore-media-library -/mnt/nfs-share/Media-Library -/mnt/nfs-share/Recordings -/mnt/nfs-share/TTS-Dateien
+# Was: Setzt `RestrictAddressFamilies` im Abschnitt `Service`.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit der Dienst auf jedem System gleich und nachvollziehbar arbeitet.
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+# Was: Beginnt den Abschnitt `Install`.
+# Warum: Zusammengehörige Start-, Laufzeit- oder Installationswerte bleiben dadurch geordnet.
+[Install]
+# Was: Legt fest, an welches systemd-Ziel die Einheit bei Aktivierung angehängt wird.
+# Warum: Der Dienst startet dadurch automatisch in der vorgesehenen Betriebsphase.
+WantedBy=multi-user.target

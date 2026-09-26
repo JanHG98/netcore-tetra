@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE wml PUBLIC "-//WAPFORUM//DTD WML 1.1//EN" "http://www.wapforum.org/DTD/wml_1.1.xml">
+<wml><card id="main" title="Formulare"><p><b>WAP-Formulare</b><br/>Stoerung, Fahrzeugcheck, Material, Check-in/out und Wartung.<br/><a href="control-room.wml">N</a> <a href="tasks.wml">P</a> <a href="index.wml">H</a></p></card></wml>

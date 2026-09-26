@@ -1,0 +1,616 @@
+use tetra_config::bluestation::SharedConfig;
+use tetra_core::tetra_entities::TetraEntity;
+use tetra_core::{BitBuffer, Sap, SsiType, TdmaTime, TetraAddress};
+use tetra_entities::MessageQueue;
+use tetra_entities::TetraEntityTrait;
+use tetra_entities::cmce::cmce_ms::CmceMs;
+use tetra_entities::cmce::subentities::cc_ms::{CcMsSubentity, MsCcState, MsTxGrantState};
+use tetra_entities::net_control::ControlCommand;
+use tetra_entities::net_control::channel::make_control_link;
+use tetra_entities::net_telemetry::channel::telemetry_channel;
+use tetra_entities::net_telemetry::events::TelemetryEvent;
+use tetra_pdus::cmce::{
+    enums::{
+        call_timeout::CallTimeout, disconnect_cause::DisconnectCause, party_type_identifier::PartyTypeIdentifier,
+        transmission_grant::TransmissionGrant,
+    },
+    fields::basic_service_information::BasicServiceInformation,
+    pdus::{
+        d_disconnect::DDisconnect, d_release::DRelease, d_setup::DSetup, d_tx_ceased::DTxCeased, d_tx_continue::DTxContinue,
+        d_tx_granted::DTxGranted, d_tx_wait::DTxWait, u_alert::UAlert, u_connect::UConnect, u_disconnect::UDisconnect,
+        u_release::URelease, u_setup::USetup,
+        u_tx_ceased::UTxCeased, u_tx_demand::UTxDemand,
+    },
+};
+use tetra_saps::control::enums::{circuit_mode_type::CircuitModeType, communication_type::CommunicationType};
+use tetra_saps::lcmc::{LcmcMleUnitdataInd, LcmcMleUnitdataReq};
+use tetra_saps::tncc;
+use tetra_saps::{SapMsg, SapMsgInner};
+
+#[path = "common/default_stack.rs"]
+mod default_stack;
+
+const CALL_ID: u16 = 77;
+const GSSI: u32 = 91;
+const ISSI: u32 = 1_000_001;
+// A different group member (the current talker). Per ETSI TS 100 392-2
+// cl. 14.5.2.1.2 a group D-SETUP whose calling party is the MS's OWN address is
+// ignored, so late-entry / floor-signalling fixtures must use another user.
+const OTHER_ISSI: u32 = 1_000_009;
+
+fn speech_service(communication_type: CommunicationType) -> BasicServiceInformation {
+    BasicServiceInformation {
+        circuit_mode_type: CircuitModeType::TchS,
+        encryption_flag: false,
+        communication_type,
+        slots_per_frame: None,
+        speech_service: Some(0),
+    }
+}
+
+fn dl_msg<P>(pdu: &P, address: TetraAddress) -> SapMsg
+where
+    P: DlWrite,
+{
+    let mut sdu = BitBuffer::new_autoexpand(128);
+    pdu.write_dl(&mut sdu).unwrap();
+    sdu.seek(0);
+    SapMsg {
+        sap: Sap::LcmcSap,
+        src: TetraEntity::Mle,
+        dest: TetraEntity::Cmce,
+        msg: SapMsgInner::LcmcMleUnitdataInd(LcmcMleUnitdataInd {
+            sdu,
+            handle: 11,
+            endpoint_id: 22,
+            link_id: 33,
+            received_tetra_address: address,
+            chan_change_resp_req: false,
+            chan_change_handle: None,
+        }),
+    }
+}
+
+trait DlWrite {
+    fn write_dl(&self, buffer: &mut BitBuffer) -> Result<(), tetra_core::PduParseErr>;
+}
+
+macro_rules! dl_write {
+    ($ty:ty) => {
+        impl DlWrite for $ty {
+            fn write_dl(&self, buffer: &mut BitBuffer) -> Result<(), tetra_core::PduParseErr> {
+                self.to_bitbuf(buffer)
+            }
+        }
+    };
+}
+
+dl_write!(DSetup);
+dl_write!(DTxGranted);
+dl_write!(DTxWait);
+dl_write!(DTxContinue);
+dl_write!(DTxCeased);
+dl_write!(DDisconnect);
+dl_write!(DRelease);
+
+fn pop_unitdata(queue: &mut MessageQueue) -> LcmcMleUnitdataReq {
+    loop {
+        let msg = queue.pop_front().expect("expected queued SAP message");
+        if let SapMsgInner::LcmcMleUnitdataReq(prim) = msg.msg {
+            return prim;
+        }
+    }
+}
+
+fn pop_config(queue: &mut MessageQueue) -> tetra_saps::lcmc::LcmcMleConfigureReq {
+    loop {
+        let msg = queue.pop_front().expect("expected queued SAP message");
+        if let SapMsgInner::LcmcMleConfigureReq(prim) = msg.msg {
+            return prim;
+        }
+    }
+}
+
+fn group_setup(grant: TransmissionGrant) -> DSetup {
+    DSetup {
+        call_identifier: CALL_ID,
+        call_time_out: CallTimeout::T5m,
+        hook_method_selection: false,
+        simplex_duplex_selection: false,
+        basic_service_information: speech_service(CommunicationType::P2Mp),
+        transmission_grant: grant,
+        transmission_request_permission: false, // ETSI 14.8.43 Table 14.81: 0 = allowed to request
+        call_priority: 0,
+        notification_indicator: None,
+        temporary_address: None,
+        calling_party_address_ssi: Some(OTHER_ISSI),
+        calling_party_extension: None,
+        external_subscriber_number: None,
+        facility: None,
+        dm_ms_address: None,
+        proprietary: None,
+    }
+}
+
+fn tncc_setup_response() -> tncc::TnccSetupResponse {
+    tncc::TnccSetupResponse {
+        access_priority: None,
+        basic_service_information: None,
+        clir_control: None,
+        hook_method_selection: tncc::HookMethodSelection::HookOnHookOffSignallingOrCallAcceptanceSignalling,
+        simplex_duplex_selection: tncc::SimplexDuplexSelection::SimplexOperation,
+        traffic_stealing: None,
+    }
+}
+
+fn tncc_complete_request() -> tncc::TnccCompleteRequest {
+    tncc::TnccCompleteRequest {
+        access_priority: None,
+        basic_service_information_offered: None,
+        hook_method: tncc::HookMethodSelection::HookOnHookOffSignallingOrCallAcceptanceSignalling,
+        simplex_duplex: tncc::SimplexDuplexSelection::SimplexOperation,
+        traffic_stealing: None,
+    }
+}
+fn shared_ms_config() -> SharedConfig {
+    SharedConfig::from_parts(default_stack::default_test_config_ms(), None)
+}
+
+fn tncc_basic() -> tetra_saps::tncc::TnccBasicServiceInformation {
+    use tetra_saps::tncc as t;
+    t::TnccBasicServiceInformation {
+        circuit_mode_service: t::CircuitModeService::SpeechService,
+        communication_type: t::CommunicationType::PointToMultipoint,
+        data_service: None,
+        data_call_capacity: None,
+        encryption_flag: t::EncryptionFlag::ClearEndToEndTransmission,
+        speech_service: Some(t::SpeechService::TetraEncodedOneTimeslotSpeech),
+    }
+}
+
+fn tncc_setup_request() -> tetra_saps::tncc::TnccSetupRequest {
+    use tetra_saps::tncc as t;
+    t::TnccSetupRequest {
+        access_priority: None,
+        area_selection: None,
+        basic_service_information: tncc_basic(),
+        call_priority: t::CallPriority::PriorityNotDefined,
+        called_party_type_identifier: t::CalledPartyTypeIdentifier::Ssi,
+        called_party_sna: None,
+        called_party_ssi: Some(GSSI),
+        called_party_extension: None,
+        external_subscriber_number_called: None,
+        clir_control: None,
+        hook_method_selection: t::HookMethodSelection::NoHookSignallingDirectThroughConnect,
+        request_to_transmit_send_data: t::RequestToTransmitSendData::RequestToTransmitSendData,
+        simplex_duplex_selection: t::SimplexDuplexSelection::SimplexOperation,
+        traffic_stealing: None,
+    }
+}
+
+#[test]
+fn cmce_ms_tncc_setup_command_emits_decodable_u_setup() {
+    let (dispatcher, endpoint) = make_control_link();
+    let mut cmce = CmceMs::new(shared_ms_config(), None, Some(endpoint));
+    let mut q = MessageQueue::new();
+
+    dispatcher.send(ControlCommand::TnccSetup {
+        handle: 44,
+        request: Box::new(tncc_setup_request()),
+    });
+    cmce.tick_start(&mut q, TdmaTime::default());
+
+    let ack = dispatcher.try_recv_response().expect("TNCC ack");
+    assert!(matches!(
+        ack,
+        tetra_entities::net_control::ControlResponse::TnccAck {
+            handle: 44,
+            accepted: true,
+            ..
+        }
+    ));
+    let mut prim = pop_unitdata(&mut q);
+    let pdu = USetup::from_bitbuf(&mut prim.sdu).unwrap();
+    assert_eq!(pdu.called_party_ssi, Some(GSSI as u64));
+    assert!(pdu.request_to_transmit_send_data);
+    assert_eq!(pdu.basic_service_information.communication_type, CommunicationType::P2Mp);
+}
+
+/// A TNCC-SETUP whose called party SSI exceeds the 24-bit SSI range (cl. 7)
+/// must be rejected with a negative TNCC ack — NOT crash the stack while
+/// serialising the U-SETUP (regression: value exceeds num_bits 24 panic).
+#[test]
+fn cmce_ms_tncc_setup_out_of_range_ssi_rejected_without_panic() {
+    let (dispatcher, endpoint) = make_control_link();
+    let mut cmce = CmceMs::new(shared_ms_config(), None, Some(endpoint));
+    let mut q = MessageQueue::new();
+
+    let mut request = tncc_setup_request();
+    request.called_party_ssi = Some(58_555_588); // > 0xFF_FFFF (16_777_215)
+    dispatcher.send(ControlCommand::TnccSetup {
+        handle: 45,
+        request: Box::new(request),
+    });
+    cmce.tick_start(&mut q, TdmaTime::default());
+
+    let ack = dispatcher.try_recv_response().expect("TNCC ack");
+    match ack {
+        tetra_entities::net_control::ControlResponse::TnccAck { handle, accepted, detail } => {
+            assert_eq!(handle, 45);
+            assert!(!accepted, "out-of-range called SSI must be refused");
+            assert!(detail.unwrap_or_default().contains("out of range"), "TN told why it failed");
+        }
+        other => panic!("expected TnccAck, got {other:?}"),
+    }
+    // No U-SETUP must have been emitted.
+    assert!(q.pop_front().is_none(), "no PDU emitted for a rejected set-up");
+}
+
+/// A TNSDS-STATUS whose called party SSI exceeds the 24-bit SSI range must be
+/// refused with a negative TNSDS ack rather than panicking the U-STATUS
+/// serialiser (same class of bug as the U-SETUP crash).
+#[test]
+fn cmce_ms_tnsds_status_out_of_range_ssi_rejected_without_panic() {
+    use tetra_saps::tnsds::TnsdsStatusRequest;
+    let (dispatcher, endpoint) = make_control_link();
+    let mut cmce = CmceMs::new(shared_ms_config(), None, Some(endpoint));
+    let mut q = MessageQueue::new();
+
+    dispatcher.send(ControlCommand::TnsdsStatus {
+        handle: 46,
+        request: TnsdsStatusRequest {
+            called_party_ssi: 58_555_588, // > 0xFF_FFFF
+            called_party_is_group: false,
+            status_number: 0x8002,
+        },
+    });
+    cmce.tick_start(&mut q, TdmaTime::default());
+
+    let ack = dispatcher.try_recv_response().expect("TNSDS ack");
+    match ack {
+        tetra_entities::net_control::ControlResponse::TnsdsAck { handle, accepted, detail } => {
+            assert_eq!(handle, 46);
+            assert!(!accepted, "out-of-range status destination must be refused");
+            assert!(detail.unwrap_or_default().contains("out of range"));
+        }
+        other => panic!("expected TnsdsAck, got {other:?}"),
+    }
+    assert!(q.pop_front().is_none(), "no U-STATUS emitted for a rejected status message");
+}
+
+#[test]
+fn cmce_ms_downlink_setup_emits_tncc_setup_indication() {
+    let (sink, source) = telemetry_channel();
+    let mut cmce = CmceMs::new(shared_ms_config(), Some(sink), None);
+    let mut q = MessageQueue::new();
+
+    cmce.rx_prim(
+        &mut q,
+        dl_msg(
+            &group_setup(TransmissionGrant::GrantedToOtherUser),
+            TetraAddress::new(GSSI, SsiType::Gssi),
+        ),
+    );
+
+    let event = source.try_recv().expect("TNCC telemetry");
+    let TelemetryEvent::TnccSetupIndication {
+        call_identifier,
+        indication,
+    } = event
+    else {
+        panic!("expected TNCC setup indication");
+    };
+    assert_eq!(call_identifier, CALL_ID);
+    assert_eq!(indication.called_party_ssi, GSSI);
+    assert_eq!(indication.calling_party_ssi, Some(OTHER_ISSI));
+}
+#[test]
+fn ms_originated_setup_pdus_decode_with_tetra_pdus() {
+    let mut cc = CcMsSubentity::new_with_config(shared_ms_config(), None);
+    let mut q = MessageQueue::new();
+
+    cc.originate_group_call(&mut q, GSSI, speech_service(CommunicationType::P2Mp), false);
+    let mut prim = pop_unitdata(&mut q);
+    let pdu = USetup::from_bitbuf(&mut prim.sdu).unwrap();
+    assert_eq!(pdu.called_party_type_identifier, PartyTypeIdentifier::Ssi);
+    assert_eq!(pdu.called_party_ssi, Some(GSSI as u64));
+    assert_eq!(pdu.basic_service_information.communication_type, CommunicationType::P2Mp);
+
+    cc.originate_individual_call(&mut q, ISSI, speech_service(CommunicationType::P2p), true, true);
+    let mut prim = pop_unitdata(&mut q);
+    let pdu = USetup::from_bitbuf(&mut prim.sdu).unwrap();
+    assert_eq!(pdu.called_party_ssi, Some(ISSI as u64));
+    assert!(pdu.hook_method_selection);
+    assert!(pdu.simplex_duplex_selection);
+    assert!(pdu.request_to_transmit_send_data);
+    assert_eq!(pdu.basic_service_information.communication_type, CommunicationType::P2p);
+}
+
+#[test]
+fn active_group_tx_demand_ceased_and_disconnect_pdus_decode() {
+    let mut cc = CcMsSubentity::new(None);
+    let mut q = MessageQueue::new();
+    cc.route_rd_deliver(
+        &mut q,
+        dl_msg(&group_setup(TransmissionGrant::NotGranted), TetraAddress::new(GSSI, SsiType::Gssi)),
+    );
+    assert_eq!(cc.call(CALL_ID).unwrap().state, MsCcState::CallActive);
+
+    assert!(cc.request_tx(&mut q, CALL_ID, 2));
+    let mut prim = pop_unitdata(&mut q);
+    let pdu = UTxDemand::from_bitbuf(&mut prim.sdu).unwrap();
+    assert_eq!(pdu.call_identifier, CALL_ID);
+    assert_eq!(pdu.tx_demand_priority, 2);
+
+    assert!(cc.cease_tx(&mut q, CALL_ID));
+    let mut prim = pop_unitdata(&mut q);
+    // M4b (cl. 14.5.2): no traffic channel is assigned here (the D-SETUP granted
+    // no U-plane), so the cease falls back to the assigned control channel as
+    // plain acknowledged BL-DATA — it is NOT stolen. Stealing pre-TCH would force
+    // the LLC onto unacknowledged BL-UDATA, which the SwMI discards.
+    assert!(!prim.stealing_permission);
+    assert_eq!(prim.link_id, 33, "pre-TCH cease stays on the control link");
+    let pdu = UTxCeased::from_bitbuf(&mut prim.sdu).unwrap();
+    assert_eq!(pdu.call_identifier, CALL_ID);
+    let cfg = pop_config(&mut q);
+    assert!(!cfg.switch_u_plane);
+
+    assert!(cc.disconnect_call(&mut q, CALL_ID, DisconnectCause::UserRequestedDisconnection));
+    let mut prim = pop_unitdata(&mut q);
+    let pdu = UDisconnect::from_bitbuf(&mut prim.sdu).unwrap();
+    assert_eq!(pdu.call_identifier, CALL_ID);
+    assert_eq!(pdu.disconnect_cause, DisconnectCause::UserRequestedDisconnection);
+}
+
+/// ETSI TS 100 392-2 cl. 14.5 / basic-link addressing cl. 21 & 23; ACK
+/// correlation cl. 22.3.2.3: every uplink CMCE PDU on a GROUP call (here
+/// U-DISCONNECT) must be keyed at layer 2 on the MS's OWN individual ISSI, not
+/// the group SSI. The group identity is carried *inside* the PDU (Call
+/// identifier / Called-party element, cl. 14.8.4 / 14.8.28), never as the
+/// layer-2 address.
+///
+/// Regression: on the real network a group-call U-DISCONNECT keyed on the GSSI
+/// produced "received unexpected ACK for SSI <own ISSI>" plus
+/// "schedule_retransmissions: SSI <group> exhausted retransmissions" — the
+/// acknowledged BL-DATA was keyed on the group while the SwMI's BL-ACK is
+/// addressed to the MS's ISSI, so the ACK never matched and the frame
+/// retransmitted to exhaustion. The floor path (M4c) and U-SETUP already
+/// address own ISSI; this covers the remaining call-control senders.
+#[test]
+fn group_call_uplink_signalling_keyed_on_own_issi() {
+    let mut cc = CcMsSubentity::new_with_config(shared_ms_config(), None);
+    let mut q = MessageQueue::new();
+
+    // Genuine other-user group set-up on the GSSI -> creates the group call.
+    cc.route_rd_deliver(
+        &mut q,
+        dl_msg(&group_setup(TransmissionGrant::NotGranted), TetraAddress::new(GSSI, SsiType::Gssi)),
+    );
+    assert_eq!(cc.call(CALL_ID).unwrap().state, MsCcState::CallActive);
+    while q.pop_front().is_some() {}
+
+    assert!(cc.disconnect_call(&mut q, CALL_ID, DisconnectCause::UserRequestedDisconnection));
+    let mut prim = pop_unitdata(&mut q);
+    // Layer-2 address is the MS's own individual ISSI, NOT the group SSI.
+    assert_eq!(prim.main_address.ssi, ISSI, "uplink U-DISCONNECT must be keyed on own ISSI");
+    assert_eq!(prim.main_address.ssi_type, SsiType::Issi);
+    // The group call is still identified inside the PDU body.
+    let pdu = UDisconnect::from_bitbuf(&mut prim.sdu).unwrap();
+    assert_eq!(pdu.call_identifier, CALL_ID);
+}
+
+/// ETSI TS 100 392-2 Table 14.81: the "transmission request permission" element
+/// is 0 = allowed to request, 1 = NOT allowed to request. A SwMI that signals
+/// bit 1 must block a subsequent U-TX-DEMAND; bit 0 must permit it.
+///
+/// Regression: the MS previously stored the raw permission bit into its
+/// `transmission_request_allowed` flag, inverting the meaning — so a SwMI's
+/// normal "allowed" (bit 0) was read as "disallowed" and every U-TX-DEMAND after
+/// the first grant was rejected ("SwMI disallows TX DEMAND") on the real network.
+#[test]
+fn tx_demand_gated_by_transmission_request_permission_per_spec() {
+    let mut cc = CcMsSubentity::new(None);
+    let mut q = MessageQueue::new();
+
+    // SwMI forbids requests (bit 1 = not allowed): U-TX-DEMAND must be rejected.
+    let mut setup = group_setup(TransmissionGrant::GrantedToOtherUser);
+    setup.transmission_request_permission = true; // 1 = not allowed to request
+    cc.route_rd_deliver(&mut q, dl_msg(&setup, TetraAddress::new(GSSI, SsiType::Gssi)));
+    while q.pop_front().is_some() {}
+    assert!(
+        !cc.request_tx(&mut q, CALL_ID, 1),
+        "bit 1 (not allowed) must block U-TX-DEMAND"
+    );
+
+    // SwMI permits requests (bit 0 = allowed): a D-TX-CEASED re-opens the floor.
+    let ceased = DTxCeased {
+        call_identifier: CALL_ID,
+        transmission_request_permission: false, // 0 = allowed to request
+        notification_indicator: None,
+        facility: None,
+        dm_ms_address: None,
+        proprietary: None,
+    };
+    cc.route_rd_deliver(&mut q, dl_msg(&ceased, TetraAddress::new(GSSI, SsiType::Gssi)));
+    while q.pop_front().is_some() {}
+    assert!(
+        cc.request_tx(&mut q, CALL_ID, 1),
+        "bit 0 (allowed) must permit U-TX-DEMAND"
+    );
+}
+
+#[test]
+fn incoming_individual_answer_and_network_disconnect_pdus_decode() {
+    let mut cc = CcMsSubentity::new(None);
+    let mut q = MessageQueue::new();
+    let mut setup = group_setup(TransmissionGrant::NotGranted);
+    setup.basic_service_information = speech_service(CommunicationType::P2p);
+    setup.hook_method_selection = true; // on/off-hook signalling (cl. 14.8.23)
+    cc.route_rd_deliver(&mut q, dl_msg(&setup, TetraAddress::new(ISSI, SsiType::Issi)));
+    assert_eq!(cc.call(CALL_ID).unwrap().state, MsCcState::MtCallSetup);
+
+    // On/off-hook (cl. 14.5.1.1.1): the TNCC-SETUP response only rings the far
+    // end with U-ALERT; the call stays in MT-CALL-SETUP, no U-CONNECT yet.
+    assert!(cc.handle_tncc_setup_response(&mut q, CALL_ID, &tncc_setup_response()));
+    let mut prim = pop_unitdata(&mut q);
+    let alert = UAlert::from_bitbuf(&mut prim.sdu).unwrap();
+    assert_eq!(alert.call_identifier, CALL_ID);
+    assert_eq!(cc.call(CALL_ID).unwrap().state, MsCcState::MtCallSetup);
+
+    // Local pickup: TNCC-COMPLETE sends U-CONNECT to connect the call.
+    assert!(cc.handle_tncc_complete(&mut q, CALL_ID, &tncc_complete_request()));
+    let mut prim = pop_unitdata(&mut q);
+    let connect = UConnect::from_bitbuf(&mut prim.sdu).unwrap();
+    assert_eq!(connect.call_identifier, CALL_ID);
+
+    let disconnect = DDisconnect {
+        call_identifier: CALL_ID,
+        disconnect_cause: DisconnectCause::SwmiRequestedDisconnection,
+        notification_indicator: None,
+        facility: None,
+        proprietary: None,
+    };
+    cc.route_rd_deliver(&mut q, dl_msg(&disconnect, TetraAddress::new(ISSI, SsiType::Issi)));
+    let mut prim = pop_unitdata(&mut q);
+    let release = URelease::from_bitbuf(&mut prim.sdu).unwrap();
+    assert_eq!(release.call_identifier, CALL_ID);
+    assert_eq!(release.disconnect_cause, DisconnectCause::SwmiRequestedDisconnection);
+    assert!(!pop_config(&mut q).switch_u_plane);
+}
+
+#[test]
+fn downlink_grant_wait_continue_and_release_update_ms_state() {
+    let mut cc = CcMsSubentity::new(None);
+    let mut q = MessageQueue::new();
+    cc.route_rd_deliver(
+        &mut q,
+        dl_msg(
+            &group_setup(TransmissionGrant::GrantedToOtherUser),
+            TetraAddress::new(GSSI, SsiType::Gssi),
+        ),
+    );
+    let call = cc.call(CALL_ID).unwrap();
+    assert_eq!(call.tx_grant_state, MsTxGrantState::GrantedOther);
+    let cfg = pop_config(&mut q);
+    assert!(cfg.switch_u_plane);
+    assert!(!cfg.tx_grant);
+
+    let granted = DTxGranted {
+        call_identifier: CALL_ID,
+        transmission_grant: TransmissionGrant::Granted.into_raw() as u8,
+        transmission_request_permission: false, // ETSI 14.8.43 Table 14.81: 0 = allowed to request
+        encryption_control: false,
+        reserved: false,
+        notification_indicator: None,
+        transmitting_party_type_identifier: None,
+        transmitting_party_address_ssi: None,
+        transmitting_party_extension: None,
+        external_subscriber_number: None,
+        facility: None,
+        dm_ms_address: None,
+        proprietary: None,
+    };
+    cc.route_rd_deliver(&mut q, dl_msg(&granted, TetraAddress::new(GSSI, SsiType::Gssi)));
+    assert_eq!(cc.call(CALL_ID).unwrap().tx_grant_state, MsTxGrantState::GrantedSelf);
+    assert!(pop_config(&mut q).tx_grant);
+
+    let wait = DTxWait {
+        call_identifier: CALL_ID,
+        transmission_request_permission: false, // ETSI 14.8.43 Table 14.81: 0 = allowed to request
+        notification_indicator: None,
+        facility: None,
+        dm_ms_address: None,
+        proprietary: None,
+    };
+    cc.route_rd_deliver(&mut q, dl_msg(&wait, TetraAddress::new(GSSI, SsiType::Gssi)));
+    assert_eq!(cc.call(CALL_ID).unwrap().state, MsCcState::Wait);
+    assert!(!pop_config(&mut q).switch_u_plane);
+
+    let cont = DTxContinue {
+        call_identifier: CALL_ID,
+        do_continue: true,
+        transmission_request_permission: false, // ETSI 14.8.43 Table 14.81: 0 = allowed to request
+        notification_indicator: None,
+        facility: None,
+        dm_ms_address: None,
+        proprietary: None,
+    };
+    cc.route_rd_deliver(&mut q, dl_msg(&cont, TetraAddress::new(GSSI, SsiType::Gssi)));
+    assert_eq!(cc.call(CALL_ID).unwrap().state, MsCcState::CallActive);
+    assert!(pop_config(&mut q).switch_u_plane);
+
+    let release = DRelease {
+        call_identifier: CALL_ID,
+        disconnect_cause: DisconnectCause::SwmiRequestedDisconnection,
+        notification_indicator: None,
+        facility: None,
+        proprietary: None,
+    };
+    cc.route_rd_deliver(&mut q, dl_msg(&release, TetraAddress::new(GSSI, SsiType::Gssi)));
+    assert_eq!(cc.call_count(), 0);
+    assert!(!pop_config(&mut q).switch_u_plane);
+}
+
+/// M4b talker floor lifecycle (cl. 14.5.2) on an assigned traffic channel:
+/// PTT press -> U-TX-DEMAND stolen on the TCH-associated link -> await
+/// D-TX-GRANTED -> resume transmitting (U-plane tx-grant on) -> PTT release ->
+/// U-TX-CEASED stolen on the TCH-associated link -> idle (U-plane tx off).
+/// Proves the floor PDUs are carried as stolen, acknowledged BL-DATA on the TCH
+/// (link_id 2) once the call is on the traffic channel, not on MCCH.
+#[test]
+fn talker_floor_lifecycle_steals_tch_end_to_end() {
+    let mut cc = CcMsSubentity::new(None);
+    let mut q = MessageQueue::new();
+
+    // Call set up on a traffic channel, initially listening (granted to other).
+    cc.route_rd_deliver(
+        &mut q,
+        dl_msg(
+            &group_setup(TransmissionGrant::GrantedToOtherUser),
+            TetraAddress::new(GSSI, SsiType::Gssi),
+        ),
+    );
+    assert_eq!(cc.call(CALL_ID).unwrap().tx_grant_state, MsTxGrantState::GrantedOther);
+    assert!(pop_config(&mut q).switch_u_plane, "on the traffic channel (U-plane on)");
+
+    // PTT press: U-TX-DEMAND is stolen from the receive TCH half-slot.
+    assert!(cc.request_tx(&mut q, CALL_ID, 1));
+    let demand = pop_unitdata(&mut q);
+    assert!(demand.stealing_permission, "demand on TCH must steal");
+    assert_eq!(demand.link_id, 2, "demand on the TCH-associated basic link");
+    let mut demand_sdu = demand.sdu;
+    assert!(UTxDemand::from_bitbuf(&mut demand_sdu).is_ok());
+
+    // Await D-TX-GRANTED: grant to self -> resume transmitting (tx-grant on).
+    let granted = DTxGranted {
+        call_identifier: CALL_ID,
+        transmission_grant: TransmissionGrant::Granted.into_raw() as u8,
+        transmission_request_permission: false, // ETSI 14.8.43 Table 14.81: 0 = allowed to request
+        encryption_control: false,
+        reserved: false,
+        notification_indicator: None,
+        transmitting_party_type_identifier: None,
+        transmitting_party_address_ssi: None,
+        transmitting_party_extension: None,
+        external_subscriber_number: None,
+        facility: None,
+        dm_ms_address: None,
+        proprietary: None,
+    };
+    cc.route_rd_deliver(&mut q, dl_msg(&granted, TetraAddress::new(GSSI, SsiType::Gssi)));
+    assert_eq!(cc.call(CALL_ID).unwrap().tx_grant_state, MsTxGrantState::GrantedSelf);
+    let cfg = pop_config(&mut q);
+    assert!(cfg.switch_u_plane && cfg.tx_grant, "uplink transmit resumed");
+
+    // PTT release: U-TX-CEASED is stolen from the transmit TCH half-slot, then
+    // the U-plane transmit is torn down (talker returns to idle).
+    assert!(cc.cease_tx(&mut q, CALL_ID));
+    let ceased = pop_unitdata(&mut q);
+    assert!(ceased.stealing_permission, "cease on TCH must steal");
+    assert!(ceased.stealing_repeats_flag);
+    assert_eq!(ceased.link_id, 2, "cease on the TCH-associated basic link");
+    let mut ceased_sdu = ceased.sdu;
+    assert!(UTxCeased::from_bitbuf(&mut ceased_sdu).is_ok());
+    assert_eq!(cc.call(CALL_ID).unwrap().tx_grant_state, MsTxGrantState::None);
+    assert!(!pop_config(&mut q).switch_u_plane, "U-plane torn down (idle)");
+}

@@ -1,0 +1,36 @@
+# In /etc/netcore/iot-gateway.toml übernehmen und Seriennummer/Kanal anpassen.
+
+[[homematic_datapoints]]
+id = "rack_temperature"
+name = "Rack Temperatur"
+enabled = true
+address = "000A1B2C3D4E5F:1"
+parameter = "ACTUAL_TEMPERATURE"
+value_type = "float"
+platform = "sensor"
+device_class = "temperature"
+unit = "°C"
+writable = false
+
+[[homematic_datapoints]]
+id = "rack_door"
+name = "Rack Tür"
+enabled = true
+address = "000A1B2C3D4E5F:1"
+parameter = "STATE"
+value_type = "bool"
+platform = "binary_sensor"
+device_class = "door"
+writable = false
+
+# Schreibbarer Labordatenpunkt. Erst nach expliziter Aktivierung von allow_writes
+# und der standardmäßig deaktivierten lab-* Policy nutzbar.
+[[homematic_datapoints]]
+id = "lab-relay-ccu"
+name = "Lab Relais CCU"
+enabled = true
+address = "000A1B2C3D4E5F:4"
+parameter = "STATE"
+value_type = "bool"
+platform = "switch"
+writable = true

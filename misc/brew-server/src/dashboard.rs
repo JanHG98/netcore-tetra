@@ -1,0 +1,1241 @@
+use crate::{
+    config,
+    control::{self, ControlCommand, SendError},
+    state::AppState,
+    telemetry::TelemetryBts,
+};
+use anyhow::Context;
+use axum::{
+    extract::{Path, State, ws::{Message, WebSocket, WebSocketUpgrade}},
+    http::{header, HeaderMap, HeaderValue, StatusCode},
+    middleware::{self, Next},
+    response::{Html, IntoResponse, Response},
+    routing::get,
+    Json, Router,
+};
+use axum::extract::Request;
+use base64::Engine;
+use std::{collections::HashMap, sync::Arc};
+
+/// Server version shown under the "Live" indicator in every page header.
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// Runs the monitoring dashboard on its own listener (separate from the Brew
+/// API). Gated behind optional HTTP Basic auth and optional TLS via the
+/// `[dashboard]` config section. Returns immediately if disabled.
+pub async fn run(state: Arc<AppState>) -> anyhow::Result<()> {
+    let cfg = &state.config.dashboard;
+    if !cfg.enabled {
+        return Ok(());
+    }
+
+    // Settings (viewing and editing server config) is split into its own
+    // sub-router with an extra require_admin layer, merged into the rest of
+    // the dashboard. require_basic below applies to the merged whole and
+    // runs first (authenticate), then require_admin runs for just these
+    // routes (authorize) -- see both functions' docs.
+    let settings_routes = Router::new()
+        .route("/settings", get(settings_page))
+        .route("/api/config/raw", get(config_raw_get).put(config_raw_put))
+        .route("/api/config/sip/full", get(sip_config_full))
+        .route("/api/config/sip/extensions/{user}", axum::routing::post(upsert_sip_extension).delete(delete_sip_extension))
+        .route("/api/config/sip/trunks/{name}", axum::routing::post(upsert_sip_trunk).delete(delete_sip_trunk))
+        .route("/api/config/sip/routes", axum::routing::post(upsert_sip_route))
+        .route("/api/config/sip/routes/{name}", axum::routing::delete(delete_sip_route))
+        .route("/api/config/bts-locations/{username}", axum::routing::post(upsert_bts_location).delete(delete_bts_location))
+        .route_layer(middleware::from_fn_with_state(state.clone(), require_admin));
+
+    let app = Router::new()
+        .route("/", get(index))
+        .route("/calls", get(calls_page))
+        .route("/sds", get(sds_page))
+        .route("/telemetry-sds", get(telemetry_sds_page))
+        .route("/registrations", get(registrations_page))
+        .route("/connections", get(connections_page))
+        .route("/map", get(map_page))
+        .route("/api/status", get(snapshot))
+        .route("/api/live", get(live))
+        .route("/api/telemetry", get(telemetry_snapshot))
+        .route("/api/rssi", get(brew_rssi_snapshot))
+        .route("/api/registrations", get(registration_log))
+        .route("/api/connections", get(connections_snapshot))
+        .route("/api/positions", get(positions_snapshot))
+        .route("/api/bts-locations", get(bts_locations_snapshot))
+        .route("/api/control", get(control_list))
+        .route("/api/control/{id}", axum::routing::post(control_command))
+        .route("/sip", get(sip_page))
+        .route("/sip-config", get(sip_config_page))
+        .route("/api/sip", get(sip_snapshot))
+        .route("/api/sip/config", get(sip_config))
+        .route("/api/whoami", get(whoami))
+        .merge(settings_routes)
+        .route_layer(middleware::from_fn_with_state(state.clone(), require_basic))
+        .with_state(state.clone());
+
+    if cfg.tls.enabled {
+        let rustls_config = axum_server::tls_rustls::RustlsConfig::from_pem_file(
+            &cfg.tls.cert_path,
+            &cfg.tls.key_path,
+        )
+        .await
+        .with_context(|| {
+            format!(
+                "loading dashboard TLS cert {} and key {}",
+                cfg.tls.cert_path.display(),
+                cfg.tls.key_path.display()
+            )
+        })?;
+        tracing::info!(listen=%cfg.listen, auth=!cfg.users.is_empty(), tls=true, "dashboard listening (TLS)");
+        axum_server::bind_rustls(cfg.listen, rustls_config)
+            .serve(app.into_make_service())
+            .await?;
+    } else {
+        let listener = tokio::net::TcpListener::bind(cfg.listen).await?;
+        tracing::info!(listen=%cfg.listen, auth=!cfg.users.is_empty(), tls=false, "dashboard listening");
+        axum::serve(listener, app).await?;
+    }
+    Ok(())
+}
+
+/// HTTP Basic auth guard for every dashboard route (including the `/api/live`
+/// WebSocket upgrade, which browsers authenticate with a normal Authorization
+/// header on the handshake). No configured users means auth is disabled.
+async fn require_basic(State(state): State<Arc<AppState>>, request: Request, next: Next) -> Response {
+    let users = &state.config.dashboard.users;
+    if users.is_empty() || basic_username(users, request.headers()).is_some() {
+        return next.run(request).await;
+    }
+    basic_challenge(&state.config.dashboard.realm)
+}
+
+/// Guards the settings sub-router (see `run`): only usernames listed in
+/// `[dashboard].admins` may view or change server config. Runs *after*
+/// `require_basic` (which already rejected a bad/missing credential), so
+/// this only needs to decide authorization, not authentication -- an empty
+/// `admins` list means "every dashboard user", matching this feature's
+/// pre-existing all-or-nothing behavior for anyone who doesn't need the
+/// split. A denied request gets a real `403` with a short explanation, not
+/// a bare/blank page, since the settings *page itself* is gated here (not
+/// just its data), so a non-admin following the Settings link needs to
+/// understand why nothing loaded.
+async fn require_admin(State(state): State<Arc<AppState>>, request: Request, next: Next) -> Response {
+    let cfg = &state.config.dashboard;
+    if cfg.users.is_empty() || cfg.admins.is_empty() {
+        return next.run(request).await;
+    }
+    match basic_username(&cfg.users, request.headers()) {
+        Some(user) if cfg.admins.iter().any(|a| a == &user) => next.run(request).await,
+        _ => (StatusCode::FORBIDDEN, "Forbidden: this dashboard user is not listed in [dashboard].admins\n").into_response(),
+    }
+}
+
+/// Returns the authenticated username for `/api/whoami` -- lets the
+/// dashboard's own JS decide whether to show the Settings nav link, without
+/// duplicating the admin check client-side (the real enforcement is
+/// `require_admin`; this is purely a UI convenience).
+async fn whoami(State(state): State<Arc<AppState>>, headers: HeaderMap) -> Json<serde_json::Value> {
+    let cfg = &state.config.dashboard;
+    let username = basic_username(&cfg.users, &headers);
+    let admin = match &username {
+        _ if cfg.users.is_empty() => true, // auth disabled: everyone is effectively admin
+        Some(user) => cfg.admins.is_empty() || cfg.admins.iter().any(|a| a == user),
+        None => false,
+    };
+    Json(serde_json::json!({ "username": username, "admin": admin }))
+}
+
+/// Validates the request's HTTP Basic credentials against `users` and
+/// returns the authenticated username, or `None` if missing/invalid.
+fn basic_username(users: &HashMap<String, String>, headers: &HeaderMap) -> Option<String> {
+    let value = headers.get(header::AUTHORIZATION).and_then(|v| v.to_str().ok())?;
+    let b64 = value.strip_prefix("Basic ")?;
+    let decoded = base64::engine::general_purpose::STANDARD.decode(b64).ok()?;
+    let text = String::from_utf8(decoded).ok()?;
+    let (user, pass) = text.split_once(':')?;
+    if users.get(user).map(|p| p == pass).unwrap_or(false) {
+        Some(user.to_string())
+    } else {
+        None
+    }
+}
+
+fn basic_challenge(realm: &str) -> Response {
+    let mut response = StatusCode::UNAUTHORIZED.into_response();
+    response.headers_mut().insert(
+        header::WWW_AUTHENTICATE,
+        HeaderValue::from_str(&format!("Basic realm=\"{realm}\"")).unwrap(),
+    );
+    response
+}
+
+/// The main dashboard HTML with the shared stylesheet substituted in, built
+/// once on first access.
+static INDEX_HTML: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| HTML.replace("__STYLE__", STYLE).replace("__VERSION__", VERSION));
+
+pub async fn index() -> Html<&'static str> { Html(INDEX_HTML.as_str()) }
+
+/// Builds a standalone, auto-refreshing log page for one table. `endpoint` is
+/// the JSON API the page polls; `extract_js` is a JS expression that, given the
+/// parsed response bound to `d`, yields the array of items to paginate;
+/// `row_js` renders one item to a `<tr>`; `columns` are the table headers.
+fn log_page(title: &str, endpoint: &str, extract_js: &str, row_js: &str, columns: &[&str], per_page: usize, empty_msg: &str) -> String {
+    let headers: String = columns.iter().map(|c| format!("<th>{c}</th>")).collect();
+    let colspan = columns.len();
+    format!(r#"<!doctype html><html><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>{title} - TETRA Network</title>{style}</head><body><header><h1>{title}</h1><div class=hdr-status><span class=live></span><span id=status>Live</span><div class=hdr-user><span id=whoami></span><button id=logout-btn onclick="doLogout()">Logout</button></div><div class=ver>v{ver}</div></div></header><main class=wrap>
+<p><a class=backlink href="/">&larr; Back to dashboard</a></p>
+<section class=panel><table><thead><tr>{headers}</tr></thead><tbody id=log></tbody></table><div class=pager id=log-pager></div></section>
+</main><script>
+const $=id=>document.getElementById(id);const dt=x=>new Date(x).toLocaleTimeString();const dur=(a,b)=>Math.max(0,Math.floor(((b||Date.now())-a)/1000))+'s';const esc=s=>String(s??'').replace(/[&<>]/g,c=>({{'&':'&amp;','<':'&lt;','>':'&gt;'}}[c]));
+const pages={{}};
+function renderPaged(bodyId,items,rowFn,perPage,colspan,emptyMsg){{
+  const body=$(bodyId),pager=$(bodyId+'-pager');
+  const total=items.length,pageCount=Math.max(1,Math.ceil(total/perPage));
+  if(pages[bodyId]==null)pages[bodyId]=0;
+  if(pages[bodyId]>pageCount-1)pages[bodyId]=pageCount-1;
+  if(pages[bodyId]<0)pages[bodyId]=0;
+  const page=pages[bodyId],start=page*perPage;
+  const slice=items.slice(start,start+perPage);
+  body.innerHTML=slice.map(rowFn).join('')||`<tr><td colspan=${{colspan}} class=muted>${{emptyMsg}}</td></tr>`;
+  if(pager){{
+    if(total<=perPage){{pager.innerHTML='';}}
+    else{{
+      const from=start+1,to=start+slice.length;
+      pager.innerHTML=`<button data-pg="${{bodyId}}" data-dir="-1"${{page<=0?' disabled':''}}>&larr; Prev</button>`+
+        `<span class=pginfo>${{from}}\u2013${{to}} of ${{total}} (page ${{page+1}}/${{pageCount}})</span>`+
+        `<button data-pg="${{bodyId}}" data-dir="1"${{page>=pageCount-1?' disabled':''}}>Next &rarr;</button>`;
+    }}
+  }}
+}}
+let last=[];
+document.addEventListener('click',e=>{{const b=e.target.closest('button[data-pg]');if(!b)return;pages['log']=(pages['log']||0)+parseInt(b.getAttribute('data-dir'),10);draw();}});
+function draw(){{renderPaged('log',last,x=>{row_js},{per_page},{colspan},'{empty_msg}');}}
+async function load(){{try{{const d=await(await fetch('{endpoint}')).json();last={extract_js};draw();$('status').textContent='Live';}}catch(e){{$('status').textContent='Disconnected';}}}}
+load();setInterval(load,2000);
+function doLogout(){{location.href=location.protocol+'//logout:'+Date.now()+'@'+location.host+location.pathname;}}
+fetch('/api/whoami').then(r=>r.json()).then(w=>{{if(w.username){{$('whoami').textContent=w.username;$('logout-btn').style.display='inline-block';}}}}).catch(()=>{{}});
+</script></body></html>"#,
+        title = title, style = STYLE, ver = VERSION, headers = headers, colspan = colspan,
+        row_js = row_js, per_page = per_page, empty_msg = empty_msg,
+        endpoint = endpoint, extract_js = extract_js,
+    )
+}
+
+static CALLS_HTML: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| log_page(
+    "Recent calls", "/api/status", "d.recent_calls",
+    "`<tr><td>${esc(x.kind)}</td><td>${x.source}</td><td>${x.destination}</td><td>${dt(x.started_at_ms)}</td><td>${dur(x.started_at_ms,x.ended_at_ms)}</td><td>${x.voice_frames}</td></tr>`",
+    &["Type", "From", "To", "Start", "Duration", "Frames"], 10, "No completed calls",
+));
+
+static SDS_HTML: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| log_page(
+    "Recent SDS", "/api/status", "d.recent_sds",
+    "`<tr><td>${dt(x.at_ms)}</td><td>${x.source}</td><td>${x.destination}</td><td>${x.reports}</td><td class=muted>${String(x.uuid).slice(0,8)}</td></tr>`",
+    &["Time", "From", "To", "Reports", "UUID"], 10, "No SDS yet",
+));
+
+static TELEMETRY_SDS_HTML: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| log_page(
+    "Telemetry SDS Log", "/api/telemetry",
+    "d.flatMap(s=>(s.recent_sds_out||[]).map(x=>({...x,bts:s.id}))).sort((a,b)=>b.at_ms-a.at_ms).slice(0,50)",
+    "`<tr><td>${dt(x.at_ms)}</td><td>${esc(x.bts)}</td><td>${esc(x.direction)}</td><td>${x.source_issi}</td><td>${x.dest_issi}${x.is_group?' (grp)':''}</td><td>${x.protocol_id===10?'<span class=\"badge badge-pos\">\\uD83D\\uDCCD Position</span>':`<span class=\"badge badge-sds\">SDS<\\/span> <span class=muted>pid ${x.protocol_id}<\\/span>`}</td><td>${x.protocol_id===10&&!(x.text||'').trim()?'<span class=pos-undec>binary LIP (undecoded)<\\/span>':esc(x.text)}</td></tr>`",
+    &["Time", "BTS", "Dir", "From", "To", "Type", "Text"], 5, "No telemetry SDS yet",
+));
+
+static REGISTRATIONS_HTML: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| log_page(
+    "Mobile Station Registrations", "/api/registrations",
+    "d",
+    "`<tr><td>${dt(x.at_ms)}</td><td>${esc(x.bts)}</td><td>${x.issi}</td><td>${x.kind==='register'?'<span class=\"badge badge-reg-in\">Registered</span>':x.kind==='deregister'?'<span class=\"badge badge-reg-out\">Deregistered</span>':'<span class=\"badge badge-reg-timeout\">Timed out</span>'}</td></tr>`",
+    &["Time", "BTS", "ISSI", "Event"], 15, "No registration events yet",
+));
+
+/// Standalone map page. Plots the latest decoded MS positions on an
+/// OpenStreetMap base layer using Leaflet (loaded from unpkg CDN). Positions
+/// come only from *textual* beacons; the page explains that binary LIP is not
+/// yet decoded so an empty map is not mistaken for a bug.
+static MAP_HTML: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| format!(r#"<!doctype html><html><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>MS Map - TETRA Network</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+{style}
+<style>#map{{height:70vh;border:1px solid #203047;border-radius:12px}}.map-note{{font-size:12px;color:#8fa2b8;margin-top:10px}}.leaflet-popup-content{{color:#0d1826}}</style>
+</head><body><header><h1>MS MAP</h1><div class=hdr-status><span class=live></span><span id=status>Live</span><div class=hdr-user><span id=whoami></span><button id=logout-btn onclick="doLogout()">Logout</button></div><div class=ver>v{ver}</div></div></header><main class=wrap>
+<p><a class=backlink href="/">&larr; Back to dashboard</a></p>
+<section class=panel><h2>Mobile station positions</h2><div id=map></div>
+<div class=map-note id=note>Loading positions&hellip;</div>
+<div class=map-note>Positions come from decoded LIP (binary short &amp; long reports) and textual beacons over the Brew channel. Radios that beacon but can't be plotted (no GPS fix, or coordinates not relayed to this server) are listed below.</div>
+</section>
+<section class=panel><h2>Beaconing but not plottable</h2><div id=undecoded class=reg-list><span class=muted>None</span></div>
+<div class=map-note>These subscribers sent a position beacon that carried no usable coordinates &mdash; typically no GPS fix yet, or a locally-delivered beacon whose bytes never reach this server.</div>
+</section>
+</main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>]/g,c=>({{'&':'&amp;','<':'&lt;','>':'&gt;'}}[c]));
+const map=L.map('map').setView([44.43,26.10],5);
+L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png',{{maxZoom:19,attribution:'&copy; OpenStreetMap'}}).addTo(map);
+let markers={{}};let btsMarkers={{}};let fitted=false;
+const btsIcon=L.icon({{iconUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',iconRetinaUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',shadowUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',iconSize:[25,41],iconAnchor:[12,41],className:'bts-marker'}});
+async function loadBts(){{
+  try{{
+    const bts=await(await fetch('/api/bts-locations')).json();
+    const seen=new Set();
+    bts.forEach(b=>{{
+      seen.add(b.username);
+      const html=`<b>${{esc(b.name||b.username)}}</b> (Basestation)<br>${{b.lat.toFixed(5)}}, ${{b.lon.toFixed(5)}}<br>IP: ${{esc(b.ip||'not connected')}}<br>${{b.connected?'<span style="color:#2a7">connected</span>':'<span style="color:#a55">offline</span>'}}`;
+      if(btsMarkers[b.username]){{btsMarkers[b.username].setLatLng([b.lat,b.lon]).setPopupContent(html);}}
+      else{{btsMarkers[b.username]=L.marker([b.lat,b.lon],{{icon:btsIcon}}).addTo(map).bindPopup(html);}}
+    }});
+    Object.keys(btsMarkers).forEach(k=>{{if(!seen.has(k)){{map.removeLayer(btsMarkers[k]);delete btsMarkers[k];}}}});
+  }}catch(e){{}}
+}}
+async function load(){{
+  try{{
+    const fixes=await(await fetch('/api/positions')).json();
+    $('status').textContent='Live';
+    const seen=new Set();
+    fixes.forEach(f=>{{
+      seen.add(f.issi);
+      const when=new Date(f.at_ms).toLocaleString();
+      const html=`<b>ISSI ${{f.issi}}</b><br>${{f.lat.toFixed(5)}}, ${{f.lon.toFixed(5)}}<br>Station: ${{f.bts}}<br>${{when}}<br><span style="color:#555">${{(f.source_text||'').replace(/[<>&]/g,'')}}</span>`;
+      if(markers[f.issi]){{markers[f.issi].setLatLng([f.lat,f.lon]).setPopupContent(html);}}
+      else{{markers[f.issi]=L.marker([f.lat,f.lon]).addTo(map).bindPopup(html);}}
+    }});
+    Object.keys(markers).forEach(k=>{{if(!seen.has(Number(k))){{map.removeLayer(markers[k]);delete markers[k];}}}});
+    $('note').textContent=fixes.length?`${{fixes.length}} station(s) positioned.`:'No decodable position beacons received yet.';
+    if(!fitted&&fixes.length){{fitted=true;map.fitBounds(fixes.map(f=>[f.lat,f.lon]),{{padding:[40,40],maxZoom:13}});}}
+  }}catch(e){{$('status').textContent='Disconnected';}}
+  loadBts();
+  // Undecodable beacons (beaconing but not plottable), from telemetry.
+  try{{
+    const stations=await(await fetch('/api/telemetry')).json();
+    const byIssi={{}};
+    stations.forEach(s=>(s.undecoded_beacons_out||[]).forEach(u=>{{
+      const prev=byIssi[u.issi];
+      if(!prev||u.at_ms>prev.at_ms)byIssi[u.issi]=u;
+    }}));
+    const plotted=new Set(Object.keys(markers).map(Number));
+    const list=Object.values(byIssi).filter(u=>!plotted.has(u.issi)).sort((a,b)=>b.at_ms-a.at_ms);
+    $('undecoded').innerHTML=list.length?list.map(u=>`<span class=reg-issi title="${{esc(u.reason)}} \u2014 ${{u.count}} beacon(s)">${{u.issi}} <span class=muted>${{new Date(u.at_ms).toLocaleTimeString()}}</span></span>`).join(''):'<span class=muted>None</span>';
+  }}catch(e){{}}
+}}
+load();setInterval(load,3000);
+function doLogout(){{location.href=location.protocol+'//logout:'+Date.now()+'@'+location.host+location.pathname;}}
+fetch('/api/whoami').then(r=>r.json()).then(w=>{{if(w.username){{$('whoami').textContent=w.username;$('logout-btn').style.display='inline-block';}}}}).catch(()=>{{}});
+</script></body></html>"#, style = STYLE, ver = VERSION));
+
+/// SIP live panel: registrations, trunks and active calls, polled from
+/// /api/sip every 2s. Renders a clear "disabled" notice when SIP is off.
+static SIP_HTML: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| format!(r#"<!doctype html><html><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>SIP / VoIP - TETRA Network</title>{style}</head><body><header><h1>SIP / VoIP</h1><div class=hdr-status><span class=live></span><span id=status>Live</span><div class=hdr-user><span id=whoami></span><button id=logout-btn onclick="doLogout()">Logout</button></div><div class=ver>v{ver}</div></div></header><main class=wrap>
+<p><a class=backlink href="/">&larr; Back to dashboard</a> &nbsp;·&nbsp; <a class=backlink href="/sip-config">SIP configuration &rarr;</a></p>
+<div class=banner id=disabled-banner>SIP subsystem is disabled. Enable it in the <code>[sip]</code> section of the config file.</div>
+<section class=cards>
+<div class=card><div class=muted>Listen</div><div class=n id=listen style="font-size:16px">-</div></div>
+<div class=card><div class=muted>Registrations</div><div class=n id=nreg>-</div></div>
+<div class=card><div class=muted>Trunks up</div><div class=n id=ntrunk>-</div></div>
+<div class=card><div class=muted>Active calls</div><div class=n id=nactive>-</div></div>
+<div class=card><div class=muted>Total calls</div><div class=n id=ntotal>-</div></div>
+<div class=card><div class=muted>Realm</div><div class=n id=realm style="font-size:16px">-</div></div>
+</section>
+<section class=panel><h2>Extension registrations</h2><table><thead><tr><th>AOR</th><th>Contact</th><th>Source</th><th>User-Agent</th><th>Auth</th><th>Expires in</th></tr></thead><tbody id=regs></tbody></table></section>
+<section class=panel><h2>Trunks</h2><table><thead><tr><th>Name</th><th>Direction</th><th>Remote</th><th>Status</th><th>Peer</th><th>Detail</th><th>Calls</th></tr></thead><tbody id=trunks></tbody></table></section>
+<section class=panel><h2>Active calls</h2><table><thead><tr><th>From</th><th>To</th><th>State</th><th>Duration</th><th>RTP A/B</th><th>Call-ID</th></tr></thead><tbody id=calls></tbody></table></section>
+</main><script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>]/g,c=>({{'&':'&amp;','<':'&lt;','>':'&gt;'}}[c]));
+const now=()=>Date.now();
+const dur=(a,b)=>{{if(!a)return'-';return Math.max(0,Math.floor(((b||now())-a)/1000))+'s';}};
+const legName=e=>{{if(!e)return'-';switch(e.type){{case'sip_extension':return'ext '+esc(e.aor);case'sip_trunk':return'trunk '+esc(e.trunk)+(e.number?(' /'+esc(e.number)):'');case'brew_private':return'ISSI '+e.issi;case'brew_group':return'GSSI '+e.gssi;case'sip_external':return esc(e.uri);default:return esc(JSON.stringify(e));}}}};
+function badge(s){{const m={{up:'health-ok',registering:'health-degraded',failed:'health-critical',down:'health-unknown'}};return`<span class="pill ${{m[s]||'health-unknown'}}">${{esc(s)}}</span>`;}}
+async function load(){{
+  try{{
+    const d=await(await fetch('/api/sip')).json();
+    $('status').textContent='Live';
+    $('disabled-banner').style.display=d.enabled?'none':'block';
+    $('listen').textContent=d.listen||'-';
+    $('realm').textContent=d.realm||'-';
+    $('nreg').textContent=d.registrations.length;
+    $('ntrunk').textContent=d.trunks.filter(t=>t.status==='up').length+'/'+d.trunks.length;
+    $('nactive').textContent=d.active_calls.length;
+    $('ntotal').textContent=d.total_calls;
+    $('regs').innerHTML=d.registrations.map(r=>`<tr><td>${{esc(r.aor)}}</td><td class=muted>${{esc(r.contact)}}</td><td>${{esc(r.source)}}</td><td class=muted>${{esc(r.user_agent)}}</td><td>${{r.authenticated?'<span class="pill health-ok">yes</span>':'<span class="pill health-unknown">no</span>'}}</td><td>${{Math.max(0,Math.floor((r.expires_at_ms-now())/1000))}}s</td></tr>`).join('')||'<tr><td colspan=6 class=muted>No registrations</td></tr>';
+    $('trunks').innerHTML=d.trunks.map(t=>`<tr><td>${{esc(t.name)}}</td><td>${{esc(t.direction)}}</td><td>${{esc(t.remote_host)}}</td><td>${{badge(t.status)}}</td><td class=muted>${{esc(t.peer_addr||'-')}}</td><td class=muted>${{esc(t.detail)}}</td><td>${{t.active_calls}}</td></tr>`).join('')||'<tr><td colspan=7 class=muted>No trunks provisioned</td></tr>';
+    $('calls').innerHTML=d.active_calls.map(c=>`<tr><td>${{legName(c.from)}}</td><td>${{legName(c.to)}}</td><td>${{esc(c.state)}}</td><td>${{dur(c.answered_at_ms||c.started_at_ms)}}</td><td class=muted>${{c.rtp_a_port||'-'}}/${{c.rtp_b_port||'-'}}</td><td class=muted>${{esc(String(c.call_id).slice(0,18))}}</td></tr>`).join('')||'<tr><td colspan=6 class=muted>No active calls</td></tr>';
+  }}catch(e){{$('status').textContent='Disconnected';}}
+}}
+load();setInterval(load,2000);
+function doLogout(){{location.href=location.protocol+'//logout:'+Date.now()+'@'+location.host+location.pathname;}}
+fetch('/api/whoami').then(r=>r.json()).then(w=>{{if(w.username){{$('whoami').textContent=w.username;$('logout-btn').style.display='inline-block';}}}}).catch(()=>{{}});
+</script></body></html>"#, style = STYLE, ver = VERSION));
+
+/// SIP configuration screen: a read-only view of the provisioned extensions,
+/// trunks and voice routes from the config file, plus an inline explanation
+/// that edits are made in the TOML (which the server hot-reloads).
+static SIP_CONFIG_HTML: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| format!(r#"<!doctype html><html><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>SIP Config - TETRA Network</title>{style}</head><body><header><h1>SIP CONFIGURATION</h1><div class=hdr-status><span class=live></span><span id=status>Live</span><div class=hdr-user><span id=whoami></span><button id=logout-btn onclick="doLogout()">Logout</button></div><div class=ver>v{ver}</div></div></header><main class=wrap>
+<p><a class=backlink href="/">&larr; Back to dashboard</a> &nbsp;·&nbsp; <a class=backlink href="/sip">SIP live panel &rarr;</a></p>
+<div class=banner id=disabled-banner>SIP subsystem is disabled. Set <code>enabled = true</code> under <code>[sip]</code>.</div>
+<section class=panel><h2>General</h2><table><tbody id=general></tbody></table>
+<p class=map-note style="color:#8fa2b8;font-size:12px">This screen is read-only. Edit extensions, trunks and routes on the <a class=backlink id=settings-link href="/settings">Settings</a> page, or directly in the server's TOML config file (the running process watches the file and restarts to apply changes). Passwords are never shown here.</p>
+</section>
+<section class=panel><h2>Extensions</h2><table><thead><tr><th>User</th><th>Display name</th><th>ISSI</th><th>Outbound</th><th>Password</th></tr></thead><tbody id=exts></tbody></table></section>
+<section class=panel><h2>Trunks</h2><table><thead><tr><th>Name</th><th>Direction</th><th>Remote host</th><th>Username</th><th>Realm</th><th>Reg interval</th><th>Enabled</th><th>Password</th></tr></thead><tbody id=trunks></tbody></table></section>
+<section class=panel><h2>Voice routes</h2><table><thead><tr><th>#</th><th>Name</th><th>Match</th><th>Strip prefix</th><th>From</th><th>To</th><th>Enabled</th></tr></thead><tbody id=routes></tbody></table>
+<p class=map-note style="color:#8fa2b8;font-size:12px">Routes are evaluated top to bottom; the first enabled route whose match pattern (and optional <em>from</em> restriction) matches the dialled destination wins. Endpoints: <code>ext:USER</code>, <code>trunk:NAME[/NUMBER]</code>, <code>issi:N</code> (Brew private), <code>group:N</code> (Brew group). <code>strip_prefix</code> removes a leading literal from the dialled string before it reaches an empty-number trunk destination (e.g. a "9" outside-line prefix).</p>
+</section>
+<style>#general td:first-child{{color:#8fa2b8;width:220px}}</style>
+</main><script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>]/g,c=>({{'&':'&amp;','<':'&lt;','>':'&gt;'}}[c]));
+const yn=b=>b?'<span class="pill health-ok">yes</span>':'<span class="pill health-unknown">no</span>';
+const pw=b=>b?'<span class="pill health-ok">set</span>':'<span class="pill health-critical">none</span>';
+async function load(){{
+  try{{
+    const d=await(await fetch('/api/sip/config')).json();
+    $('status').textContent='Live';
+    $('disabled-banner').style.display=d.enabled?'none':'block';
+    $('general').innerHTML=[
+      ['Enabled',yn(d.enabled)],
+      ['Listen',esc(d.listen)],
+      ['Advertised host',esc(d.advertised_host||'(socket local address)')],
+      ['Realm',esc(d.realm)],
+      ['RTP port range',esc(d.rtp_port_min)+' - '+esc(d.rtp_port_max)],
+      ['Registration TTL',esc(d.registration_ttl_seconds)+'s'],
+    ].map(r=>`<tr><td>${{r[0]}}</td><td>${{r[1]}}</td></tr>`).join('');
+    $('exts').innerHTML=d.extensions.map(e=>`<tr><td>${{esc(e.user)}}</td><td>${{esc(e.display_name||'-')}}</td><td>${{e.issi||'-'}}</td><td>${{yn(e.allow_outbound)}}</td><td>${{pw(e.has_password)}}</td></tr>`).join('')||'<tr><td colspan=5 class=muted>No extensions provisioned</td></tr>';
+    $('trunks').innerHTML=d.trunks.map(t=>`<tr><td>${{esc(t.name)}}</td><td>${{esc(t.direction)}}</td><td>${{esc(t.remote_host||'-')}}</td><td>${{esc(t.username)}}</td><td class=muted>${{esc(t.realm||'-')}}</td><td>${{esc(t.register_interval_seconds)}}s</td><td>${{yn(t.enabled)}}</td><td>${{pw(t.has_password)}}</td></tr>`).join('')||'<tr><td colspan=8 class=muted>No trunks provisioned</td></tr>';
+    $('routes').innerHTML=d.routes.map((r,i)=>`<tr><td class=muted>${{i+1}}</td><td>${{esc(r.name||'-')}}</td><td><code>${{esc(r.match_pattern)}}</code></td><td class=muted>${{r.strip_prefix?esc(r.strip_prefix):'-'}}</td><td>${{esc(r.from||'any')}}</td><td>${{esc(r.to||'-')}}</td><td>${{yn(r.enabled)}}</td></tr>`).join('')||'<tr><td colspan=7 class=muted>No routes configured</td></tr>';
+  }}catch(e){{$('status').textContent='Disconnected';}}
+}}
+load();setInterval(load,5000);
+function doLogout(){{location.href=location.protocol+'//logout:'+Date.now()+'@'+location.host+location.pathname;}}
+fetch('/api/whoami').then(r=>r.json()).then(w=>{{if(!w.admin)$('settings-link').style.display='none';if(w.username){{$('whoami').textContent=w.username;$('logout-btn').style.display='inline-block';}}}}).catch(()=>{{}});
+</script></body></html>"#, style = STYLE, ver = VERSION));
+
+/// Live "who's connected now" page: Brew connections, registered mobile
+/// stations, and SIP registrations/trunks. Distinct from `/registrations`,
+/// which is a historical event log (registers/deregisters over time), not a
+/// current-state snapshot.
+static CONNECTIONS_HTML: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| format!(r#"<!doctype html><html><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>Connections - TETRA Network</title>{style}</head><body><header><h1>LIVE CONNECTIONS</h1><div class=hdr-status><span class=live></span><span id=status>Live</span><div class=hdr-user><span id=whoami></span><button id=logout-btn onclick="doLogout()">Logout</button></div><div class=ver>v{ver}</div></div></header><main class=wrap>
+<p><a class=backlink href="/">&larr; Back to dashboard</a> &nbsp;·&nbsp; <a class=backlink href="/registrations">Registration event log &rarr;</a></p>
+<p class=map-note style="color:#8fa2b8;font-size:12px">Who is connected and registered right now, not a history of events. Refreshes every 5s.</p>
+
+<section class=panel><h2>Brew Connections<span class=backlink id=bc-count></span></h2><table><thead><tr><th>ID</th><th>Mode</th><th>Version</th><th>Remote address</th><th>Connected</th><th>Registered ISSIs</th></tr></thead><tbody id=brew-clients></tbody></table></section>
+
+<section class=panel><h2>Registered Subscribers<span class=backlink id=ms-count></span></h2><table><thead><tr><th>ISSI</th><th>Registered via</th><th>Basestation</th><th>Basestation address</th><th>Groups</th></tr></thead><tbody id=mobile-stations></tbody></table></section>
+
+<section class=panel><h2>SIP Registrations<span class=backlink id=sip-count></span></h2><div class=banner id=sip-disabled-banner>SIP subsystem is disabled.</div><table><thead><tr><th>AOR</th><th>Contact</th><th>Source</th><th>User-Agent</th><th>Registered</th><th>Expires</th><th>Auth</th></tr></thead><tbody id=sip-regs></tbody></table></section>
+
+<section class=panel><h2>SIP Trunks</h2><table><thead><tr><th>Name</th><th>Direction</th><th>Status</th><th>Remote host</th><th>Active calls</th></tr></thead><tbody id=sip-trunks></tbody></table></section>
+</main><script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>]/g,c=>({{'&':'&amp;','<':'&lt;','>':'&gt;'}}[c]));
+const yn=b=>b?'<span class="pill health-ok">yes</span>':'<span class="pill health-unknown">no</span>';
+const dt=x=>x?new Date(x).toLocaleString():'-';
+const ago=x=>{{if(!x)return '-';const s=Math.max(0,Math.floor((Date.now()-x)/1000));if(s<60)return s+'s ago';if(s<3600)return Math.floor(s/60)+'m ago';return Math.floor(s/3600)+'h '+Math.floor((s%3600)/60)+'m ago';}};
+async function load(){{
+  try{{
+    const d=await(await fetch('/api/connections')).json();
+    $('status').textContent='Live';
+    $('bc-count').textContent=' ('+d.brew_clients.length+')';
+    $('ms-count').textContent=' ('+d.mobile_stations.length+')';
+    $('brew-clients').innerHTML=d.brew_clients.map(c=>`<tr><td class=muted>${{esc(c.id).slice(0,8)}}</td><td>${{esc(c.mode)}}</td><td>${{c.version}}</td><td>${{esc(c.remote_addr||'-')}}</td><td>${{ago(c.connected_at_ms)}}</td><td>${{c.registered_issis}}</td></tr>`).join('')||'<tr><td colspan=6 class=muted>No Brew connections</td></tr>';
+    $('mobile-stations').innerHTML=d.mobile_stations.map(m=>`<tr><td>${{m.issi}}</td><td>${{esc(m.mode)}}</td><td class=muted>${{esc(m.basestation_id).slice(0,8)}}</td><td>${{esc(m.basestation_addr||'-')}}</td><td>${{(m.groups||[]).join(', ')||'-'}}</td></tr>`).join('')||'<tr><td colspan=5 class=muted>No registered subscribers</td></tr>';
+    $('sip-disabled-banner').style.display=d.sip.enabled?'none':'block';
+    $('sip-count').textContent=' ('+d.sip.registrations.length+')';
+    $('sip-regs').innerHTML=d.sip.registrations.map(r=>`<tr><td>${{esc(r.aor)}}</td><td class=muted>${{esc(r.contact)}}</td><td>${{esc(r.source)}}</td><td class=muted>${{esc(r.user_agent||'-')}}</td><td>${{dt(r.registered_at_ms)}}</td><td>${{dt(r.expires_at_ms)}}</td><td>${{yn(r.authenticated)}}</td></tr>`).join('')||'<tr><td colspan=7 class=muted>No SIP registrations</td></tr>';
+    $('sip-trunks').innerHTML=d.sip.trunks.map(t=>`<tr><td>${{esc(t.name)}}</td><td>${{esc(t.direction)}}</td><td>${{esc(t.status)}}</td><td class=muted>${{esc(t.remote_host||'-')}}</td><td>${{t.active_calls}}</td></tr>`).join('')||'<tr><td colspan=5 class=muted>No SIP trunks configured</td></tr>';
+  }}catch(e){{$('status').textContent='Disconnected';}}
+}}
+load();setInterval(load,5000);
+function doLogout(){{location.href=location.protocol+'//logout:'+Date.now()+'@'+location.host+location.pathname;}}
+fetch('/api/whoami').then(r=>r.json()).then(w=>{{if(w.username){{$('whoami').textContent=w.username;$('logout-btn').style.display='inline-block';}}}}).catch(()=>{{}});
+</script></body></html>"#, style = STYLE, ver = VERSION));
+
+static SETTINGS_HTML: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| format!(r#"<!doctype html><html><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>Settings - TETRA Network</title>{style}</head><body><header><h1>SETTINGS</h1><div class=hdr-status><span class=live></span><span id=status>Live</span><div class=hdr-user><span id=whoami></span><button id=logout-btn onclick="doLogout()">Logout</button></div><div class=ver>v{ver}</div></div></header><main class=wrap>
+<p><a class=backlink href="/">&larr; Back to dashboard</a> &nbsp;·&nbsp; <a class=backlink href="/sip-config">SIP Config (read-only view) &rarr;</a></p>
+<div class=banner id=save-banner></div>
+<p class=map-note style="color:#8fa2b8;font-size:12px">Every save here writes the server's TOML config file and the process restarts within a couple seconds to apply it (the same mechanism as hand-editing the file). A brief connection drop across the restart is expected.</p>
+
+<section class=panel><h2>SIP Extensions</h2><table><thead><tr><th>User (AOR)</th><th>Display name</th><th>ISSI</th><th>Password</th><th>Outbound</th><th></th></tr></thead><tbody id=exts></tbody></table>
+<div class=ctl-row><input id=ext-user placeholder="user (e.g. 1001)"><input id=ext-name placeholder="display name"><input id=ext-issi placeholder="ISSI" type=number><input id=ext-pass placeholder="password"><label><input id=ext-out type=checkbox checked> outbound</label><button onclick="saveExt()">Add / Update</button></div>
+</section>
+
+<section class=panel><h2>SIP Trunks</h2><table><thead><tr><th>Name</th><th>Direction</th><th>Remote host</th><th>Username</th><th>Password</th><th>Realm</th><th>Reg interval</th><th>Enabled</th><th></th></tr></thead><tbody id=trunks></tbody></table>
+<div class=ctl-row><input id=tr-name placeholder="name"><select id=tr-dir><option value=outbound>outbound</option><option value=inbound>inbound</option><option value=peer>peer</option></select><input id=tr-host placeholder="remote host:port"><input id=tr-user placeholder="username"><input id=tr-pass placeholder="password"><input id=tr-realm placeholder="realm"><input id=tr-interval placeholder="reg interval s" type=number value=300><label><input id=tr-en type=checkbox checked> enabled</label><button onclick="saveTrunk()">Add / Update</button></div>
+</section>
+
+<section class=panel><h2>Voice routes</h2><table><thead><tr><th>Name</th><th>Match</th><th>Strip prefix</th><th>From</th><th>To</th><th>Enabled</th><th></th></tr></thead><tbody id=routes></tbody></table>
+<div class=ctl-row><input id=rt-name placeholder="name"><input id=rt-match placeholder="match pattern, e.g. 9*"><input id=rt-strip placeholder="strip prefix, e.g. 9" style="width:110px"><input id=rt-from placeholder="from (optional): ext:USER | trunk:NAME | issi:N | group:N"><input id=rt-to placeholder="to: ext:USER | trunk:NAME[/NUMBER] | issi:N | group:N"><label><input id=rt-en type=checkbox checked> enabled</label><button onclick="saveRoute()">Add / Update</button></div>
+<p class=map-note style="color:#8fa2b8;font-size:12px">Endpoint shorthand: <code>ext:USER</code>, <code>trunk:NAME</code> or <code>trunk:NAME/NUMBER</code>, <code>issi:N</code> (Brew private), <code>group:N</code> (Brew group). Matching runs against the full dialled string (e.g. a PSTN call from a mobile terminal dialling "9" + 10 digits arrives as dialled string "9XXXXXXXXXX"); <code>strip_prefix</code> removes a leading literal (e.g. "9") only from what's handed to an empty-number <code>trunk:NAME</code> destination, so the trunk dials the bare 10 digits. Updating a route matches by name and keeps its position; a new name appends to the end (reorder via the raw editor below).</p>
+</section>
+
+<section class=panel><h2>Basestation Locations</h2><table><thead><tr><th>Username (auth)</th><th>Name</th><th>Latitude</th><th>Longitude</th><th></th></tr></thead><tbody id=bts-locs></tbody></table>
+<div class=ctl-row><input id=bl-user placeholder="Brew username, e.g. 1000001"><input id=bl-name placeholder="Basestation name"><input id=bl-lat placeholder="latitude" type=number step=any><input id=bl-lon placeholder="longitude" type=number step=any><button onclick="saveBtsLoc()">Add / Update</button></div>
+<p class=map-note style="color:#8fa2b8;font-size:12px">Keyed by the same numeric username the Basestation authenticates with under <code>[auth.users]</code>, so it's matched automatically to whichever live connection logs in as that identity. Shown on the <a class=backlink href="/map">MS Map</a> alongside mobile-station positions.</p>
+</section>
+
+<section class=panel><h2>Full configuration (raw TOML)</h2>
+<p class=map-note style="color:#8fa2b8;font-size:12px">Every setting lives here, including ones with no form above (listen addresses, TLS, dashboard/auth/telemetry/control users, storage, call-routing flags). Loads the live config; Save validates it before writing anything.</p>
+<textarea id=raw style="width:100%;min-height:420px;background:#0d1826;color:#e7edf5;border:1px solid #203047;border-radius:8px;padding:12px;font-family:ui-monospace,monospace;font-size:12px"></textarea>
+<div class=ctl-row><button onclick="loadRaw()">Reload from server</button><button onclick="saveRaw()">Save</button><span id=raw-result class=ctl-result></span></div>
+</section>
+</main><script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>]/g,c=>({{'&':'&amp;','<':'&lt;','>':'&gt;'}}[c]));
+const yn=b=>b?'<span class="pill health-ok">yes</span>':'<span class="pill health-unknown">no</span>';
+function banner(ok,msg){{const b=$('save-banner');b.style.display='block';b.style.background=ok?'#173822':'#3a1414';b.style.borderColor=ok?'#245c37':'#f2545b';b.style.color=ok?'#52d273':'#ffb4b8';b.textContent=msg;setTimeout(()=>{{b.style.display='none'}},6000);}}
+async function api(method,url,body){{
+  const r=await fetch(url,{{method,headers:body!==undefined?{{'Content-Type':'application/json'}}:undefined,body:body!==undefined?JSON.stringify(body):undefined}});
+  const t=await r.text();
+  if(!r.ok){{banner(false,'Failed: '+t);throw new Error(t);}}
+  banner(true,'Saved. Restarting to apply…');
+  return t;
+}}
+function endpoint(s){{
+  if(!s)return null;
+  const [kind,rest]=s.split(':');
+  if(kind==='ext')return {{kind:'sip_extension',user:rest}};
+  if(kind==='trunk'){{const[trunk,number]=rest.split('/');return {{kind:'sip_trunk',trunk,number:number||''}};}}
+  if(kind==='issi')return {{kind:'brew_private',issi:parseInt(rest,10)}};
+  if(kind==='group')return {{kind:'brew_group',gssi:parseInt(rest,10)}};
+  return null;
+}}
+function describe(ep){{
+  if(!ep)return '';
+  if(ep.kind==='sip_extension')return 'ext:'+ep.user;
+  if(ep.kind==='sip_trunk')return ep.number?`trunk:${{ep.trunk}}/${{ep.number}}`:'trunk:'+ep.trunk;
+  if(ep.kind==='brew_private')return 'issi:'+ep.issi;
+  if(ep.kind==='brew_group')return 'group:'+ep.gssi;
+  return '';
+}}
+async function loadSip(){{
+  const d=await(await fetch('/api/config/sip/full')).json();
+  $('exts').innerHTML=Object.entries(d.extensions).map(([user,e])=>`<tr><td>${{esc(user)}}</td><td>${{esc(e.display_name||'-')}}</td><td>${{e.issi||'-'}}</td><td class=muted>${{e.password?'•'.repeat(8):'(none)'}}</td><td>${{yn(e.allow_outbound)}}</td><td><button onclick="delExt('${{esc(user)}}')">Delete</button></td></tr>`).join('')||'<tr><td colspan=6 class=muted>No extensions provisioned</td></tr>';
+  $('trunks').innerHTML=Object.entries(d.trunks).map(([name,t])=>`<tr><td>${{esc(name)}}</td><td>${{esc(t.direction)}}</td><td>${{esc(t.remote_host||'-')}}</td><td>${{esc(t.username)}}</td><td class=muted>${{t.password?'•'.repeat(8):'(none)'}}</td><td class=muted>${{esc(t.realm||'-')}}</td><td>${{esc(t.register_interval_seconds)}}s</td><td>${{yn(t.enabled)}}</td><td><button onclick="delTrunk('${{esc(name)}}')">Delete</button></td></tr>`).join('')||'<tr><td colspan=9 class=muted>No trunks provisioned</td></tr>';
+  $('routes').innerHTML=d.routes.map(r=>`<tr><td>${{esc(r.name||'-')}}</td><td><code>${{esc(r.match_pattern)}}</code></td><td class=muted>${{r.strip_prefix?esc(r.strip_prefix):'-'}}</td><td>${{esc(describe(r.from))||'any'}}</td><td>${{esc(describe(r.to))}}</td><td>${{yn(r.enabled)}}</td><td><button onclick="delRoute('${{esc(r.name)}}')">Delete</button></td></tr>`).join('')||'<tr><td colspan=7 class=muted>No routes configured</td></tr>';
+}}
+async function saveExt(){{
+  const user=$('ext-user').value.trim(); if(!user)return;
+  await api('POST',`/api/config/sip/extensions/${{encodeURIComponent(user)}}`,{{
+    password:$('ext-pass').value, display_name:$('ext-name').value,
+    issi:parseInt($('ext-issi').value,10)||0, allow_outbound:$('ext-out').checked,
+  }});
+  loadSip();
+}}
+async function delExt(user){{ await api('DELETE',`/api/config/sip/extensions/${{encodeURIComponent(user)}}`); loadSip(); }}
+async function saveTrunk(){{
+  const name=$('tr-name').value.trim(); if(!name)return;
+  await api('POST',`/api/config/sip/trunks/${{encodeURIComponent(name)}}`,{{
+    direction:$('tr-dir').value, remote_host:$('tr-host').value, username:$('tr-user').value,
+    password:$('tr-pass').value, realm:$('tr-realm').value,
+    register_interval_seconds:parseInt($('tr-interval').value,10)||300, enabled:$('tr-en').checked,
+  }});
+  loadSip();
+}}
+async function delTrunk(name){{ await api('DELETE',`/api/config/sip/trunks/${{encodeURIComponent(name)}}`); loadSip(); }}
+async function saveRoute(){{
+  const name=$('rt-name').value.trim(); if(!name)return;
+  await api('POST','/api/config/sip/routes',{{
+    name, match_pattern:$('rt-match').value||'*', strip_prefix:$('rt-strip').value.trim(),
+    from:endpoint($('rt-from').value.trim()), to:endpoint($('rt-to').value.trim()),
+    enabled:$('rt-en').checked,
+  }});
+  loadSip();
+}}
+async function delRoute(name){{ await api('DELETE',`/api/config/sip/routes/${{encodeURIComponent(name)}}`); loadSip(); }}
+async function loadBtsLocs(){{
+  const d=await(await fetch('/api/bts-locations')).json();
+  $('bts-locs').innerHTML=d.map(b=>`<tr><td>${{esc(b.username)}}</td><td>${{esc(b.name)}}</td><td>${{b.lat}}</td><td>${{b.lon}}</td><td><button onclick="delBtsLoc('${{esc(b.username)}}')">Delete</button></td></tr>`).join('')||'<tr><td colspan=5 class=muted>No Basestation locations configured</td></tr>';
+}}
+async function saveBtsLoc(){{
+  const username=$('bl-user').value.trim(); if(!username)return;
+  await api('POST',`/api/config/bts-locations/${{encodeURIComponent(username)}}`,{{
+    name:$('bl-name').value, lat:parseFloat($('bl-lat').value)||0, lon:parseFloat($('bl-lon').value)||0,
+  }});
+  loadBtsLocs();
+}}
+async function delBtsLoc(username){{ await api('DELETE',`/api/config/bts-locations/${{encodeURIComponent(username)}}`); loadBtsLocs(); }}
+async function loadRaw(){{ $('raw').value=await(await fetch('/api/config/raw')).text(); }}
+async function saveRaw(){{
+  const r=await fetch('/api/config/raw',{{method:'PUT',body:$('raw').value}});
+  const t=await r.text();
+  if(!r.ok){{banner(false,'Failed: '+t);return;}}
+  banner(true,'Saved. Restarting to apply…');
+}}
+loadSip();loadRaw();loadBtsLocs();
+function doLogout(){{location.href=location.protocol+'//logout:'+Date.now()+'@'+location.host+location.pathname;}}
+fetch('/api/whoami').then(r=>r.json()).then(w=>{{if(w.username){{$('whoami').textContent=w.username;$('logout-btn').style.display='inline-block';}}}}).catch(()=>{{}});
+</script></body></html>"#, style = STYLE, ver = VERSION));
+
+pub async fn calls_page() -> Html<&'static str> { Html(CALLS_HTML.as_str()) }
+pub async fn sds_page() -> Html<&'static str> { Html(SDS_HTML.as_str()) }
+pub async fn telemetry_sds_page() -> Html<&'static str> { Html(TELEMETRY_SDS_HTML.as_str()) }
+pub async fn registrations_page() -> Html<&'static str> { Html(REGISTRATIONS_HTML.as_str()) }
+pub async fn connections_page() -> Html<&'static str> { Html(CONNECTIONS_HTML.as_str()) }
+pub async fn snapshot(State(state): State<Arc<AppState>>) -> Json<crate::monitor::Snapshot> { let i=state.inner.read().await; let counts=(i.basestation_count(),i.ms_registration_count(),i.group_clients.len()); drop(i); Json(state.monitor.snapshot(counts.0,counts.1,counts.2).await) }
+pub async fn live(State(state): State<Arc<AppState>>, ws: WebSocketUpgrade) -> impl IntoResponse { ws.on_upgrade(move |s| live_socket(state,s)) }
+async fn live_socket(state: Arc<AppState>, mut socket: WebSocket) { let mut rx=state.monitor.subscribe(); while let Ok(ev)=rx.recv().await { if socket.send(Message::Text(serde_json::to_string(&ev).unwrap().into())).await.is_err(){break;} } }
+
+pub async fn telemetry_snapshot(State(state): State<Arc<AppState>>) -> Json<Vec<TelemetryBts>> {
+    Json(state.telemetry.read().await.snapshot())
+}
+
+/// Per-ISSI RSSI reported directly on the main Brew channel (`SERVICE_RSSI`),
+/// as `[issi, rssi_dbfs]` pairs -- separate from the per-Basestation
+/// `ms_rssi_out` in `/api/telemetry`, which comes from the Basestation
+/// Telemetry WebSocket instead. The dashboard merges both into one "MS RSSI"
+/// column.
+pub async fn brew_rssi_snapshot(State(state): State<Arc<AppState>>) -> Json<Vec<(u32, f32)>> {
+    let t = state.telemetry.read().await;
+    Json(t.brew_ms_rssi.iter().map(|(issi, dbfs)| (*issi, *dbfs)).collect())
+}
+
+pub async fn registration_log(State(state): State<Arc<AppState>>) -> Json<Vec<crate::telemetry::RegLogRow>> {
+    Json(state.telemetry.read().await.registration_log())
+}
+
+pub async fn positions_snapshot(State(state): State<Arc<AppState>>) -> Json<Vec<crate::telemetry::PositionFix>> {
+    Json(state.telemetry.read().await.positions())
+}
+
+pub async fn map_page() -> Html<&'static str> { Html(MAP_HTML.as_str()) }
+
+#[derive(serde::Serialize)]
+pub struct BtsLocation {
+    pub username: String,
+    pub name: String,
+    pub lat: f64,
+    pub lon: f64,
+    pub ip: Option<String>,
+    pub connected: bool,
+}
+
+/// Merges `[bts_locations]` (name + fixed lat/lon, keyed by Brew username)
+/// with the live `inner.clients` table (matched by `Client.username`, set
+/// when the connection authenticated) so each entry also carries whether
+/// that Basestation is connected right now and from which address.
+pub async fn bts_locations_snapshot(State(state): State<Arc<AppState>>) -> Json<Vec<BtsLocation>> {
+    let inner = state.inner.read().await;
+    let out = state.config.bts_locations.iter()
+        // (0, 0) is an unconfigured/default entry (Null Island), not a real
+        // fix -- same convention the LIP decoder already uses for MS
+        // positions (see position.rs). Don't plot it.
+        .filter(|(_, loc)| loc.lat != 0.0 || loc.lon != 0.0)
+        .map(|(username, loc)| {
+            let live = inner.clients.values().find(|c| c.username.as_deref() == Some(username.as_str()));
+            BtsLocation {
+                username: username.clone(),
+                name: loc.name.clone(),
+                lat: loc.lat,
+                lon: loc.lon,
+                ip: live.and_then(|c| c.remote_addr).map(|a| a.ip().to_string()),
+                connected: live.is_some(),
+            }
+        }).collect();
+    Json(out)
+}
+
+/// JSON snapshot of the SIP subsystem for the live panel. Returns an object
+/// with `enabled=false` when SIP is not running, so the page can render a clear
+/// disabled state rather than erroring.
+/// Live "who's connected right now" snapshot: Brew connections (Basestations
+/// and any direct Terminal/brew mobile clients), registered subscribers
+/// (every ISSI in `inner.subscribers`, whether registered directly by a
+/// Terminal-mode MS or on its behalf by a Basestation gateway -- matches
+/// what the main dashboard's "Registered Subscribers" panel shows), and SIP
+/// registrations/trunks. Unlike `/api/registrations` (a historical event
+/// log), this reflects only what is connected/registered at this instant.
+pub async fn connections_snapshot(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
+    let (brew_clients, mobile_stations) = {
+        let inner = state.inner.read().await;
+        let brew_clients: Vec<_> = inner.clients.iter().map(|(id, c)| {
+            let issi_count = inner.subscribers.values().filter(|s| s.client_id == *id).count();
+            serde_json::json!({
+                "id": id.to_string(),
+                "mode": c.mode.as_str(),
+                "version": c.version.as_u8(),
+                "remote_addr": c.remote_addr.map(|a| a.to_string()),
+                "connected_at_ms": c.connected_at_ms,
+                "registered_issis": issi_count,
+            })
+        }).collect();
+        let mobile_stations: Vec<_> = inner.subscribers.iter()
+            .map(|(issi, s)| {
+                let basestation = inner.clients.get(&s.client_id);
+                serde_json::json!({
+                    "issi": issi,
+                    "mode": s.mode.as_str(),
+                    "basestation_id": s.client_id.to_string(),
+                    "basestation_addr": basestation.and_then(|c| c.remote_addr).map(|a| a.to_string()),
+                    "groups": s.groups.iter().copied().collect::<Vec<_>>(),
+                })
+            }).collect();
+        (brew_clients, mobile_stations)
+    };
+
+    let sip = match state.sip_snapshot().await {
+        Some(snap) => serde_json::json!({
+            "enabled": snap.enabled,
+            "registrations": snap.registrations,
+            "trunks": snap.trunks,
+        }),
+        None => serde_json::json!({ "enabled": false, "registrations": [], "trunks": [] }),
+    };
+
+    Json(serde_json::json!({
+        "brew_clients": brew_clients,
+        "mobile_stations": mobile_stations,
+        "sip": sip,
+    }))
+}
+
+pub async fn sip_snapshot(State(state): State<Arc<AppState>>) -> Response {
+    match state.sip_snapshot().await {
+        Some(snap) => Json(snap).into_response(),
+        None => Json(serde_json::json!({
+            "enabled": false,
+            "listen": "",
+            "realm": "",
+            "registrations": [],
+            "trunks": [],
+            "active_calls": [],
+            "total_calls": 0,
+            "total_registrations": 0,
+        })).into_response(),
+    }
+}
+
+/// JSON view of the *provisioned* SIP configuration (extensions, trunks,
+/// routes) as loaded from the config file. Passwords are redacted. This backs
+/// the read-only config screen; edits are made in the TOML file, which the
+/// running process watches and reloads.
+pub async fn sip_config(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
+    let sip = &state.config.sip;
+    let extensions: Vec<_> = sip.extensions.iter().map(|(user, e)| serde_json::json!({
+        "user": user,
+        "display_name": e.display_name,
+        "issi": e.issi,
+        "allow_outbound": e.allow_outbound,
+        "has_password": !e.password.is_empty(),
+    })).collect();
+    let trunks: Vec<_> = sip.trunks.iter().map(|(name, t)| serde_json::json!({
+        "name": name,
+        "direction": format!("{:?}", t.direction).to_lowercase(),
+        "remote_host": t.remote_host,
+        "username": if t.username.is_empty() { name.clone() } else { t.username.clone() },
+        "realm": t.realm,
+        "register_interval_seconds": t.register_interval_seconds,
+        "enabled": t.enabled,
+        "has_password": !t.password.is_empty(),
+    })).collect();
+    let routes: Vec<_> = sip.routes.iter().map(|r| serde_json::json!({
+        "name": r.name,
+        "match_pattern": r.match_pattern,
+        "strip_prefix": r.strip_prefix,
+        "from": r.from.as_ref().map(describe_endpoint),
+        "to": r.to.as_ref().map(describe_endpoint),
+        "enabled": r.enabled,
+    })).collect();
+    Json(serde_json::json!({
+        "enabled": sip.enabled,
+        "listen": sip.listen.to_string(),
+        "advertised_host": sip.advertised_host,
+        "realm": sip.realm,
+        "rtp_port_min": sip.rtp_port_min,
+        "rtp_port_max": sip.rtp_port_max,
+        "registration_ttl_seconds": sip.registration_ttl_seconds,
+        "extensions": extensions,
+        "trunks": trunks,
+        "routes": routes,
+    }))
+}
+
+/// Renders a route endpoint config as a short human string for the config page.
+fn describe_endpoint(ep: &crate::config::RouteEndpoint) -> String {
+    use crate::config::RouteEndpoint::*;
+    match ep {
+        SipExtension { user } => format!("ext:{user}"),
+        SipTrunk { trunk, number } if number.is_empty() => format!("trunk:{trunk}"),
+        SipTrunk { trunk, number } => format!("trunk:{trunk}/{number}"),
+        BrewPrivate { issi } => format!("issi:{issi}"),
+        BrewGroup { gssi } => format!("group:{gssi}"),
+    }
+}
+
+pub async fn sip_page() -> Html<&'static str> { Html(SIP_HTML.as_str()) }
+pub async fn sip_config_page() -> Html<&'static str> { Html(SIP_CONFIG_HTML.as_str()) }
+pub async fn settings_page() -> Html<&'static str> { Html(SETTINGS_HTML.as_str()) }
+
+/// Re-serializes `cfg` to TOML, round-trip-validates it by parsing it back
+/// (belt and braces: catches anything `to_toml_pretty` itself can't express),
+/// and writes it to the process's config file. The already-running
+/// `config_watcher` picks up the mtime change within ~2s and restarts the
+/// process so the new config takes effect; this function does not restart
+/// anything itself.
+async fn save_config(state: &Arc<AppState>, cfg: &config::Config) -> anyhow::Result<()> {
+    let text = cfg.to_toml_pretty()?;
+    config::Config::parse(&text)?;
+    config::Config::save_atomic(&state.config_path, &text)?;
+    Ok(())
+}
+
+/// Applies `edit` to a clone of the live config and saves it. Used by every
+/// structured (non-raw-editor) settings endpoint below so they share one
+/// clone/edit/validate/write/report path.
+async fn mutate_and_save(
+    state: &Arc<AppState>,
+    edit: impl FnOnce(&mut config::Config),
+) -> Response {
+    let mut cfg = state.config.clone();
+    edit(&mut cfg);
+    match save_config(state, &cfg).await {
+        Ok(()) => Json(serde_json::json!({
+            "saved": true,
+            "note": "written to the config file; the process restarts within a couple seconds to apply it",
+        })).into_response(),
+        Err(e) => (StatusCode::BAD_REQUEST, e.to_string()).into_response(),
+    }
+}
+
+/// Unredacted JSON view of `[sip]` (real passwords included, unlike
+/// `sip_config`'s summary), so the settings editor can prefill edit forms
+/// with actual current values instead of a "set/none" placeholder. Safe here
+/// for the same reason `config_raw_get` is: every route on this router sits
+/// behind `require_basic`.
+pub async fn sip_config_full(State(state): State<Arc<AppState>>) -> Json<crate::config::SipConfig> {
+    Json(state.config.sip.clone())
+}
+
+/// Full config as TOML text, for the raw editor. Unlike `sip_config`'s
+/// redacted summary, this includes real secrets (trunk/extension passwords,
+/// dashboard/auth user passwords) — acceptable because every route on this
+/// router already sits behind `require_basic`, the same gate protecting the
+/// rest of the admin surface.
+pub async fn config_raw_get(State(state): State<Arc<AppState>>) -> Response {
+    match state.config.to_toml_pretty() {
+        Ok(text) => (StatusCode::OK, text).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
+    }
+}
+
+/// Validates and saves a full replacement config submitted as raw TOML text
+/// (the editor's "Save" button). This is the only path that can touch every
+/// setting, including ones with no dedicated form (listen addresses, TLS,
+/// dashboard/auth/telemetry/control users, storage, call-routing flags).
+pub async fn config_raw_put(State(state): State<Arc<AppState>>, body: String) -> Response {
+    let cfg = match config::Config::parse(&body) {
+        Ok(cfg) => cfg,
+        Err(e) => return (StatusCode::BAD_REQUEST, format!("invalid config: {e}")).into_response(),
+    };
+    match save_config(&state, &cfg).await {
+        Ok(()) => Json(serde_json::json!({
+            "saved": true,
+            "note": "written to the config file; the process restarts within a couple seconds to apply it",
+        })).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
+    }
+}
+
+pub async fn upsert_sip_extension(
+    State(state): State<Arc<AppState>>,
+    Path(user): Path<String>,
+    Json(ext): Json<crate::config::SipExtensionConfig>,
+) -> Response {
+    mutate_and_save(&state, |cfg| { cfg.sip.extensions.insert(user, ext); }).await
+}
+
+pub async fn delete_sip_extension(State(state): State<Arc<AppState>>, Path(user): Path<String>) -> Response {
+    mutate_and_save(&state, |cfg| { cfg.sip.extensions.remove(&user); }).await
+}
+
+pub async fn upsert_sip_trunk(
+    State(state): State<Arc<AppState>>,
+    Path(name): Path<String>,
+    Json(trunk): Json<crate::config::SipTrunkConfig>,
+) -> Response {
+    mutate_and_save(&state, |cfg| { cfg.sip.trunks.insert(name, trunk); }).await
+}
+
+pub async fn delete_sip_trunk(State(state): State<Arc<AppState>>, Path(name): Path<String>) -> Response {
+    mutate_and_save(&state, |cfg| { cfg.sip.trunks.remove(&name); }).await
+}
+
+/// Adds or replaces a `[bts_locations]` entry, keyed by the same numeric Brew
+/// username the Basestation authenticates with under `[auth.users]`.
+pub async fn upsert_bts_location(
+    State(state): State<Arc<AppState>>,
+    Path(username): Path<String>,
+    Json(loc): Json<crate::config::BtsLocationConfig>,
+) -> Response {
+    mutate_and_save(&state, |cfg| { cfg.bts_locations.insert(username, loc); }).await
+}
+
+pub async fn delete_bts_location(State(state): State<Arc<AppState>>, Path(username): Path<String>) -> Response {
+    mutate_and_save(&state, |cfg| { cfg.bts_locations.remove(&username); }).await
+}
+
+/// Adds or replaces (matched by `name`) a voice route. Routes are order-
+/// sensitive (`SipConfig::routes` is evaluated top to bottom), so an update
+/// keeps the existing position and only a new name appends at the end;
+/// reordering is left to the raw editor.
+pub async fn upsert_sip_route(
+    State(state): State<Arc<AppState>>,
+    Json(route): Json<crate::config::VoiceRouteConfig>,
+) -> Response {
+    mutate_and_save(&state, |cfg| {
+        match cfg.sip.routes.iter_mut().find(|r| r.name == route.name) {
+            Some(existing) => *existing = route,
+            None => cfg.sip.routes.push(route),
+        }
+    }).await
+}
+
+pub async fn delete_sip_route(State(state): State<Arc<AppState>>, Path(name): Path<String>) -> Response {
+    mutate_and_save(&state, |cfg| { cfg.sip.routes.retain(|r| r.name != name); }).await
+}
+
+pub async fn control_list(State(state): State<Arc<AppState>>) -> Json<Vec<String>> {
+    Json(state.control.read().await.connected_ids())
+}
+
+pub async fn control_command(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+    Json(command): Json<ControlCommand>,
+) -> Response {
+    match control::send_command(&state, &id, command).await {
+        Ok(response) => Json(serde_json::json!({"sent": true, "response": response})).into_response(),
+        Err(SendError::NotConnected) => (StatusCode::NOT_FOUND, "control BTS not connected").into_response(),
+        Err(SendError::Timeout) => (StatusCode::GATEWAY_TIMEOUT, "no response from BTS").into_response(),
+    }
+}
+
+/// Shared CSS for the dashboard and its sub-pages, so the standalone log pages
+/// match the main dashboard exactly.
+const STYLE: &str = r#"<style>
+:root{font-family:Inter,system-ui,sans-serif;color:#e7edf5;background:#09111c}*{box-sizing:border-box}body{margin:0}header{padding:22px 28px;border-bottom:1px solid #203047;display:flex;justify-content:space-between;align-items:center}h1{font-size:20px;margin:0}.muted{color:#8fa2b8}.wrap{padding:24px;max-width:1500px;margin:auto}.cards{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}.card,.panel{background:#101b2a;border:1px solid #203047;border-radius:12px}.card{padding:16px}.n{font-size:28px;font-weight:700;margin-top:6px}.panel{margin-top:16px;padding:18px}h2{font-size:14px;text-transform:uppercase;letter-spacing:.08em;color:#8fa2b8;margin:0 0 14px}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px;border-bottom:1px solid #1c2a3c;font-size:13px}th{color:#8fa2b8}.pill{padding:3px 8px;border-radius:99px;background:#203047}.live{display:inline-block;width:8px;height:8px;border-radius:50%;background:#52d273;margin-right:7px}.hdr-status{display:flex;flex-direction:column;align-items:flex-end;gap:2px}.ver{font-size:11px;color:#8fa2b8}.hdr-user{display:flex;align-items:center;gap:8px;font-size:12px;color:#cfe0f2}#logout-btn{display:none;background:#203047;color:#e7edf5;border:1px solid #2c405c;border-radius:6px;padding:3px 9px;font-size:11px;cursor:pointer}#logout-btn:hover{background:#2c405c}@media(max-width:900px){.cards{grid-template-columns:repeat(2,1fr)}.wrap{padding:12px}}
+.health-ok{background:#173822;color:#52d273}.health-degraded{background:#3a2f12;color:#e8b93d}.health-critical{background:#3a1414;color:#f2545b}.health-unknown{background:#203047;color:#8fa2b8}
+.bts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}.bts-card{background:#0d1826;border:1px solid #203047;border-radius:10px;padding:14px}.bts-card h3{margin:0;font-size:15px}.bts-meta{font-size:12px;margin-top:4px}.bts-card table{margin-top:10px}.bts-card th,.bts-card td{padding:6px;font-size:12px}
+.banner{display:none;background:#3a1414;border:1px solid #f2545b;color:#ffb4b8;padding:12px 18px;border-radius:10px;margin-bottom:16px;font-weight:600}
+.ctl-row{display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap}.ctl-row input{background:#0d1826;border:1px solid #203047;color:#e7edf5;border-radius:6px;padding:5px 8px;font-size:12px;width:auto}.ctl-row label{font-size:12px;display:flex;align-items:center;gap:4px}.ctl-row button{background:#203047;color:#e7edf5;border:1px solid #2c405c;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer}.ctl-row button:hover{background:#2c405c}.ctl-result{font-size:12px;margin-top:8px;word-break:break-all}
+.pager{display:flex;align-items:center;gap:10px;margin-top:12px;font-size:12px;color:#8fa2b8}.pager button{background:#203047;color:#e7edf5;border:1px solid #2c405c;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer}.pager button:hover:not(:disabled){background:#2c405c}.pager button:disabled{opacity:.4;cursor:default}.pager .pginfo{min-width:120px}
+.ts-wrap{margin-top:10px}.ts-carrier{display:flex;align-items:center;gap:6px;margin-top:5px}.ts-carrier .lbl{font-size:11px;color:#8fa2b8;min-width:64px}.ts-slots{display:flex;gap:4px}.ts-slot{width:34px;height:22px;border-radius:4px;border:1px solid #203047;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600}.ts-free{background:#0d1826;color:#3f5a78}.ts-busy{background:#173822;color:#52d273;border-color:#245c37}.ts-legend{display:flex;gap:12px;font-size:11px;color:#8fa2b8;margin-top:6px}.ts-legend span{display:inline-flex;align-items:center;gap:4px}.ts-dot{width:10px;height:10px;border-radius:2px;display:inline-block}
+.reg-list{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}.reg-issi{background:#0d1826;border:1px solid #203047;border-radius:5px;padding:3px 7px;font-size:12px;font-family:ui-monospace,monospace;color:#cfe0f2}.reg-count{font-size:12px;color:#8fa2b8}
+.navlinks{display:flex;gap:12px;flex-wrap:wrap}.navlink{display:block;background:#0d1826;border:1px solid #203047;border-radius:10px;padding:14px 18px;color:#cfe0f2;text-decoration:none;font-size:14px;font-weight:600;transition:background .1s}.navlink:hover{background:#16273c;border-color:#2c405c}.navlink .sub{display:block;font-size:12px;font-weight:400;color:#8fa2b8;margin-top:4px}
+.backlink{color:#8fa2b8;text-decoration:none;font-size:13px}.backlink:hover{color:#cfe0f2}
+h2 .backlink{text-transform:none;letter-spacing:normal;margin-left:8px}
+.badge{display:inline-block;padding:2px 7px;border-radius:99px;font-size:11px;font-weight:600}.badge-pos{background:#123047;color:#5cc0f2;border:1px solid #1d4a66}.badge-sds{background:#203047;color:#8fa2b8}.pos-undec{color:#8fa2b8;font-style:italic}
+.badge-reg-in{background:#173822;color:#52d273;border:1px solid #245c37}.badge-reg-out{background:#203047;color:#8fa2b8;border:1px solid #2c405c}.badge-reg-timeout{background:#3a2f12;color:#e8b93d;border:1px solid #5c4a1d}
+</style>"#;
+
+const HTML: &str = r#"<!doctype html><html><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>TETRA Network</title>__STYLE__</head><body><header><h1>TETRA NETWORK MONITOR</h1><div class=hdr-status><span class=live></span><span id=status>Live</span><div class=hdr-user><span id=whoami></span><button id=logout-btn onclick="doLogout()">Logout</button></div><div class=ver>v__VERSION__</div></div></header><main class=wrap>
+<div class=banner id=emergency-banner></div>
+<section class=cards><div class=card><div class=muted>Basestations</div><div class=n id=bs>-</div></div><div class=card><div class=muted>Subscribers</div><div class=n id=subs>-</div></div><div class=card><div class=muted>Groups</div><div class=n id=groups>-</div></div><div class=card><div class=muted>Active calls</div><div class=n id=active>-</div></div><div class=card><div class=muted>Total calls</div><div class=n id=calls>-</div></div><div class=card><div class=muted>SDS</div><div class=n id=sds>-</div></div></section><section class=panel><h2>Live calls</h2><table><thead><tr><th>Type</th><th>From</th><th>To</th><th>Priority</th><th>Duration</th><th>Voice frames</th><th>MS RSSI</th><th>UUID</th></tr></thead><tbody id=livecalls></tbody></table></section><section class=panel><h2>Menu</h2><div class=navlinks><a class=navlink href="/calls">Recent calls<span class=sub>Completed call history</span></a><a class=navlink href="/sds">Recent SDS<span class=sub>Short data messages</span></a><a class=navlink href="/telemetry-sds">Telemetry SDS Log<span class=sub>Per-Basestation SDS stream</span></a><a class=navlink href="/map">MS Map<span class=sub>Plot positioned mobiles</span></a><a class=navlink href="/connections">Live Connections<span class=sub>Who's connected now: Brew, MS &amp; SIP</span></a><a class=navlink href="/sip">SIP / VoIP<span class=sub>Registrations, trunks &amp; calls</span></a><a class=navlink href="/sip-config">SIP Config<span class=sub>Extensions, trunks &amp; routes</span></a><a class=navlink id=settings-link href="/settings">Settings<span class=sub>Edit &amp; save server configuration</span></a></div></section>
+<section class=panel><h2>Basestation Telemetry</h2><div class=bts-grid id=telemetry-stations></div></section>
+<section class=panel><h2>Registered Subscribers <a class=backlink href="/registrations">(view registration log &rarr;)</a></h2><div class=bts-grid id=registrations></div></section>
+<section class=panel><h2>Basestation Control</h2><div class=bts-grid id=control-stations></div></section>
+</main><script>
+let snap=null;let tsnap=null;let brssi={};const $=id=>document.getElementById(id);const dt=x=>new Date(x).toLocaleTimeString();const dur=(a,b)=>Math.max(0,Math.floor(((b||Date.now())-a)/1000))+'s';const esc=s=>String(s??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function render(s){snap=s;$('bs').textContent=s.connected_basestations;$('subs').textContent=s.subscribers;$('groups').textContent=s.groups;$('active').textContent=s.active_calls.length;$('calls').textContent=s.total_calls;$('sds').textContent=s.total_sds;
+// Build an ISSI -> RSSI (dBFS) lookup from the latest telemetry snapshot so each
+// live call can show its mobile station's received signal strength. RSSI is not
+// SNR; it is the real per-MS metric Basestation reports.
+const rssiByIssi={};(tsnap||[]).forEach(st=>(st.ms_rssi_out||[]).forEach(([issi,dbfs])=>{rssiByIssi[issi]=dbfs;}));
+Object.assign(rssiByIssi,brssi); // per-ISSI RSSI reported directly on the main Brew channel (SERVICE_RSSI)
+const rssiCell=issi=>rssiByIssi[issi]!=null?`${rssiByIssi[issi].toFixed(1)} dBFS`:'<span class=muted>&ndash;</span>';
+$('livecalls').innerHTML=s.active_calls.map(c=>`<tr><td><span class=pill>${c.kind}</span></td><td>${c.source}</td><td>${c.destination}</td><td>${c.priority}</td><td>${dur(c.started_at_ms)}</td><td>${c.voice_frames}</td><td>${rssiCell(c.source)}</td><td class=muted>${c.uuid.slice(0,8)}</td></tr>`).join('')||'<tr><td colspan=8 class=muted>No active calls</td></tr>';}
+async function refresh(){try{render(await(await fetch('/api/status')).json())}catch(e){$('status').textContent='Disconnected'}}
+function healthPill(level){const cls=level==='ok'?'health-ok':level==='degraded'?'health-degraded':level==='critical'?'health-critical':'health-unknown';return `<span class="pill ${cls}">${level||'unknown'}</span>`;}
+// Build a small timeslot occupancy grid from the station's active calls. TETRA
+// carriers are TDMA with 4 timeslots each (TS1-TS4). A slot is "busy" when an
+// active call occupies that carrier/timeslot; every other slot on a carrier
+// that is in use is shown as "available". Only carriers that appear in at least
+// one active call are drawn (we cannot know the full carrier plan otherwise).
+const TS_PER_CARRIER=4;
+function tsGrid(calls){
+  if(!calls.length)return '';
+  // Map carrier_num -> {ts -> speaker issi/dest} for busy slots.
+  const carriers=new Map();
+  calls.forEach(c=>{
+    if(!carriers.has(c.carrier_num))carriers.set(c.carrier_num,new Map());
+    carriers.get(c.carrier_num).set(c.ts,c);
+  });
+  const rows=[...carriers.keys()].sort((a,b)=>a-b).map(cn=>{
+    const busy=carriers.get(cn);
+    const slots=[];
+    for(let ts=1;ts<=TS_PER_CARRIER;ts++){
+      const c=busy.get(ts);
+      if(c){
+        const who=c.is_group?('grp '+c.gssi_or_called):('to '+c.gssi_or_called);
+        slots.push(`<div class="ts-slot ts-busy" title="Carrier ${cn} TS${ts}: ${esc(String(c.source_issi))} \u2192 ${esc(who)}">TS${ts}</div>`);
+      }else{
+        slots.push(`<div class="ts-slot ts-free" title="Carrier ${cn} TS${ts}: available">TS${ts}</div>`);
+      }
+    }
+    return `<div class=ts-carrier><span class=lbl>Carrier ${cn}</span><div class=ts-slots>${slots.join('')}</div></div>`;
+  }).join('');
+  return `<div class=ts-wrap>${rows}<div class=ts-legend><span><span class="ts-dot" style="background:#173822;border:1px solid #245c37"></span>busy</span><span><span class="ts-dot" style="background:#0d1826;border:1px solid #203047"></span>available</span></div></div>`;
+}
+function renderTelemetry(stations){
+  tsnap=stations;
+  const emergencies=stations.flatMap(s=>(s.emergencies||[]).map(issi=>({bts:s.id,issi})));
+  const banner=$('emergency-banner');
+  if(emergencies.length){banner.style.display='block';banner.textContent='EMERGENCY ACTIVE: '+emergencies.map(e=>`ISSI ${e.issi} on ${e.bts}`).join(', ');}else{banner.style.display='none';}
+  $('telemetry-stations').innerHTML=stations.length?stations.map(s=>{
+    const calls=Object.values(s.active_calls||{});
+    const backhaul=s.backhaul_connected===true?'up':s.backhaul_connected===false?'down':'unknown';
+    const q=s.last_tx_quality,sdr=s.last_sdr_health;
+    const ipLabel=s.ip?` <span class=muted style="font-weight:400">- ${esc(s.ip)}</span>`:'';
+    const evm=(s.evm_pct!=null)?`EVM ${s.evm_pct.toFixed(2)}%`:(q?`EVM ${q.evm_pct.toFixed(2)}%`:'');
+    const rssi=(s.rssi_dbfs!=null)?`RSSI ${s.rssi_dbfs.toFixed(1)} dBFS`:'';
+    const sig=[evm,rssi].filter(Boolean).join(' &middot; ');
+    return `<div class=bts-card>
+      <div style="display:flex;justify-content:space-between;align-items:center"><h3>${esc(s.id)}${ipLabel}</h3>${healthPill(s.health&&s.health.overall)}</div>
+      <div class="bts-meta muted">Backhaul ${backhaul} &middot; ${s.registration_count} registered &middot; ${calls.length} active call(s)</div>
+      ${sig?`<div class="bts-meta muted" title="EVM is transmit error-vector magnitude (SNR proxy); RSSI is received signal strength — neither is a true SNR">${sig}${q?` &middot; PAPR ${q.papr_db.toFixed(1)}dB`:''}${sdr&&sdr.temperature_c!=null?` &middot; SDR ${sdr.temperature_c.toFixed(1)}&deg;C`:''}</div>`:''}
+      ${calls.length?`<table><thead><tr><th>Type</th><th>From</th><th>To</th><th>Carrier/TS</th><th>Pri</th></tr></thead><tbody>${calls.map(c=>`<tr><td>${c.is_group?'Group':'Private'}</td><td>${c.source_issi}</td><td>${c.gssi_or_called}</td><td>${c.carrier_num}/${c.ts}</td><td>${c.priority}</td></tr>`).join('')}</tbody></table>`:''}
+      ${tsGrid(calls)}
+    </div>`;
+  }).join(''):'<div class=muted>No Basestation telemetry connections</div>';
+  // Registered subscribers, grouped by Basestation. Shows which ISSIs are
+  // currently registered on each connected station.
+  $('registrations').innerHTML=stations.length?stations.map(s=>{
+    const issis=s.registrations_list||[];
+    const chips=issis.length?`<div class=reg-list>${issis.map(i=>`<span class=reg-issi>${esc(String(i))}</span>`).join('')}</div>`:'<div class="bts-meta muted" style="margin-top:8px">No subscribers registered</div>';
+    return `<div class=bts-card><div style="display:flex;justify-content:space-between;align-items:center"><h3>${esc(s.id)}</h3><span class=reg-count>${issis.length} registered</span></div>${chips}</div>`;
+  }).join(''):'<div class=muted>No Basestation telemetry connections</div>';
+}
+async function refreshTelemetry(){try{renderTelemetry(await(await fetch('/api/telemetry')).json())}catch(e){}}
+async function refreshBrewRssi(){try{const pairs=await(await fetch('/api/rssi')).json();brssi={};pairs.forEach(([issi,dbfs])=>{brssi[issi]=dbfs;});if(snap)render(snap);}catch(e){}}
+function ctlSafeId(id){return 'ctl_'+id.replace(/[^a-zA-Z0-9_-]/g,'_');}
+function jsq(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
+function ctlCardHtml(id){
+  const s=ctlSafeId(id);
+  return `<div class=ctl-row><input id="${s}_kick_issi" placeholder="ISSI" size=8><button onclick="ctlKick('${jsq(id)}','${s}')">Kick MS</button></div>
+      <div class=ctl-row><input id="${s}_clr_issi" placeholder="ISSI (0=all)" size=8><button onclick="ctlClearEmergency('${jsq(id)}','${s}')">Clear emergency</button></div>
+      <div class=ctl-row><input id="${s}_dgna_issi" placeholder="ISSI" size=6><input id="${s}_dgna_gssi" placeholder="GSSI" size=6><input id="${s}_dgna_mode" placeholder="mode" size=3 value=0><label><input type=checkbox id="${s}_dgna_attach" checked>attach</label><button onclick="ctlDgna('${jsq(id)}','${s}')">DGNA</button></div>
+      <div class=ctl-row><input id="${s}_sds_text" placeholder="live SDS text"><input id="${s}_sds_issi" placeholder="src ISSI" size=8><input id="${s}_sds_repeat" placeholder="repeat" size=4 value=0><button onclick="ctlAddLiveSds('${jsq(id)}','${s}')">Add live SDS</button><button onclick="ctlClearLiveSds('${jsq(id)}','${s}')">Clear all</button></div>
+      <div class=ctl-row><input id="${s}_raw_src" placeholder="src ISSI" size=8><input id="${s}_raw_dest" placeholder="dest ISSI/GSSI" size=8><label><input type=checkbox id="${s}_raw_grp">group</label><input id="${s}_raw_len" placeholder="len bits" size=6><input id="${s}_raw_hex" placeholder="payload hex"><button onclick="ctlSendSds('${jsq(id)}','${s}')">Send raw SDS</button></div>
+      <div class=ctl-row><button onclick="ctlRestart('${jsq(id)}')">Restart service</button><button onclick="ctlShutdown('${jsq(id)}')">Shutdown service</button></div>
+      <div class="ctl-result muted" id="${s}_result"></div>`;
+}
+// Incrementally reconcile the control cards against the connected station list.
+// We never rebuild an existing card, so user input and focus in its fields are
+// preserved across the periodic refresh (this was the bug: a full innerHTML
+// rewrite every few seconds wiped whatever the operator was typing).
+function renderControl(ids){
+  const host=$('control-stations');
+  const wanted=new Set(ids);
+  if(!ids.length){host.innerHTML='<div class="muted ctl-empty">No Basestation control connections</div>';return;}
+  // Clear the "no connections" placeholder before adding the first real card.
+  const ph=host.querySelector('.ctl-empty');
+  if(ph)ph.remove();
+  // Remove cards for stations that are no longer connected.
+  Array.from(host.querySelectorAll('.bts-card[data-ctl-id]')).forEach(card=>{
+    if(!wanted.has(card.getAttribute('data-ctl-id')))card.remove();
+  });
+  // Add cards for newly connected stations, preserving existing ones untouched.
+  const existing=new Set(Array.from(host.querySelectorAll('.bts-card[data-ctl-id]')).map(c=>c.getAttribute('data-ctl-id')));
+  ids.forEach(id=>{
+    if(existing.has(id))return;
+    const card=document.createElement('div');
+    card.className='bts-card';
+    card.setAttribute('data-ctl-id',id);
+    card.innerHTML=`<h3>${esc(id)}</h3>`+ctlCardHtml(id);
+    host.appendChild(card);
+  });
+}
+async function refreshControl(){try{renderControl(await(await fetch('/api/control')).json())}catch(e){}}
+async function ctlSend(id,body,resultId){
+  try{
+    const r=await fetch('/api/control/'+encodeURIComponent(id),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const text=await r.text();
+    if(resultId) $(resultId).textContent=(r.ok?'OK: ':'Error: ')+text;
+  }catch(e){ if(resultId) $(resultId).textContent='Error: '+e; }
+}
+function hexToBytes(hex){hex=(hex||'').replace(/\s+/g,'');const out=[];for(let i=0;i<hex.length-1;i+=2)out.push(parseInt(hex.substr(i,2),16)||0);return out;}
+function ctlKick(id,s){ctlSend(id,{action:'KickMs',issi:Number($(s+'_kick_issi').value||0)},s+'_result');}
+function ctlClearEmergency(id,s){ctlSend(id,{action:'ClearEmergency',issi:Number($(s+'_clr_issi').value||0)},s+'_result');}
+function ctlDgna(id,s){ctlSend(id,{action:'Dgna',issi:Number($(s+'_dgna_issi').value||0),gssi:Number($(s+'_dgna_gssi').value||0),mnemonic:null,attachment_mode:Number($(s+'_dgna_mode').value||0),attach:$(s+'_dgna_attach').checked},s+'_result');}
+function ctlAddLiveSds(id,s){ctlSend(id,{action:'AddLiveSds',text:$(s+'_sds_text').value,protocol_id:10,source_issi:Number($(s+'_sds_issi').value||0),repeat_count:Number($(s+'_sds_repeat').value||0)},s+'_result');}
+function ctlClearLiveSds(id,s){ctlSend(id,{action:'ClearLiveSds'},s+'_result');}
+function ctlSendSds(id,s){const payload=hexToBytes($(s+'_raw_hex').value);ctlSend(id,{action:'SendSds',source_ssi:Number($(s+'_raw_src').value||0),dest_ssi:Number($(s+'_raw_dest').value||0),dest_is_group:$(s+'_raw_grp').checked,len_bits:Number($(s+'_raw_len').value||payload.length*8),payload},s+'_result');}
+function ctlRestart(id){if(confirm('Restart Basestation service on '+id+'? This disconnects it.'))ctlSend(id,{action:'RestartService'},null);}
+function ctlShutdown(id){if(confirm('Shutdown Basestation service on '+id+'? This stops the BTS process.'))ctlSend(id,{action:'ShutdownService'},null);}
+refresh();refreshTelemetry();refreshControl();refreshBrewRssi();setInterval(refresh,2000);setInterval(refreshTelemetry,2000);setInterval(refreshControl,3000);setInterval(refreshBrewRssi,5000);
+// Keep a live WebSocket for push updates, but never reload the page on drop:
+// a reload would wipe anything the operator is typing in the control panel.
+// Instead we reconnect in the background and fall back to the polling above.
+function connectLive(){
+  let ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/api/live');
+  ws.onopen=()=>{$('status').textContent='Live';};
+  ws.onmessage=()=>{refresh();refreshTelemetry();refreshControl();};
+  ws.onclose=()=>{$('status').textContent='Reconnecting';setTimeout(connectLive,3000);};
+  ws.onerror=()=>{try{ws.close();}catch(e){}};
+}
+connectLive();
+function doLogout(){location.href=location.protocol+'//logout:'+Date.now()+'@'+location.host+location.pathname;}
+fetch('/api/whoami').then(r=>r.json()).then(w=>{if(!w.admin)$('settings-link').style.display='none';if(w.username){$('whoami').textContent=w.username;$('logout-btn').style.display='inline-block';}}).catch(()=>{});
+</script></body></html>"#;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn index_has_style_and_navlinks_no_removed_tables() {
+        let h = INDEX_HTML.as_str();
+        assert!(!h.contains("__STYLE__"), "style placeholder must be substituted");
+        assert!(h.contains("<style>"), "style present");
+        // nav links to the three sub-pages
+        assert!(h.contains("href=\"/calls\""));
+        assert!(h.contains("href=\"/sds\""));
+        assert!(h.contains("href=\"/telemetry-sds\""));
+        assert!(h.contains("href=\"/registrations\""));
+        // the three moved tables must be gone from the main page
+        assert!(!h.contains("id=sdstable"), "recent SDS table removed from index");
+        assert!(!h.contains("id=history"), "recent calls table removed from index");
+        assert!(!h.contains("id=telemetry-sds"), "telemetry SDS table removed from index");
+    }
+
+    #[test]
+    fn subpages_build_and_contain_expected_bits() {
+        for (name, html, endpoint) in [
+            ("calls", CALLS_HTML.as_str(), "/api/status"),
+            ("sds", SDS_HTML.as_str(), "/api/status"),
+            ("telemetry", TELEMETRY_SDS_HTML.as_str(), "/api/telemetry"),
+            ("registrations", REGISTRATIONS_HTML.as_str(), "/api/registrations"),
+        ] {
+            assert!(!html.contains("__STYLE__"), "{name}: style substituted");
+            assert!(html.contains("id=log"), "{name}: log table body present");
+            assert!(html.contains("id=log-pager"), "{name}: pager present");
+            assert!(html.contains(endpoint), "{name}: polls {endpoint}");
+            assert!(html.contains("Back to dashboard"), "{name}: back link present");
+            // write out the embedded script for external JS syntax checking
+            let script = html.split("<script>").nth(1).unwrap().split("</script>").next().unwrap();
+            std::fs::write(format!("/tmp/subpage_{name}.js"), script).unwrap();
+        }
+    }
+
+    #[test]
+    fn map_page_builds() {
+        let h = MAP_HTML.as_str();
+        assert!(!h.contains("__STYLE__"), "style substituted");
+        assert!(h.contains("/api/positions"), "map polls positions api");
+        assert!(h.contains("leaflet"), "leaflet loaded");
+        assert!(h.contains("Back to dashboard"), "back link present");
+        // OSM tile template must survive the format! escaping as literal braces
+        assert!(h.contains("{s}.tile.openstreetmap.org/{z}/{x}/{y}"), "tile template intact");
+        let script = h.rsplit("<script>").next().unwrap().split("</script>").next().unwrap();
+        std::fs::write("/tmp/map_page.js", script).unwrap();
+    }
+
+    #[test]
+    fn index_links_to_map() {
+        assert!(INDEX_HTML.as_str().contains("href=\"/map\""), "dashboard links to /map");
+    }
+
+    /// Every dashboard page must show who's logged in (or nothing, when
+    /// auth is disabled/no credential was sent) and offer a logout control
+    /// next to the live-status indicator -- pins the header markup, the
+    /// doLogout() best-effort HTTP-Basic "logout" (there's no real
+    /// server-side session to end), and the /api/whoami populate call
+    /// across every page, not just the index.
+    #[test]
+    fn every_page_has_whoami_and_logout_in_its_header() {
+        let pages: &[(&str, &str)] = &[
+            ("index", INDEX_HTML.as_str()),
+            ("map", MAP_HTML.as_str()),
+            ("sip", SIP_HTML.as_str()),
+            ("sip-config", SIP_CONFIG_HTML.as_str()),
+            ("connections", CONNECTIONS_HTML.as_str()),
+            ("settings", SETTINGS_HTML.as_str()),
+        ];
+        for (name, html) in pages {
+            assert!(html.contains("id=whoami") || html.contains("id=\"whoami\""), "{name}: whoami span present");
+            assert!(html.contains("id=logout-btn") || html.contains("id=\"logout-btn\""), "{name}: logout button present");
+            assert!(html.contains("doLogout()"), "{name}: doLogout wired up");
+            assert!(html.contains("/api/whoami"), "{name}: polls /api/whoami");
+        }
+        // log_page-templated pages (calls/sds/telemetry-sds/registrations)
+        // share one function; a single instance stands in for all four.
+        let calls_script = CALLS_HTML.as_str();
+        assert!(calls_script.contains("id=whoami") || calls_script.contains("id=\"whoami\""));
+        assert!(calls_script.contains("doLogout()"));
+    }
+
+    #[tokio::test]
+    async fn bts_locations_snapshot_omits_unconfigured_zero_entries() {
+        let mut config = crate::config::Config::default();
+        config.bts_locations.insert("1000001".into(), crate::config::BtsLocationConfig {
+            name: "Athens HQ".into(), lat: 37.9917, lon: 23.7640,
+        });
+        config.bts_locations.insert("1000002".into(), crate::config::BtsLocationConfig {
+            name: "Unconfigured".into(), lat: 0.0, lon: 0.0,
+        });
+        let (state, _rx) = crate::state::AppState::new(config, std::path::PathBuf::from("test.toml"));
+        let Json(out) = bts_locations_snapshot(State(std::sync::Arc::new(state))).await;
+        assert_eq!(out.len(), 1, "the (0,0) entry must not be plotted");
+        assert_eq!(out[0].username, "1000001");
+    }
+
+    fn basic_auth_header(user: &str, pass: &str) -> HeaderMap {
+        let creds = base64::engine::general_purpose::STANDARD.encode(format!("{user}:{pass}"));
+        let mut headers = HeaderMap::new();
+        headers.insert(header::AUTHORIZATION, HeaderValue::from_str(&format!("Basic {creds}")).unwrap());
+        headers
+    }
+
+    #[test]
+    fn basic_username_accepts_matching_credentials() {
+        let mut users = HashMap::new();
+        users.insert("alice".to_string(), "secret".to_string());
+        let headers = basic_auth_header("alice", "secret");
+        assert_eq!(basic_username(&users, &headers), Some("alice".to_string()));
+    }
+
+    #[test]
+    fn basic_username_rejects_wrong_password() {
+        let mut users = HashMap::new();
+        users.insert("alice".to_string(), "secret".to_string());
+        let headers = basic_auth_header("alice", "wrong");
+        assert_eq!(basic_username(&users, &headers), None);
+    }
+
+    #[test]
+    fn basic_username_rejects_missing_header() {
+        let users: HashMap<String, String> = HashMap::new();
+        assert_eq!(basic_username(&users, &HeaderMap::new()), None);
+    }
+
+    /// Pins the privileged-user feature this test module's name suggests:
+    /// a user authenticated but not listed in [dashboard].admins must not
+    /// be treated as an admin by /api/whoami, while a listed one must.
+    #[tokio::test]
+    async fn whoami_reports_admin_only_for_listed_users() {
+        let mut config = crate::config::Config::default();
+        config.dashboard.users.insert("alice".into(), "secret".into());
+        config.dashboard.users.insert("bob".into(), "secret2".into());
+        config.dashboard.admins = vec!["alice".into()];
+        let (state, _rx) = crate::state::AppState::new(config, std::path::PathBuf::from("test.toml"));
+        let state = std::sync::Arc::new(state);
+
+        let Json(alice) = whoami(State(state.clone()), basic_auth_header("alice", "secret")).await;
+        assert_eq!(alice["admin"], serde_json::json!(true));
+        assert_eq!(alice["username"], serde_json::json!("alice"));
+
+        let Json(bob) = whoami(State(state.clone()), basic_auth_header("bob", "secret2")).await;
+        assert_eq!(bob["admin"], serde_json::json!(false));
+
+        let Json(nobody) = whoami(State(state), HeaderMap::new()).await;
+        assert_eq!(nobody["admin"], serde_json::json!(false));
+    }
+
+    #[tokio::test]
+    async fn whoami_treats_empty_admins_list_as_everyone_admin() {
+        let mut config = crate::config::Config::default();
+        config.dashboard.users.insert("alice".into(), "secret".into());
+        // admins left empty: pre-existing all-or-nothing behavior.
+        let (state, _rx) = crate::state::AppState::new(config, std::path::PathBuf::from("test.toml"));
+        let Json(alice) = whoami(State(std::sync::Arc::new(state)), basic_auth_header("alice", "secret")).await;
+        assert_eq!(alice["admin"], serde_json::json!(true));
+    }
+}
+

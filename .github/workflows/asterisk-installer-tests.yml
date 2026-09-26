@@ -1,0 +1,124 @@
+name: Asterisk installer tests
+
+on:
+  pull_request:
+    branches: [mqtt]
+    paths:
+      - system-backend/sip-switch/install/**
+      - system-backend/sip-switch/tbs-fallback/install/**
+      - tools/test_asterisk_installer.py
+      - tools/test_sip_install_guards.py
+      - tools/test_sip_role_repair.py
+      - .github/workflows/asterisk-installer-tests.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  selection:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test dependency selection and failure handling without host changes
+        run: |
+          sudo python3 tools/test_asterisk_installer.py
+          python3 tools/test_sip_install_guards.py
+          python3 tools/test_sip_role_repair.py
+
+  trixie-source:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    container: debian:trixie
+    timeout-minutes: 25
+    steps:
+      - name: Install checkout and test prerequisites
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git ca-certificates python3
+      - uses: actions/checkout@v4
+      - name: Exercise the default installer on Debian Trixie
+        shell: bash
+        env:
+          NETCORE_ASTERISK_BUILD_JOBS: '2'
+        run: |
+          set -euo pipefail
+          source system-backend/sip-switch/install/ensure-asterisk.sh
+          if netcore_asterisk_package_candidate; then
+            echo 'Trixie now supplies Asterisk: explicitly exercise the source path.'
+            export NETCORE_ASTERISK_INSTALL_MODE=source
+          fi
+          netcore_ensure_asterisk
+          /usr/sbin/asterisk -V
+          test -s /var/lib/netcore-asterisk/source-install.txt
+          cat /var/lib/netcore-asterisk/source-install.txt
+      - name: Reuse the installed binary and preserve local configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '\n; CI configuration preservation marker\n' >> /etc/asterisk/asterisk.conf
+          sha256sum /etc/asterisk/asterisk.conf /usr/sbin/asterisk > /tmp/asterisk-before.sha256
+          source system-backend/sip-switch/install/ensure-asterisk.sh
+          netcore_ensure_asterisk
+          sha256sum --check /tmp/asterisk-before.sha256
+      - name: Start Asterisk without systemd and verify PJSIP modules
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -d -o asterisk -g asterisk -m 0755 /run/asterisk
+          cat > /etc/asterisk/pjsip.conf <<'CONF'
+          [global]
+          type=global
+          [transport-ci]
+          type=transport
+          protocol=udp
+          bind=127.0.0.1:5060
+          CONF
+          cat > /etc/asterisk/extensions.conf <<'CONF'
+          [general]
+          static=yes
+          writeprotect=yes
+          [ci]
+          exten => s,1,Hangup()
+          CONF
+          /usr/sbin/asterisk -f -g -U asterisk -G asterisk -C /etc/asterisk/asterisk.conf > /tmp/asterisk-startup.log 2>&1 &
+          asterisk_pid=$!
+          cleanup() {
+            /usr/sbin/asterisk -rx 'core stop now' >/dev/null 2>&1 || true
+            kill "$asterisk_pid" 2>/dev/null || true
+            wait "$asterisk_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          ready=0
+          for attempt in $(seq 1 30); do
+            if timeout 3 /usr/sbin/asterisk -rx 'core waitfullybooted' >/dev/null 2>&1; then
+              ready=1
+              break
+            fi
+            kill -0 "$asterisk_pid" || { cat /tmp/asterisk-startup.log; exit 1; }
+            sleep 1
+          done
+          if [[ "$ready" != 1 ]]; then cat /tmp/asterisk-startup.log; exit 1; fi
+          for module in chan_pjsip res_pjsip res_pjsip_outbound_registration res_pjsip_registrar \
+            res_pjsip_authenticator_digest res_pjsip_outbound_authenticator_digest \
+            res_pjsip_endpoint_identifier_user res_rtp_asterisk codec_ulaw pbx_config \
+            app_dial res_agi func_db func_pjsip_contact app_stack func_callerid func_strings \
+            res_pjsip_endpoint_identifier_ip res_pjsip_session res_pjsip_sdp_rtp res_pjsip_caller_id; do
+            /usr/sbin/asterisk -rx "module show like ${module}.so" > /tmp/asterisk-module.txt
+            cat /tmp/asterisk-module.txt
+            grep -Eq "^${module}\.so[[:space:]].*[[:space:]]Running[[:space:]]" /tmp/asterisk-module.txt || {
+              cat /tmp/asterisk-startup.log
+              exit 1
+            }
+          done
+          /usr/sbin/asterisk -rx 'pjsip show endpoints' > /tmp/asterisk-pjsip.txt
+          cat /tmp/asterisk-pjsip.txt
+          if grep -qi 'No such command' /tmp/asterisk-pjsip.txt; then exit 1; fi
+      - name: Print startup log on failure
+        if: failure()
+        run: |
+          if [ -f /tmp/asterisk-startup.log ]; then cat /tmp/asterisk-startup.log; fi

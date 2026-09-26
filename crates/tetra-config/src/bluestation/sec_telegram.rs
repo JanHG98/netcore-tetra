@@ -1,0 +1,166 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Einlesen und Prüfen der TETRA-Konfiguration.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+use serde::Deserialize;
+use std::collections::{BTreeSet, HashMap};
+
+use crate::bluestation::SecretField;
+
+/// Telegram alerts configuration.
+///
+/// The BTS owner creates a bot with @BotFather, pastes the bot token here, then registers one
+/// or more chat IDs (their personal chat with the bot, or a group). When something notable
+/// happens on the station, FlowStation sends a professionally-formatted alert to every chat ID.
+///
+/// The bot token is a secret and is wrapped in [`SecretField`] so it never leaks into logs.
+/// Everything except the token can be toggled live from the dashboard without a restart
+/// (see `effective_telegram` / `TelegramRuntimeOverride`); the new values are also written
+/// back to the TOML so they persist.
+#[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für cfg telegram in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct CfgTelegram {
+    /// Master on/off for Telegram alerts.
+    pub enabled: bool,
+    /// Telegram Bot API token, obtained from @BotFather (e.g. "123456:ABC-DEF...").
+    pub bot_token: SecretField,
+    /// Destination chat IDs. Each receives every enabled alert. A negative value is a group/
+    /// channel chat; a positive value is a private chat with the bot.
+    pub chat_ids: Vec<i64>,
+
+    /// Alert when a radio (MS) registers/attaches to the cell.
+    pub alert_connect: bool,
+    /// Alert when a radio deregisters/detaches.
+    pub alert_disconnect: bool,
+    /// Alert when a radio is dropped for not answering the periodic registration (T351).
+    pub alert_t351: bool,
+    /// Alert when a radio beacons its position over LIP/APRS.
+    pub alert_lip: bool,
+    /// Alert when the Brew/TetraPack backhaul connects or disconnects.
+    pub alert_backhaul: bool,
+    /// Forward the stack's own WARN/ERROR log lines as alerts (catch-all for critical status).
+    pub alert_critical_logs: bool,
+    /// Alert when the overall station-health level changes (Ok/Degraded/Critical transitions).
+    pub alert_health: bool,
+    /// Alert when an external ISSI registers via Brew/TetraPack.
+    pub alert_brew_register: bool,
+    /// Telegram title/prefix for Brew-originated ISSI REGISTER alerts.
+    pub brew_register_prefix: String,
+    /// Optional allow-list for Brew REGISTER Telegram alerts; empty means all ISSIs.
+    pub brew_register_issi_whitelist: BTreeSet<u32>,
+    /// Deny-list for Brew REGISTER Telegram alerts; wins over the allow-list.
+    pub brew_register_issi_blacklist: BTreeSet<u32>,
+}
+
+// Was: Implementiert das zugehörige Verhalten für `Default for CfgTelegram`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
+impl Default for CfgTelegram {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn default() -> Self {
+        CfgTelegram {
+            enabled: false,
+            bot_token: SecretField::from(String::new()),
+            chat_ids: Vec::new(),
+            alert_connect: true,
+            alert_disconnect: true,
+            alert_t351: true,
+            alert_lip: true,
+            alert_backhaul: true,
+            alert_critical_logs: true,
+            alert_health: true,
+            alert_brew_register: false,
+            brew_register_prefix: "Brew REGISTER".to_string(),
+            brew_register_issi_whitelist: BTreeSet::new(),
+            brew_register_issi_blacklist: BTreeSet::new(),
+        }
+    }
+}
+
+// Was: Implementiert das zugehörige Verhalten für `CfgTelegram`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
+impl CfgTelegram {
+    /// True when alerts can actually be delivered: enabled, a token is set, and at least one
+    /// recipient exists. The alerter short-circuits when this is false.
+    // Was: Prüft, ob deliverable zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
+    pub fn is_deliverable(&self) -> bool {
+        self.enabled && !self.bot_token.as_ref().trim().is_empty() && !self.chat_ids.is_empty()
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für cfg telegram dto in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct CfgTelegramDto {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default)]
+    pub bot_token: String,
+    #[serde(default)]
+    pub chat_ids: Vec<i64>,
+
+    #[serde(default = "default_true")]
+    pub alert_connect: bool,
+    #[serde(default = "default_true")]
+    pub alert_disconnect: bool,
+    #[serde(default = "default_true")]
+    pub alert_t351: bool,
+    #[serde(default = "default_true")]
+    pub alert_lip: bool,
+    #[serde(default = "default_true")]
+    pub alert_backhaul: bool,
+    #[serde(default = "default_true")]
+    pub alert_critical_logs: bool,
+    #[serde(default = "default_true")]
+    pub alert_health: bool,
+    #[serde(default)]
+    pub alert_brew_register: bool,
+    #[serde(default = "default_brew_register_prefix")]
+    pub brew_register_prefix: String,
+    #[serde(default)]
+    pub brew_register_issi_whitelist: Vec<u32>,
+    #[serde(default)]
+    pub brew_register_issi_blacklist: Vec<u32>,
+
+    #[serde(flatten)]
+    pub extra: HashMap<String, toml::Value>,
+}
+
+// Was: Führt den Arbeitsschritt `default_true` für default true aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn default_true() -> bool {
+    true
+}
+
+// Was: Führt den Arbeitsschritt `default_brew_register_prefix` für default Brew-Verbindung register prefix aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn default_brew_register_prefix() -> String {
+    "Brew REGISTER".to_string()
+}
+
+// Was: Diese Funktion wendet telegram patch.
+// Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
+pub fn apply_telegram_patch(dto: CfgTelegramDto) -> CfgTelegram {
+    let mut brew_register_prefix = dto.brew_register_prefix.trim().to_string();
+    if brew_register_prefix.is_empty() {
+        brew_register_prefix = default_brew_register_prefix();
+    }
+
+    CfgTelegram {
+        enabled: dto.enabled,
+        bot_token: SecretField::from(dto.bot_token),
+        chat_ids: dto.chat_ids,
+        alert_connect: dto.alert_connect,
+        alert_disconnect: dto.alert_disconnect,
+        alert_t351: dto.alert_t351,
+        alert_lip: dto.alert_lip,
+        alert_backhaul: dto.alert_backhaul,
+        alert_critical_logs: dto.alert_critical_logs,
+        alert_health: dto.alert_health,
+        alert_brew_register: dto.alert_brew_register,
+        brew_register_prefix,
+        brew_register_issi_whitelist: dto.brew_register_issi_whitelist.into_iter().collect(),
+        brew_register_issi_blacklist: dto.brew_register_issi_blacklist.into_iter().collect(),
+    }
+}

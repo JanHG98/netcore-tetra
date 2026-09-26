@@ -1,0 +1,99 @@
+# NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Aufzeichnung und Ereignisprotokollierung.
+# NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+# NetCore Recorder – offener Testbetrieb.
+# Keine Benutzerkonten, keine Tokens und kein TLS. Nur in einem isolierten Labornetz verwenden.
+
+# Was: Öffnet den Konfigurationsabschnitt `server`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[server]
+# Was: Setzt die Einstellung `bind` für server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+bind = "0.0.0.0:8140"
+# Was: Setzt die Einstellung `history_limit` für server.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+history_limit = 2000
+
+# Was: Öffnet den Konfigurationsabschnitt `media_switch`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[media_switch]
+# Replay-fähiger Vollframe-Tap des Media Switch.
+# Was: Setzt die Einstellung `tap_url` für Audio- und Mediendaten switch.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+tap_url = "http://10.0.1.25:8130/api/v1/recorder/taps"
+# Was: Setzt die Einstellung `sessions_url` für Audio- und Mediendaten switch.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+sessions_url = "http://10.0.1.25:8130/api/v1/sessions"
+# Was: Setzt die Einstellung `poll_interval_ms` für Audio- und Mediendaten switch.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+poll_interval_ms = 100
+# Was: Setzt die Einstellung `session_reconcile_ms` für Audio- und Mediendaten switch.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+session_reconcile_ms = 1000
+# Was: Setzt die Einstellung `request_timeout_secs` für Audio- und Mediendaten switch.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+request_timeout_secs = 3
+# Was: Setzt die Einstellung `batch_limit` für Audio- und Mediendaten switch.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+batch_limit = 500
+
+# Was: Öffnet den Konfigurationsabschnitt `storage`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[storage]
+# Was: Setzt die Einstellung `root` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+root = "/var/lib/netcore-recorder/recordings"
+# Was: Setzt die Einstellung `export_root` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+export_root = "/var/lib/netcore-recorder/exports"
+# Ein gepackter TETRA Speech Service 0 Frame umfasst 35 Bytes und 60 ms.
+# Was: Setzt die Einstellung `frame_duration_ms` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+frame_duration_ms = 60
+# Erst nach dieser Zeit ohne Media-Switch-Session wird eine Aufnahme finalisiert.
+# Was: Setzt die Einstellung `session_absent_grace_secs` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+session_absent_grace_secs = 3
+# Sicherheitsnetz für Calls, die nie sauber beendet gemeldet werden.
+# Was: Setzt die Einstellung `maximum_idle_secs` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+maximum_idle_secs = 600
+# Was: Setzt die Einstellung `default_retention_days` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+default_retention_days = 30
+# Was: Setzt die Einstellung `retention_scan_secs` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+retention_scan_secs = 60
+# Daten, Index und aktives Manifest werden spätestens alle n Frames synchronisiert.
+# Was: Setzt die Einstellung `fsync_every_frames` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+fsync_every_frames = 50
+# Was: Setzt die Einstellung `minimum_free_space_mb` für storage.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+minimum_free_space_mb = 512
+
+# Was: Öffnet den Konfigurationsabschnitt `security`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[security]
+# Was: Setzt die Einstellung `mode` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+mode = "open_lab"
+# Was: Setzt die Einstellung `allow_remote_management` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+allow_remote_management = true
+# Was: Setzt die Einstellung `allow_delete` für Sicherheit.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+allow_delete = true
+
+# Was: Öffnet den Konfigurationsabschnitt `limits`.
+# Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
+[limits]
+# Was: Setzt die Einstellung `max_body_bytes` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_body_bytes = 1048576
+# Was: Setzt die Einstellung `max_active_recordings` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_active_recordings = 1000
+# Was: Setzt die Einstellung `max_recordings` für limits.
+# Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
+max_recordings = 100000

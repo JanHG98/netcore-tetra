@@ -1,0 +1,17 @@
+[Unit]
+Description=NetCore-Tetra TBS RF Telemetry Agent (OPEN LAB)
+After=network-online.target bluestation.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/netcore-rf-agent --config /etc/netcore/rf-agent.toml
+Restart=always
+RestartSec=3
+User=root
+Group=root
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

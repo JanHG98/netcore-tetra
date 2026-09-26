@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://netcore-tetra.local/schemas/netcore-person-v1.schema.json",
+  "title": "NetCore Person v1",
+  "type": "object",
+  "required": ["schema", "person_id", "username", "display_name", "active", "pin_stored", "created_at", "updated_at"],
+  "properties": {
+    "schema": {"const": "netcore-person-v1"},
+    "person_id": {"type": "string", "minLength": 1, "maxLength": 160},
+    "username": {"type": "string", "minLength": 1, "maxLength": 80},
+    "display_name": {"type": "string", "maxLength": 160},
+    "active": {"type": "boolean"},
+    "rui_username": {"type": "string", "maxLength": 80},
+    "rui_issi": {"type": ["integer", "null"], "minimum": 1},
+    "pin_stored": {"const": false},
+    "created_at": {"type": "string", "format": "date-time"},
+    "updated_at": {"type": "string", "format": "date-time"}
+  },
+  "additionalProperties": true
+}

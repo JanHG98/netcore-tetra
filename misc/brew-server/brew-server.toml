@@ -1,0 +1,221 @@
+listen = "0.0.0.0:9000"
+websocket_path = "/brew/"
+websocket_subprotocol = "brew"
+route_without_affiliations = true
+fallback_broadcast_when_no_affiliations = true
+allow_multiple_calls_per_group = true
+higher_priority_number_wins = true
+preempt_cause = 1
+# Force-ends a Brew call (station-to-station private/group, or the Brew leg
+# of a SIP-bridged call) once it has run this long, the same as a normal
+# hangup (CALL_RELEASE/CALL_GROUP_IDLE). 0 disables the limit.
+max_call_duration_seconds = 14400
+
+[tls]
+enabled = true
+cert_path = "/etc/ssl/brew/server.crt"
+key_path = "/etc/ssl/brew/server.key"
+
+[auth]
+enabled = true
+realm = "brew-server"
+session_ttl_seconds = 300
+
+[auth.users]
+# Brew usernames (Basestation identities) must be numeric, max 7 digits.
+"1000001" = "change-me-bs1"
+"1000002" = "change-me-bs2"
+
+# Optional: Basestation's outbound Telemetry channel (BTS -> this server).
+# Off by default. See https://github.com/ysamouhos/brew-server/wiki/Basestation-Telemetry for details.
+[telemetry]
+enabled = true
+listen = "0.0.0.0:9001"
+
+[telemetry.users]
+"100000001" = "change-me-bs1"
+"100000002" = "change-me-bs2"
+
+[telemetry.tls]
+enabled = true
+cert_path = "/etc/ssl/brew/server.crt"
+key_path = "/etc/ssl/brew/server.key"
+
+# Optional: Basestation's inbound Control channel (BTS -> this server, commands
+# pushed back down the same connection). Off by default. See
+# https://github.com/ysamouhos/brew-server/wiki/Basestation-Control for details.
+[control]
+enabled = true
+listen = "0.0.0.0:9002"
+
+[control.users]
+"100000001" = "change-me-bs1"
+"100000002" = "change-me-bs2"
+
+[control.tls]
+enabled = true
+cert_path = "/etc/ssl/brew/server.crt"
+key_path = "/etc/ssl/brew/server.key"
+
+# Monitoring dashboard. Now on its OWN listener/port, separate from the Brew
+# API. Enabled by default. Set [dashboard.users] to require HTTP Basic auth
+# (empty = open). `admins` lists which of those usernames may view/edit
+# /settings; every other authenticated user can still read the rest of the
+# dashboard, just not that page or its /api/config/* endpoints. Leave
+# `admins` empty to let every dashboard user access settings (no split).
+# See https://github.com/ysamouhos/brew-server/wiki/Dashboard.
+[dashboard]
+enabled = true
+listen = "0.0.0.0:9003"
+realm = "brew-server-dashboard"
+admins = ["admin"]
+
+[dashboard.users]
+"admin" = "change-me-admin"
+"viewer" = "change-me-viewer"
+
+[dashboard.tls]
+enabled = true
+cert_path = "tls/dashboard-cert.pem"
+key_path = "tls/dashboard-key.pem"
+
+# Persistent history: append-only binary log of completed calls and SDS,
+# replayed on startup so history survives restarts. Keeps everything (no
+# rotation). Disable by setting enabled = false.
+[storage]
+enabled = true
+path = "brew-history.bin"
+
+# ---------------------------------------------------------------------------
+# SIP / VoIP subsystem. Off by default. When enabled it binds a UDP SIP
+# listener that terminates SIP extensions (user/pass registrations) and SIP
+# trunks (peer gateways such as Asterisk), and bridges calls to the Brew/TETRA
+# side via the voice routes below. See https://github.com/ysamouhos/brew-server/wiki/SIP-VoIP.
+[sip]
+enabled = false
+listen = "0.0.0.0:5060"
+# Address advertised to peers in Contact/Via (leave empty to use the socket's
+# local address). Set this to your public/reachable IP when behind NAT.
+advertised_host = ""
+# UDP port range the RTP relay allocates media legs from.
+rtp_port_min = 16000
+rtp_port_max = 17000
+realm = "brew-server"
+registration_ttl_seconds = 3600
+# Force-ends a SIP call once it has run this long: a BYE to the SIP peer(s),
+# and, for a call bridged to Brew, the matching CALL_RELEASE on that side.
+# 0 disables the limit.
+max_call_duration_seconds = 14400
+
+# SIP extensions (user/pass). The table key is the AOR user part the phone
+# registers as. `issi` optionally maps the extension to a TETRA subscriber so
+# voice routes can address it from the Brew side.
+[sip.extensions.1001]
+password = "change-me-1001"
+display_name = "Reception"
+issi = 1001
+allow_outbound = true
+
+[sip.extensions.1002]
+password = "change-me-1002"
+display_name = "Dispatch"
+allow_outbound = true
+
+# SIP trunks to VoIP gateways. `direction` is one of:
+#   outbound - we REGISTER to the peer at `remote_host` (ITSP / Asterisk).
+#   inbound  - the peer REGISTERs to us (learn its address from its REGISTER).
+#   peer     - static IP-authenticated peer, no registration either way.
+[sip.trunks.asterisk]
+direction = "outbound"
+remote_host = "192.0.2.10:5060"
+username = "brew-trunk"
+password = "change-me-trunk"
+register_interval_seconds = 300
+enabled = true
+
+# Voice routes. Evaluated top to bottom; first enabled match wins. `to`/`from`
+# endpoints: { kind = "sip_extension", user = "1001" },
+#            { kind = "sip_trunk", trunk = "asterisk", number = "..." },
+#            { kind = "brew_private", issi = 90 },
+#            { kind = "brew_group", gssi = 1001 }.
+# `match_pattern` matches the dialled destination: "*" any, trailing "*" prefix,
+# otherwise exact. Optional `strip_prefix` removes a leading literal (e.g. an
+# outside-line "9") from the dialled string before it reaches an empty-`number`
+# sip_trunk destination. A mobile terminal dialling a non-ISSI number (e.g.
+# "9" + a 10-digit PSTN number) arrives here too: destination is 0 and the
+# digits are the dialled string, matched the same as a SIP extension's dial.
+
+# Extensions, or a mobile terminal, dialling 9 + number go out the Asterisk
+# trunk; strip_prefix drops the "9" so the trunk dials 10 digits.
+[[sip.routes]]
+name = "outbound-via-asterisk"
+match_pattern = "9*"
+strip_prefix = "9"
+to = { kind = "sip_trunk", trunk = "asterisk" }
+enabled = true
+
+# Anything arriving from the Asterisk trunk is patched into TETRA group 1001,
+# reaching affiliated basestation mobile stations and brew mobile clients.
+[[sip.routes]]
+name = "asterisk-to-tetra-group"
+match_pattern = "*"
+from = { kind = "sip_trunk", trunk = "asterisk" }
+to = { kind = "brew_group", gssi = 1001 }
+enabled = true
+
+# Dial 7 + ISSI from a SIP extension to reach a TETRA subscriber privately.
+[[sip.routes]]
+name = "ext-to-tetra-private"
+match_pattern = "7*"
+from = { kind = "sip_extension", user = "1001" }
+to = { kind = "brew_private", issi = 90 }
+enabled = true
+
+# Federation: connects this brew-server to other brew-server instances over
+# the same Brew WebSocket protocol Basestations use (a peer link connects
+# and authenticates exactly like a Basestation, just tagged Peer), so calls,
+# SDS and subscriber/group registrations can reach a remote site's stations.
+# Registrations propagate peer to peer automatically (each server relays
+# what it learns to its *other* peers) -- no per-ISSI/GSSI config needed
+# here, only which servers to link to. Safe for a chain or star (any
+# loop-free topology); a topology with a cycle (full mesh) is not supported.
+[federation]
+enabled = false
+
+# We dial out to this peer; it needs no matching config for us; an inbound
+# connection just authenticates like a Basestation would (with Peer mode).
+[[federation.peers]]
+name = "site-b"
+remote_host = "10.0.0.20:9000"
+path = "/brew"
+# Only needed if the peer has [auth] enabled -- same numeric-username rule
+# as a Basestation's Brew digest identity.
+username = "9000001"
+password = "change-me-federation"
+reconnect_interval_seconds = 15
+enabled = true
+
+# APRS: forwards decoded mobile-station LIP positions (the same fixes plotted
+# on the dashboard's /map) to APRS-IS. Off by default -- set callsign/passcode
+# (this server's own APRS-IS login, not a per-radio credential) before
+# enabling. See https://github.com/ysamouhos/brew-server/wiki/APRS.
+[aprs]
+enabled = false
+server = "rotate.aprs2.net:14580"
+callsign = ""
+passcode = ""
+symbol_table = "/"
+symbol_code = "j"
+comment = "TETRA MS via brew-server"
+object_name_prefix = "MS"
+min_report_interval_seconds = 60
+reconnect_interval_seconds = 15
+
+# Basestation locations shown as their own markers on the /map dashboard page.
+# Keyed by the same numeric Brew username the Basestation authenticates with
+# above under [auth.users] -- whichever live connection logs in as that
+# identity is matched automatically. See https://github.com/ysamouhos/brew-server/wiki/Basestation-Locations.
+[bts_locations."1000001"]
+name = "Athens HQ"
+lat = 37.9917
+lon = 23.7640

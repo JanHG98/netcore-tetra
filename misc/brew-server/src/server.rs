@@ -1,0 +1,340 @@
+use crate::{router, state::{AppState, Client, ClientMode}};
+use crate::protocol::ConnVersion;
+use anyhow::Context;
+use axum::{
+    extract::{
+        ws::{Message, WebSocket, WebSocketUpgrade},
+        ConnectInfo, FromRequestParts, Path, State,
+    },
+    http::{header, HeaderMap, HeaderValue, Request, StatusCode},
+    response::{IntoResponse, Response},
+    routing::get,
+    Router,
+};
+use futures_util::{SinkExt, StreamExt};
+use std::{collections::HashMap, net::SocketAddr, sync::Arc, time::Instant};
+use tokio::sync::mpsc;
+use tracing::{debug, info, warn};
+use uuid::Uuid;
+
+pub async fn run(state: Arc<AppState>) -> anyhow::Result<()> {
+    let base = normalized_path(&state.config.websocket_path);
+    let session_route = format!("{}/session/{{token}}", base);
+    let mut app = Router::new().route(&base, get(brew_discovery));
+    let slash = format!("{}/", base);
+    if slash != base { app = app.route(&slash, get(brew_discovery)); }
+    let app = app
+        .route(&session_route, get(brew_session_endpoint))
+        .route("/healthz", get(|| async { "ok\n" }))
+        .with_state(state.clone());
+
+    if state.config.tls.enabled {
+        let tls = &state.config.tls;
+        let rustls_config = axum_server::tls_rustls::RustlsConfig::from_pem_file(
+            &tls.cert_path,
+            &tls.key_path,
+        )
+        .await
+        .with_context(|| {
+            format!(
+                "loading TLS cert {} and key {}",
+                tls.cert_path.display(),
+                tls.key_path.display()
+            )
+        })?;
+        info!(listen=%state.config.listen, websocket_path=%base, auth=state.config.auth.enabled, tls=true, "Brew server listening (TLS)");
+        axum_server::bind_rustls(state.config.listen, rustls_config)
+            .serve(app.into_make_service_with_connect_info::<SocketAddr>())
+            .await?;
+    } else {
+        let listener = tokio::net::TcpListener::bind(state.config.listen).await?;
+        info!(listen=%state.config.listen, websocket_path=%base, auth=state.config.auth.enabled, tls=false, "Brew server listening");
+        axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>()).await?;
+    }
+    Ok(())
+}
+
+fn normalized_path(path: &str) -> String {
+    let mut p = if path.starts_with('/') { path.to_string() } else { format!("/{path}") };
+    while p.len() > 1 && p.ends_with('/') { p.pop(); }
+    p
+}
+
+/// HTTP header carrying the Brew protocol version, per the specification.
+const X_BREW_VERSION: &str = "X-Brew-Version";
+/// HTTP header carrying the Brew client mode (Terminal | Basestation).
+const X_BREW_MODE: &str = "X-Brew-Mode";
+
+fn brew_mode(headers: &HeaderMap) -> ClientMode {
+    ClientMode::from_header(headers.get(X_BREW_MODE).and_then(|v| v.to_str().ok()))
+}
+
+/// Validates the client's advertised `X-Brew-Version` header against the version
+/// this server implements and returns the connection's seed version. A missing
+/// header is accepted for backward compatibility and seeds `V0` (the version is
+/// then resolved lazily from message content, exactly as real clients do). A
+/// present but unsupported version yields `426 Upgrade Required` (as listed in
+/// the spec's supported response codes).
+fn check_brew_version(headers: &HeaderMap) -> Result<ConnVersion, Response> {
+    let Some(raw) = headers.get(X_BREW_VERSION) else {
+        debug!("no X-Brew-Version header; seeding V0 and detecting lazily");
+        return Ok(ConnVersion::V0);
+    };
+    let requested = raw.to_str().ok().and_then(|s| s.trim().parse::<u8>().ok());
+    match requested {
+        // Any version from 1 up to the version we implement is accepted; we seed
+        // the highest layout we mutually support.
+        Some(v) if v >= 1 && v <= crate::protocol::BREW_PROTOCOL_VERSION => {
+            Ok(ConnVersion::from_header_value(Some(v)))
+        }
+        Some(0) => Ok(ConnVersion::V0),
+        other => {
+            warn!(requested=?other, supported=crate::protocol::BREW_PROTOCOL_VERSION, "unsupported X-Brew-Version");
+            let mut resp = (
+                StatusCode::UPGRADE_REQUIRED,
+                [(header::CONTENT_TYPE, "text/plain")],
+                format!("Unsupported Brew version; this server implements version {}\n", crate::protocol::BREW_PROTOCOL_VERSION),
+            ).into_response();
+            if let Ok(v) = HeaderValue::from_str(&crate::protocol::BREW_PROTOCOL_VERSION.to_string()) {
+                resp.headers_mut().insert(X_BREW_VERSION, v);
+            }
+            Err(resp)
+        }
+    }
+}
+
+async fn brew_discovery(
+    State(state): State<Arc<AppState>>,
+    ConnectInfo(remote_addr): ConnectInfo<SocketAddr>,
+    request: Request<axum::body::Body>,
+) -> Response {
+    state.purge_ephemeral().await;
+    let (mut parts, _body) = request.into_parts();
+    let request_uri = parts.uri.path().to_string();
+
+    let seed_version = match check_brew_version(&parts.headers) {
+        Ok(v) => v,
+        Err(resp) => return resp,
+    };
+
+    let mode = brew_mode(&parts.headers);
+
+    let is_upgrade = parts.headers.get(header::UPGRADE).and_then(|v| v.to_str().ok())
+        .map(|v| v.eq_ignore_ascii_case("websocket")).unwrap_or(false);
+
+    // Direct WS mode remains available only when Digest is disabled.
+    if is_upgrade && !state.config.auth.enabled {
+        return upgrade_from_parts(state, &mut parts, mode, seed_version, remote_addr, None).await;
+    }
+
+    if state.config.auth.enabled {
+        let Some(username) = verify_digest(&state, &parts.headers, "GET", &request_uri).await else {
+            return digest_challenge(&state).await;
+        };
+        let token = Uuid::new_v4().simple().to_string();
+        state.inner.write().await.auth_sessions.insert(token.clone(), (Instant::now(), mode, seed_version, Some(username)));
+        let path = format!("{}/session/{}", normalized_path(&state.config.websocket_path), token);
+        return (
+            StatusCode::OK,
+            [
+                (header::CONTENT_TYPE, "text/plain"),
+                (header::HeaderName::from_static("x-brew-version"), version_header_value()),
+            ],
+            path,
+        ).into_response();
+    }
+
+    (
+        StatusCode::OK,
+        [
+            (header::CONTENT_TYPE, "text/plain"),
+            (header::HeaderName::from_static("x-brew-version"), version_header_value()),
+        ],
+        normalized_path(&state.config.websocket_path),
+    ).into_response()
+}
+
+fn version_header_value() -> &'static str {
+    // BREW_PROTOCOL_VERSION is a small constant; map it to a static string so it
+    // can be used directly in the header array without allocation.
+    match crate::protocol::BREW_PROTOCOL_VERSION {
+        1 => "1",
+        _ => "1",
+    }
+}
+
+async fn brew_session_endpoint(
+    State(state): State<Arc<AppState>>,
+    Path(token): Path<String>,
+    ConnectInfo(remote_addr): ConnectInfo<SocketAddr>,
+    request: Request<axum::body::Body>,
+) -> Response {
+    state.purge_ephemeral().await;
+    if !state.config.auth.enabled { return StatusCode::NOT_FOUND.into_response(); }
+    let valid = state.inner.read().await.auth_sessions.contains_key(&token);
+    if !valid { return StatusCode::UNAUTHORIZED.into_response(); }
+
+    let (mut parts, _body) = request.into_parts();
+    let is_upgrade = parts.headers.get(header::UPGRADE).and_then(|v| v.to_str().ok())
+        .map(|v| v.eq_ignore_ascii_case("websocket")).unwrap_or(false);
+    if !is_upgrade { return StatusCode::BAD_REQUEST.into_response(); }
+
+    // Session URLs are single-use. The established WebSocket is the authenticated
+    // session. Recover the mode, seed version and authenticated username
+    // captured during the discovery GET; the WebSocket handshake itself
+    // carries neither the X-Brew-Mode/X-Brew-Version headers nor Authorization.
+    let (mode, seed_version, username) = state.inner.write().await.auth_sessions.remove(&token)
+        .map(|(_, mode, ver, user)| (mode, ver, user))
+        .unwrap_or_default();
+    upgrade_from_parts(state, &mut parts, mode, seed_version, remote_addr, username).await
+}
+
+async fn upgrade_from_parts(state: Arc<AppState>, parts: &mut axum::http::request::Parts, mode: ClientMode, seed_version: ConnVersion, remote_addr: SocketAddr, username: Option<String>) -> Response {
+    match WebSocketUpgrade::from_request_parts(parts, &state).await {
+        Ok(ws) => {
+            let requested = parts.headers.get(header::SEC_WEBSOCKET_PROTOCOL).and_then(|v| v.to_str().ok()).unwrap_or_default();
+            debug!(requested_subprotocol=requested, mode=mode.as_str(), seed_version=seed_version.as_u8(), "WebSocket upgrade request");
+            let protocol = state.config.websocket_subprotocol.clone();
+            ws.protocols([protocol]).on_upgrade(move |socket| client_session(state, socket, mode, seed_version, remote_addr, username)).into_response()
+        }
+        Err(rejection) => rejection.into_response(),
+    }
+}
+
+async fn digest_challenge(state: &Arc<AppState>) -> Response {
+    let nonce = Uuid::new_v4().simple().to_string();
+    state.inner.write().await.digest_nonces.insert(nonce.clone(), Instant::now());
+    let opaque = md5_hex(&format!("{}:brew", state.config.auth.realm));
+    let challenge = format!("Digest realm=\"{}\", nonce=\"{}\", qop=\"auth\", opaque=\"{}\"",
+        state.config.auth.realm, nonce, opaque);
+    let mut response = StatusCode::UNAUTHORIZED.into_response();
+    response.headers_mut().insert(header::WWW_AUTHENTICATE, HeaderValue::from_str(&challenge).unwrap());
+    response
+}
+
+fn md5_hex(input: &str) -> String { format!("{:x}", md5::compute(input.as_bytes())) }
+
+fn parse_digest(header_value: &str) -> HashMap<String, String> {
+    let mut out = HashMap::new();
+    let value = header_value.trim().strip_prefix("Digest ").unwrap_or(header_value.trim());
+    for part in value.split(',') {
+        if let Some((k, v)) = part.trim().split_once('=') {
+            out.insert(k.trim().to_ascii_lowercase(), v.trim().trim_matches('"').to_string());
+        }
+    }
+    out
+}
+
+/// Maximum number of digits allowed in a Brew (Basestation) username. TETRA
+/// subscriber identities used as Brew usernames are constrained to at most 7
+/// decimal digits.
+const MAX_BREW_USERNAME_DIGITS: usize = 7;
+
+/// A Brew username must be non-empty, all decimal digits, and at most
+/// `MAX_BREW_USERNAME_DIGITS` long.
+fn is_valid_brew_username(username: &str) -> bool {
+    !username.is_empty()
+        && username.len() <= MAX_BREW_USERNAME_DIGITS
+        && username.bytes().all(|b| b.is_ascii_digit())
+}
+
+/// Verifies a Digest `Authorization` header and, on success, returns the
+/// authenticated Brew username -- the caller threads it through so the
+/// connection's `Client.username` can be matched against `[bts_locations]`.
+async fn verify_digest(state: &Arc<AppState>, headers: &HeaderMap, method: &str, expected_uri: &str) -> Option<String> {
+    let value = headers.get(header::AUTHORIZATION).and_then(|v| v.to_str().ok())?;
+    if !value.starts_with("Digest ") { return None; }
+    let p = parse_digest(value);
+    let username = p.get("username")?;
+    if !is_valid_brew_username(username) {
+        warn!(username = %username, "rejecting Brew auth: username must be 1-7 digits");
+        return None;
+    }
+    let password = state.config.auth.users.get(username)?;
+    let nonce = p.get("nonce")?;
+    if !state.inner.read().await.digest_nonces.contains_key(nonce) { return None; }
+    let realm = p.get("realm").map(String::as_str).unwrap_or("");
+    if realm != state.config.auth.realm { return None; }
+    let uri = p.get("uri").map(String::as_str).unwrap_or("");
+    if uri != expected_uri { return None; }
+    let received = p.get("response")?;
+
+    let ha1 = md5_hex(&format!("{}:{}:{}", username, realm, password));
+    let ha2 = md5_hex(&format!("{}:{}", method, uri));
+    let expected = if p.get("qop").map(|s| s.contains("auth")).unwrap_or(false) {
+        let nc = p.get("nc").map(String::as_str).unwrap_or("");
+        let cnonce = p.get("cnonce").map(String::as_str).unwrap_or("");
+        md5_hex(&format!("{}:{}:{}:{}:auth:{}", ha1, nonce, nc, cnonce, ha2))
+    } else {
+        md5_hex(&format!("{}:{}:{}", ha1, nonce, ha2))
+    };
+    let ok = expected.eq_ignore_ascii_case(received);
+    if !ok { return None; }
+    state.inner.write().await.digest_nonces.remove(nonce);
+    Some(username.clone())
+}
+
+async fn client_session(state: Arc<AppState>, socket: WebSocket, mode: ClientMode, seed_version: ConnVersion, remote_addr: SocketAddr, username: Option<String>) {
+    let id = Uuid::new_v4();
+    let (mut ws_tx, mut ws_rx) = socket.split();
+    let (tx, mut rx) = mpsc::unbounded_channel::<Vec<u8>>();
+    let connected_at_ms = crate::telemetry::now_ms();
+    state.inner.write().await.clients.insert(id, Client { tx: tx.clone(), mode, version: seed_version, remote_addr: Some(remote_addr), connected_at_ms, username: username.clone() });
+    info!(%id, mode=mode.as_str(), version=seed_version.as_u8(), %remote_addr, username=username.as_deref().unwrap_or(""), "Basestation connected");
+    if mode == ClientMode::Peer {
+        // Inbound federation peer link: `federation::run`'s outbound dial
+        // side syncs its own state to us once connected, but that is only
+        // half the story -- we need to tell *this* peer what we know too, or
+        // an inbound-only link (or one that reconnects from the far end)
+        // never learns about registrations that predate it.
+        crate::federation::sync_peer(&state, &tx).await;
+    }
+
+    let writer = tokio::spawn(async move {
+        while let Some(packet) = rx.recv().await {
+            if ws_tx.send(Message::Binary(packet.into())).await.is_err() { break; }
+        }
+    });
+
+    while let Some(item) = ws_rx.next().await {
+        match item {
+            Ok(Message::Binary(data)) => router::handle_packet(state.clone(), id, data.to_vec()).await,
+            Ok(Message::Ping(_)) => debug!(%id, "ping received"),
+            Ok(Message::Pong(_)) => debug!(%id, "pong received"),
+            Ok(Message::Close(_)) => break,
+            Ok(Message::Text(_)) => warn!(%id, "text WebSocket message ignored"),
+            Err(e) => { warn!(%id, error=%e, "WebSocket receive error"); break; }
+        }
+    }
+
+    writer.abort();
+    state.cleanup_client(id).await;
+    info!(%id, "Basestation disconnected");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_valid_brew_username;
+
+    #[test]
+    fn accepts_1_to_7_digits() {
+        assert!(is_valid_brew_username("1"));
+        assert!(is_valid_brew_username("1234567"));
+        assert!(is_valid_brew_username("90"));
+    }
+
+    #[test]
+    fn rejects_more_than_7_digits() {
+        assert!(!is_valid_brew_username("12345678"));   // 8 digits
+        assert!(!is_valid_brew_username("100000001"));  // old 9-digit example
+    }
+
+    #[test]
+    fn rejects_empty_and_non_digits() {
+        assert!(!is_valid_brew_username(""));
+        assert!(!is_valid_brew_username("12a4567"));
+        assert!(!is_valid_brew_username("bs1"));
+        assert!(!is_valid_brew_username(" 123456"));
+        assert!(!is_valid_brew_username("123-456"));
+    }
+}

@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "run_id": "on-air-YYYYMMDD-site",
+  "started_at": "2026-07-24T08:00:00Z",
+  "finished_at": "2026-07-24T10:00:00Z",
+  "site": {
+    "name": "Open-Lab Teststand",
+    "notes": "Isolated RF test with permitted frequencies and suitable attenuation/load"
+  },
+  "network": {
+    "mcc": 1,
+    "mnc": 333,
+    "main_carrier": 720,
+    "secondary_carrier": 721,
+    "colour_code": 1,
+    "location_area": 1
+  },
+  "devices": [
+    {
+      "vendor": "Motorola",
+      "model": "replace-me",
+      "serial": "replace-me",
+      "firmware": "replace-me",
+      "issi": 7000001,
+      "notes": "Primary reference terminal"
+    },
+    {
+      "vendor": "Sepura",
+      "model": "replace-me",
+      "serial": "replace-me",
+      "firmware": "replace-me",
+      "issi": 7000002,
+      "notes": "Second-vendor reference terminal"
+    }
+  ],
+  "tests": [
+    {
+      "id": "AIR-REG-001",
+      "title": "Registration and deregistration",
+      "result": "not_run",
+      "observed_at": "2026-07-24T08:15:00Z",
+      "devices": [7000001, 7000002],
+      "expected": "Both terminals register, appear on the correct TBS and deregister cleanly.",
+      "observed": "",
+      "notes": "",
+      "artifacts": []
+    },
+    {
+      "id": "AIR-GRP-001",
+      "title": "Group attach, group call, late entry and floor change",
+      "result": "not_run",
+      "observed_at": "2026-07-24T08:30:00Z",
+      "devices": [7000001, 7000002],
+      "expected": "Group affiliation is visible; both terminals receive the call; late entry works; speaker changes are tracked.",
+      "observed": "",
+      "notes": "",
+      "artifacts": []
+    },
+    {
+      "id": "AIR-IND-001",
+      "title": "Individual simplex call",
+      "result": "not_run",
+      "observed_at": "2026-07-24T08:45:00Z",
+      "devices": [7000001, 7000002],
+      "expected": "Call setup, speech path, floor handling and release succeed in both directions.",
+      "observed": "",
+      "notes": "",
+      "artifacts": []
+    },
+    {
+      "id": "AIR-SDS-001",
+      "title": "SDS Type 4 and status delivery",
+      "result": "not_run",
+      "observed_at": "2026-07-24T09:00:00Z",
+      "devices": [7000001, 7000002],
+      "expected": "Individual and group SDS arrive once; delivery state and report correlation are correct.",
+      "observed": "",
+      "notes": "",
+      "artifacts": []
+    },
+    {
+      "id": "AIR-PD-001",
+      "title": "SNDCP context and IPv4 packet data",
+      "result": "not_run",
+      "observed_at": "2026-07-24T09:15:00Z",
+      "devices": [7000001],
+      "expected": "PDP context activates, assigned IPv4 is stable, UDP echo and WAP test page work, context returns to standby.",
+      "observed": "",
+      "notes": "",
+      "artifacts": []
+    },
+    {
+      "id": "AIR-RESTORE-001",
+      "title": "Call restore during site movement or controlled TBS restart",
+      "result": "not_run",
+      "observed_at": "2026-07-24T09:30:00Z",
+      "devices": [7000001, 7000002],
+      "expected": "The managed call is restored without duplicate legs; media resumes and the old context is removed.",
+      "observed": "",
+      "notes": "",
+      "artifacts": []
+    },
+    {
+      "id": "AIR-REC-001",
+      "title": "Recorder integrity",
+      "result": "not_run",
+      "observed_at": "2026-07-24T09:45:00Z",
+      "devices": [7000001, 7000002],
+      "expected": "Frame count, speaker metadata, timestamps and SHA-256 verification match the observed call.",
+      "observed": "",
+      "notes": "",
+      "artifacts": []
+    }
+  ]
+}

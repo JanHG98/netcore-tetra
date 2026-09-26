@@ -1,0 +1,1273 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Einlesen und Prüfen der TETRA-Konfiguration.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
+use serde::{Deserialize, Serialize};
+use tetra_core::TimeslotAllocator;
+use tetra_core::tetra_entities::TetraEntity;
+
+/// A one-shot or repeating SDS broadcast message injected at runtime via the dashboard.
+///
+/// Each message is broadcast to all MSs on the cell (GSSI 0xFFFFFF) using the same
+/// SDS-TL TRANSFER mechanism as Home Mode Display. Messages are transmitted at the
+/// `home_mode_display` interval (or `sds_broadcast` interval if that is configured),
+/// round-robining with the static PID-220 callsign text so neither displaces the other.
+///
+/// - `repeat_count = 0` → repeats indefinitely until explicitly deleted.
+/// - `repeat_count > 0` → auto-removed after that many transmissions.
+#[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für live TETRA-Kurznachricht (SDS) Nachricht in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct LiveSdsMessage {
+    /// Unique ID (monotonically incrementing, assigned by the stack).
+    pub id: u32,
+    /// Text to broadcast (UTF-8; encoded as ISO-8859-1 on TX, unknown chars → '?').
+    pub text: String,
+    /// SDS protocol ID. Defaults to 220 so it appears on the radio home screen.
+    pub protocol_id: u8,
+    /// Source ISSI shown on the radio. Defaults to 16777215 (0xFFFFFF, "network").
+    pub source_issi: u32,
+    /// 0 = repeat forever; >0 = auto-remove after this many transmissions.
+    pub repeat_count: u32,
+    /// Number of times this message has been transmitted so far.
+    pub sent_count: u32,
+}
+
+#[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für Teilnehmer in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct Subscriber {
+    pub issi: u32,
+    // Set of attached GSSIs
+    pub attached_groups: HashSet<u32>,
+    /// Last reported MS class duplex capability.
+    pub duplex_capable: Option<bool>,
+}
+
+/// Centralized subscriber registry tracking locally registered ISSIs and their group affiliations.
+#[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für Teilnehmer registry in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct SubscriberRegistry {
+    /// Registered ISSIs → Subscriber information
+    subscribers: HashMap<u32, Subscriber>,
+    /// Set of all GSSIs with at least one local affiliate
+    all_attached_groups: HashSet<u32>,
+}
+
+// Was: Implementiert das zugehörige Verhalten für `Default for SubscriberRegistry`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
+impl Default for SubscriberRegistry {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+// Was: Implementiert das zugehörige Verhalten für `SubscriberRegistry`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
+impl SubscriberRegistry {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
+    pub fn new() -> Self {
+        Self {
+            subscribers: HashMap::new(),
+            all_attached_groups: HashSet::new(),
+        }
+    }
+
+    // Was: Prüft, ob registered zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
+    pub fn is_registered(&self, issi: u32) -> bool {
+        self.subscribers.contains_key(&issi)
+    }
+
+    /// Tolerant registration; if ISSI already registered, we overwrite it with a fresh Subscriber struct
+    // Was: Diese Funktion registriert den vorgesehenen Arbeitsschritt.
+    // Warum: Die Zuordnung bleibt dadurch eindeutig und kann später sauber wieder entfernt werden.
+    pub fn register(&mut self, issi: u32) {
+        self.deregister(issi); // Clean up any existing registration to prevent stale affiliations
+        self.subscribers.insert(
+            issi,
+            Subscriber {
+                issi,
+                attached_groups: HashSet::new(),
+                duplex_capable: None,
+            },
+        );
+    }
+
+    /// Gets mutable ref to subscriber. If not registered, a default Subscriber is inserted.
+    // Was: Diese Funktion liest Teilnehmer mut.
+    // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
+    pub fn get_subscriber_mut(&mut self, issi: u32) -> &mut Subscriber {
+        self.subscribers.entry(issi).or_insert_with(|| Subscriber {
+            issi,
+            attached_groups: HashSet::new(),
+            duplex_capable: None,
+        })
+    }
+
+    /// Update the last reported MS class duplex capability.
+    // Was: Diese Funktion setzt duplex capable.
+    // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
+    pub fn set_duplex_capable(&mut self, issi: u32, duplex_capable: Option<bool>) {
+        if let Some(subscriber) = self.subscribers.get_mut(&issi) {
+            subscriber.duplex_capable = duplex_capable;
+        }
+    }
+
+    /// Return the last reported MS class duplex capability, if known.
+    // Was: Führt den Arbeitsschritt `duplex_capable` für duplex capable aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn duplex_capable(&self, issi: u32) -> Option<bool> {
+        self.subscribers.get(&issi).and_then(|s| s.duplex_capable)
+    }
+
+    /// Deregister an ISSI, removing it from the registry and cleaning up any group affiliations
+    // Was: Führt den Arbeitsschritt `deregister` für deregister aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn deregister(&mut self, issi: u32) {
+        if let Some(subscriber) = self.subscribers.remove(&issi) {
+            // Clean up global group affiliations for this subscriber
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+            for gssi in &subscriber.attached_groups {
+                // Check if any other subscriber is still affiliated with this group
+                let still_has_members = self.subscribers.values().any(|s| s.attached_groups.contains(gssi));
+                if !still_has_members {
+                    self.all_attached_groups.remove(gssi);
+                }
+            }
+        }
+    }
+
+    /// Add GSSI to subscriber's attached groups and global set
+    // Was: Führt den Arbeitsschritt `affiliate` für affiliate aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn affiliate(&mut self, issi: u32, gssi: u32) {
+        let subscriber = self.get_subscriber_mut(issi);
+        subscriber.attached_groups.insert(gssi);
+        self.all_attached_groups.insert(gssi);
+    }
+
+    /// Remove GSSI from subscriber's attached groups. Update global set if no more subscribers are affiliated with this GSSI.
+    // Was: Führt den Arbeitsschritt `deaffiliate` für deaffiliate aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn deaffiliate(&mut self, issi: u32, gssi: u32) {
+        let subscriber = self.get_subscriber_mut(issi);
+        if subscriber.attached_groups.remove(&gssi) {
+            // Check if any other subscriber is still affiliated with this group
+            let still_has_members = self.subscribers.values().any(|s| s.attached_groups.contains(&gssi));
+            if !still_has_members {
+                self.all_attached_groups.remove(&gssi);
+            }
+        }
+    }
+
+    /// Check if any subscriber is affiliated with the given GSSI
+    // Was: Prüft, ob Gruppe members zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
+    pub fn has_group_members(&self, gssi: u32) -> bool {
+        self.all_attached_groups.contains(&gssi)
+    }
+
+    /// Returns all currently registered ISSIs.
+    ///
+    /// Used by BrewEntity after Brew reconnection to issue D-LOCATION-UPDATE-COMMAND
+    /// to all locally registered MS, forcing them to re-affiliate with the BS.
+    /// Without this, MS units that were registered before a Brew disconnect believe
+    /// they are still affiliated and do not re-register, causing PTT denial until
+    /// they are manually power-cycled or the BS service is restarted.
+    // Was: Führt den Arbeitsschritt `all_registered_issis` für all registered issis aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn all_registered_issis(&self) -> impl Iterator<Item = u32> + '_ {
+        self.subscribers.keys().copied()
+    }
+
+    // Was: Führt den Arbeitsschritt `registered_count` für registered count aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn registered_count(&self) -> usize {
+        self.subscribers.len()
+    }
+
+    // Was: Führt den Arbeitsschritt `attached_group_count` für attached Gruppe count aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn attached_group_count(&self) -> usize {
+        self.all_attached_groups.len()
+    }
+
+    /// Groups the given ISSI is currently affiliated to (empty if not registered).
+    /// Used by the SDS path to reach a member of an active group call on the group's
+    /// traffic timeslot.
+    // Was: Führt den Arbeitsschritt `attached_groups_of` für attached groups of aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn attached_groups_of(&self, issi: u32) -> Vec<u32> {
+        self.subscribers
+            .get(&issi)
+            .map(|s| s.attached_groups.iter().copied().collect())
+            .unwrap_or_default()
+    }
+}
+
+/// Runtime override for the built-in WX/METAR service, edited from the dashboard.
+///
+/// Mirrors the editable subset of `[wx_service]` config. When `Some`, it takes precedence
+/// over the config so toggles/edits apply immediately without a restart; the dashboard
+/// also writes the new values back to the TOML so they persist. `None` means "no override
+/// — use the config value".
+#[derive(Debug, Clone, Default)]
+// Was: Bündelt die zusammengehörigen Werte für wx Laufzeit override in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct WxRuntimeOverride {
+    pub enabled: bool,
+    pub service_issi: u32,
+    pub periodic_enabled: bool,
+    pub periodic_issi: u32,
+    pub periodic_is_group: bool,
+    pub periodic_icao: String,
+    pub periodic_interval_secs: u64,
+}
+
+/// Runtime override for Telegram alerts, edited from the dashboard.
+///
+/// Mirrors the editable `[telegram_alerts]` config. When `Some`, it takes precedence over the
+/// config so toggles/edits (and the detected chat IDs / pasted token) apply immediately without
+/// a restart; the dashboard also writes the values back to the TOML so they persist. `None`
+/// means "no override — use the config value". The token is kept as a plain `String` here (the
+/// state is in-memory only); the config-side `CfgTelegram` wraps it in `SecretField`.
+#[derive(Debug, Clone, Default)]
+// Was: Bündelt die zusammengehörigen Werte für telegram Laufzeit override in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct TelegramRuntimeOverride {
+    pub enabled: bool,
+    pub bot_token: String,
+    pub chat_ids: Vec<i64>,
+    pub alert_connect: bool,
+    pub alert_disconnect: bool,
+    pub alert_t351: bool,
+    pub alert_lip: bool,
+    pub alert_backhaul: bool,
+    pub alert_critical_logs: bool,
+    pub alert_brew_register: bool,
+    pub brew_register_prefix: String,
+    pub brew_register_issi_whitelist: BTreeSet<u32>,
+    pub brew_register_issi_blacklist: BTreeSet<u32>,
+}
+
+/// Runtime override for DAPNET receive/send/forwarding settings, edited from the dashboard.
+///
+/// Mirrors `[dapnet]`. When present, it takes precedence over the config file so routing edits
+/// apply immediately; the dashboard also writes the values back to TOML for persistence.
+#[derive(Debug, Clone, Default)]
+// Was: Bündelt die zusammengehörigen Werte für dapnet Laufzeit override in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct DapnetRuntimeOverride {
+    pub enabled: bool,
+    pub api_url: String,
+    pub username: String,
+    pub password: String,
+    pub poll_interval_secs: u64,
+    pub forward_sds: bool,
+    pub forward_callout: bool,
+    pub forward_telegram: bool,
+    pub sds_source_issi: u32,
+    pub sds_dest_issi: u32,
+    pub sds_dest_is_group: bool,
+    pub ric_issi_routes: std::collections::BTreeMap<u32, u32>,
+    pub ric_gssi_routes: std::collections::BTreeMap<u32, u32>,
+    pub sds_allowed_rics: std::collections::BTreeSet<u32>,
+    pub callout_allowed_rics: std::collections::BTreeSet<u32>,
+    pub telegram_allowed_rics: std::collections::BTreeSet<u32>,
+    pub callout_source_issi: u32,
+    pub callout_dest_issi: u32,
+    pub callout_tpg_ric: u32,
+    pub callout_incident_base: u16,
+    pub callout_priority: u8,
+    pub callout_issi_priorities: std::collections::BTreeMap<u32, u8>,
+    pub callout_tpg_ric_priorities: std::collections::BTreeMap<u32, u8>,
+    pub callout_text_prefix: String,
+    pub telegram_prefix: String,
+    pub rwth_core_enabled: bool,
+    pub rwth_core_host: String,
+    pub rwth_core_port: u16,
+    pub rwth_core_device: String,
+    pub rwth_core_version: String,
+    pub rwth_core_callsign: String,
+    pub rwth_core_authkey: String,
+    pub rwth_messages_limit: usize,
+}
+
+/// Runtime override for EchoLink bridge settings, edited from the dashboard.
+///
+/// Mirrors `[echolink]`. When present, it takes precedence over the config file so routing edits
+/// apply immediately; the dashboard also writes the values back to TOML for persistence.
+#[derive(Debug, Clone, Default)]
+// Was: Bündelt die zusammengehörigen Werte für echolink Laufzeit override in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct EcholinkRuntimeOverride {
+    pub enabled: bool,
+    pub callsign: String,
+    pub password: String,
+    pub location: String,
+    pub status_text: String,
+    pub directory_servers: Vec<String>,
+    pub directory_port: u16,
+    pub bind_addr: String,
+    pub audio_port: u16,
+    pub control_port: u16,
+    pub inbound_enabled: bool,
+    pub outbound_enabled: bool,
+    pub outbound_prefix: String,
+    pub strip_outbound_prefix: bool,
+    pub service_numbers: Vec<String>,
+    pub default_tetra_source_issi: u32,
+    pub default_tetra_dest_issi: u32,
+    pub default_tetra_dest_is_group: bool,
+    pub routes: std::collections::BTreeMap<String, String>,
+    pub allowed_callsigns: Vec<String>,
+    pub allowed_node_ids: Vec<u32>,
+    pub auto_connect: String,
+    pub reconnect_interval_secs: u64,
+    pub max_session_secs: u64,
+}
+
+/// Runtime override for MeshCom external UDP settings, edited from the dashboard.
+///
+/// Mirrors `[meshcom]`. When present, it takes precedence over the config file so UDP routing
+/// edits apply immediately; the dashboard also writes the values back to TOML for persistence.
+#[derive(Debug, Clone, Default)]
+// Was: Bündelt die zusammengehörigen Werte für meshcom Laufzeit override in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct MeshcomRuntimeOverride {
+    pub enabled: bool,
+    pub bind_addr: String,
+    pub bind_port: u16,
+    pub tx_host: String,
+    pub tx_port: u16,
+    pub allow_broadcast: bool,
+    pub max_messages: usize,
+    pub max_nodes: usize,
+    pub forward_sds: bool,
+    pub forward_sip: bool,
+    pub forward_telegram: bool,
+    pub sds_source_issi: u32,
+    pub sds_dest_issi: u32,
+    pub sds_dest_is_group: bool,
+    pub sds_allowed_sources: std::collections::BTreeSet<String>,
+    pub sip_title_prefix: String,
+    pub sip_allowed_sources: std::collections::BTreeSet<String>,
+    pub telegram_prefix: String,
+    pub telegram_allowed_sources: std::collections::BTreeSet<String>,
+}
+
+/// Runtime override for GeoAlarm settings, edited from the dashboard.
+///
+/// Mirrors `[geoalarm]`. When present, it takes precedence over the config file so radius,
+/// filters and forwarding edits apply immediately; the dashboard also writes the values back to
+/// TOML for persistence.
+#[derive(Debug, Clone, Default)]
+// Was: Bündelt die zusammengehörigen Werte für geoalarm Laufzeit override in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct GeoalarmRuntimeOverride {
+    pub enabled: bool,
+    pub flowstation_lat: f64,
+    pub flowstation_lon: f64,
+    pub radius_m: f64,
+    pub cooldown_secs: u64,
+    pub trigger_tetra: bool,
+    pub trigger_meshcom: bool,
+    pub forward_tpg2200: bool,
+    pub forward_sds: bool,
+    pub forward_sip: bool,
+    pub forward_telegram: bool,
+    pub tetra_issi_whitelist: std::collections::BTreeSet<u32>,
+    pub tetra_issi_blacklist: std::collections::BTreeSet<u32>,
+    pub meshcom_source_whitelist: std::collections::BTreeSet<String>,
+    pub meshcom_source_blacklist: std::collections::BTreeSet<String>,
+    pub telegram_tetra_issi_whitelist: std::collections::BTreeSet<u32>,
+    pub telegram_tetra_issi_blacklist: std::collections::BTreeSet<u32>,
+    pub telegram_meshcom_source_whitelist: std::collections::BTreeSet<String>,
+    pub telegram_meshcom_source_blacklist: std::collections::BTreeSet<String>,
+    pub sds_source_issi: u32,
+    pub sds_dest_issi: u32,
+    pub sds_dest_is_group: bool,
+    pub tpg2200_source_issi: u32,
+    pub tpg2200_dest_issi: u32,
+    pub tpg2200_ric: u32,
+    pub tpg2200_incident_base: u16,
+    pub tpg2200_priority: u8,
+    pub tpg2200_issi_priorities: std::collections::BTreeMap<u32, u8>,
+    pub tpg2200_ric_priorities: std::collections::BTreeMap<u32, u8>,
+    pub tpg2200_text_prefix: String,
+    pub tpg2200_max_text_chars: usize,
+    pub sip_title_prefix: String,
+    pub telegram_prefix: String,
+}
+
+/// Runtime override for Snom XML NOTIFY settings, edited from the dashboard.
+///
+/// Mirrors `[snom_notify]`. When present, it takes precedence over the config file so
+/// notification routing edits apply immediately; the dashboard also writes the values
+/// back to TOML for persistence.
+#[derive(Debug, Clone, Default)]
+// Was: Bündelt die zusammengehörigen Werte für snom notify Laufzeit override in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct SnomNotifyRuntimeOverride {
+    pub enabled: bool,
+    pub ami_host: String,
+    pub ami_port: u16,
+    pub ami_username: String,
+    pub ami_password: String,
+    pub endpoints: Vec<String>,
+    pub notify_sds: bool,
+    pub notify_dapnet: bool,
+    pub notify_telegram: bool,
+    pub sds_directions: Vec<String>,
+    pub dapnet_allowed_rics: std::collections::BTreeSet<u32>,
+    pub sds_allowed_issis: std::collections::BTreeSet<u32>,
+    pub title_prefix: String,
+    pub notify_event: String,
+    pub content_type: String,
+    pub subscription_state: String,
+    pub max_text_chars: usize,
+    pub connect_timeout_secs: u64,
+}
+
+#[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für asterisk Laufzeit Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct AsteriskRuntimeStatus {
+    pub configured: bool,
+    pub enabled: bool,
+    pub register_status: String,
+    pub sip_listen: String,
+    pub remote: String,
+    pub rtp_port_range: String,
+    pub codec: String,
+    pub active_dialogs: usize,
+    pub last_rx: Option<String>,
+    pub last_tx: Option<String>,
+    pub last_error: Option<String>,
+}
+
+// Was: Implementiert das zugehörige Verhalten für `Default for AsteriskRuntimeStatus`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
+impl Default for AsteriskRuntimeStatus {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn default() -> Self {
+        Self {
+            configured: false,
+            enabled: false,
+            register_status: "disabled".to_string(),
+            sip_listen: String::new(),
+            remote: String::new(),
+            rtp_port_range: String::new(),
+            codec: "PCMU".to_string(),
+            active_dialogs: 0,
+            last_rx: None,
+            last_tx: None,
+            last_error: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für dapnet Laufzeit Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct DapnetRuntimeStatus {
+    pub configured: bool,
+    pub enabled: bool,
+    pub rwth_core_enabled: bool,
+    pub rwth_core_status: String,
+    pub endpoint: String,
+    pub callsign: String,
+    pub forward_sds: bool,
+    pub forward_callout: bool,
+    pub forward_telegram: bool,
+    pub seen_messages: usize,
+    pub last_rx: Option<String>,
+    pub last_error: Option<String>,
+}
+
+// Was: Implementiert das zugehörige Verhalten für `Default for DapnetRuntimeStatus`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
+impl Default for DapnetRuntimeStatus {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn default() -> Self {
+        Self {
+            configured: false,
+            enabled: false,
+            rwth_core_enabled: false,
+            rwth_core_status: "disabled".to_string(),
+            endpoint: String::new(),
+            callsign: String::new(),
+            forward_sds: false,
+            forward_callout: false,
+            forward_telegram: false,
+            seen_messages: 0,
+            last_rx: None,
+            last_error: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für echolink directory station Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct EcholinkDirectoryStationStatus {
+    pub callsign: String,
+    pub id: u32,
+    pub ip: String,
+}
+
+#[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für echolink Laufzeit Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct EcholinkRuntimeStatus {
+    pub configured: bool,
+    pub enabled: bool,
+    pub directory_status: String,
+    pub qso_status: String,
+    pub bind: String,
+    pub callsign: String,
+    pub connected_target: Option<String>,
+    pub routed_tetra_dest: Option<String>,
+    pub last_rx: Option<String>,
+    pub last_tx: Option<String>,
+    pub last_error: Option<String>,
+    pub directory_stations: Vec<EcholinkDirectoryStationStatus>,
+}
+
+// Was: Implementiert das zugehörige Verhalten für `Default for EcholinkRuntimeStatus`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
+impl Default for EcholinkRuntimeStatus {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn default() -> Self {
+        Self {
+            configured: false,
+            enabled: false,
+            directory_status: "disabled".to_string(),
+            qso_status: "idle".to_string(),
+            bind: String::new(),
+            callsign: String::new(),
+            connected_target: None,
+            routed_tetra_dest: None,
+            last_rx: None,
+            last_tx: None,
+            last_error: None,
+            directory_stations: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für meshcom Netzknoten Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct MeshcomNodeStatus {
+    pub src: String,
+    pub via: Vec<String>,
+    pub last_seen: String,
+    pub last_type: String,
+    pub lat: Option<f64>,
+    pub lon: Option<f64>,
+    pub alt: Option<f64>,
+    pub batt: Option<f64>,
+    pub rssi: Option<i64>,
+    pub snr: Option<i64>,
+    pub firmware: Option<String>,
+    pub fw_sub: Option<String>,
+    pub hw_id: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für meshcom Nachricht Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct MeshcomMessageStatus {
+    pub ts: String,
+    pub direction: String,
+    pub msg_type: String,
+    pub src_type: Option<String>,
+    pub src: Option<String>,
+    pub via: Vec<String>,
+    pub dst: Option<String>,
+    pub msg: Option<String>,
+    pub msg_id: Option<String>,
+    pub paths: Vec<String>,
+    pub lat: Option<f64>,
+    pub lon: Option<f64>,
+    pub alt: Option<f64>,
+    pub batt: Option<f64>,
+    pub rssi: Option<i64>,
+    pub snr: Option<i64>,
+}
+
+#[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für meshcom Laufzeit Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct MeshcomRuntimeStatus {
+    pub configured: bool,
+    pub enabled: bool,
+    pub bind: String,
+    pub tx: String,
+    pub rx_packets: u64,
+    pub tx_packets: u64,
+    pub last_rx: Option<String>,
+    pub last_tx: Option<String>,
+    pub last_error: Option<String>,
+    pub forward_sds: bool,
+    pub forward_sip: bool,
+    pub forward_telegram: bool,
+    pub nodes: Vec<MeshcomNodeStatus>,
+    pub messages: Vec<MeshcomMessageStatus>,
+}
+
+// Was: Implementiert das zugehörige Verhalten für `Default for MeshcomRuntimeStatus`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
+impl Default for MeshcomRuntimeStatus {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn default() -> Self {
+        Self {
+            configured: false,
+            enabled: false,
+            bind: String::new(),
+            tx: String::new(),
+            rx_packets: 0,
+            tx_packets: 0,
+            last_rx: None,
+            last_tx: None,
+            last_error: None,
+            forward_sds: false,
+            forward_sip: false,
+            forward_telegram: false,
+            nodes: Vec::new(),
+            messages: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für geoalarm Ereignis Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct GeoalarmEventStatus {
+    pub ts: String,
+    pub source: String,
+    pub device: String,
+    pub via: Vec<String>,
+    pub lat: f64,
+    pub lon: f64,
+    pub distance_m: f64,
+    pub inside_radius: bool,
+    pub alarmed: bool,
+    pub paths: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für geoalarm Laufzeit Status in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct GeoalarmRuntimeStatus {
+    pub configured: bool,
+    pub enabled: bool,
+    pub center: String,
+    pub radius_m: f64,
+    pub trigger_tetra: bool,
+    pub trigger_meshcom: bool,
+    pub forward_tpg2200: bool,
+    pub forward_sds: bool,
+    pub forward_sip: bool,
+    pub forward_telegram: bool,
+    pub seen_positions: u64,
+    pub alarm_count: u64,
+    pub last_position: Option<String>,
+    pub last_alarm: Option<String>,
+    pub last_error: Option<String>,
+    pub events: Vec<GeoalarmEventStatus>,
+}
+
+// Was: Implementiert das zugehörige Verhalten für `Default for GeoalarmRuntimeStatus`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
+impl Default for GeoalarmRuntimeStatus {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn default() -> Self {
+        Self {
+            configured: false,
+            enabled: false,
+            center: String::new(),
+            radius_m: 0.0,
+            trigger_tetra: false,
+            trigger_meshcom: false,
+            forward_tpg2200: false,
+            forward_sds: false,
+            forward_sip: false,
+            forward_telegram: false,
+            seen_positions: 0,
+            alarm_count: 0,
+            last_position: None,
+            last_alarm: None,
+            last_error: None,
+            events: Vec::new(),
+        }
+    }
+}
+
+
+
+/// Runtime state of the central service plane as observed by the TBS.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für edge fallback mode auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
+pub enum EdgeFallbackMode {
+    Online,
+    Degraded,
+    Isolated,
+    Recovering,
+}
+
+// Was: Implementiert das zugehörige Verhalten für `Default for EdgeFallbackMode`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
+impl Default for EdgeFallbackMode {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn default() -> Self {
+        Self::Isolated
+    }
+}
+
+impl EdgeFallbackMode {
+    /// Central provisioning and call restrictions are authoritative only while the
+    /// complete service plane is online. In degraded, isolated and recovering
+    /// operation the TBS deliberately becomes an unrestricted local radio island.
+    pub fn enforces_central_restrictions(self) -> bool {
+        matches!(self, Self::Online)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+// Was: Listet die möglichen Varianten für edge Dienst level auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
+pub enum EdgeServiceLevel {
+    Unknown,
+    Available,
+    Degraded,
+    Unavailable,
+}
+
+// Was: Implementiert das zugehörige Verhalten für `Default for EdgeServiceLevel`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
+impl Default for EdgeServiceLevel {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn default() -> Self {
+        Self::Unknown
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für edge Dienst Laufzeit in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct EdgeServiceRuntime {
+    pub service: String,
+    pub level: EdgeServiceLevel,
+    pub critical_for_edge: bool,
+    pub fallback_mode: String,
+    pub checked_at: String,
+    pub last_success_at: Option<String>,
+    pub message: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+// Was: Bündelt die zusammengehörigen Werte für edge fallback snapshot in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct EdgeFallbackSnapshot {
+    pub enabled: bool,
+    pub gateway_connected: bool,
+    pub mode: EdgeFallbackMode,
+    pub reason: String,
+    pub last_transition_at: String,
+    pub service_revision: u64,
+    pub service_matrix_fresh: bool,
+    pub service_matrix_received_at: Option<String>,
+    pub services: Vec<EdgeServiceRuntime>,
+    pub policy_loaded_from_cache: bool,
+    pub policy_cache_saved_at: Option<String>,
+    pub policy_cache_age_secs: Option<u64>,
+    pub event_spool_entries: usize,
+    pub event_spool_bytes: u64,
+}
+
+/// One centrally managed group definition distributed by the Group Core.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für central Gruppe definition in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct CentralGroupDefinition {
+    pub gssi: u32,
+    pub enabled: bool,
+    pub attach_allowed: bool,
+    pub dgna_allowed: bool,
+    pub call_allowed: bool,
+    pub sds_allowed: bool,
+    pub emergency_allowed: bool,
+    pub call_priority: u8,
+    pub class_of_usage: u8,
+}
+
+/// Runtime group policy installed by the central Group Core.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+// Was: Bündelt die zusammengehörigen Werte für central Gruppe policy in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct CentralGroupPolicy {
+    pub revision: u64,
+    pub allow_unlisted_groups: bool,
+    pub enforce_memberships: bool,
+    pub groups: HashMap<u32, CentralGroupDefinition>,
+    pub memberships: HashMap<u32, HashSet<u32>>,
+    pub automatic_memberships: HashMap<u32, HashSet<u32>>,
+}
+
+// Was: Implementiert das zugehörige Verhalten für `CentralGroupPolicy`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
+impl CentralGroupPolicy {
+    // Was: Führt den Arbeitsschritt `allows_affiliation` für allows affiliation aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn allows_affiliation(&self, issi: u32, gssi: u32) -> bool {
+        let definition_allowed = self
+            .groups
+            .get(&gssi)
+            .map(|group| group.enabled && group.attach_allowed)
+            .unwrap_or(self.allow_unlisted_groups);
+        if !definition_allowed {
+            return false;
+        }
+        !self.enforce_memberships
+            || self
+                .memberships
+                .get(&issi)
+                .is_some_and(|groups| groups.contains(&gssi))
+    }
+
+    // Was: Führt den Arbeitsschritt `allows_dgna` für allows dgna aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn allows_dgna(&self, issi: u32, gssi: u32) -> bool {
+        let definition_allowed = self
+            .groups
+            .get(&gssi)
+            .map(|group| group.enabled && group.dgna_allowed)
+            .unwrap_or(self.allow_unlisted_groups);
+        if !definition_allowed {
+            return false;
+        }
+        !self.enforce_memberships
+            || self
+                .memberships
+                .get(&issi)
+                .is_some_and(|groups| groups.contains(&gssi))
+    }
+
+    // Was: Führt den Arbeitsschritt `allows_group_call` für allows Gruppe Ruf aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn allows_group_call(&self, gssi: u32) -> bool {
+        self.groups
+            .get(&gssi)
+            .map(|group| group.enabled && group.call_allowed)
+            .unwrap_or(self.allow_unlisted_groups)
+    }
+
+    // Was: Führt den Arbeitsschritt `allows_emergency_call` für allows emergency Ruf aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn allows_emergency_call(&self, gssi: u32) -> bool {
+        self.groups
+            .get(&gssi)
+            .map(|group| group.enabled && group.call_allowed && group.emergency_allowed)
+            .unwrap_or(self.allow_unlisted_groups)
+    }
+
+    // Was: Führt den Arbeitsschritt `class_of_usage` für class of usage aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn class_of_usage(&self, gssi: u32, fallback: u8) -> u8 {
+        self.groups
+            .get(&gssi)
+            .map(|group| group.class_of_usage.min(15))
+            .unwrap_or(fallback.min(15))
+    }
+
+    // Was: Führt den Arbeitsschritt `call_priority` für Ruf Priorität aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn call_priority(&self, gssi: u32, requested: u8) -> u8 {
+        self.groups
+            .get(&gssi)
+            .map(|group| requested.max(group.call_priority).min(15))
+            .unwrap_or(requested.min(15))
+    }
+
+    // Was: Führt den Arbeitsschritt `automatic_groups_for` für automatic groups for aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    pub fn automatic_groups_for(&self, issi: u32) -> Vec<u32> {
+        let mut groups: Vec<u32> = self
+            .automatic_memberships
+            .get(&issi)
+            .into_iter()
+            .flatten()
+            .copied()
+            .filter(|gssi| self.allows_affiliation(issi, *gssi))
+            .collect();
+        groups.sort_unstable();
+        groups
+    }
+}
+
+/// Mutable, stack-editable state (mutex-protected).
+#[derive(Debug, Clone)]
+// Was: Bündelt die zusammengehörigen Werte für stack Zustand in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct StackState {
+    pub timeslot_alloc: TimeslotAllocator,
+    /// Backhaul/network connection to SwMI (e.g., Brew/TetraPack). False -> fallback mode.
+    pub network_connected: bool,
+    /// Direct Node Gateway transport state.  Kept separate from Brew so an
+    /// isolated NetCore deployment can fall back without disturbing local RF.
+    pub core_gateway_connected: bool,
+    pub edge_fallback_mode: EdgeFallbackMode,
+    pub edge_fallback_reason: String,
+    pub edge_fallback_last_transition_at: String,
+    pub edge_service_revision: u64,
+    /// True only while the complete Node-Gateway service matrix is within its
+    /// configured lease. A live WebSocket alone is not sufficient.
+    pub edge_service_matrix_fresh: bool,
+    pub edge_service_matrix_received_at: Option<String>,
+    pub edge_services: HashMap<String, EdgeServiceRuntime>,
+    pub edge_policy_loaded_from_cache: bool,
+    pub edge_policy_cache_saved_at: Option<String>,
+    pub edge_policy_cache_age_secs: Option<u64>,
+    pub edge_event_spool_entries: usize,
+    pub edge_event_spool_bytes: u64,
+    pub subscriber_policy_revision: u64,
+    /// Per Brew entity connection state. `network_connected` is the aggregate over this map.
+    pub brew_entity_connected: HashMap<TetraEntity, bool>,
+    /// Centralized subscriber registry for local-first routing decisions.
+    pub subscribers: SubscriberRegistry,
+    /// Queue of live SDS messages injected at runtime via the dashboard.
+    /// Transmitted round-robin alongside the static Home Mode Display text.
+    pub live_sds_queue: VecDeque<LiveSdsMessage>,
+    /// Monotonically incrementing ID counter for live SDS messages.
+    pub next_live_sds_id: u32,
+    /// Runtime ISSI whitelist override edited from the dashboard. When `Some`, it takes
+    /// precedence over the config file's `[security] issi_whitelist` so changes apply
+    /// immediately without a restart. An empty Vec here means "open network" (all ISSIs
+    /// allowed), exactly like an empty whitelist in config. `None` means "no override —
+    /// fall back to the config value". The dashboard also writes the new list back to the
+    /// TOML so it survives a restart.
+    pub issi_whitelist_override: Option<Vec<u32>>,
+    /// Central subscriber policy can explicitly represent deny-all.  This is
+    /// separate from the historical dashboard semantics where an empty list
+    /// means open network.  Dashboard edits always reset this flag to false.
+    pub issi_whitelist_deny_all: bool,
+    /// Runtime group policy supplied by the central Group Core. `None` keeps the
+    /// historical open group-affiliation behaviour.
+    pub group_policy_override: Option<CentralGroupPolicy>,
+    /// Runtime override for the WX/METAR service (dashboard toggle). See WxRuntimeOverride.
+    pub wx_override: Option<WxRuntimeOverride>,
+    /// Runtime override for Telegram alerts (dashboard editing). See TelegramRuntimeOverride.
+    pub telegram_override: Option<TelegramRuntimeOverride>,
+    /// Runtime override for DAPNET settings (dashboard editing). See DapnetRuntimeOverride.
+    pub dapnet_override: Option<DapnetRuntimeOverride>,
+    /// Runtime override for EchoLink settings (dashboard editing). See EcholinkRuntimeOverride.
+    pub echolink_override: Option<EcholinkRuntimeOverride>,
+    /// Runtime override for MeshCom settings (dashboard editing). See MeshcomRuntimeOverride.
+    pub meshcom_override: Option<MeshcomRuntimeOverride>,
+    /// Runtime override for GeoAlarm settings (dashboard editing). See GeoalarmRuntimeOverride.
+    pub geoalarm_override: Option<GeoalarmRuntimeOverride>,
+    /// Runtime override for Snom XML NOTIFY settings. See SnomNotifyRuntimeOverride.
+    pub snom_notify_override: Option<SnomNotifyRuntimeOverride>,
+    /// Next TPG2200 ActionURL incident number. Initialised lazily from `[tpg2200_action]`.
+    /// The incident is converted to the TPG selector byte immediately before sending.
+    pub tpg2200_action_next_incident: Option<u16>,
+    /// Runtime Asterisk SIP/RTP bridge status for `/api/asterisk/status` and the dashboard tab.
+    pub asterisk_status: AsteriskRuntimeStatus,
+    /// Runtime DAPNET receiver/forwarding status for `/api/dapnet` and the Health tab.
+    pub dapnet_status: DapnetRuntimeStatus,
+    /// Runtime EchoLink bridge status for `/api/echolink` and the Health tab.
+    pub echolink_status: EcholinkRuntimeStatus,
+    /// Runtime MeshCom UDP bridge status for `/api/meshcom` and the Health tab.
+    pub meshcom_status: MeshcomRuntimeStatus,
+    /// Runtime GeoAlarm status for `/api/geoalarm`.
+    pub geoalarm_status: GeoalarmRuntimeStatus,
+    /// Live map "identity currently reachable on a traffic channel" → (DL timeslot, usage_marker),
+    /// republished every tick by CMCE call control from the live call tables (so it is never
+    /// stale). Keyed by GSSI for active group calls and by each participant ISSI for connected
+    /// individual calls. The SDS path uses it to steal a FACCH half-slot on the right timeslot
+    /// so it can reach an MS engaged in a call, which is NOT listening to the MCCH
+    /// (ETSI EN 300 392-2 §23.5). Empty when no calls are active, so idle delivery stays on
+    /// the MCCH exactly as before.
+    pub active_call_ts: std::collections::HashMap<u32, (u8, u8)>,
+
+    /// Per-MS energy-economy downlink monitoring window, republished every tick by MM from the
+    /// live client registry (so it is never stale). Keyed by ISSI; value = (monitoring_frame
+    /// 1..=18, monitoring_multiframe, cycle_len). Only MSs granted an actual energy-saving mode
+    /// (Eg1..Eg7, cycle_len >= 2) appear here — a StayAlive / unknown MS is ABSENT, which the
+    /// scheduler treats as "always reachable" (never gated). Used to defer unsolicited individual
+    /// downlink (incoming-call D-SETUP, SDS) until the MS is awake on its window
+    /// (ETSI EN 300 392-2 §16.7). Empty when no MS is in energy economy.
+    pub ee_monitoring_windows: std::collections::HashMap<u32, (u8, u8, u8)>,
+}
+
+#[cfg(test)]
+// Was: Bindet das Untermodul tests in diesen Bereich ein.
+// Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
+mod tests {
+    use super::*;
+
+    // Was: Führt den Arbeitsschritt `sample_group_policy` für sample Gruppe policy aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn sample_group_policy() -> CentralGroupPolicy {
+        let mut groups = HashMap::new();
+        groups.insert(15501, CentralGroupDefinition {
+            gssi: 15501,
+            enabled: true,
+            attach_allowed: true,
+            dgna_allowed: true,
+            call_allowed: false,
+            sds_allowed: true,
+            emergency_allowed: false,
+            call_priority: 7,
+            class_of_usage: 4,
+        });
+        groups.insert(15502, CentralGroupDefinition {
+            gssi: 15502,
+            enabled: false,
+            attach_allowed: true,
+            dgna_allowed: true,
+            call_allowed: true,
+            sds_allowed: true,
+            emergency_allowed: false,
+            call_priority: 2,
+            class_of_usage: 4,
+        });
+        let mut memberships = HashMap::new();
+        memberships.insert(1001, HashSet::from([15501]));
+        let mut automatic_memberships = HashMap::new();
+        automatic_memberships.insert(1001, HashSet::from([15501, 15502]));
+        CentralGroupPolicy {
+            revision: 12,
+            allow_unlisted_groups: false,
+            enforce_memberships: true,
+            groups,
+            memberships,
+            automatic_memberships,
+        }
+    }
+
+    #[test]
+    // Was: Führt den Arbeitsschritt `central_group_policy_enforces_definition_and_membership` für central Gruppe policy enforces definition and membership aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn central_group_policy_enforces_definition_and_membership() {
+        let policy = sample_group_policy();
+        assert!(policy.allows_affiliation(1001, 15501));
+        assert!(policy.allows_dgna(1001, 15501));
+        assert!(!policy.allows_affiliation(1002, 15501));
+        assert!(!policy.allows_affiliation(1001, 15502));
+        assert!(!policy.allows_affiliation(1001, 19999));
+    }
+
+    #[test]
+    // Was: Führt den Arbeitsschritt `central_group_policy_controls_calls_priority_and_auto_attach` für central Gruppe policy controls calls Priorität and und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn central_group_policy_controls_calls_priority_and_auto_attach() {
+        let policy = sample_group_policy();
+        assert!(!policy.allows_group_call(15501));
+        assert!(!policy.allows_emergency_call(15501));
+        assert_eq!(policy.call_priority(15501, 3), 7);
+        assert_eq!(policy.call_priority(15501, 10), 10);
+        assert_eq!(policy.class_of_usage(15501, 1), 4);
+        assert_eq!(policy.automatic_groups_for(1001), vec![15501]);
+    }
+
+    #[test]
+    // Was: Führt den Arbeitsschritt `central_group_policy_can_allow_unlisted_groups_without_membership_enforcement` für central Gruppe policy can allow unlisted groups und weitere Angaben aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn central_group_policy_can_allow_unlisted_groups_without_membership_enforcement() {
+        let mut policy = sample_group_policy();
+        policy.allow_unlisted_groups = true;
+        policy.enforce_memberships = false;
+        assert!(policy.allows_affiliation(5000, 19999));
+        assert!(policy.allows_dgna(5000, 19999));
+        assert!(policy.allows_group_call(19999));
+        assert!(policy.allows_emergency_call(19999));
+        assert_eq!(policy.class_of_usage(19999, 6), 6);
+    }
+
+    #[test]
+    // Was: Prüft automatisch den Fall register deregister.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
+    fn test_register_deregister() {
+        let mut reg = SubscriberRegistry::new();
+        assert!(!reg.is_registered(1001));
+        reg.register(1001);
+        assert!(reg.is_registered(1001));
+        reg.deregister(1001);
+        assert!(!reg.is_registered(1001));
+    }
+
+    #[test]
+    // Was: Prüft automatisch den Fall affiliate deaffiliate.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
+    fn test_affiliate_deaffiliate() {
+        let mut reg = SubscriberRegistry::new();
+        reg.register(1001);
+        reg.affiliate(1001, 91);
+        assert!(reg.has_group_members(91));
+        reg.deaffiliate(1001, 91);
+        assert!(!reg.has_group_members(91));
+    }
+
+    #[test]
+    // Was: Prüft automatisch den Fall has Gruppe members.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
+    fn test_has_group_members() {
+        let mut reg = SubscriberRegistry::new();
+        reg.register(1001);
+        reg.register(1002);
+        reg.register(1003);
+        reg.affiliate(1001, 100);
+        reg.affiliate(1002, 100);
+        reg.affiliate(1003, 100);
+        assert!(reg.has_group_members(100));
+
+        // Deaffiliate one, should still have members
+        reg.deaffiliate(1001, 100);
+        assert!(reg.has_group_members(100));
+
+        // Deregister a user, should still have members
+        reg.deregister(1002);
+        assert!(reg.has_group_members(100));
+
+        // Deregister last user, should have no members
+        reg.deregister(1003);
+        assert!(!reg.has_group_members(100));
+    }
+
+    #[test]
+    // Was: Prüft automatisch den Fall has Gruppe members empty.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
+    fn test_has_group_members_empty() {
+        let reg = SubscriberRegistry::new();
+        assert!(!reg.has_group_members(999));
+    }
+
+    #[test]
+    // Was: Prüft automatisch den Fall register overwrites existing Teilnehmer.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
+    fn test_register_overwrites_existing_subscriber() {
+        let mut reg = SubscriberRegistry::new();
+        reg.register(1001);
+        reg.affiliate(1001, 91);
+        reg.set_duplex_capable(1001, Some(false));
+        assert!(reg.has_group_members(91));
+        assert_eq!(reg.duplex_capable(1001), Some(false));
+
+        reg.register(1001);
+
+        assert!(reg.is_registered(1001));
+        assert_eq!(reg.duplex_capable(1001), None);
+        reg.deaffiliate(1001, 91);
+        assert!(!reg.has_group_members(91));
+    }
+
+    #[test]
+    // Was: Prüft automatisch den Fall duplex capability is per Teilnehmer.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
+    fn test_duplex_capability_is_per_subscriber() {
+        let mut reg = SubscriberRegistry::new();
+        reg.register(1001);
+        reg.register(1002);
+
+        reg.set_duplex_capable(1001, Some(false));
+        reg.set_duplex_capable(1002, Some(true));
+
+        assert_eq!(reg.duplex_capable(1001), Some(false));
+        assert_eq!(reg.duplex_capable(1002), Some(true));
+        assert_eq!(reg.duplex_capable(1003), None);
+    }
+
+    #[test]
+    fn edge_fallback_only_enforces_central_restrictions_online() {
+        assert!(EdgeFallbackMode::Online.enforces_central_restrictions());
+        assert!(!EdgeFallbackMode::Degraded.enforces_central_restrictions());
+        assert!(!EdgeFallbackMode::Isolated.enforces_central_restrictions());
+        assert!(!EdgeFallbackMode::Recovering.enforces_central_restrictions());
+    }
+
+    #[test]
+    // Was: Prüft automatisch den Fall all registered issis.
+    // Warum: Der Test schützt das Verhalten vor späteren Änderungen und macht Fehler reproduzierbar.
+    fn test_all_registered_issis() {
+        let mut reg = SubscriberRegistry::new();
+        reg.register(1001);
+        reg.register(1002);
+        reg.register(1003);
+        let mut issis: Vec<u32> = reg.all_registered_issis().collect();
+        issis.sort_unstable();
+        assert_eq!(issis, vec![1001, 1002, 1003]);
+
+        reg.deregister(1002);
+        let mut issis: Vec<u32> = reg.all_registered_issis().collect();
+        issis.sort_unstable();
+        assert_eq!(issis, vec![1001, 1003]);
+    }
+}
+
+// Was: Implementiert das zugehörige Verhalten für `Default for StackState`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
+impl Default for StackState {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn default() -> Self {
+        Self {
+            timeslot_alloc: TimeslotAllocator::default(),
+            network_connected: false,
+            core_gateway_connected: false,
+            edge_fallback_mode: EdgeFallbackMode::Isolated,
+            edge_fallback_reason: "central service state not established".to_string(),
+            edge_fallback_last_transition_at: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+            edge_service_revision: 0,
+            edge_service_matrix_fresh: false,
+            edge_service_matrix_received_at: None,
+            edge_services: HashMap::new(),
+            edge_policy_loaded_from_cache: false,
+            edge_policy_cache_saved_at: None,
+            edge_policy_cache_age_secs: None,
+            edge_event_spool_entries: 0,
+            edge_event_spool_bytes: 0,
+            subscriber_policy_revision: 0,
+            brew_entity_connected: HashMap::new(),
+            subscribers: SubscriberRegistry::new(),
+            live_sds_queue: VecDeque::new(),
+            next_live_sds_id: 1,
+            issi_whitelist_override: None,
+            issi_whitelist_deny_all: false,
+            group_policy_override: None,
+            wx_override: None,
+            telegram_override: None,
+            dapnet_override: None,
+            echolink_override: None,
+            meshcom_override: None,
+            geoalarm_override: None,
+            snom_notify_override: None,
+            tpg2200_action_next_incident: None,
+            asterisk_status: AsteriskRuntimeStatus::default(),
+            dapnet_status: DapnetRuntimeStatus::default(),
+            echolink_status: EcholinkRuntimeStatus::default(),
+            meshcom_status: MeshcomRuntimeStatus::default(),
+            geoalarm_status: GeoalarmRuntimeStatus::default(),
+            active_call_ts: std::collections::HashMap::new(),
+            ee_monitoring_windows: std::collections::HashMap::new(),
+        }
+    }
+}

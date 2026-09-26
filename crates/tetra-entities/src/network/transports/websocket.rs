@@ -1,0 +1,1010 @@
+// NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
+// NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
+
+//! WebSocket transport implementation with HTTP Digest Auth, TLS, and heartbeat management
+//!
+//! Implements the [`NetworkTransport`] trait over WebSocket (RFC 6455), with optional
+//! TLS and HTTP Digest Authentication. Heartbeat ping/pong and timeout detection are
+//! managed internally by the transport, transparent to the caller.
+
+use std::collections::HashMap;
+use std::io::{Read, Write};
+use std::net::{TcpStream, ToSocketAddrs};
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+
+use base64::Engine as _;
+
+use tetra_config::bluestation::SecretField;
+use tungstenite::{Connector, Message, WebSocket, stream::MaybeTlsStream};
+
+use super::{NetworkAddress, NetworkError, NetworkMessage, NetworkTransport};
+
+// Was: Legt den festen Wert `DEFAULT_CONNECT_TIMEOUT` für default connect timeout fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
+const DEFAULT_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
+// Was: Legt den festen Wert `DEFAULT_READ_TIMEOUT` für default read timeout fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
+const DEFAULT_READ_TIMEOUT: Duration = Duration::from_secs(10);
+// Was: Legt den festen Wert `CONTROL_ROOM_MARKER_HEADER` für Steuerung room marker header fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
+const CONTROL_ROOM_MARKER_HEADER: &str = "x-netcore-control-room";
+// Was: Legt den festen Wert `CONTROL_ROOM_MARKER_VALUE` für Steuerung room marker value fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
+const CONTROL_ROOM_MARKER_VALUE: &str = "1";
+// Was: Legt den festen Wert `CONTROL_ROOM_READY_TIMEOUT` für Steuerung room ready timeout fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
+const CONTROL_ROOM_READY_TIMEOUT: Duration = Duration::from_secs(2);
+// Was: Legt den festen Wert `CONTROL_ROOM_READY_PROBE` für Steuerung room ready probe fest.
+// Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
+const CONTROL_ROOM_READY_PROBE: &[u8] = b"netcore-control-room-ready-v1";
+
+// Was: Führt den Arbeitsschritt `websocket_connect_error` für websocket connect error aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn websocket_connect_error(error: tungstenite::Error) -> NetworkError {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+    match error {
+        tungstenite::Error::Http(response) => {
+            let status = response.status();
+            let detail = response
+                .body()
+                .as_ref()
+                .and_then(|body| std::str::from_utf8(body).ok())
+                .map(str::trim)
+                .filter(|body| !body.is_empty())
+                .map(|body| format!(": {}", body))
+                .unwrap_or_default();
+            NetworkError::ConnectionFailed(format!("WebSocket handshake rejected with HTTP {}{}", status, detail))
+        }
+        other => NetworkError::ConnectionFailed(format!("WebSocket connect failed: {}", other)),
+    }
+}
+
+// Was: Führt den Arbeitsschritt `configure_websocket_stream` für configure websocket stream aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn configure_websocket_stream(ws: &WebSocket<MaybeTlsStream<TcpStream>>, read_timeout: Duration) {
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+    match ws.get_ref() {
+        MaybeTlsStream::Plain(stream) => {
+            let _ = stream.set_read_timeout(Some(read_timeout));
+            let _ = stream.set_nodelay(true);
+        }
+        MaybeTlsStream::Rustls(tls_stream) => {
+            let tcp = tls_stream.get_ref();
+            let _ = tcp.set_read_timeout(Some(read_timeout));
+            let _ = tcp.set_nodelay(true);
+        }
+        _ => {}
+    }
+}
+
+// Was: Führt den Arbeitsschritt `verify_control_room_ready` für verify Steuerung room ready aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn verify_control_room_ready(ws: &mut WebSocket<MaybeTlsStream<TcpStream>>) -> Result<(), NetworkError> {
+    configure_websocket_stream(ws, Duration::from_millis(100));
+
+    ws.send(Message::Ping(CONTROL_ROOM_READY_PROBE.to_vec().into()))
+        .map_err(|error| NetworkError::ConnectionFailed(format!(
+            "Control Room closed immediately after WebSocket upgrade (readiness ping failed: {})",
+            error
+        )))?;
+
+    let deadline = Instant::now() + CONTROL_ROOM_READY_TIMEOUT;
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
+    loop {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+        match ws.read() {
+            Ok(Message::Pong(payload)) if payload.as_slice() == CONTROL_ROOM_READY_PROBE => return Ok(()),
+            Ok(Message::Ping(payload)) => {
+                ws.send(Message::Pong(payload)).map_err(|error| {
+                    NetworkError::ConnectionFailed(format!("Control Room readiness pong failed: {}", error))
+                })?;
+            }
+            Ok(Message::Close(frame)) => {
+                return Err(NetworkError::ConnectionFailed(format!(
+                    "Control Room closed during readiness probe: {:?}",
+                    frame
+                )));
+            }
+            Ok(_) => {}
+            Err(tungstenite::Error::Io(ref error))
+                if error.kind() == std::io::ErrorKind::WouldBlock
+                    || error.kind() == std::io::ErrorKind::TimedOut => {}
+            Err(error) => {
+                return Err(NetworkError::ConnectionFailed(format!(
+                    "Control Room readiness probe failed: {}",
+                    error
+                )));
+            }
+        }
+
+        if Instant::now() >= deadline {
+            return Err(NetworkError::ConnectionFailed(format!(
+                "Control Room readiness probe timed out after {:?}",
+                CONTROL_ROOM_READY_TIMEOUT
+            )));
+        }
+    }
+}
+
+// ─── Configuration ────────────────────────────────────────────────
+
+/// Configuration for the WebSocket transport
+#[derive(Clone)]
+// Was: Bündelt die zusammengehörigen Werte für Weboberfläche socket transport Konfiguration in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct WebSocketTransportConfig {
+    /// Server hostname or IP
+    pub host: String,
+    /// Server port
+    pub port: u16,
+    /// Use TLS (wss://)
+    pub use_tls: bool,
+    /// Optional custom root certificates (DER-encoded) for TLS server validation.
+    /// Can be present only when use_tls is true.
+    /// When `Some`, these replace the system certificate store — useful for
+    /// self-signed certificates. When `None`, the system store is used.
+    pub custom_root_certs: Option<Vec<rustls::pki_types::CertificateDer<'static>>>,
+    /// Optional credentials (username, password) for HTTP Basic Auth.
+    /// When `Some`, an `Authorization: Basic` header is added to the WebSocket
+    /// upgrade request. Used for telemetry authentication.
+    pub basic_auth_credentials: Option<(String, String)>,
+    /// Optional credentials (username, password) for HTTP Digest Auth.
+    /// When `Some`, the transport performs HTTP auth discovery before upgrading
+    /// to WebSocket. When `None`, it connects directly to `endpoint_path`.
+    pub digest_auth_credentials: Option<(String, SecretField)>,
+
+    /// HTTP path used for initial authentication request (e.g. "/brew/")
+    pub endpoint_path: String,
+    /// WebSocket subprotocol to negotiate (optional, e.g. "brew")
+    pub subprotocol: Option<String>,
+    /// User-Agent header value
+    pub user_agent: String,
+    /// Interval between heartbeat pings
+    pub heartbeat_interval: Duration,
+    /// Timeout for heartbeat (disconnect if no activity within this duration)
+    pub heartbeat_timeout: Duration,
+}
+
+// ─── TLS and stream helpers ───────────────────────────────────────
+
+/// A stream that is either plain TCP or TLS-wrapped TCP (used for authentication requests)
+// Was: Listet die möglichen Varianten für Anmeldung und Berechtigung stream auf.
+// Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
+enum AuthStream {
+    Plain(TcpStream),
+    Tls(rustls::StreamOwned<rustls::ClientConnection, TcpStream>),
+}
+
+// Was: Implementiert das zugehörige Verhalten für `Read for AuthStream`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
+impl Read for AuthStream {
+    // Was: Diese Funktion liest den vorgesehenen Arbeitsschritt.
+    // Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+        match self {
+            AuthStream::Plain(s) => s.read(buf),
+            AuthStream::Tls(s) => s.read(buf),
+        }
+    }
+}
+
+// Was: Implementiert das zugehörige Verhalten für `Write for AuthStream`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
+impl Write for AuthStream {
+    // Was: Diese Funktion schreibt den vorgesehenen Arbeitsschritt.
+    // Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+        match self {
+            AuthStream::Plain(s) => s.write(buf),
+            AuthStream::Tls(s) => s.write(buf),
+        }
+    }
+    // Was: Diese Funktion schreibt den vorgesehenen Arbeitsschritt.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn flush(&mut self) -> std::io::Result<()> {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+        match self {
+            AuthStream::Plain(s) => s.flush(),
+            AuthStream::Tls(s) => s.flush(),
+        }
+    }
+}
+
+/// Build a rustls ClientConfig.
+///
+/// When `custom_root_certs` is `Some`, the provided DER-encoded certificates are
+/// used as root trust anchors (replacing the system store). Otherwise the
+/// platform's native certificate store is loaded.
+// Was: Diese Funktion erstellt tls Konfiguration.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
+fn build_tls_config(
+    custom_root_certs: &Option<Vec<rustls::pki_types::CertificateDer<'static>>>,
+) -> Result<Arc<rustls::ClientConfig>, String> {
+    let mut root_store = rustls::RootCertStore::empty();
+    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+    match custom_root_certs {
+        Some(certs) => {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+            for cert in certs {
+                root_store.add(cert.clone()).map_err(|e| format!("add custom cert: {}", e))?;
+            }
+        }
+        None => {
+            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+            for cert in rustls_native_certs::load_native_certs().map_err(|e| format!("load certs: {}", e))? {
+                let _ = root_store.add(cert);
+            }
+        }
+    }
+    let config = rustls::ClientConfig::builder()
+        .with_root_certificates(root_store)
+        .with_no_client_auth();
+    Ok(Arc::new(config))
+}
+
+/// Connect a TCP stream, optionally wrapping with TLS (used for HTTP auth requests)
+// Was: Diese Funktion verbindet Anmeldung und Berechtigung stream.
+// Warum: Der Verbindungsaufbau wird dadurch zentral überwacht und kann sauber fehlschlagen.
+fn connect_auth_stream(
+    host: &str,
+    port: u16,
+    use_tls: bool,
+    custom_root_certs: &Option<Vec<rustls::pki_types::CertificateDer<'static>>>,
+) -> Result<AuthStream, String> {
+    let addr = format!("{}:{}", host, port);
+    tracing::debug!("WebSocketTransport: connecting TCP to {}", addr);
+
+    let socket_addr = addr
+        .to_socket_addrs()
+        .map_err(|e| format!("DNS resolve failed for '{}': {}", addr, e))?
+        .next()
+        .ok_or_else(|| format!("no addresses found for '{}'", addr))?;
+
+    tracing::debug!("WebSocketTransport: resolved {} -> {}", addr, socket_addr);
+
+    let tcp = TcpStream::connect_timeout(&socket_addr, DEFAULT_CONNECT_TIMEOUT).map_err(|e| format!("TCP connect failed: {}", e))?;
+
+    tcp.set_read_timeout(Some(DEFAULT_READ_TIMEOUT))
+        .map_err(|e| format!("set read timeout: {}", e))?;
+
+    if use_tls {
+        let tls_config = build_tls_config(custom_root_certs)?;
+        let server_name: rustls::pki_types::ServerName<'static> = host
+            .to_string()
+            .try_into()
+            .map_err(|e| format!("invalid server name '{}': {}", host, e))?;
+        let tls_conn = rustls::ClientConnection::new(tls_config, server_name).map_err(|e| format!("TLS init failed: {}", e))?;
+        let tls_stream = rustls::StreamOwned::new(tls_conn, tcp);
+        tracing::debug!("WebSocketTransport: TLS connected to {}", addr);
+        Ok(AuthStream::Tls(tls_stream))
+    } else {
+        Ok(AuthStream::Plain(tcp))
+    }
+}
+
+// ─── HTTP Digest Auth helpers ─────────────────────────────────────
+
+/// Compute MD5 hex digest of a string
+// Was: Führt den Arbeitsschritt `md5_hex` für md5 hex aus.
+// Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+fn md5_hex(input: &str) -> String {
+    let digest = md5::compute(input.as_bytes());
+    format!("{:x}", digest)
+}
+
+/// Parse a "Digest realm=..., nonce=..., ..." challenge into key-value pairs
+// Was: Diese Funktion liest und prüft digest challenge.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
+fn parse_digest_challenge(header: &str) -> HashMap<String, String> {
+    let mut params = HashMap::new();
+    let s = header.strip_prefix("Digest ").unwrap_or(header);
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+    for part in s.split(',') {
+        let part = part.trim();
+        if let Some(eq) = part.find('=') {
+            let key = part[..eq].trim().to_lowercase();
+            let val = part[eq + 1..].trim().trim_matches('"').to_string();
+            params.insert(key, val);
+        }
+    }
+    params
+}
+
+/// Build an Authorization header for HTTP Digest Auth
+/// Find the first occurrence of `needle` in `hay`.
+// Was: Diese Funktion sucht subslice.
+// Warum: Die Suchlogik bleibt damit wiederverwendbar und muss nicht an mehreren Stellen kopiert werden.
+fn find_subslice(hay: &[u8], needle: &[u8]) -> Option<usize> {
+    if needle.is_empty() || hay.len() < needle.len() {
+        return None;
+    }
+    hay.windows(needle.len()).position(|w| w == needle)
+}
+
+/// Parse a `Content-Length` value (case-insensitive) out of a header block.
+// Was: Diese Funktion liest und prüft content length.
+// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
+fn parse_content_length(headers: &str) -> Option<usize> {
+    headers
+        .lines()
+        .find(|l| l.to_ascii_lowercase().starts_with("content-length:"))
+        .and_then(|l| l.splitn(2, ':').nth(1))
+        .and_then(|v| v.trim().parse::<usize>().ok())
+}
+
+/// Read a complete HTTP/1.1 response from the auth stream.
+///
+/// A single `read()` can return only part of the response when it spans multiple
+/// TCP/TLS records — that is what made the Brew handshake flaky over real networks
+/// (a 200 whose endpoint URI lives in the body, or a 401 whose `WWW-Authenticate`
+/// header had not arrived in the first segment). This loops until the message is
+/// actually complete:
+///   * headers fully received (terminated by CRLF CRLF); then
+///   * a non-200 (e.g. 401) carries its answer in the headers, so we stop there;
+///   * a 200 needs its body — bounded by `Content-Length` when present, otherwise
+///     until the body line is terminated.
+/// The socket read timeout bounds the whole loop, so it can never hang.
+// Was: Diese Funktion liest HTTP response.
+// Warum: Der Datenzugriff wird dadurch einheitlich behandelt und Fehler können zentral gemeldet werden.
+fn read_http_response(stream: &mut AuthStream) -> Result<String, NetworkError> {
+    let mut buf: Vec<u8> = Vec::with_capacity(4096);
+    let mut chunk = [0u8; 4096];
+
+    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
+    loop {
+        if let Some(hdr_end) = find_subslice(&buf, b"\r\n\r\n") {
+            let header_len = hdr_end + 4;
+            let headers = String::from_utf8_lossy(&buf[..hdr_end]);
+            let status_line = headers.lines().next().unwrap_or("");
+            let is_200 = status_line.contains("200");
+
+            if !is_200 {
+                // 401 / redirect / error: everything we need is in the headers.
+                break;
+            }
+            // 200: the endpoint URI is in the body — make sure we have all of it.
+            if let Some(n) = parse_content_length(&headers) {
+                if buf.len() >= header_len + n {
+                    break;
+                }
+            } else if buf[header_len..].contains(&b'\n') {
+                // No Content-Length, but the body line is terminated -> complete.
+                break;
+            }
+            // otherwise: 200 headers but body still incomplete -> read more
+        }
+
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+        match stream.read(&mut chunk) {
+            Ok(0) => break, // peer closed the connection
+            Ok(n) => buf.extend_from_slice(&chunk[..n]),
+            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock || e.kind() == std::io::ErrorKind::TimedOut => {
+                // read timeout fired: stop with what we have rather than hang
+                break;
+            }
+            Err(e) => return Err(NetworkError::ConnectionFailed(format!("HTTP read failed: {}", e))),
+        }
+
+        if buf.len() > 64 * 1024 {
+            return Err(NetworkError::ConnectionFailed("HTTP response too large".to_string()));
+        }
+    }
+
+    if buf.is_empty() {
+        return Err(NetworkError::ConnectionFailed("empty HTTP response".to_string()));
+    }
+    Ok(String::from_utf8_lossy(&buf).to_string())
+}
+
+// Was: Diese Funktion erstellt digest response.
+// Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
+fn build_digest_response(
+    username: &str,
+    password: &str,
+    realm: &str,
+    nonce: &str,
+    qop: &str,
+    uri: &str,
+    method: &str,
+    opaque: Option<&str>,
+) -> String {
+    let ha1 = md5_hex(&format!("{}:{}:{}", username, realm, password));
+    let ha2 = md5_hex(&format!("{}:{}", method, uri));
+
+    let nc = "00000001";
+    let cnonce = format!(
+        "{:08x}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .subsec_nanos()
+    );
+
+    let response_hash = if qop.contains("auth") {
+        md5_hex(&format!("{}:{}:{}:{}:{}:{}", ha1, nonce, nc, cnonce, "auth", ha2))
+    } else {
+        md5_hex(&format!("{}:{}:{}", ha1, nonce, ha2))
+    };
+
+    let mut auth = format!(
+        "Digest username=\"{}\", realm=\"{}\", nonce=\"{}\", uri=\"{}\", response=\"{}\"",
+        username, realm, nonce, uri, response_hash
+    );
+    if qop.contains("auth") {
+        auth.push_str(&format!(", qop=auth, nc={}, cnonce=\"{}\"", nc, cnonce));
+    }
+    if let Some(opaque_val) = opaque {
+        auth.push_str(&format!(", opaque=\"{}\"", opaque_val));
+    }
+    auth
+}
+
+// ─── WebSocket Transport ──────────────────────────────────────────
+
+// Was: Bündelt die zusammengehörigen Werte für Weboberfläche socket transport in einem Datentyp.
+// Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
+pub struct WebSocketTransport {
+    config: WebSocketTransportConfig,
+    ws: Option<WebSocket<MaybeTlsStream<TcpStream>>>,
+    last_activity_at: Instant,
+    last_ping_at: Instant,
+    last_ping_sent_at: Option<Instant>,
+    last_ping_id: Option<u64>,
+    ping_seq: u64,
+    /// Brew protocol version reported by server in last HTTP connect response (0 = v0/unknown)
+    server_brew_version: u8,
+}
+
+// Was: Implementiert das zugehörige Verhalten für `WebSocketTransport`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
+impl WebSocketTransport {
+    // Was: Erzeugt eine neue Instanz mit den vorgesehenen Anfangswerten.
+    // Warum: Das Objekt wird dadurch vollständig und mit sicheren Anfangswerten angelegt.
+    pub fn new(config: WebSocketTransportConfig) -> Self {
+        let now = Instant::now();
+        Self {
+            config,
+            ws: None,
+            last_activity_at: now,
+            last_ping_at: now,
+            last_ping_sent_at: None,
+            last_ping_id: None,
+            ping_seq: 0,
+            server_brew_version: 0,
+        }
+    }
+
+    /// Perform HTTP GET with optional Digest Auth to discover the WebSocket endpoint path
+    // Was: Führt den Arbeitsschritt `authenticate` für authenticate aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn authenticate(&self) -> Result<String, NetworkError> {
+        let host = &self.config.host;
+        let port = self.config.port;
+        let endpoint_path = &self.config.endpoint_path;
+
+        // ── First request (unauthenticated) ──
+        let mut stream = connect_auth_stream(host, port, self.config.use_tls, &self.config.custom_root_certs)
+            .map_err(|e| NetworkError::ConnectionFailed(e))?;
+
+        let request = format!(
+            "GET {} HTTP/1.1\r\n\
+             Host: {}\r\n\
+             User-Agent: {}\r\n\
+             X-Brew-Version: 1\r\n\
+             X-Brew-Mode: Basestation\r\n\
+             \r\n",
+            endpoint_path, host, self.config.user_agent
+        );
+        stream
+            .write_all(request.as_bytes())
+            .map_err(|e| NetworkError::ConnectionFailed(format!("HTTP write failed: {}", e)))?;
+
+        let response = read_http_response(&mut stream)?;
+        tracing::debug!("WebSocketTransport: HTTP response:\n{}", response.trim());
+
+        let lines: Vec<&str> = response.split("\r\n").collect();
+        if lines.is_empty() {
+            return Err(NetworkError::ConnectionFailed("malformed HTTP response".to_string()));
+        }
+
+        let status_line = lines[0];
+
+        // ── Handle 200 OK ──
+        if status_line.contains("200") {
+            return self.extract_endpoint(&response);
+        }
+
+        // ── Handle 401 Unauthorized → Digest Auth ──
+        if status_line.contains("401") {
+            tracing::debug!("WebSocketTransport: server requires Digest Auth (401)");
+
+            let www_auth = lines
+                .iter()
+                .find(|l| l.to_lowercase().starts_with("www-authenticate"))
+                .ok_or_else(|| NetworkError::ConnectionFailed("401 but no WWW-Authenticate header".to_string()))?;
+
+            let challenge = www_auth
+                .splitn(2, ':')
+                .nth(1)
+                .ok_or_else(|| NetworkError::ConnectionFailed("malformed WWW-Authenticate".to_string()))?
+                .trim();
+
+            if !challenge.to_lowercase().starts_with("digest") {
+                return Err(NetworkError::ConnectionFailed(format!("unsupported auth scheme: {}", challenge)));
+            }
+
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+            let (username, password) = match &self.config.digest_auth_credentials {
+                Some((u, p)) => (u.as_str(), p.as_ref()),
+                None => {
+                    return Err(NetworkError::ConnectionFailed(
+                        "server requires auth but no credentials configured".to_string(),
+                    ));
+                }
+            };
+
+            let params = parse_digest_challenge(challenge);
+            let realm = params.get("realm").map(|s| s.as_str()).unwrap_or("");
+            let nonce = params.get("nonce").map(|s| s.as_str()).unwrap_or("");
+            let qop = params.get("qop").map(|s| s.as_str()).unwrap_or("");
+            let opaque = params.get("opaque").map(|s| s.as_str());
+
+            tracing::debug!("WebSocketTransport: digest realm={} qop={}", realm, qop);
+
+            let auth_header = build_digest_response(username, password, realm, nonce, qop, endpoint_path, "GET", opaque);
+
+            // ── Second request (authenticated) ──
+            drop(stream);
+            let mut stream2 = connect_auth_stream(host, port, self.config.use_tls, &self.config.custom_root_certs)
+                .map_err(|e| NetworkError::ConnectionFailed(e))?;
+
+            let auth_request = format!(
+                "GET {} HTTP/1.1\r\n\
+                 Host: {}\r\n\
+                 User-Agent: {}\r\n\
+                 X-Brew-Version: 1\r\n\
+                 X-Brew-Mode: Basestation\r\n\
+                 Authorization: {}\r\n\
+                 \r\n",
+                endpoint_path, host, self.config.user_agent, auth_header
+            );
+            stream2
+                .write_all(auth_request.as_bytes())
+                .map_err(|e| NetworkError::ConnectionFailed(format!("auth HTTP write failed: {}", e)))?;
+
+            let auth_response = read_http_response(&mut stream2)?;
+            tracing::debug!("WebSocketTransport: auth response:\n{}", auth_response.trim());
+
+            let auth_status = auth_response.split("\r\n").next().unwrap_or("");
+
+            if auth_status.contains("200") {
+                return self.extract_endpoint(&auth_response);
+            }
+
+            return Err(NetworkError::ConnectionFailed(format!("authentication failed: {}", auth_status)));
+        }
+
+        Err(NetworkError::ConnectionFailed(format!("unexpected HTTP status: {}", status_line)))
+    }
+
+    /// Extract the endpoint path from a 200 OK response body
+    // Was: Führt den Arbeitsschritt `extract_endpoint` für extract endpoint aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn extract_endpoint(&self, response: &str) -> Result<String, NetworkError> {
+        let body_start = response.find("\r\n\r\n");
+        if let Some(pos) = body_start {
+            let endpoint = response[pos + 4..].trim().to_string();
+            if endpoint.starts_with('/') {
+                tracing::debug!("WebSocketTransport: got endpoint: {}", endpoint);
+                return Ok(endpoint);
+            }
+            return Err(NetworkError::ConnectionFailed(format!("invalid endpoint path: {}", endpoint)));
+        }
+        Err(NetworkError::ConnectionFailed("no body in 200 response".to_string()))
+    }
+}
+
+// Was: Implementiert das zugehörige Verhalten für `NetworkTransport for WebSocketTransport`.
+// Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
+impl NetworkTransport for WebSocketTransport {
+    // Was: Diese Funktion verbindet den vorgesehenen Arbeitsschritt.
+    // Warum: Der Verbindungsaufbau wird dadurch zentral überwacht und kann sauber fehlschlagen.
+    fn connect(&mut self) -> Result<(), NetworkError> {
+        // Drop any existing connection
+        self.ws = None;
+
+        let scheme = if self.config.use_tls { "wss" } else { "ws" };
+        tracing::debug!(
+            "WebSocketTransport: connecting to {}://{}:{}",
+            scheme,
+            self.config.host,
+            self.config.port
+        );
+
+        // Step 1: Resolve WebSocket endpoint path
+        let endpoint = if self.config.digest_auth_credentials.is_some() {
+            self.authenticate()?
+        } else {
+            self.config.endpoint_path.clone()
+        };
+
+        // Step 2: Connect WebSocket to the endpoint
+        let ws_url = format!("{}://{}:{}{}", scheme, self.config.host, self.config.port, endpoint);
+        tracing::debug!("WebSocketTransport: connecting WebSocket to {}", ws_url);
+
+        // Build request with User-Agent and subprotocol headers.
+        // The TetraPack server sends a Sec-WebSocket-Protocol in its response,
+        // so we must request one to satisfy the RFC 6455 handshake validation.
+        let websocket_key = tungstenite::handshake::client::generate_key();
+        let mut builder = tungstenite::http::Request::builder()
+            .uri(&ws_url)
+            .header("Host", format!("{}:{}", self.config.host, self.config.port))
+            .header("User-Agent", &self.config.user_agent)
+            .header("Connection", "Upgrade")
+            .header("Upgrade", "websocket")
+            .header("Sec-WebSocket-Key", websocket_key)
+            .header("Sec-WebSocket-Version", "13");
+
+        if let Some(ref proto) = self.config.subprotocol {
+            builder = builder.header("Sec-WebSocket-Protocol", proto.as_str());
+        }
+
+        if let Some((ref user, ref pass)) = self.config.basic_auth_credentials {
+            let encoded = base64::engine::general_purpose::STANDARD.encode(format!("{}:{}", user, pass));
+            builder = builder.header("Authorization", format!("Basic {}", encoded));
+        }
+
+        let request = builder
+            .body(())
+            .map_err(|e| NetworkError::ConnectionFailed(format!("failed to build WS request: {}", e)))?;
+
+        // Open TCP stream and perform the WebSocket handshake with an optional
+        // custom TLS connector (for self-signed certificate support).
+        let addr = format!("{}:{}", self.config.host, self.config.port);
+        let socket_addr = addr
+            .to_socket_addrs()
+            .map_err(|e| NetworkError::ConnectionFailed(format!("DNS resolve failed for '{}': {}", addr, e)))?
+            .next()
+            .ok_or_else(|| NetworkError::ConnectionFailed(format!("no addresses found for '{}'", addr)))?;
+        let tcp = TcpStream::connect_timeout(&socket_addr, DEFAULT_CONNECT_TIMEOUT)
+            .map_err(|e| NetworkError::ConnectionFailed(format!("TCP connect failed: {}", e)))?;
+
+        let connector = if self.config.custom_root_certs.is_some() {
+            let tls_config = build_tls_config(&self.config.custom_root_certs).map_err(|e| NetworkError::ConnectionFailed(e))?;
+            Some(Connector::Rustls(tls_config))
+        } else {
+            None
+        };
+
+        let (mut ws, response) = tungstenite::client_tls_with_config(request, tcp, None, connector).map_err(|error| match error {
+            tungstenite::HandshakeError::Failure(error) => websocket_connect_error(error),
+            tungstenite::HandshakeError::Interrupted(_) => {
+                NetworkError::ConnectionFailed("WebSocket handshake interrupted (WouldBlock)".to_string())
+            }
+        })?;
+
+        let negotiated_subprotocol = response
+            .headers()
+            .get("sec-websocket-protocol")
+            .and_then(|value| value.to_str().ok())
+            .map(str::trim)
+            .filter(|value| !value.is_empty());
+
+        let is_control_room = self
+            .config
+            .subprotocol
+            .as_deref()
+            .is_some_and(|expected| expected.starts_with("netcore-control-room-"));
+
+        if let Some(expected) = self.config.subprotocol.as_deref() {
+            // Control Room is our own strict protocol endpoint. Requiring the echoed
+            // subprotocol prevents a reverse proxy or wrong path from masquerading as it.
+            if is_control_room && negotiated_subprotocol != Some(expected) {
+                return Err(NetworkError::InvalidServiceVersion(format!(
+                    "WebSocket server did not negotiate required subprotocol '{}' (received {:?})",
+                    expected, negotiated_subprotocol
+                )));
+            }
+        }
+
+        if is_control_room {
+            let marker = response
+                .headers()
+                .get(CONTROL_ROOM_MARKER_HEADER)
+                .and_then(|value| value.to_str().ok())
+                .map(str::trim);
+            if marker != Some(CONTROL_ROOM_MARKER_VALUE) {
+                return Err(NetworkError::InvalidServiceVersion(format!(
+                    "Control Room endpoint did not advertise {}={} (received {:?}); deploy/restart the matching netcore-control-room binary",
+                    CONTROL_ROOM_MARKER_HEADER,
+                    CONTROL_ROOM_MARKER_VALUE,
+                    marker
+                )));
+            }
+
+            // A HTTP 101 alone is not enough: older Control Room builds accepted an
+            // unauthorized upgrade and closed immediately afterwards. Confirm that the
+            // upgraded handler is alive before the worker sends its Hello frame.
+            verify_control_room_ready(&mut ws)?;
+        }
+
+        if self.config.subprotocol.as_deref() == Some("brew") {
+            // Brew version source. Preferred: an authoritative version the server advertises in
+            // the 101 upgrade response. Monotonic: never downgrade a version already confirmed
+            // this run (e.g. across a reconnect).
+            let handshake_version: Option<u8> = response
+                .headers()
+                .get("x-brew-version")
+                .and_then(|v| v.to_str().ok())
+                .and_then(|s| s.trim().parse::<u8>().ok());
+            self.server_brew_version = self.server_brew_version.max(handshake_version.unwrap_or(0));
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+            match handshake_version {
+                Some(v) => tracing::info!(
+                    "WebSocketTransport: connected, server advertised Brew v{v} in handshake (now v{})",
+                    self.server_brew_version
+                ),
+                None => tracing::info!(
+                    "WebSocketTransport: connected, no X-Brew-Version in handshake → version detected lazily from message content (currently v{})",
+                    self.server_brew_version
+                ),
+            }
+        } else {
+            tracing::info!(
+                "WebSocketTransport: connected to {}://{}:{}{} (subprotocol={})",
+                scheme,
+                self.config.host,
+                self.config.port,
+                endpoint,
+                negotiated_subprotocol.unwrap_or("none")
+            );
+        }
+
+        tracing::debug!("WebSocketTransport: WebSocket connected");
+
+        // Short timeout for the regular polling loop; TCP_NODELAY is set by the helper.
+        configure_websocket_stream(&ws, Duration::from_millis(10));
+
+        let now = Instant::now();
+        self.ws = Some(ws);
+        self.last_activity_at = now;
+        self.last_ping_at = now;
+        self.ping_seq = 0;
+        self.last_ping_id = None;
+        self.last_ping_sent_at = None;
+
+        Ok(())
+    }
+
+    // Was: Diese Funktion sendet reliable.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
+    fn send_reliable(&mut self, payload: &[u8]) -> Result<(), NetworkError> {
+        let ws = self
+            .ws
+            .as_mut()
+            .ok_or_else(|| NetworkError::SendFailed("not connected".to_string()))?;
+        ws.send(Message::Binary(payload.to_vec().into()))
+            .map_err(|e| NetworkError::SendFailed(format!("WebSocket send failed: {}", e)))
+    }
+
+    // Was: Diese Funktion sendet unreliable.
+    // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
+    fn send_unreliable(&mut self, payload: &[u8]) -> Result<(), NetworkError> {
+        // WebSocket is reliable by nature; delegate to send_reliable
+        self.send_reliable(payload)
+    }
+
+    // Was: Diese Funktion empfängt reliable.
+    // Warum: Eingehende Daten werden so geordnet geprüft, bevor sie weiterverteilt werden.
+    fn receive_reliable(&mut self) -> Vec<NetworkMessage> {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+        let ws = match self.ws.as_mut() {
+            Some(ws) => ws,
+            None => return vec![],
+        };
+
+        let now = Instant::now();
+
+        // Send heartbeat ping if interval elapsed
+        if now.duration_since(self.last_ping_at) >= self.config.heartbeat_interval {
+            self.ping_seq = self.ping_seq.wrapping_add(1);
+            let payload = self.ping_seq.to_be_bytes().to_vec();
+            if ws.send(Message::Ping(payload)).is_err() {
+                tracing::warn!("WebSocketTransport: heartbeat ping failed, disconnecting");
+                self.ws = None;
+                return vec![];
+            }
+            self.last_ping_at = now;
+            self.last_ping_id = Some(self.ping_seq);
+            self.last_ping_sent_at = Some(now);
+        }
+
+        // Check heartbeat timeout
+        if now.duration_since(self.last_activity_at) >= self.config.heartbeat_timeout {
+            tracing::warn!("WebSocketTransport: heartbeat timeout, disconnecting");
+            self.ws = None;
+            return vec![];
+        }
+
+        let mut messages = Vec::new();
+        let source = NetworkAddress::Custom {
+            scheme: if self.config.use_tls { "wss".to_string() } else { "ws".to_string() },
+            address: format!("{}:{}", self.config.host, self.config.port),
+        };
+
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
+        // Count all frames, including ping/text, so sustained incoming traffic
+        // returns control to the worker's outgoing subscriber/call commands.
+        for _ in 0..64 {
+            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+            match ws.read() {
+                Ok(Message::Binary(data)) => {
+                    self.last_activity_at = Instant::now();
+                    messages.push(NetworkMessage {
+                        source: source.clone(),
+                        payload: data.into(),
+                        timestamp: Instant::now(),
+                    });
+                }
+                Ok(Message::Ping(payload)) => {
+                    self.last_activity_at = Instant::now();
+                    if ws.send(Message::Pong(payload)).is_err() {
+                        tracing::warn!("WebSocketTransport: pong send failed, disconnecting");
+                        self.ws = None;
+                        break;
+                    }
+                }
+                Ok(Message::Pong(payload)) => {
+                    let rx_at = Instant::now();
+                    self.last_activity_at = rx_at;
+                    if payload.len() == 8 {
+                        let mut buf = [0u8; 8];
+                        buf.copy_from_slice(&payload[..8]);
+                        let pong_id = u64::from_be_bytes(buf);
+                        if Some(pong_id) == self.last_ping_id {
+                            if let Some(sent_at) = self.last_ping_sent_at {
+                                let rtt = rx_at.duration_since(sent_at);
+                                tracing::trace!("WebSocketTransport: ping rtt_ms={:.1}", rtt.as_secs_f64() * 1000.0);
+                            }
+                        }
+                    }
+                }
+                Ok(Message::Close(_)) => {
+                    tracing::info!("WebSocketTransport: server sent close");
+                    self.ws = None;
+                    break;
+                }
+                Ok(_unsupported) => {
+                    // Text or other — unexpected
+                    tracing::warn!("WebSocketTransport: unexpected WebSocket message type");
+                }
+                Err(tungstenite::Error::Io(ref e))
+                    if e.kind() == std::io::ErrorKind::WouldBlock || e.kind() == std::io::ErrorKind::TimedOut =>
+                {
+                    // No more data available — normal for non-blocking
+                    break;
+                }
+                Err(tungstenite::Error::ConnectionClosed) => {
+                    tracing::info!("WebSocketTransport: connection closed by server");
+                    self.ws = None;
+                    break;
+                }
+                Err(e) => {
+                    tracing::warn!("WebSocketTransport: read error: {}", e);
+                    self.ws = None;
+                    break;
+                }
+            }
+        }
+
+        messages
+    }
+
+    // Was: Diese Funktion empfängt unreliable.
+    // Warum: Eingehende Daten werden so geordnet geprüft, bevor sie weiterverteilt werden.
+    fn receive_unreliable(&mut self) -> Vec<NetworkMessage> {
+        // WebSocket has no unreliable channel; delegate to reliable
+        self.receive_reliable()
+    }
+
+    // Was: Diese Funktion wartet for response reliable.
+    // Warum: Nachfolgende Schritte laufen dadurch erst weiter, wenn ihre Voraussetzung wirklich erfüllt ist.
+    fn wait_for_response_reliable(&mut self) -> Result<NetworkMessage, NetworkError> {
+        let timeout = Duration::from_secs(10);
+        let start = Instant::now();
+        // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
+        // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
+        loop {
+            let msgs = self.receive_reliable();
+            if let Some(msg) = msgs.into_iter().next() {
+                return Ok(msg);
+            }
+            if !self.is_connected() {
+                return Err(NetworkError::ConnectionFailed(
+                    "disconnected while waiting for response".to_string(),
+                ));
+            }
+            if start.elapsed() >= timeout {
+                return Err(NetworkError::Timeout);
+            }
+            std::thread::sleep(Duration::from_millis(1));
+        }
+    }
+
+    // Was: Diese Funktion trennt den vorgesehenen Arbeitsschritt.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn disconnect(&mut self) {
+        if let Some(ref mut ws) = self.ws {
+            let _ = ws.close(None);
+        }
+        self.ws = None;
+    }
+
+    // Was: Prüft, ob connected zutrifft.
+    // Warum: Aufrufer erhalten dadurch eine eindeutige Ja-Nein-Entscheidung ohne eigene Detailprüfung.
+    fn is_connected(&self) -> bool {
+        self.ws.is_some()
+    }
+
+    // Was: Führt den Arbeitsschritt `server_brew_version` für server Brew-Verbindung version aus.
+    // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
+    fn server_brew_version(&self) -> u8 {
+        self.server_brew_version
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::net::TcpListener;
+    use tungstenite::protocol::Role;
+
+    #[test]
+    fn receive_burst_yields_to_outgoing_control_without_losing_fifo_frames() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let client = TcpStream::connect(listener.local_addr().unwrap()).unwrap();
+        client.set_read_timeout(Some(Duration::from_millis(50))).unwrap();
+        let (server, _) = listener.accept().unwrap();
+        server.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
+        let mut peer = WebSocket::from_raw_socket(server, Role::Server, None);
+        let mut transport = WebSocketTransport::new(WebSocketTransportConfig {
+            host: "127.0.0.1".into(), port: listener.local_addr().unwrap().port(), use_tls: false,
+            custom_root_certs: None, basic_auth_credentials: None, digest_auth_credentials: None,
+            endpoint_path: "/".into(), subprotocol: None, user_agent: "test".into(),
+            heartbeat_interval: Duration::from_secs(60), heartbeat_timeout: Duration::from_secs(60),
+        });
+        transport.ws = Some(WebSocket::from_raw_socket(MaybeTlsStream::Plain(client), Role::Client, None));
+        for n in 0u8..130 { peer.send(Message::Binary(vec![n].into())).unwrap(); }
+        let first = transport.receive_reliable();
+        assert_eq!(first.len(), 64);
+        // An outgoing registration command can run while inbound frames remain.
+        transport.send_reliable(b"registration").unwrap();
+        assert!(matches!(peer.read().unwrap(), Message::Binary(data) if &data[..] == b"registration"));
+        let mut received = first;
+        received.extend(transport.receive_reliable());
+        received.extend(transport.receive_reliable());
+        assert_eq!(received.len(), 130);
+        for (n, message) in received.iter().enumerate() { assert_eq!(message.payload, vec![n as u8]); }
+    }
+}

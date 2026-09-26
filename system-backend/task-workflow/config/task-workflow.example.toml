@@ -1,0 +1,218 @@
+# NetCore-TETRA Task Workflow · Phase 9 · OPEN LAB
+
+[service]
+name = "netcore-task-workflow"
+phase = 9
+mode = "open_lab"
+
+[server]
+bind = "0.0.0.0:8280"
+
+[security]
+mode = "open_lab"
+# OPEN LAB: kein Login, kein Token, kein TLS. Nur im isolierten Testnetz betreiben.
+
+[storage]
+state_file = "/var/lib/netcore-task-workflow/state.json"
+event_log = "/var/lib/netcore-task-workflow/events.ndjson"
+audit_log = "/var/lib/netcore-task-workflow/audit.ndjson"
+
+[mqtt]
+enabled = true
+host = "127.0.0.1"
+port = 1883
+topic_prefix = "netcore/v1"
+client_id = "netcore-task-workflow"
+
+[sds_router]
+enabled = true
+base_url = "http://127.0.0.1:8150"
+source_issi = 9999
+protocol_id = 130
+ttl_secs = 600
+max_text_length = 160
+default_destination = 15201
+default_is_group = true
+
+[workflow]
+event_history_limit = 2000
+seen_event_limit = 10000
+expire_check_interval_secs = 5
+notify_on_state_change = true
+
+[wap]
+enabled = true
+page_size = 6
+xhtml_entry = "/x"
+wml_entry = "/w"
+# Identität im OPEN LAB wird über ?issi=4010001 mitgegeben.
+
+[[templates]]
+id = "technical_fault"
+name = "Technische Stoerung"
+description = "Technische Stoerung aufnehmen und bearbeiten"
+default_priority = 7
+default_severity = "warning"
+requires_ack = true
+
+[[templates.fields]]
+id = "asset"
+label = "Anlage/Geraet"
+type = "text"
+required = true
+
+[[templates.fields]]
+id = "fault"
+label = "Fehlerbild"
+type = "text"
+required = true
+
+[[templates.fields]]
+id = "location"
+label = "Ort"
+type = "text"
+required = false
+
+[[templates]]
+id = "vehicle_check"
+name = "Fahrzeugcheck"
+description = "Kurzer Fahrzeug- und Ausruestungscheck"
+default_priority = 3
+default_severity = "notice"
+requires_ack = true
+
+[[templates.fields]]
+id = "vehicle"
+label = "Fahrzeug"
+type = "text"
+required = true
+
+[[templates.fields]]
+id = "mileage"
+label = "Kilometer"
+type = "number"
+required = false
+
+[[templates.fields]]
+id = "result"
+label = "Ergebnis"
+type = "text"
+required = true
+
+[[templates]]
+id = "material_withdrawal"
+name = "Materialentnahme"
+description = "Materialentnahme dokumentieren"
+default_priority = 2
+default_severity = "info"
+requires_ack = false
+
+[[templates.fields]]
+id = "item"
+label = "Material"
+type = "text"
+required = true
+
+[[templates.fields]]
+id = "quantity"
+label = "Menge"
+type = "number"
+required = true
+
+[[templates.fields]]
+id = "purpose"
+label = "Verwendung"
+type = "text"
+required = false
+
+[[templates]]
+id = "check_in"
+name = "Check-in"
+description = "Person, Fahrzeug oder Team einchecken"
+default_priority = 2
+default_severity = "info"
+requires_ack = false
+
+[[templates.fields]]
+id = "resource"
+label = "Ressource"
+type = "text"
+required = true
+
+[[templates.fields]]
+id = "location"
+label = "Ort"
+type = "text"
+required = true
+
+[[templates]]
+id = "check_out"
+name = "Check-out"
+description = "Person, Fahrzeug oder Team auschecken"
+default_priority = 2
+default_severity = "info"
+requires_ack = false
+
+[[templates.fields]]
+id = "resource"
+label = "Ressource"
+type = "text"
+required = true
+
+[[templates.fields]]
+id = "result"
+label = "Rueckmeldung"
+type = "text"
+required = false
+
+[[templates]]
+id = "maintenance_ack"
+name = "Wartungsquittierung"
+description = "Wartung oder Pruefung bestaetigen"
+default_priority = 4
+default_severity = "notice"
+requires_ack = true
+
+[[templates.fields]]
+id = "asset"
+label = "Anlage/Geraet"
+type = "text"
+required = true
+
+[[templates.fields]]
+id = "work"
+label = "Arbeit"
+type = "text"
+required = true
+
+[[templates.fields]]
+id = "result"
+label = "Ergebnis"
+type = "text"
+required = true
+
+# Pre-coded Status wirkt auf den neuesten aktiven Auftrag, der zur sendenden ISSI passt.
+[[status_actions]]
+status_code = 5301
+action = "accept"
+label = "Auftrag annehmen"
+
+[[status_actions]]
+status_code = 5302
+action = "start"
+label = "Bearbeitung beginnen"
+
+[[status_actions]]
+status_code = 5303
+action = "block"
+label = "Auftrag blockiert"
+
+[[status_actions]]
+status_code = 5304
+action = "complete"
+label = "Auftrag erledigt"
+
+[[status_actions]]
+status_code = 5305
+action = "cancel"
+label = "Auftrag abbrechen"

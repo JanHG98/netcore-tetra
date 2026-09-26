@@ -1,0 +1,24 @@
+# ABSICHTLICH NICHT STANDARDMÄSSIG AKTIVIEREN.
+# Dieses Beispiel akzeptiert ausschließlich input_boolean.netcore_lab_* und ON/OFF.
+# Zusätzlich im IoT Gateway:
+#   home_assistant.allow_command_egress = true
+#   Policy allow-openlab-homeassistant-lab-bridge enabled = true
+- id: netcore_limited_homeassistant_command_egress
+  alias: NetCore – begrenzte OPEN-LAB-Aktionen
+  mode: queued
+  max: 20
+  trigger:
+    - platform: mqtt
+      topic: netcore/v1/integrations/homeassistant/command-egress
+  condition:
+    - condition: template
+      value_template: >-
+        {{ trigger.payload_json.schema == 'netcore-home-assistant-command-v1'
+           and trigger.payload_json.entity_id.startswith('input_boolean.netcore_lab_')
+           and trigger.payload_json.action in ['turn_on', 'turn_off'] }}
+  action:
+    - service: >-
+        {{ 'input_boolean.turn_on' if trigger.payload_json.action == 'turn_on'
+           else 'input_boolean.turn_off' }}
+      target:
+        entity_id: "{{ trigger.payload_json.entity_id }}"

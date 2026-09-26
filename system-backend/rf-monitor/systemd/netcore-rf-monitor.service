@@ -1,0 +1,19 @@
+[Unit]
+Description=NetCore-Tetra RF Monitor (OPEN LAB MODE)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/netcore-rf-monitor --config /etc/netcore/rf-monitor.toml
+Restart=on-failure
+RestartSec=2
+User=root
+Group=root
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/var/lib/netcore-rf-monitor
+
+[Install]
+WantedBy=multi-user.target

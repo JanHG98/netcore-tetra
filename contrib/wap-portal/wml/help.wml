@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE wml PUBLIC "-//WAPFORUM//DTD WML 1.1//EN" "http://www.wapforum.org/DTD/wml_1.1.xml">
+<wml>
+<card id="main" title="Hilfe">
+<p>
+<b>Hilfe</b><br/>
+Navigation: P zurueck, N weiter, H Start.<br/>
+<a href="tests.wml">P</a> <a href="about.wml">N</a> <a href="index.wml">H</a>
+</p>
+</card>
+</wml>

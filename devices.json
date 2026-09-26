@@ -1,0 +1,16 @@
+{
+  "2010002": {
+    "name": "Hytera HRT",
+    "type": "HRT",
+    "owner": "Jan"
+  },
+  "2020001": {
+    "name": "Motorola MTP",
+    "type": "HRT",
+    "owner": "Jan"
+  },
+  "5102": {
+    "name": "LIP Testgerät 5102",
+    "type": "Test"
+  }
+}

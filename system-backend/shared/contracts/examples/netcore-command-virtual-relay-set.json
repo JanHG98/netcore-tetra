@@ -1,0 +1,24 @@
+{
+  "schema": "netcore-command-v1",
+  "command_id": "8a72d9ec-a366-4eca-b7e1-cdfb3cbf8436",
+  "command_type": "virtual.relay.set",
+  "source": {
+    "service": "openlab-cli",
+    "instance": "jan-shell",
+    "actor": "jan"
+  },
+  "requested_at": "2026-08-01T13:30:00Z",
+  "expires_at": "2026-08-01T13:30:30Z",
+  "target": {
+    "type": "virtual_relay",
+    "id": "lab-relay-01"
+  },
+  "payload": {
+    "state": true
+  },
+  "dry_run": false,
+  "idempotency_key": "lab-relay-01:on:20260801T133000Z",
+  "labels": {
+    "environment": "open_lab"
+  }
+}
