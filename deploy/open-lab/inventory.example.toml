@@ -657,3 +657,13 @@ config_template = "system-backend/alert-service/config/alert-service.example.tom
 config_target = "/etc/netcore/alert-service.toml"
 depends_on = ["control-room", "sds-router"]
 health_path = "/health/ready"
+[[services]]
+name = "deployment-core"
+host = "10.0.20.35"
+port = 8320
+unit = "netcore-deployment.service"
+user = "netcore-deploy"
+install = "system-backend/deployment-core/install/install.sh"
+config_template = "system-backend/deployment-core/config/deployment.example.toml"
+config_target = "/etc/netcore/deployment.toml"
+depends_on = []

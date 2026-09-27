@@ -540,4 +540,5 @@ async function sendEdge(e){e.preventDefault();try{const p=JSON.parse(new FormDat
 function showNpdu(id){const n=npdus.find(x=>x.id===id);if(n)alert(n.payload.map(x=>x.toString(16).padStart(2,'0')).join(''))}
 async function dropNpdu(id){try{await api('/api/v1/npdu-outbox/'+id,{method:'DELETE'});refresh()}catch(e){alert(e.message)}}
 refresh();setInterval(refresh,4000);
-</script></body></html>"#;
+</script><a data-netcore-discovery href="#" onclick="this.href='http://'+location.hostname+':8321/?scan=1'" target="_blank" rel="noopener" style="position:fixed;right:18px;bottom:18px;z-index:1000;background:#15343d;color:#9befdf;border:1px solid #37616c;border-radius:7px;padding:9px 13px;font:12px system-ui;text-decoration:none">Auto Discovery ↗</a>
+</body></html>"#;

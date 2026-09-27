@@ -1,0 +1,25 @@
+mode = "open_lab"
+role = "agent"
+bind = "0.0.0.0"
+port = 8321
+environment = "netcore-openlab"
+state_dir = "/var/lib/netcore-discovery"
+repository = "https://github.com/JanHG98/netcore-tetra.git"
+ref = "feature/openlab-discovery-deployment"
+multicast_group = "239.192.84.82"
+discovery_port = 48320
+interface = "0.0.0.0"
+interval = 15
+lease_seconds = 90
+allowed_networks = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8"]
+seeds = []
+# Used only for fresh TBS installation; bootstrap sets this automatically.
+# tbs_template = "/etc/netcore/tbs-site-template.toml"
+[bindings]
+# node-gateway = "netcore-gateway-01"
+# Optional overrides for an existing Pi using another unit/config path:
+# [[services]]
+# name = "tbs"
+# unit = "tetra.service"
+# config_target = "/opt/tetra/config.toml"
+# command = "/opt/tetra/bluestation-bs /opt/tetra/config.toml"

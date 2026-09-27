@@ -690,3 +690,13 @@ token_auth = true
 tls = false
 depends_on = ["control-room", "sds-router"]
 warning = "Management network only; API token required by default; delivery must be enabled explicitly"
+[[services]]
+name = "deployment-core"
+webui = true
+scheme = "http"
+management_port = 8320
+security_mode = "open_lab"
+token_auth = false
+tls = false
+depends_on = []
+warning = "OpenLab deployment management: reachable clients can schedule installations and restarts"

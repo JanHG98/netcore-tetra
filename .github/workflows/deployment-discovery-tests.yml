@@ -1,0 +1,44 @@
+name: OpenLab deployment and discovery
+on:
+  push:
+    branches: ['feature/openlab-discovery-deployment', 'main']
+    paths: ['system-backend/**', 'bins/netcore-control-room/**', 'crates/tetra-entities/src/net_dashboard/**', '.github/workflows/deployment-discovery-tests.yml']
+  pull_request:
+    paths: ['system-backend/**', 'bins/netcore-control-room/**', 'crates/tetra-entities/src/net_dashboard/**', '.github/workflows/deployment-discovery-tests.yml']
+permissions:
+  contents: read
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Discovery, API, Git pinning and persistence
+        run: python3 -m unittest discover -s system-backend/deployment-core/tests -v
+      - name: Installer and existing Python UI syntax
+        run: |
+          for script in system-backend/deployment-core/install/*.sh; do bash -n "$script"; done
+          bash -n system-backend/shared/install/lxc-network.sh
+          python3 -m compileall -q system-backend
+          node --check system-backend/deployment-core/static/app.js
+      - name: Install browser for actual UI integration
+        run: |
+          npm install --prefix /tmp/netcore-browser playwright
+          /tmp/netcore-browser/node_modules/.bin/playwright install --with-deps chromium
+      - name: WebUI actions and responsive layout
+        env:
+          NODE_PATH: /tmp/netcore-browser/node_modules
+        run: node system-backend/deployment-core/tests/browser.cjs
+  rust-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Native build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsoapysdr-dev libgsm1-dev pkg-config cmake
+      - name: Build affected backend UI strings
+        run: cargo check --locked --workspace --exclude bluestation-bs

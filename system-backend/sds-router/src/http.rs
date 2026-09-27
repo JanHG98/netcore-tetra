@@ -588,4 +588,5 @@ function editRoute(id){const r=routes.find(x=>x.id===id);if(!r)return;routeForm.
 async function saveRoute(e){e.preventDefault();const f=new FormData(routeForm),p={name:String(f.get('name')||''),enabled:routeForm.enabled.checked,kind:f.get('kind'),match_value:Number(f.get('match_value')),target_kind:f.get('target_kind'),target:String(f.get('target')||''),mode:f.get('mode'),notes:String(f.get('notes')||'')},id=routeForm.dataset.id;try{await api(id?'/api/v1/routes/'+id:'/api/v1/routes',{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});routeDialog.close();refresh()}catch(e){alert(e.message)}}
 async function deleteRoute(id){if(!confirm('Routingregel löschen?'))return;try{await api('/api/v1/routes/'+id,{method:'DELETE'});refresh()}catch(e){alert(e.message)}}
 refresh();setInterval(refresh,4000);
-</script></body></html>"#;
+</script><a data-netcore-discovery href="#" onclick="this.href='http://'+location.hostname+':8321/?scan=1'" target="_blank" rel="noopener" style="position:fixed;right:18px;bottom:18px;z-index:1000;background:#15343d;color:#9befdf;border:1px solid #37616c;border-radius:7px;padding:9px 13px;font:12px system-ui;text-decoration:none">Auto Discovery ↗</a>
+</body></html>"#;

@@ -120,4 +120,15 @@ STATE
 
   echo "LXC-Adresse erkannt: ${ip} (DHCP/static lease)"
   echo "WebUI: ${webui}"
+
+  # Enrol new/updated LXCs in OpenLab discovery. Existing services are not
+  # restarted by the agent installer; endpoint resolution takes effect on start.
+  local discovery_installer
+  discovery_installer="$(dirname "${BASH_SOURCE[0]}")/../../deployment-core/install/install.sh"
+  if [[ ${NETCORE_DISCOVERY_SKIP_INSTALL:-0} != 1 && -f $discovery_installer ]]; then
+    local -a discovery_args=(agent)
+    [[ -z ${NETCORE_DEPLOYMENT_URL:-} ]] || discovery_args+=(--seed "$NETCORE_DEPLOYMENT_URL")
+    bash "$discovery_installer" "${discovery_args[@]}" || \
+      echo "WARNUNG: Discovery-Agent nicht installiert; bestehender Dienst bleibt unabhängig nutzbar." >&2
+  fi
 }

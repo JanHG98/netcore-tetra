@@ -10838,6 +10838,7 @@ async function pollPublic(){
 }
 boot();
 </script>
+<a data-netcore-discovery href="#" onclick="this.href='http://'+location.hostname+':8321/?scan=1'" target="_blank" rel="noopener" style="position:fixed;right:18px;bottom:18px;z-index:1000;background:#15343d;color:#9befdf;border:1px solid #37616c;border-radius:7px;padding:9px 13px;font:12px system-ui;text-decoration:none">Auto Discovery ↗</a>
 </body>
 </html>
 "#;
