@@ -15,7 +15,7 @@ import urllib.request
 ROOT = Path(__file__).resolve().parent
 CATALOG = {s['name']: s for s in json.loads((ROOT / 'catalog.json').read_text())}
 PROTOCOL = 'netcore.discovery.v1'
-VERSION = '0.2.0'
+VERSION = '0.2.1'
 REPOSITORY = 'https://github.com/JanHG98/netcore-tetra.git'
 NAME = re.compile(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,63}\Z')
 SHA = re.compile(r'[0-9a-f]{40}\Z')

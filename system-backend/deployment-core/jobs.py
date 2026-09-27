@@ -9,6 +9,14 @@ import time
 import uuid
 
 
+class RemoteJobUncertain(RuntimeError):
+    """The agent may still be working; never turn a lost reply into a retry POST."""
+    def __init__(self, message, remote_url, remote_job=''):
+        super().__init__(message)
+        self.result = dict(error=message, remote_uncertain=True,
+                           remote_url=remote_url, remote_job=remote_job)
+
+
 class Jobs:
     def __init__(self, state, execute):
         self.path = Path(state) / 'jobs.sqlite3'
@@ -66,7 +74,8 @@ class Jobs:
                 status = 'succeeded'
             except Exception as exc:
                 self.log(key, f'{type(exc).__name__}: {exc}')
-                result, status = {'error': str(exc)}, 'failed'
+                result = exc.result if isinstance(exc, RemoteJobUncertain) else {'error': str(exc)}
+                status = 'failed'
             with self.connect() as db:
                 db.execute('UPDATE jobs SET status=?, result=?, updated=? WHERE id=?',
                            (status, json.dumps(result or {}), time.time(), key))

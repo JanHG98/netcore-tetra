@@ -331,6 +331,19 @@ Aufträge, die bei einem Agent-/Controller-Neustart offen waren, werden als
 Verlust des Controllers auf seinem Zielhost weiterlaufen; die Remote-Auftrags-ID
 steht im Controller-Log. Vor erneutem Ausrollen dort den Zustand prüfen.
 
+Statusabfragen an einen Ziel-Agenten erhalten 15 Sekunden Antwortzeit. Bei
+vorübergehenden Verbindungsfehlern fragt der Controller denselben Auftrag für
+bis zu fünf Minuten erneut ab. Der Installationsauftrag selbst wird niemals
+automatisch erneut gesendet. Erst ein gemeldeter Erfolg des Agenten gilt als
+erfolgreiches Deployment; echte Installerfehler bleiben Fehler.
+
+Kann der Endzustand nicht ermittelt werden, enthält das Auftragsergebnis
+`remote_uncertain: true`, `remote_url` und – sofern empfangen – `remote_job`.
+Der Controller-Auftrag wird dann als fehlgeschlagen angezeigt, der Zustand des
+Installers auf dem Zielhost ist jedoch **ungeklärt**. Dort über
+`http://<Ziel-IP>:8321/api/v1/jobs` prüfen und einen noch aktiven Agenten nicht
+neu installieren oder neu starten. Das würde laufende Builds unterbrechen.
+
 Der Controller läuft als `netcore-deploy`; der Agent läuft für Paketinstallation
 und systemd-Steuerung als root. Das sind Betriebssystemkonten, keine Web-Logins.
 

@@ -13,7 +13,9 @@ import subprocess
 import threading
 import time
 import tomllib
+from http.client import HTTPException
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.error import HTTPError
 from urllib.parse import parse_qs, urlsplit
 
 from common import (CATALOG, PROTOCOL, ROOT, VERSION, atomic_write, identifier,
@@ -21,9 +23,15 @@ from common import (CATALOG, PROTOCOL, ROOT, VERSION, atomic_write, identifier,
 from deploy import (Deployer, Repository, probe, service_spec, tbs_config,
                     validate_job, validate_profile)
 from discovery import Discovery
-from jobs import Jobs
+from jobs import Jobs, RemoteJobUncertain
 from image_client import ImageClient
 from image_spec import BUILD_ID, validate_image
+
+
+REMOTE_REQUEST_TIMEOUT = 15
+REMOTE_RETRY_SECONDS = 300
+REMOTE_POLL_INTERVAL = 2
+REMOTE_JOB_SECONDS = 7200
 
 
 class App:
@@ -119,15 +127,50 @@ class App:
         if data.get('profile'):
             remote['profile'] = self.profiles[data['profile']]
         remote = validate_job(remote)
-        response = request_json(target['agent_url'] + '/api/v1/jobs', remote)
-        key = response['id']
-        log(f"Remote-Auftrag {target['agent_url']}/api/v1/jobs/{key}")
-        deadline, last = time.monotonic() + 7200, ''
+        jobs_url = target['agent_url'] + '/api/v1/jobs'
+        try:
+            # A lost POST response is ambiguous. Never submit the installer twice.
+            response = request_json(jobs_url, remote, timeout=REMOTE_REQUEST_TIMEOUT)
+            key = response['id']
+            if not isinstance(key, str) or len(key) != 32 or any(c not in '0123456789abcdef' for c in key):
+                raise ValueError('Ungültige Remote-Auftrags-ID')
+        except HTTPError as exc:
+            if 400 <= exc.code < 500:
+                raise
+            raise RemoteJobUncertain(f'Antwort beim Anlegen verloren: {exc}; Agent-Aufträge prüfen. '
+                                     'Keine automatische Wiederholung.', jobs_url) from exc
+        except (OSError, ValueError, KeyError, TypeError, HTTPException) as exc:
+            raise RemoteJobUncertain(f'Antwort beim Anlegen verloren: {exc}; Agent-Aufträge prüfen. '
+                                     'Keine automatische Wiederholung.', jobs_url) from exc
+        job_url = jobs_url + '/' + key
+        log(f'Remote-Auftrag {job_url}')
+        deadline, last = time.monotonic() + REMOTE_JOB_SECONDS, ''
+        unavailable_since = None
         while time.monotonic() < deadline:
+            if self.stop.is_set():
+                raise RemoteJobUncertain(f'Controller beendet; Remote-Auftrag {key} separat prüfen', job_url, key)
             try:
-                result = request_json(target['agent_url'] + '/api/v1/jobs/' + key)
-            except (OSError, ValueError) as exc:
-                raise RuntimeError(f'Remote-Auftrag {key} läuft möglicherweise weiter; Verbindung verloren: {exc}') from exc
+                result = request_json(job_url, timeout=REMOTE_REQUEST_TIMEOUT)
+                if (not isinstance(result, dict) or result.get('status') not in
+                        ('queued', 'running', 'succeeded', 'failed', 'interrupted') or
+                        not isinstance(result.get('log'), str) or not isinstance(result.get('result'), dict)):
+                    raise ValueError('Ungültiger Remote-Auftragsstatus')
+            except (OSError, ValueError, HTTPException) as exc:
+                # 4xx (except temporary 408/429) cannot be healed by polling.
+                permanent = isinstance(exc, HTTPError) and 400 <= exc.code < 500 and exc.code not in (408, 429)
+                now = time.monotonic()
+                if unavailable_since is None:
+                    unavailable_since = now
+                    log(f'Status von {key} vorübergehend nicht erreichbar: {exc}. '
+                        f'Erneute GET-Abfragen für bis zu {REMOTE_RETRY_SECONDS}s; kein neuer Installationsauftrag.')
+                if permanent or now - unavailable_since >= REMOTE_RETRY_SECONDS:
+                    raise RemoteJobUncertain(f'Remote-Auftrag {key} läuft möglicherweise weiter; '
+                                             f'Status nicht feststellbar: {exc}', job_url, key) from exc
+                self.stop.wait(REMOTE_POLL_INTERVAL)
+                continue
+            if unavailable_since is not None:
+                log(f'Status von {key} wieder erreichbar; bestehenden Auftrag weiter verfolgen.')
+                unavailable_since = None
             if result['log'] != last:
                 log(result['log'][len(last):] if result['log'].startswith(last) else result['log'])
                 last = result['log']
@@ -136,10 +179,8 @@ class App:
                 return {'remote_job': key, **result['result']}
             if result['status'] in ('failed', 'interrupted'):
                 raise RuntimeError(f"Remote-Auftrag {key}: {result['status']}; {result['result'].get('error', '')}")
-            self.stop.wait(2)
-            if self.stop.is_set():
-                raise RuntimeError(f'Controller beendet; Remote-Auftrag {key} separat prüfen')
-        raise TimeoutError(f'Remote-Auftrag {key} läuft möglicherweise weiter; Zeitlimit erreicht')
+            self.stop.wait(REMOTE_POLL_INTERVAL)
+        raise RemoteJobUncertain(f'Remote-Auftrag {key} läuft möglicherweise weiter; Zeitlimit erreicht', job_url, key)
 
     def node(self, node_id):
         for node in self.discovery.snapshot()['peers']:
