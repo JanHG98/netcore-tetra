@@ -96,6 +96,7 @@ class App:
     def status(self):
         return dict(self.discovery.snapshot(), **self.manifest(), desired=self.desired,
                     settings={k: self.cfg[k] for k in ('seeds', 'bindings', 'ref')},
+                    advertise_url=self.cfg.get('advertise_url', ''),
                     has_template=(self.state / 'tbs-site-template.toml').is_file())
 
     def execute(self, data, log):

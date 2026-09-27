@@ -23,6 +23,7 @@ with tempfile.TemporaryDirectory() as state:
         threading.Thread(target=server.serve_forever,daemon=True).start()
         apps.append(app);servers.append(server)
     controller,agent=apps
+    controller.cfg['advertise_url']='http://10.0.1.50:8320'
     worker=Worker(Path(state)/'image-builder')
     worker.jobs.execute=lambda req,log:simulated_build(worker,req,log)
     image_server=ImageServer(state+'/images.sock',image_handler(worker))

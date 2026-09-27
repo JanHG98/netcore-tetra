@@ -32,7 +32,7 @@ const path = require('node:path');
     await page.locator('#execute').click();
     await page.locator('#job-list').getByText('Erfolgreich',{exact:true}).waitFor({timeout:15000});
     assert.match(await page.locator('#log').textContent(),/simulated installer/);
-    await page.locator('#image-controller').fill('http://10.0.1.50:8320');
+    assert.equal(await page.locator('#image-controller').inputValue(),'http://10.0.1.50:8320');
     await page.locator('#image-form [name=password]').fill('fixture-only-password');
     await page.locator('#image-build').click();
     await page.locator('#image-artifacts').getByText('Download bereit',{exact:true}).waitFor({timeout:15000});

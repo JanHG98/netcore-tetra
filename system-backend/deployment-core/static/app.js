@@ -79,7 +79,7 @@ async function refresh() {
     $('connection').textContent = '● Verbunden'; $('connection').className = 'badge ok';
     if (!initialized) {
       $('settings-ref').value = s.settings.ref; $('deploy-ref').value = s.settings.ref;
-      $('image-ref').value = s.settings.ref; $('image-controller').value = location.origin;
+      $('image-ref').value = s.settings.ref; $('image-controller').value = s.advertise_url || location.origin;
       $('seeds').value = s.settings.seeds.join('\n'); $('bindings').value = Object.entries(s.settings.bindings).map(([k,v])=>`${k}=${v}`).join('\n'); initialized = true;
     }
     $('template-status').textContent = s.has_template ? 'Standort-Template vorhanden. RF- und SDR-Einstellungen werden daraus übernommen.' : 'Noch kein Standort-Template. Importiere eine geprüfte TBS-Konfiguration; sie wird nicht per Discovery verteilt.';
