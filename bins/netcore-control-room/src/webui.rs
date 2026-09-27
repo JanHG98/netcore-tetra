@@ -237,7 +237,7 @@ $('incident-form').addEventListener('submit', async (event) => {{ event.preventD
 $('shift-form').addEventListener('submit', async (event) => {{ event.preventDefault(); const form=Object.fromEntries(new FormData(event.target)); try {{ await api('/api/v1/shift-log',{{method:'POST',body:JSON.stringify(form)}}); event.target.elements.text.value=''; await refresh(); }} catch(error) {{ alert(error.message); }} }});
 refresh(); setInterval(refresh, 5000);
 </script>
-<a data-netcore-discovery href="#" onclick="this.href='http://'+location.hostname+':8321/?scan=1'" target="_blank" rel="noopener" style="position:fixed;right:18px;bottom:18px;z-index:1000;background:#15343d;color:#9befdf;border:1px solid #37616c;border-radius:7px;padding:9px 13px;font:12px system-ui;text-decoration:none">Auto Discovery ↗</a>
+<a data-netcore-discovery href="/" onclick="this.href='http://'+location.hostname+':8321/?scan=1'" target="_blank" rel="noopener" style="position:fixed;right:18px;bottom:18px;z-index:1000;background:#15343d;color:#9befdf;border:1px solid #37616c;border-radius:7px;padding:9px 13px;font:12px system-ui;text-decoration:none">Auto Discovery ↗</a>
 </body>
 </html>"####
     )

@@ -599,5 +599,5 @@ function addDns(){const name=prompt('DNS-Name','service.netcore.test');if(!name)
 function addCapture(){const name=prompt('Capture-Name','packet-data');if(name===null)return;const direction=prompt('Richtung: uplink, downlink, both','both');post('/api/v1/captures',{name,direction,host:null,protocol:null,port:null})}
 function block(address){if(confirm(address+' blockieren?'))post('/api/v1/blocked',{address,reason:'WebUI flow block'})}async function reconcile(){try{await api('/api/v1/kernel/reconcile',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});refresh()}catch(e){alert(e.message)}}
 refresh();setInterval(refresh,4000);
-</script><a data-netcore-discovery href="#" onclick="this.href='http://'+location.hostname+':8321/?scan=1'" target="_blank" rel="noopener" style="position:fixed;right:18px;bottom:18px;z-index:1000;background:#15343d;color:#9befdf;border:1px solid #37616c;border-radius:7px;padding:9px 13px;font:12px system-ui;text-decoration:none">Auto Discovery ↗</a>
+</script><a data-netcore-discovery href="/" onclick="this.href='http://'+location.hostname+':8321/?scan=1'" target="_blank" rel="noopener" style="position:fixed;right:18px;bottom:18px;z-index:1000;background:#15343d;color:#9befdf;border:1px solid #37616c;border-radius:7px;padding:9px 13px;font:12px system-ui;text-decoration:none">Auto Discovery ↗</a>
 </body></html>"#;

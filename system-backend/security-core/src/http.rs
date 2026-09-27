@@ -670,5 +670,5 @@ async function startAuth(){await post('/api/v1/auth/start',{node_id:aNode.value,
 async function savePolicy(){await post('/api/v1/policy',{operating_mode:polMode.value,default_security_class:Number(polDefault.value),minimum_security_class:Number(polMin.value),authentication_required:polAuth.value==='true',allow_class1_fallback:polFallback.value==='true',reject_unknown_subscribers:polUnknown.value==='true',disable_after_failures:polDisable.value==='true'})}
 refresh();setInterval(refresh,5000);
 </script>
-<a data-netcore-discovery href="#" onclick="this.href='http://'+location.hostname+':8321/?scan=1'" target="_blank" rel="noopener" style="position:fixed;right:18px;bottom:18px;z-index:1000;background:#15343d;color:#9befdf;border:1px solid #37616c;border-radius:7px;padding:9px 13px;font:12px system-ui;text-decoration:none">Auto Discovery ↗</a>
+<a data-netcore-discovery href="/" onclick="this.href='http://'+location.hostname+':8321/?scan=1'" target="_blank" rel="noopener" style="position:fixed;right:18px;bottom:18px;z-index:1000;background:#15343d;color:#9befdf;border:1px solid #37616c;border-radius:7px;padding:9px 13px;font:12px system-ui;text-decoration:none">Auto Discovery ↗</a>
 </body></html>"#;
