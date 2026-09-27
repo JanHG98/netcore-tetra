@@ -659,11 +659,12 @@ depends_on = ["control-room", "sds-router"]
 health_path = "/health/ready"
 [[services]]
 name = "deployment-core"
+# Full Ubuntu 24.04 VM; the image builder needs loop mounts and ARM64 emulation.
 host = "10.0.20.35"
 port = 8320
 unit = "netcore-deployment.service"
 user = "netcore-deploy"
-install = "system-backend/deployment-core/install/install.sh"
+install = "system-backend/deployment-core/install/install-vm.sh"
 config_template = "system-backend/deployment-core/config/deployment.example.toml"
 config_target = "/etc/netcore/deployment.toml"
 depends_on = []

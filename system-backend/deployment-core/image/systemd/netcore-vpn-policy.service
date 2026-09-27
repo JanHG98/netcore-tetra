@@ -1,0 +1,9 @@
+[Unit]
+Description=NetCore VPN home-network policy
+After=NetworkManager.service
+
+[Service]
+Type=oneshot
+Environment=LC_ALL=C
+ExecStart=/usr/bin/python3 /usr/local/lib/netcore-image/vpn-policy.py
+TimeoutStartSec=60

@@ -8,6 +8,9 @@ import threading
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from common import ROOT,load_config
 from main import App,Server,handler
+from image_client import ImageClient
+from image_worker import Worker,Server as ImageServer,handler as image_handler
+from test_images import simulated_build
 
 with tempfile.TemporaryDirectory() as state:
     apps=[];servers=[]
@@ -20,6 +23,11 @@ with tempfile.TemporaryDirectory() as state:
         threading.Thread(target=server.serve_forever,daemon=True).start()
         apps.append(app);servers.append(server)
     controller,agent=apps
+    worker=Worker(Path(state)/'image-builder')
+    worker.jobs.execute=lambda req,log:simulated_build(worker,req,log)
+    image_server=ImageServer(state+'/images.sock',image_handler(worker))
+    threading.Thread(target=image_server.serve_forever,daemon=True).start()
+    controller.images=ImageClient(state+'/images.sock')
     agent.local=[{'name':'node-gateway','port':8080,'ready':True,'commit':'a'*40}]
     agent.jobs.execute=lambda data,log:(log('Browser integration: simulated installer'),{'commit':data.get('commit','')})[1]
     controller.repo.resolve=lambda ref,log:'b'*40

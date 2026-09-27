@@ -19,7 +19,7 @@ jobs:
         run: python3 -m unittest discover -s system-backend/deployment-core/tests -v
       - name: Installer and existing Python UI syntax
         run: |
-          for script in system-backend/deployment-core/install/*.sh; do bash -n "$script"; done
+          for script in system-backend/deployment-core/install/*.sh system-backend/deployment-core/image/*.sh; do bash -n "$script"; done
           bash -n system-backend/shared/install/lxc-network.sh
           python3 -m compileall -q system-backend
           node --check system-backend/deployment-core/static/app.js
@@ -38,6 +38,18 @@ jobs:
           name: deployment-ui-preview
           path: /tmp/netcore-deployment-*.png
           if-no-files-found: ignore
+  image-engine:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: VM image tools and ARM64 emulation
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-user-static binfmt-support e2fsprogs fdisk xz-utils
+          sudo update-binfmts --enable qemu-aarch64
+      - name: Real Raspberry Pi OS image and ARM64 personalization
+        run: sudo unshare --mount --pid --fork --kill-child --propagation private python3 system-backend/deployment-core/tests/image_smoke.py
   rust-ui:
     runs-on: ubuntu-latest
     steps:
@@ -47,5 +59,11 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libsoapysdr-dev libgsm1-dev pkg-config cmake
+          cmake -S tetra-codec-master -B /tmp/netcore-codec -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib
+          cmake --build /tmp/netcore-codec
+          sudo cmake --install /tmp/netcore-codec
+          sudo ldconfig
       - name: Build affected backend UI strings
-        run: cargo check --locked --workspace --exclude bluestation-bs
+        run: cargo check --locked --workspace
+      - name: Link the default-feature TBS binary used in images
+        run: cargo build --locked -p bluestation-bs

@@ -15,7 +15,7 @@ Die GPS-basierte Warnzentrale für NINA/KATWARN und eigene Kartenwarnungen liegt
 Neu in Phase 11b: Jede TBS behält einen lokalen Asterisk als Edge-B2BUA. Die native TBS-Bridge spricht dauerhaft nur mit diesem lokalen Asterisk. Dieser nutzt den zentralen SIP-Switch als Primärweg und das vorhandene PBX als direkten Fallback. Dadurch ist kein TBS-Neustart nötig, wenn der zentrale SIP-Switch ausfällt oder zurückkommt.
 ### Auto Discovery & Deployment (Feature-Branch)
 
-Der Branch `feature/openlab-discovery-deployment` ergänzt einen zentralen
-Deployment-LXC mit HTTP-WebUI auf Port 8320, Discovery-Agenten, Commit-Abgleich
+Der Branch `feature/openlab-discovery-deployment` ergänzt eine zentrale
+Ubuntu-VM mit HTTP-WebUI auf Port 8320, Pi-Imagebuilder, Discovery-Agenten, Commit-Abgleich
 und TBS-Provisionierung. Installation und Betriebsgrenzen:
 [Deployment & Auto Discovery](system-backend/deployment-core/README.md).

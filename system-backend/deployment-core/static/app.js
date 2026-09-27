@@ -1,6 +1,7 @@
 'use strict';
 const $ = id => document.getElementById(id);
 let status = null, catalog = [], jobs = [], selectedJob = '', currentPlan = null, initialized = false, busy = false;
+let imageState = null, selectedImageJob = '', imageSubmitting = false;
 const labels = {queued:'Wartet',running:'Läuft',succeeded:'Erfolgreich',failed:'Fehlgeschlagen',interrupted:'Unterbrochen'};
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const short = value => value ? value.slice(0, 8) : 'Unbekannt';
@@ -49,6 +50,25 @@ function renderJobs() {
   const job = jobs.find(j => j.id === selectedJob);
   if (job) { $('log-title').textContent = `${labels[job.status]} · ${job.id.slice(0,8)}`; $('log').textContent = job.log || 'Auftrag wartet auf Ausführung.'; }
 }
+const gib = bytes => `${(bytes / 1024 ** 3).toLocaleString('de-DE', {maximumFractionDigits:1})} GiB`;
+function renderImages() {
+  const state = imageState;
+  if (!state) return;
+  $('builder-state').textContent = state.available ? '● Imagebuilder bereit' : 'Imagebuilder nicht verfügbar';
+  $('builder-state').className = 'badge ' + (state.available ? 'ok' : 'warn');
+  $('builder-note').hidden = Boolean(state.available);
+  $('builder-note').textContent = state.error || '';
+  $('image-space').textContent = state.available ? gib(state.free_bytes) : '—';
+  $('image-build').disabled = !state.available || !$('image-profile').value || imageSubmitting;
+  const builds = state.jobs || [];
+  if (!selectedImageJob && builds.length) selectedImageJob = builds[0].id;
+  $('image-job-list').innerHTML = builds.length ? builds.map(j => `<button class="job ${selectedImageJob===j.id?'selected':''}" data-image-job="${esc(j.id)}"><b>${esc(j.request.profile?.name || 'Pi-Image')}</b><small>${esc(short(j.request.commit))} · ${new Date(j.created*1000).toLocaleString('de-DE')}</small><span class="badge ${j.status==='succeeded'?'ok':j.status==='failed'?'bad':'warn'}">${labels[j.status] || esc(j.status)}</span></button>`).join('') : '<p class="empty">Dein erster Image-Build beginnt hier.</p>';
+  const job = builds.find(j => j.id === selectedImageJob);
+  if (job) { $('image-log-title').textContent = `${labels[job.status] || job.status} · ${job.request.profile?.name || 'Pi-Image'}`; $('image-log').textContent = job.log || 'Der Build wartet auf einen freien Platz.'; }
+  const artifacts = state.artifacts || [];
+  $('image-count').textContent = `${artifacts.length} ${artifacts.length === 1 ? 'Image' : 'Images'} verfügbar`;
+  $('image-artifacts').innerHTML = artifacts.map(a => `<article class="panel image-card"><div><span class="badge ok">Download bereit</span><h3>${esc(a.profile.name)}</h3><p>${esc(short(a.commit))} · ${gib(a.size_bytes)} Download · ${gib(a.uncompressed_bytes)} auf SD</p><small>${new Date(a.created*1000).toLocaleString('de-DE')} · Boot-/Funkprüfung auf dem Pi noch offen</small></div><div class="image-actions"><a class="button" href="/api/v1/images/${esc(a.id)}/image" download>Image ↓</a><a href="/api/v1/images/${esc(a.id)}/sha256" download>SHA256</a><a href="/api/v1/images/${esc(a.id)}/manifest" download>Manifest</a><button class="quiet" data-remove-image="${esc(a.id)}">Löschen</button></div></article>`).join('');
+}
 async function refresh() {
   if (busy) return;
   busy = true;
@@ -59,12 +79,16 @@ async function refresh() {
     $('connection').textContent = '● Verbunden'; $('connection').className = 'badge ok';
     if (!initialized) {
       $('settings-ref').value = s.settings.ref; $('deploy-ref').value = s.settings.ref;
+      $('image-ref').value = s.settings.ref; $('image-controller').value = location.origin;
       $('seeds').value = s.settings.seeds.join('\n'); $('bindings').value = Object.entries(s.settings.bindings).map(([k,v])=>`${k}=${v}`).join('\n'); initialized = true;
     }
     $('template-status').textContent = s.has_template ? 'Standort-Template vorhanden. RF- und SDR-Einstellungen werden daraus übernommen.' : 'Noch kein Standort-Template. Importiere eine geprüfte TBS-Konfiguration; sie wird nicht per Discovery verteilt.';
     selectOptions($('target-profile'), [{name:''},...profiles], p=>p.name || 'Keins', p=>p.name);
+    selectOptions($('image-profile'), profiles, p=>p.name, p=>p.name);
+    if (!$('image-hostname').value && $('image-profile').value) $('image-hostname').value = $('image-profile').value.toLowerCase().replace(/[^a-z0-9-]/g,'-').slice(0,63).replace(/-+$/,'');
     $('profile-list').innerHTML = profiles.map(p=>`<a href="/bootstrap.sh?profile=${encodeURIComponent(p.name)}" download="${esc(p.name)}-bootstrap.sh">${esc(p.name)} · Bootstrap ↓</a>`).join('');
     renderNodes(); renderJobs();
+    if (s.role === 'controller') { imageState = await api('/api/v1/images'); renderImages(); }
   } catch (error) { $('connection').textContent = 'Verbindung verloren'; $('connection').className = 'badge bad'; notice(error.message,true); }
   finally { busy = false; }
 }
@@ -91,5 +115,26 @@ $('settings-form').onsubmit=guarded(async()=>{
   $('deploy-ref').value=$('settings-ref').value;notice('Einstellungen gespeichert.');await refresh();
 });
 $('template').onchange=guarded(async()=>{const file=$('template').files[0];if(file){await api('/api/v1/template',{toml:await file.text()});notice('Standort-Template gespeichert.');await refresh();}});
-$('profile-form').onsubmit=guarded(async()=>{const data=Object.fromEntries(new FormData($('profile-form')));for(const k of ['mcc','mnc','issi','la','cc'])data[k]=Number(data[k]);await api('/api/v1/profiles',data);notice('TBS-Profil angelegt. Bootstrap herunterladen und auf dem Pi ausführen.');await refresh();});
+$('profile-form').onsubmit=guarded(async()=>{const data=Object.fromEntries(new FormData($('profile-form')));for(const k of ['mcc','mnc','issi','la','cc'])data[k]=Number(data[k]);await api('/api/v1/profiles',data);notice('TBS-Profil angelegt. Du kannst jetzt ein Pi-Image erstellen oder den Bootstrap verwenden.');await refresh();$('image-profile').value=data.name;$('image-profile').dispatchEvent(new Event('change'));});
+$('image-profile').onchange=()=>{$('image-hostname').value=$('image-profile').value.toLowerCase().replace(/[^a-z0-9-]/g,'-').slice(0,63).replace(/-+$/,'');renderImages();};
+$('image-job-list').onclick=event=>{const button=event.target.closest('[data-image-job]');if(button){selectedImageJob=button.dataset.imageJob;renderImages();}};
+$('image-form').onsubmit=guarded(async()=>{
+  if(imageSubmitting)return;
+  imageSubmitting=true;renderImages();$('image-build').textContent='Build wird vorbereitet …';
+  try {
+    const data=Object.fromEntries(new FormData($('image-form')));
+    data.trusted_ssids=$('image-trusted-ssids').value.split('\n').map(x=>x.trim()).filter(Boolean);
+    const vpn=$('image-vpn').files[0];data.vpn_config=vpn ? await vpn.text() : '';
+    const job=await api('/api/v1/images/build',data);selectedImageJob=job.id;
+    $('image-form').elements.password.value='';$('image-form').elements.wifi_password.value='';$('image-vpn').value='';
+    notice('Image-Build eingereiht. Fortschritt und Download erscheinen unter Builds & Downloads.');
+    await refresh();
+  } finally {imageSubmitting=false;$('image-build').textContent='Image erstellen →';renderImages();}
+});
+$('image-artifacts').onclick=async event=>{
+  const button=event.target.closest('[data-remove-image]');if(!button)return;
+  event.preventDefault();
+  if(!confirm('Dieses herunterladbare Image von der VM löschen? Die Basisstation bleibt unverändert.'))return;
+  try{await api('/api/v1/images/remove',{id:button.dataset.removeImage});notice('Image gelöscht. Das Buildprotokoll bleibt erhalten.');await refresh();}catch(error){notice(error.message,true);}
+};
 (async()=>{try{catalog=await api('/api/v1/catalog');selectOptions($('target-service'),catalog,s=>s.name,s=>s.name);await refresh();if(new URLSearchParams(location.search).get('scan')==='1'){await api('/api/v1/discovery/scan',{});notice('Auto Discovery gestartet.');}}catch(error){notice(error.message,true);}setInterval(refresh,4000);})();

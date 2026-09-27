@@ -11,6 +11,12 @@ python3 -c 'import sys; assert sys.version_info >= (3,11), "Python >= 3.11 erfor
 install -d -m 0755 /usr/local/lib/netcore-deployment/{static,install} /etc/netcore
 install -m 0644 "$SOURCE"/*.py "$SOURCE/catalog.json" /usr/local/lib/netcore-deployment/
 install -m 0644 "$SOURCE"/static/* /usr/local/lib/netcore-deployment/static/
+if [[ $ROLE == controller ]]; then
+  install -d -m 0755 /usr/local/lib/netcore-deployment/image/systemd
+  install -m 0644 "$SOURCE"/image/*.py "$SOURCE"/image/*.rules /usr/local/lib/netcore-deployment/image/
+  install -m 0755 "$SOURCE"/image/*.sh /usr/local/lib/netcore-deployment/image/
+  install -m 0644 "$SOURCE"/image/systemd/* /usr/local/lib/netcore-deployment/image/systemd/
+fi
 install -m 0755 "$SOURCE"/install/prepare-host.sh "$SOURCE"/install/install-tbs.sh /usr/local/lib/netcore-deployment/install/
 if [[ $ROLE == controller ]]; then
   CONFIG=/etc/netcore/deployment.toml

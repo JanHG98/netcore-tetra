@@ -22,6 +22,8 @@ from deploy import (Deployer, Repository, probe, service_spec, tbs_config,
                     validate_job, validate_profile)
 from discovery import Discovery
 from jobs import Jobs
+from image_client import ImageClient
+from image_spec import BUILD_ID, validate_image
 
 
 class App:
@@ -41,6 +43,7 @@ class App:
         self.repo = Repository(cfg)
         self.deployer = Deployer(cfg, self.discovery, self.repo)
         self.jobs = Jobs(self.state, self.execute)
+        self.images = ImageClient(cfg.get('image_builder_socket', '/run/netcore-image-builder/api.sock'))
         self.stop = threading.Event()
 
     def start(self):
@@ -246,6 +249,13 @@ def handler(app):
                     return self.send(app.jobs.get(path.rsplit('/', 1)[-1]))
                 if path == '/api/v1/profiles':
                     return self.send(list(app.profiles.values()))
+                if path == '/api/v1/images' and app.cfg['role'] == 'controller':
+                    return self.send(app.images.status())
+                if path.startswith('/api/v1/images/') and app.cfg['role'] == 'controller':
+                    parts = path.split('/')
+                    if len(parts) != 6 or not BUILD_ID.fullmatch(parts[4]) or parts[5] not in ('image', 'sha256', 'manifest'):
+                        raise KeyError(path)
+                    return app.images.download('/artifacts/' + parts[4] + '/' + parts[5], self)
                 if path.startswith('/api/v1/profiles/') and path.endswith('/config'):
                     profile = app.profiles[path.split('/')[-2]]
                     template = (app.state / 'tbs-site-template.toml').read_text()
@@ -295,6 +305,19 @@ def handler(app):
                 return self.send({'error': 'Controller endpoint'}, 404)
             if path == '/api/v1/check':
                 return self.send(app.jobs.submit({'kind': 'check', 'ref': app.cfg['ref']}), 202)
+            if path == '/api/v1/images/build':
+                profile = app.profiles[data.get('profile')]
+                template = (app.state / 'tbs-site-template.toml').read_text()
+                request = {**data, 'profile': profile, 'config': tbs_config(template, profile),
+                           'environment': app.cfg['environment']}
+                request['controller_url'] = data.get('controller_url') or app.cfg.get('advertise_url') or 'http://' + self.headers['Host']
+                # Validate before network work; the final SHA is resolved afresh for this build.
+                request['commit'] = '0' * 40
+                request = validate_image(request, app.cfg['allowed_networks'])
+                request['commit'] = app.repo.resolve(data.get('ref', app.cfg['ref']), lambda _: None)
+                return self.send(app.images.request('/build', request), 202)
+            if path == '/api/v1/images/remove':
+                return self.send(app.images.request('/remove', {'id': data.get('id', '')}))
             if path == '/api/v1/plan':
                 return self.send(app.plan(data))
             if path == '/api/v1/deploy':

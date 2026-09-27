@@ -1,0 +1,12 @@
+[Unit]
+Description=NetCore WLAN country
+After=systemd-udev-trigger.service
+Before=NetworkManager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/local/lib/netcore-image/wifi-country.py
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
