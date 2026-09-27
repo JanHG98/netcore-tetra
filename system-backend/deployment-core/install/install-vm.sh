@@ -4,7 +4,12 @@ set -Eeuo pipefail
 [[ $EUID -eq 0 ]] || { echo 'Bitte mit sudo/root ausführen.' >&2; exit 1; }
 SOURCE=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 . /etc/os-release
-[[ $ID == ubuntu && $VERSION_ID == 24.04 ]] || { echo 'Dieser VM-Installer ist für Ubuntu Server 24.04 LTS vorgesehen.' >&2; exit 1; }
+case "${ID:-}:${VERSION_ID:-}" in
+  ubuntu:24.04) QEMU_PACKAGES=(qemu-user-static binfmt-support) ;;
+  # Since QEMU 9 the static interpreters live in qemu-user; registration uses systemd.
+  ubuntu:26.04) QEMU_PACKAGES=(qemu-user qemu-user-binfmt) ;;
+  *) echo "Ubuntu 24.04 oder 26.04 LTS erforderlich (Server oder Desktop); erkannt: ${PRETTY_NAME:-unbekannt}." >&2; exit 1 ;;
+esac
 if systemd-detect-virt --container --quiet; then
   echo 'Image-Builds benötigen eine vollständige VM; kein LXC/Container.' >&2; exit 1
 fi
@@ -31,10 +36,14 @@ PY
 fi
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-  python3 git curl ca-certificates openssl qemu-user-static binfmt-support \
+  python3 git curl ca-certificates openssl "${QEMU_PACKAGES[@]}" \
   xz-utils e2fsprogs fdisk util-linux udev qemu-guest-agent
 if [[ $(uname -m) == x86_64 ]]; then
-  update-binfmts --enable qemu-aarch64
+  if [[ $VERSION_ID == 24.04 ]]; then
+    update-binfmts --enable qemu-aarch64
+  else
+    systemctl restart systemd-binfmt.service
+  fi
 fi
 bash "$SOURCE/install/install.sh" controller "${CONTROLLER_ARGS[@]}"
 if [[ -n $ADVERTISE_URL ]]; then

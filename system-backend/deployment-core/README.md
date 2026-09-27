@@ -38,7 +38,9 @@ Installationen und Neustarts auslösen. GitHub und Paketquellen werden weiterhin
 
 ## Ubuntu-VM vorbereiten und installieren
 
-Ziel: **Ubuntu Server 24.04 LTS**, AMD64 oder ARM64, vollständige VM.
+Ziel: **Ubuntu 24.04 oder 26.04 LTS** (einschließlich der jeweiligen Punktversionen),
+AMD64 oder ARM64, vollständige VM. Ubuntu Server und Ubuntu Desktop mit nachträglich
+installiertem `ubuntu-server` sind geeignet; eine vorhandene Desktopoberfläche bleibt erhalten.
 Planungsgröße: **4 vCPU, 8 GiB RAM und 100 GiB Disk**. Das ist eine Startgröße,
 keine zugesicherte Buildzeit. Der erste ARM64-Build unter QEMU kann Stunden dauern.
 Mindestens **32 GiB frei** auf dem Image-Volume sind vor jedem Build erforderlich.
@@ -64,6 +66,17 @@ Der Installer richtet Controller, QEMU-ARM64-Unterstützung, Loop-/Dateisystemto
 QEMU Guest Agent und den Imagebuilder ein. Er benötigt keine Nested-Virtualization
 und kein KVM für ARM64: auf AMD64 läuft der Build unter QEMU-User-Emulation.
 Ein aktiver Image-Auftrag verhindert ein VM-Softwareupdate, bis er abgeschlossen ist.
+Auf Ubuntu 24.04 nutzt die ARM64-Emulation `qemu-user-static` und `binfmt-support`,
+auf 26.04 `qemu-user` und `qemu-user-binfmt` mit `systemd-binfmt.service`.
+Der Installer prüft danach die aktive Registrierung mit dem für Chroot erforderlichen F-Flag.
+
+Falls ein älterer Installer 26.04 noch mit dem Hinweis auf 24.04 abweist:
+
+```bash
+cd ~/netcore-tetra
+git pull --ff-only
+sudo bash system-backend/deployment-core/install/install-vm.sh
+```
 
 ## Pi-Image erstellen
 
@@ -372,7 +385,9 @@ Lab abgenommen werden; Tests ersetzen diesen Hardwarelauf nicht.
 Zusätzlich: Image-Validierung, Passwort-Hashing, Entfernen von Secrets aus der API,
 VPN-Heimnetz-Regeln, Unix-Socket-Transport, Download-Fortsetzung und Löschung.
 Die Browserprüfung bedient den Assistenten und die Downloads mit einem ausdrücklich
-simulierten Build. Der Ubuntu-CI-Job `image-engine` arbeitet dagegen am **echten
+simulierten Build. Der CI-Job `image-engine` führt den vollständigen VM-Installer
+auf **Ubuntu 24.04 und 26.04** aus und prüft Dienste, HTTP-UI, die Verbindung zum
+Imagebuilder sowie einen erneuten Installationslauf. Er arbeitet anschließend am **echten
 offiziellen OS-Image**: SHA256, ARM64-Chroot, Personalisierung, SSH-Konfiguration,
 Partitionserhalt, Verkleinerung, ext4-Prüfung und Loop-Bereinigung. Dieser Smoke-Test
 kompiliert NetCore nicht im Image und bootet keinen physischen Pi; ein separater

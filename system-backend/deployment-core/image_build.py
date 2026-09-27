@@ -58,7 +58,9 @@ def preflight(state):
     if platform.machine() not in ('aarch64', 'arm64'):
         entries = list(Path('/proc/sys/fs/binfmt_misc').glob('*aarch64*'))
         if not any('enabled' in p.read_text() and re.search(r'^flags:.*F', p.read_text(), re.M) for p in entries):
-            raise RuntimeError('ARM64 binfmt mit F-Flag fehlt; qemu-user-static/binfmt-support installieren und aktivieren')
+            raise RuntimeError('ARM64 binfmt mit F-Flag fehlt; install/install-vm.sh erneut ausführen '
+                               '(Ubuntu 24.04: qemu-user-static/binfmt-support; '
+                               'Ubuntu 26.04: qemu-user/qemu-user-binfmt, systemd-binfmt.service)')
     free = shutil.disk_usage(state).free
     if free < MIN_FREE:
         raise RuntimeError(f'Mindestens 32 GiB frei erforderlich; vorhanden: {free / GIB:.1f} GiB')
