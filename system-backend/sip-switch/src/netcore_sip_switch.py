@@ -667,7 +667,7 @@ class SipSwitch:
                 f"contact_user={contact_user}",
                 "retry_interval=5",
                 "forbidden_retry_interval=30",
-                f"expiration={int_value(pbx.get("registration_expiration_secs"), 30)}",
+                f"expiration={int_value(pbx.get('registration_expiration_secs'), 30)}",
             ])
             if password:
                 lines.append(f"outbound_auth={auth}")

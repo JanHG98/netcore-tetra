@@ -31,6 +31,13 @@ jobs:
         env:
           NODE_PATH: /tmp/netcore-browser/node_modules
         run: node system-backend/deployment-core/tests/browser.cjs
+      - name: Save UI verification screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-ui-preview
+          path: /tmp/netcore-deployment-*.png
+          if-no-files-found: ignore
   rust-ui:
     runs-on: ubuntu-latest
     steps:

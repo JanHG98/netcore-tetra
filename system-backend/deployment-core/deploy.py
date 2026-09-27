@@ -15,7 +15,7 @@ import time
 import tomllib
 
 from bindings import resolve_config
-from common import CATALOG, ROOT, SHA, atomic_write, identifier, request_json, toml_dump
+from common import CATALOG, ROOT, SHA, atomic_write, identifier, json_file, request_json, toml_dump
 
 
 def run(command, log, cwd=None, timeout=3600, env=None):
@@ -222,13 +222,19 @@ class Deployer:
         if not installer.is_file():
             raise ValueError('Installer fehlt in diesem Commit')
         run(['bash', str(ROOT / 'install/prepare-host.sh'), name], log, env=environment)
+        marker = self.state / ('deployed-' + name + '.json')
+        previous = json_file(marker, {}).get('commit', '')
+        # Once an installer starts replacing files, the old binary version can no
+        # longer be claimed. A failed/interrupted rollout remains explicitly unknown.
+        atomic_write(marker, json.dumps({'service': name, 'commit': '',
+            'previous_commit': previous, 'requested_commit': sha, 'state': 'installing'}), 0o644)
         install_dropin(spec, self.state / 'endpoints.json')
         run(['systemctl', 'daemon-reload'], log, timeout=30)
         run(['bash', str(installer)], log, source, env=environment)
         run(['systemctl', 'restart', spec['unit']], log, timeout=90)
         ready = self.health(spec, log)
-        atomic_write(self.state / ('deployed-' + name + '.json'), json.dumps({
-            'commit': sha, 'service': name, 'deployed_at': time.time()}), 0o644)
+        atomic_write(marker, json.dumps({
+            'commit': sha, 'service': name, 'state': 'installed', 'deployed_at': time.time()}), 0o644)
         self.discovery.scan()
         return {'service': name, 'commit': sha, 'live': True, 'ready': ready}
 
