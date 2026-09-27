@@ -1,8 +1,9 @@
 // NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Metriken, Protokolle und Betriebsüberwachung.
 // NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::{Arc, Mutex};
@@ -317,6 +318,8 @@ struct PersistentState {
     sequence: u64,
     started_at: DateTime<Utc>,
     last_maintenance_at: Option<DateTime<Utc>>,
+    #[serde(default)]
+    discovery_status: Value,
 }
 // Was: Implementiert das zugehörige Verhalten für `Default for PersistentState`.
 // Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
@@ -338,6 +341,7 @@ impl Default for PersistentState {
             sequence: 0,
             started_at: Utc::now(),
             last_maintenance_at: None,
+            discovery_status: json!({}),
         }
     }
 }
@@ -389,7 +393,17 @@ impl SharedObservability {
         // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
         // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for target in &config.targets {
-            state.targets.entry(target.target_id.clone()).or_insert_with(|| TargetRecord::from_config(target, now));
+            let record = state.targets.entry(target.target_id.clone()).or_insert_with(|| TargetRecord::from_config(target, now));
+            if let Some(mode) = target.labels.get("discovery") {
+                record.labels.insert("discovery".into(), mode.clone());
+            }
+            // Migrate old loopback/example targets once; keep last-good discovery
+            // addresses and explicitly manual targets across controller outages.
+            if config.discovery.enabled && record.labels.get("discovery").map(String::as_str) != Some("manual")
+                && (record.base_url.starts_with("http://127.0.0.1:") || record.base_url.starts_with("http://10.0.20.")) {
+                record.base_url = target.base_url.clone();
+                record.updated_at = now;
+            }
         }
         // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
         // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
@@ -458,6 +472,49 @@ impl SharedObservability {
         let mut values: Vec<_> = state.targets.values().cloned().collect();
         values.sort_by(|a, b| a.target_id.cmp(&b.target_id));
         values
+    }
+
+    pub fn discovery_status(&self) -> Value {
+        let mut value = self.lock().discovery_status.clone();
+        if !value.is_object() { value = json!({}); }
+        value["enabled"] = json!(self.config.discovery.enabled);
+        value["controller_url"] = json!(self.config.discovery.controller_url);
+        value
+    }
+
+    pub fn apply_discovery(&self, endpoints: &BTreeMap<String, String>, conflicts: &Value) -> Result<usize, String> {
+        let mut state = self.lock();
+        let mut changed = 0;
+        for target in state.targets.values_mut() {
+            if target.labels.get("discovery").map(String::as_str) == Some("manual") { continue; }
+            if let Some(url) = endpoints.get(&target.service) {
+                if target.base_url != *url {
+                    target.base_url = url.clone();
+                    target.updated_at = Utc::now();
+                    target.live = false;
+                    target.ready = false;
+                    changed += 1;
+                }
+            }
+        }
+        state.discovery_status = json!({"last_success": Utc::now(), "last_attempt": Utc::now(),
+            "error": null, "using_cache": state.targets.values().any(|t| !endpoints.contains_key(&t.service)), "endpoints": endpoints, "conflicts": conflicts,
+            "changed": changed});
+        if changed > 0 {
+            audit(&mut state, "discovery".into(), "configuration", "targets.discovered", "targets", "all", "success", json!({"changed": changed}));
+        }
+        drop(state);
+        self.persist().map_err(|e| e.to_string())?;
+        Ok(changed)
+    }
+
+    pub fn discovery_failed(&self, error: String) {
+        let mut state = self.lock();
+        if !state.discovery_status.is_object() { state.discovery_status = json!({}); }
+        state.discovery_status["last_attempt"] = json!(Utc::now());
+        state.discovery_status["error"] = json!(error);
+        state.discovery_status["using_cache"] = json!(true);
+        // Do not delete targets or rewrite every disk file while the VM is down.
     }
 
     // Was: Führt den Arbeitsschritt `target` für target aus.
@@ -529,6 +586,8 @@ impl SharedObservability {
         let service;
         {
             let Some(target) = state.targets.get_mut(&result.target_id) else { return Ok(()); };
+            // Discovery may have changed the address during an in-flight scrape.
+            if target.base_url != result.base_url { return Ok(()); }
             service = target.service.clone();
             target.live = result.live;
             target.ready = result.ready;
@@ -768,10 +827,14 @@ impl SharedObservability {
     pub fn ingest_logs(&self, input: LogIngestInput) -> Result<usize, String> {
         if !self.config.collection.ingest_logs { return Err("log ingestion is disabled".to_string()); }
         let mut state = self.lock(); let now = Utc::now(); let mut accepted = 0usize;
+        let mut seen: HashSet<String> = state.logs.iter().filter_map(|r| r.fields.get("syslog_id").and_then(Value::as_str).map(str::to_owned)).collect();
         // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
         // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for item in input.records {
             if item.service.trim().is_empty() || item.message.trim().is_empty() { continue; }
+            if let Some(id) = item.fields.get("syslog_id").and_then(Value::as_str) {
+                if !seen.insert(id.to_owned()) { accepted += 1; continue; }
+            }
             let timestamp = item.timestamp.as_deref().and_then(parse_datetime).unwrap_or(now);
             state.logs.push(LogRecord { log_id: Uuid::new_v4().to_string(), timestamp, received_at: now, service: item.service, node: item.node, level: item.level.unwrap_or_else(|| "info".to_string()).to_ascii_lowercase(), message: item.message, correlation_id: item.correlation_id, trace_id: item.trace_id, fields: item.fields }); accepted += 1;
         }
@@ -987,8 +1050,9 @@ impl SharedObservability {
     // Was: Diese Funktion speichert den vorgesehenen Arbeitsschritt.
     // Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
     fn persist(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let state = self.lock(); let bytes = serde_json::to_vec_pretty(&*state)?; drop(state);
-        write_atomic(&self.config.storage.state_path, &bytes)?; Ok(())
+        let state = self.lock(); let bytes = serde_json::to_vec_pretty(&*state)?;
+        // Serialize commits with the snapshot: discovery/preview/scraping run concurrently.
+        write_atomic(&self.config.storage.state_path, &bytes)?; drop(state); Ok(())
     }
 
     // Was: Führt den Arbeitsschritt `lock` für lock aus.
@@ -1149,5 +1213,15 @@ fn metric_catalog_from_state(state: &PersistentState) -> Vec<Value> {
 // Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
 fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(parent) = path.parent() { fs::create_dir_all(parent)?; }
-    let temporary = path.with_extension(format!("tmp-{}", Uuid::new_v4())); fs::write(&temporary, bytes)?; fs::rename(temporary, path)?; Ok(())
+    let temporary = path.with_extension(format!("tmp-{}", Uuid::new_v4()));
+    let result = (|| -> Result<(), Box<dyn std::error::Error>> {
+        let mut file = fs::File::create(&temporary)?;
+        file.write_all(bytes)?;
+        file.sync_all()?;
+        fs::rename(&temporary, path)?;
+        if let Some(parent) = path.parent() { fs::File::open(parent)?.sync_all()?; }
+        Ok(())
+    })();
+    if result.is_err() { let _ = fs::remove_file(temporary); }
+    result
 }

@@ -1,5 +1,13 @@
 # NetCore Observability / NMS
 
+## Update: Syslog und Discovery
+
+Die aktuelle Erweiterung läuft auf **10.0.1.143:8210**, bezieht Dienstadressen von
+**10.0.1.131:8320** und archiviert empfangene Syslog-Meldungen täglich im vorhandenen
+Share-Ordner `Logs`. Installation, Sender, Speichergrenzen und Rücknahme stehen in
+[docs/syslog-update.md](docs/syslog-update.md). Empfang und Archivierung sind eigene
+Systemdienste; die bestehende WebUI zeigt Vorschau, Quellen und Archivstatus.
+
 ## Zweck
 
 `netcore-observability` ist die zentrale Betriebs- und Überwachungsebene für die NetCore-Tetra-SwMI. Der Dienst sammelt Prometheus-Metriken, nimmt strukturierte Logs und Trace-Spans entgegen, bewertet Alarmregeln, verwaltet Stummschaltungen und erstellt Diagnosepakete. Die eigene WebUI bleibt unabhängig vom Control Room erreichbar.
@@ -65,6 +73,10 @@ Der interne Collector akzeptiert das Prometheus-Textformat. Log- und Trace-Inges
 ```text
 GET  /api/v1/status
 GET  /api/v1/targets
+GET  /api/v1/targets/prometheus
+GET  /api/v1/discovery
+POST /api/v1/discovery/sync
+GET  /api/v1/syslog
 POST /api/v1/targets
 POST /api/v1/targets/{id}/test
 GET  /api/v1/metrics/catalog

@@ -1,0 +1,18 @@
+[Unit]
+Description=NetCore verified daily syslog archive to media share
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=netcore-observability
+Group=netcore-observability
+ExecStart=/usr/bin/python3 /opt/netcore-observability/logging/log_store.py archive
+TimeoutStartSec=20min
+UMask=0027
+NoNewPrivileges=true
+ProtectHome=true
+PrivateTmp=true
+# No private mount namespace: the archive checks current host mountinfo and pins
+# the share with a directory fd. Mounts added after boot must become visible.
+Nice=10
+IOSchedulingClass=idle

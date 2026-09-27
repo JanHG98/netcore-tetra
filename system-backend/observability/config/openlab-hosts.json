@@ -1,0 +1,151 @@
+{
+  "controller_url": "http://10.0.1.131:8320",
+  "observability_url": "http://10.0.1.143:8210",
+  "hosts": [
+    {
+      "name": "Deployment-VM",
+      "address": "10.0.1.131",
+      "kind": "VM"
+    },
+    {
+      "name": "Node-Gateway",
+      "address": "10.0.1.179",
+      "kind": "LXC"
+    },
+    {
+      "name": "Subscriber-Core",
+      "address": "10.0.1.153",
+      "kind": "LXC"
+    },
+    {
+      "name": "Mobility-Core",
+      "address": "10.0.1.150",
+      "kind": "LXC"
+    },
+    {
+      "name": "Group-Core",
+      "address": "10.0.1.157",
+      "kind": "LXC"
+    },
+    {
+      "name": "Security-Core",
+      "address": "10.0.1.149",
+      "kind": "LXC"
+    },
+    {
+      "name": "KMF",
+      "address": "10.0.1.180",
+      "kind": "LXC"
+    },
+    {
+      "name": "Call-Control",
+      "address": "10.0.1.155",
+      "kind": "LXC"
+    },
+    {
+      "name": "Media-Switch",
+      "address": "10.0.1.159",
+      "kind": "LXC"
+    },
+    {
+      "name": "SDS-Router",
+      "address": "10.0.1.169",
+      "kind": "LXC"
+    },
+    {
+      "name": "Packet-Core",
+      "address": "10.0.1.166",
+      "kind": "LXC"
+    },
+    {
+      "name": "IP-Gateway",
+      "address": "10.0.1.142",
+      "kind": "LXC"
+    },
+    {
+      "name": "SIP-Switch",
+      "address": "10.0.1.125",
+      "kind": "LXC"
+    },
+    {
+      "name": "Transit",
+      "address": "10.0.1.151",
+      "kind": "LXC"
+    },
+    {
+      "name": "Application-Gateway",
+      "address": "10.0.1.144",
+      "kind": "LXC"
+    },
+    {
+      "name": "IoT-Gateway",
+      "address": "10.0.1.119",
+      "kind": "LXC"
+    },
+    {
+      "name": "Hardware-Gateway",
+      "address": "10.0.1.123",
+      "kind": "LXC"
+    },
+    {
+      "name": "Media-Library",
+      "address": "10.0.1.154",
+      "kind": "LXC"
+    },
+    {
+      "name": "Recorder",
+      "address": "10.0.1.170",
+      "kind": "LXC"
+    },
+    {
+      "name": "RF-Monitor",
+      "address": "10.0.1.122",
+      "kind": "LXC"
+    },
+    {
+      "name": "Alarm-Workflow",
+      "address": "10.0.1.121",
+      "kind": "LXC"
+    },
+    {
+      "name": "Task-Workflow",
+      "address": "10.0.1.120",
+      "kind": "LXC"
+    },
+    {
+      "name": "Asset-Management",
+      "address": "10.0.1.124",
+      "kind": "LXC"
+    },
+    {
+      "name": "Observability",
+      "address": "10.0.1.143",
+      "kind": "LXC"
+    },
+    {
+      "name": "Provisioning-Core",
+      "address": "10.0.1.106",
+      "kind": "LXC"
+    },
+    {
+      "name": "Control-Room",
+      "address": "10.0.1.156",
+      "kind": "LXC"
+    },
+    {
+      "name": "PBX-Asterisk",
+      "address": "10.0.1.21",
+      "kind": "LXC"
+    },
+    {
+      "name": "Brew",
+      "address": "10.0.1.22",
+      "kind": "LXC"
+    },
+    {
+      "name": "TBS",
+      "address": "10.0.1.20",
+      "kind": "TBS"
+    }
+  ]
+}

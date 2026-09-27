@@ -1,0 +1,21 @@
+[Unit]
+Description=NetCore journal forwarding to Observability over RELP
+After=network-online.target systemd-journald.service
+Wants=network-online.target
+
+[Service]
+ExecStartPre=/usr/sbin/rsyslogd -N1 -f /etc/netcore/log-client.rsyslog.conf
+ExecStart=/usr/sbin/rsyslogd -n -i /run/netcore-log-client/rsyslog.pid -f /etc/netcore/log-client.rsyslog.conf
+Restart=on-failure
+RestartSec=5
+RuntimeDirectory=netcore-log-client
+StateDirectory=netcore-log-client
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/netcore-log-client
+
+[Install]
+WantedBy=multi-user.target

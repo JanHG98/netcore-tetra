@@ -1,0 +1,6 @@
+{
+  "controller_url": "http://10.0.1.131:8320",
+  "fallback_host": "10.0.1.143",
+  "allowed_networks": ["10.0.1.0/24"],
+  "rsyslog_config": "/etc/netcore/log-client.rsyslog.conf"
+}

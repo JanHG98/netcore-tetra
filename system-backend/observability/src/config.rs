@@ -22,6 +22,7 @@ pub struct ObservabilityConfig {
     pub collection: CollectionConfig,
     pub retention: RetentionConfig,
     pub stack: StackConfig,
+    pub discovery: crate::discovery::DiscoveryConfig,
     pub targets: Vec<TargetConfig>,
     pub alert_rules: Vec<AlertRuleConfig>,
 }
@@ -39,6 +40,7 @@ impl Default for ObservabilityConfig {
             collection: CollectionConfig::default(),
             retention: RetentionConfig::default(),
             stack: StackConfig::default(),
+            discovery: crate::discovery::DiscoveryConfig::default(),
             targets: default_targets(),
             alert_rules: default_rules(),
         }
