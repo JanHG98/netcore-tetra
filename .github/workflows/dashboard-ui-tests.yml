@@ -1,0 +1,52 @@
+name: Base station dashboard
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - crates/tetra-entities/src/net_dashboard/**
+      - tools/test_dashboard_ui.mjs
+      - .github/workflows/dashboard-ui-tests.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated browser test dependencies
+        run: |
+          npm install --prefix "$RUNNER_TEMP/dashboard-ui" --no-save playwright@1.62.1
+          "$RUNNER_TEMP/dashboard-ui/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Test all dashboard views and access boundaries
+        env:
+          NODE_PATH: ${{ runner.temp }}/dashboard-ui/node_modules
+        run: node tools/test_dashboard_ui.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dashboard-browser-previews
+          path: target/dashboard-preview/
+  rust:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install native dependencies and speech codec
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsoapysdr-dev libgsm1-dev pkg-config cmake
+          cmake -S tetra-codec-master -B "$RUNNER_TEMP/tetra-codec-build" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib
+          cmake --build "$RUNNER_TEMP/tetra-codec-build" --parallel 2
+          sudo cmake --install "$RUNNER_TEMP/tetra-codec-build"
+          sudo ldconfig
+      - name: Verify base station and dashboard server
+        run: |
+          cargo check --locked -p bluestation-bs
+          cargo test --locked -p tetra-entities --features recording,asterisk --lib net_dashboard::server::tests::
