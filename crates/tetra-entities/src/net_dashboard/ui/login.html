@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#edf3fa">
+<title>NetCore-Tetra — Anmeldung</title>
+<script>
+// The same preference follows the user between sign-in, station and service UIs.
+(()=>{
+  const read=key=>{try{return localStorage.getItem(key);}catch{return null;}};
+  const write=(key,value)=>{try{localStorage.setItem(key,value);}catch{}};
+  const valid=value=>['light','dark','blue'].includes(value);
+  const preferred=()=>{const saved=read('netcore-theme'),legacy=read('fs_theme');return valid(saved)?saved:valid(legacy)?legacy:'light';};
+  function apply(theme,persist=false){
+    // The station's legacy Blue variant stays stored until a new choice is made.
+    const dark=theme==='dark';document.documentElement.dataset.theme=dark?'dark':'light';
+    if(persist){write('netcore-theme',dark?'dark':'light');write('fs_theme',dark?'dark':'light');}
+    const toggle=document.getElementById('login-theme-toggle');
+    if(toggle){toggle.textContent=dark?'Hell':'Dunkel';toggle.setAttribute('aria-pressed',String(dark));toggle.setAttribute('aria-label',dark?'Helles Design aktivieren':'Dunkles Design aktivieren');toggle.title=toggle.getAttribute('aria-label');}
+    document.querySelector('meta[name="theme-color"]').content=dark?'#101a2b':'#edf3fa';
+    window.dispatchEvent(new CustomEvent('netcore-theme-change',{detail:{theme:dark?'dark':'light'}}));
+  }
+  apply(preferred());
+  document.addEventListener('DOMContentLoaded',()=>{
+    apply(preferred());
+    document.getElementById('login-theme-toggle').addEventListener('click',()=>apply(document.documentElement.dataset.theme==='dark'?'light':'dark',true));
+  },{once:true});
+  window.addEventListener('storage',event=>{if(event.key==='netcore-theme')apply(event.newValue);});
+})();
+</script>
+<style>
+:root {
+  color-scheme: light;
+  --page: #edf3fa;
+  --surface: #ffffff;
+  --text: #142840;
+  --muted: #59728f;
+  --line: #d7e3f0;
+  --blue: #0865ed;
+  --blue-hover: #0054ce;
+  --danger: #b32640;
+  --input-border: #bbcfe5;
+  --placeholder: #7b91aa;
+  --hover: #edf4fd;
+  --status-start: #eef7ff;
+  --status-end: #e8f2fe;
+  --badge-line: #c7def9;
+  --badge-text: #355c88;
+  --badge-bg: #dcebfd;
+  --status-line: #c6ddf6;
+  --icon-text: #557aa6;
+  --icon-bg: #e9f1fb;
+  --ok: #177740;
+  --ok-bg: #e3f5e9;
+  --warn: #9b6306;
+  --warn-bg: #fff2d8;
+  --danger-bg: #fbe8ed;
+  --button-text: #fff;
+  --sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #101a2b;
+  --surface: #18253a;
+  --text: #edf3ff;
+  --muted: #b0c0da;
+  --line: #30415d;
+  --blue: #76a6ff;
+  --blue-hover: #9bbdff;
+  --danger: #ff879a;
+  --input-border: #496184;
+  --placeholder: #94a7c4;
+  --hover: #223149;
+  --status-start: #1b2c45;
+  --status-end: #203452;
+  --badge-line: #496184;
+  --badge-text: #bed4ff;
+  --badge-bg: #263c5d;
+  --status-line: #3d5476;
+  --icon-text: #b0c0da;
+  --icon-bg: #223149;
+  --ok: #68d49b;
+  --ok-bg: #193d31;
+  --warn: #ffc674;
+  --warn-bg: #443524;
+  --danger-bg: #472c3d;
+  --button-text: #0b1832;
+}
+* { box-sizing: border-box; }
+html { min-height: 100%; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: clamp(16px, 4vw, 56px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--page);
+  color: var(--text);
+  font-family: var(--sans);
+  line-height: 1.5;
+  -webkit-tap-highlight-color: transparent;
+}
+button, input { font: inherit; }
+button, a { touch-action: manipulation; }
+button { cursor: pointer; }
+button:disabled { cursor: wait; }
+button:focus-visible, a:focus-visible, input:focus-visible {
+  outline: 3px solid #7bb5ff;
+  outline-offset: 3px;
+}
+.login-card {
+  width: 100%;
+  max-width: 1160px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: 0 18px 60px rgba(28, 66, 109, .08);
+}
+.login-pane, .status-pane { padding: clamp(28px, 4vw, 54px); }
+.login-pane { display: flex; flex-direction: column; }
+.login-brand-row { display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:14px; }
+.login-theme-toggle { flex-shrink:0;min-width:64px;min-height:44px;border:1px solid var(--line);border-radius:8px;padding:8px 12px;background:var(--surface);color:var(--text);font-size:.83rem;font-weight:650; }
+.login-theme-toggle:hover { background:var(--hover);border-color:var(--blue); }
+.brand-artwork {
+  width: 210px;
+  height: 136px;
+  overflow: hidden;
+  position: relative;
+  margin-bottom: 16px;
+  flex-shrink: 0;
+  background: #fff;
+  border-radius: 9px;
+}
+/* Das Original bleibt unverändert; der Rahmen blendet nur seinen transparenten Rand aus. */
+.brand-artwork img {
+  position: absolute;
+  width: 264px;
+  max-width: none;
+  height: 264px;
+  left: -26px;
+  top: -64px;
+}
+.eyebrow {
+  margin: 0;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .16em;
+  font-size: .75rem;
+  font-weight: 700;
+}
+h1 { margin: 26px 0 8px; font-size: clamp(1.75rem, 2.9vw, 2.45rem); line-height: 1.18; letter-spacing: -.035em; }
+.intro { margin: 0 0 30px; color: var(--muted); font-size: 1.04rem; }
+form { display: flex; flex-direction: column; gap: 20px; }
+.field-label { display: block; margin-bottom: 7px; font-size: .92rem; font-weight: 650; }
+.field-input {
+  width: 100%;
+  min-height: 52px;
+  padding: 12px 15px;
+  border: 1px solid var(--input-border);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1rem;
+  transition: border-color .15s, box-shadow .15s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.field-input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px color-mix(in srgb,var(--blue) 16%,transparent); }
+.field-input::placeholder { color: var(--placeholder); }
+.password-wrap { position: relative; }
+.password-wrap input { padding-right: 60px; }
+.password-toggle {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 44px;
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  color: var(--muted);
+  background: transparent;
+}
+.password-toggle:hover { background: var(--hover); color: var(--blue); }
+.password-toggle svg { width: 21px; height: 21px; }
+.btn-login {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 54px;
+  padding: 14px 20px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--blue);
+  color: var(--button-text);
+  font-weight: 650;
+  transition: background .15s;
+}
+.btn-login:hover { background: var(--blue-hover); }
+.btn-login:disabled { opacity: .65; }
+.btn-login svg { width: 21px; height: 21px; }
+.err { min-height: 24px; margin: -8px 0 0; color: var(--danger); font-size: .91rem; }
+.login-footer { margin-top: auto; padding-top: 24px; font-size: .78rem; color: var(--muted); }
+.login-footer a { color: inherit; text-decoration: none; }
+.login-footer a:hover { color: var(--blue); text-decoration: underline; }
+.status-pane {
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--line);
+  background: linear-gradient(145deg, var(--status-start), var(--status-end));
+}
+.status-heading { margin-top: 44px; }
+.status-title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 13px; margin-top: 12px; }
+h2 { margin: 0; font-size: clamp(1.8rem, 2.9vw, 2.5rem); line-height: 1.2; letter-spacing: -.035em; }
+.view-badge { padding: 5px 11px; border: 1px solid var(--badge-line); border-radius: 20px; font-size: .75rem; color: var(--badge-text); white-space: nowrap; background: var(--badge-bg); }
+.status-intro { margin: 9px 0 26px; color: var(--muted); font-size: 1.02rem; }
+.status-card { border: 1px solid var(--status-line); border-radius: 13px; background: var(--surface); padding: 24px; }
+.status-overview { display: flex; align-items: center; gap: 14px; padding-bottom: 22px; border-bottom: 1px solid var(--line); }
+.status-icon { flex: 0 0 42px; width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; color: var(--icon-text); background: var(--icon-bg); font-size: 1.4rem; font-weight: 700; }
+.status-overview[data-state="ok"] .status-icon { color: var(--ok); background: var(--ok-bg); }
+.status-overview[data-state="degraded"] .status-icon { color: var(--warn); background: var(--warn-bg); }
+.status-overview[data-state="critical"] .status-icon { color: var(--danger); background: var(--danger-bg); }
+.status-overview[data-state="stale"] .status-icon { color: var(--warn); background: var(--warn-bg); }
+.status-copy { min-width: 0; }
+.status-label { margin: 0; font-size: 1.06rem; font-weight: 700; line-height: 1.35; }
+.status-detail { margin: 4px 0 0; font-size: .83rem; color: var(--muted); }
+.metrics { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); margin: 0; }
+.metric { min-width: 0; padding: 22px 0; display: flex; flex-direction: column; }
+.metric:nth-child(even) { border-left: 1px solid var(--line); padding-left: 20px; }
+.metric:nth-child(odd) { padding-right: 20px; }
+.metric:nth-child(n+3) { border-top: 1px solid var(--line); padding-bottom: 2px; }
+.metric dt { color: var(--muted); font-size: .82rem; margin-top: 4px; order: 1; }
+.metric dd { margin: 0; font-size: clamp(1.25rem, 2vw, 1.65rem); line-height: 1.3; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; order: 0; }
+.metric dd.unavailable { font-size: 1rem; padding-top: .45rem; font-weight: 500; color: var(--muted); }
+.status-updated { margin: 13px 0 0; color: var(--muted); font-size: .76rem; min-height: 20px; }
+.status-footer { margin-top: auto; padding-top: 36px; color: var(--muted); font-size: .8rem; }
+.status-footer p { margin: 0; padding-top: 20px; border-top: 1px solid var(--status-line); }
+@media (max-width: 850px) {
+  body { padding: 20px; align-items: flex-start; }
+  .login-card { max-width: 560px; grid-template-columns: 1fr; border-radius: 18px; }
+  .status-pane { border-left: 0; border-top: 1px solid var(--line); }
+  .status-heading { margin-top: 0; }
+  .login-pane, .status-pane { padding: 30px; }
+  .status-footer { padding-top: 24px; }
+  h1 { margin-top: 22px; }
+}
+@media (max-width: 420px) {
+  body { padding: 12px; }
+  .login-pane, .status-pane { padding: 24px 20px; }
+  .status-card { padding: 18px; }
+  .metric:nth-child(even) { padding-left: 14px; }
+  .metric:nth-child(odd) { padding-right: 14px; }
+  .login-brand-row { gap:8px; }
+  .login-theme-toggle { min-width:58px;padding:8px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+<script src="/assets/netcore-login.js" defer></script>
+</head>
+<body>
+<main class="login-card">
+  <section class="login-pane" aria-labelledby="login-title">
+    <div class="login-brand-row"><div class="brand-artwork"><img src="/assets/netcore-logo.png" alt="NetCore-Tetra" width="1024" height="1024"></div><button type="button" class="login-theme-toggle" id="login-theme-toggle" aria-pressed="false" aria-label="Dunkles Design aktivieren">Dunkel</button></div>
+    <p class="eyebrow">NetCore-Tetra Basisstation</p>
+    <h1 id="login-title">Willkommen zurück.</h1>
+    <p class="intro">Dein Zugang zum Funknetz.</p>
+    <form id="login-form" autocomplete="on">
+      <div>
+        <label class="field-label" for="username">Benutzername</label>
+        <input class="field-input" type="text" id="username" name="username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required>
+      </div>
+      <div>
+        <label class="field-label" for="password">Passwort</label>
+        <div class="password-wrap">
+          <input class="field-input" type="password" id="password" name="password" autocomplete="current-password" required>
+          <button class="password-toggle" type="button" id="password-toggle" aria-label="Passwort anzeigen" aria-pressed="false" title="Passwort anzeigen">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 12s3.7-7 10-7 10 7 10 7-3.7 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
+      <button type="submit" class="btn-login" id="submit-btn"><span id="submit-label">Anmelden</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 12h15M13 5l7 7-7 7"/></svg></button>
+      <p class="err" id="err" role="alert" aria-live="polite"></p>
+    </form>
+    <footer class="login-footer"><a href="https://github.com/JanHG98/netcore-tetra" target="_blank" rel="noopener noreferrer">NetCore-Tetra · Quellcode auf GitHub</a></footer>
+  </section>
+  <section class="status-pane" aria-labelledby="status-title">
+    <div class="status-heading">
+      <p class="eyebrow">Stationsvorschau</p>
+      <div class="status-title-row"><h2 id="status-title">Netz im Blick.</h2><span class="view-badge">Nur Ansicht</span></div>
+      <p class="status-intro">Allgemeiner Betriebsstatus</p>
+    </div>
+    <div class="status-card">
+      <div class="status-overview" id="public-status" data-state="pending">
+        <span class="status-icon" id="public-status-icon" aria-hidden="true">·</span>
+        <div class="status-copy"><p class="status-label" id="public-status-label" role="status" aria-live="polite">Status wird geprüft…</p><p class="status-detail" id="public-status-detail">Öffentliche Stationsvorschau</p></div>
+      </div>
+      <dl class="metrics">
+        <div class="metric"><dt>Registrierte Geräte</dt><dd id="public-devices">—</dd></div>
+        <div class="metric"><dt>Laufzeit</dt><dd id="public-uptime">—</dd></div>
+        <div class="metric"><dt>CPU-Temperatur</dt><dd id="public-temperature">—</dd></div>
+        <div class="metric"><dt>CPU-Auslastung</dt><dd id="public-load">—</dd></div>
+      </dl>
+    </div>
+    <p class="status-updated" id="public-updated"></p>
+    <footer class="status-footer"><p>Funkbetrieb und Verwaltung nach Anmeldung</p></footer>
+  </section>
+</main>
+</body>
+</html>

@@ -3,32 +3,32 @@
  */
 
 :root {
-  color-scheme: dark;
-  --nc-bg: #0d1117;
-  --nc-panel: #161b22;
-  --nc-panel-2: #21262d;
-  --nc-border: #30363d;
-  --nc-text: #e6edf3;
-  --nc-muted: #8b949e;
-  --nc-accent: #2f81f7;
-  --nc-ok: #3fb950;
-  --nc-warn: #d29922;
-  --nc-error: #f85149;
-  --nc-radius: 10px;
-  --nc-shadow: 0 12px 32px rgba(0, 0, 0, .28);
+  color-scheme: light;
+  --nc-bg: #f3f6fb;
+  --nc-panel: #fff;
+  --nc-panel-2: #eef3fa;
+  --nc-border: #d9e2ee;
+  --nc-text: #0b1832;
+  --nc-muted: #425779;
+  --nc-accent: #2463eb;
+  --nc-ok: #12734c;
+  --nc-warn: #945b08;
+  --nc-error: #b42335;
+  --nc-radius: 14px;
+  --nc-shadow: 0 4px 18px rgba(25, 53, 94, .055);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--nc-bg); color: var(--nc-text); }
-a { color: #79c0ff; }
+a { color: var(--nc-accent); }
 button, input, select, textarea { font: inherit; }
 
 .nc-shell { min-height: 100vh; display: grid; grid-template-rows: auto 1fr; }
-.nc-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .8rem 1rem; border-bottom: 1px solid var(--nc-border); background: rgba(22, 27, 34, .96); position: sticky; top: 0; z-index: 20; }
+.nc-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .8rem 1rem; border-bottom: 1px solid var(--nc-border); background: var(--nc-panel); position: sticky; top: 0; z-index: 20; }
 .nc-brand { display: flex; align-items: baseline; gap: .65rem; font-weight: 700; }
 .nc-brand small { color: var(--nc-muted); font-weight: 500; }
-.nc-open-lab { padding: .35rem .6rem; border: 1px solid var(--nc-warn); border-radius: 999px; color: #ffd78a; font-size: .82rem; }
+.nc-open-lab { padding: .35rem .6rem; border: 1px solid var(--nc-warn); border-radius: 999px; color: var(--nc-warn); background: #fff5dc; font-size: .82rem; }
 .nc-main { width: min(1500px, 100%); margin: 0 auto; padding: 1rem; }
 .nc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; }
 .nc-card { background: var(--nc-panel); border: 1px solid var(--nc-border); border-radius: var(--nc-radius); padding: 1rem; box-shadow: var(--nc-shadow); }

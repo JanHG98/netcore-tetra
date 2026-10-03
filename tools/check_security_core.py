@@ -27,6 +27,7 @@ REQUIRED = [
     "system-backend/security-core/install/uninstall.sh",
     "system-backend/security-core/tests/lab_response.py",
     "Docs/SWMI_CORE_1_PACKAGE_I_SECURITY_CORE.md",
+    "system-backend/security-core/web-ui/index.html",
 ]
 MARKERS = {
     "Cargo.toml": '"system-backend/security-core"',
@@ -174,8 +175,8 @@ def main() -> int:
         if error:
             errors.append(f"{path.relative_to(ROOT)}: {error}")
 
-    http = (ROOT / "system-backend/security-core/src/http.rs").read_text()
-    match = re.search(r"<script>(.*)</script>", http, flags=re.S)
+    webui = (ROOT / "system-backend/security-core/web-ui/index.html").read_text()
+    match = re.search(r"<script>(.*)</script>", webui, flags=re.S)
     if not match:
         errors.append("WebUI JavaScript not found")
     else:

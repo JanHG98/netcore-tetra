@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NetCore Node Gateway</title>
+<style>
+/* Dienstansichten ergänzen die gemeinsame NetCore-Oberfläche. */
+.wrap{display:grid;gap:18px}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:14px;margin:18px 0}.toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:14px 0}.toolbar>h2{margin-right:auto}.toolbar>label{flex:1 1 200px}.toolbar>label input{width:100%}.panel{min-width:0}.btn{display:inline-flex;align-items:center;justify-content:center}label{display:grid;gap:5px}dialog{width:94%;max-width:800px}h1,h2,h3{margin:0 0 12px}.pill,.tag{display:inline-block}.core-editor form{min-width:0}
+
+.core-nav{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px 26px;background:var(--nc-panel);border-bottom:1px solid var(--nc-border)}
+.core-nav button{border:0;border-radius:0;background:transparent;color:var(--nc-muted);padding:14px 12px;box-shadow:none}
+.core-nav button.active{color:var(--nc-accent);border-bottom:2px solid var(--nc-accent)}
+.core-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(300px,1fr);gap:18px;align-items:start}
+.core-layout>.panel{min-width:0;margin-top:0}.core-layout .core-wide{grid-column:1/-1}
+.core-service-line{display:grid;grid-template-columns:1fr auto;gap:6px;padding:10px 0;border-bottom:1px solid var(--line)}.core-service-line .wide{grid-column:1/-1}.core-stack{display:grid;gap:18px;min-width:0}.core-detail{align-self:start;position:sticky;top:160px}
+.core-detail dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:18px 0}.core-detail dt{font-size:12px;color:var(--nc-muted);margin-bottom:5px}.core-detail dd{margin:0;overflow-wrap:anywhere;font-weight:650}.core-detail .wide{grid-column:1/-1}
+.core-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.core-selected{background:var(--nc-selected,var(--nc-panel-2))}
+.core-row-title{padding:0!important;border:0!important;background:transparent!important;color:var(--nc-text)!important;box-shadow:none!important;font:inherit!important;font-weight:750!important;text-align:left;cursor:pointer}
+.core-empty{color:var(--nc-muted);padding:18px 0}.core-note{color:var(--nc-muted);font-size:13px;line-height:1.5}.core-info{border:1px solid var(--nc-border);background:var(--nc-panel-2);border-radius:10px;padding:14px;margin:14px 0}
+[data-core-view][hidden]{display:none!important}.view{display:none}.view.active{display:block}.tablewrap{overflow:auto}.tablewrap>table{min-width:650px}.core-detail .tablewrap>table{min-width:380px}form.grid,.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.wide{grid-column:1/-1}.form{display:flex;flex-wrap:wrap;gap:10px}.form label{flex:1 1 160px;display:grid;gap:5px}.form button{align-self:end}
+label:has(input[type=checkbox]){display:flex;align-items:center;gap:9px}input[type=checkbox]{width:auto;min-width:16px}pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:420px;overflow:auto}.small{font-size:12px}.mode{display:inline-flex;padding:5px 10px;border-radius:99px;background:var(--nc-panel-2);font-size:13px}
+@media(max-width:1050px){.core-layout{grid-template-columns:1fr!important}.core-detail{position:static}.core-layout .core-wide{grid-column:auto}}
+@media(max-width:640px){.core-nav{padding:6px 12px}.core-nav button{padding:12px 8px}form.grid,.grid{grid-template-columns:1fr}.wide{grid-column:auto}.core-detail dl{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<nav class="core-nav" aria-label="Dienstansichten"><button type="button" data-core-nav="overview" class="active" aria-current="page">Übersicht</button><button type="button" data-core-nav="nodes" class="" aria-current="false">Basisstationen</button><button type="button" data-core-nav="services" class="" aria-current="false">Backend-Dienste</button><button type="button" data-core-nav="events" class="" aria-current="false">Ereignisse</button></nav><div class="wrap">
+<div class="lab">⚠ OFFENER TESTMODUS: KEINE AUTHENTIFIZIERUNG, KEINE TOKENS, KEIN TLS. Nur im isolierten Testnetz verwenden.</div>
+<div class="toolbar">
+<div>
+<h1>NetCore Node Gateway</h1>
+<div class="sub">Zentrale TBS-Annahme, Backend-Transport und Verwaltungs-WebUI</div>
+</div>
+<button onclick="refreshAll()">Aktualisieren</button>
+</div>
+<div id="cards" class="cards"></div>
+<div class="core-layout">
+<div class="panel" data-core-view="overview nodes">
+<h2>Basisstationen</h2>
+<div class="tablewrap"><table>
+<thead><tr>
+<th>Status</th>
+<th>Node</th>
+<th>Zelle</th>
+<th>Version</th>
+<th>Letzter Kontakt</th>
+<th>Zähler</th>
+<th>Fähigkeiten</th>
+<th>Aktionen</th>
+</tr></thead>
+<tbody id="nodes"></tbody>
+</table></div>
+</div>
+<div class="core-stack core-side" data-core-view="overview events">
+<aside class="panel" id="coreServiceSummary" data-core-view="overview"><h2>Backend-Dienste / TBS-Fallback</h2>
+<p class="core-empty">Lade Dienststatus …</p></aside><div class="panel" data-core-view="overview events">
+<h2>Letzte Gateway-Ereignisse</h2>
+<pre id="events">Lade…</pre>
+</div>
+</div>
+<aside class="panel core-detail core-wide" id="coreNodeDetail" data-core-view="overview nodes"><h2>Basisstationsdetails</h2>
+<p class="core-empty">Eintrag auswählen, um Details anzuzeigen.</p></aside>
+<div class="panel core-service-list core-wide" data-core-view="services">
+<h2>Backend-Dienste / TBS-Fallback</h2>
+<div class="tablewrap"><table>
+<thead><tr>
+<th>Status</th>
+<th>Dienst</th>
+<th>Edge-kritisch</th>
+<th>Fallback</th>
+<th>Letzte Prüfung</th>
+<th>Meldung</th>
+</tr></thead>
+<tbody id="services"></tbody>
+</table></div>
+</div>
+</div>
+<div class="panel small">API: <a href="/openapi.json">OpenAPI</a> · <a href="/metrics">Metriken</a> · <a href="/api/v1/config">Effektive Konfiguration</a>
+</div>
+</div>
+<script>
+// Die Navigation schaltet ausschließlich vorhandene Dienstbereiche um.
+function coreView(view){document.querySelectorAll('[data-core-view]').forEach(p=>{p.hidden=!p.dataset.coreView.split(' ').includes(view)});document.querySelectorAll('[data-core-nav]').forEach(b=>{const active=b.dataset.coreNav===view;b.classList.toggle('active',active);b.setAttribute('aria-current',active?'page':'false')});}
+document.querySelectorAll('[data-core-nav]').forEach(b=>b.addEventListener('click',()=>coreView(b.dataset.coreNav)));
+function coreField(label,value,wide=false){return `<div${wide?' class="wide"':''}><dt>${esc(label)}</dt><dd>${esc(value??'–')}</dd></div>`}
+function coreButton(label,action,id,extra=''){return `<button type="button" data-core-action="${esc(action)}" data-core-id="${esc(id)}" ${extra}>${esc(label)}</button>`}
+document.addEventListener('click',event=>{const b=event.target.closest('[data-core-action]');if(!b)return;const handler=window.coreActions?.[b.dataset.coreAction];if(handler)handler(b.dataset.coreId,b);});
+window.coreActions={};
+
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function getj(url){const r=await fetch(url);if(!r.ok)throw new Error(await r.text());return r.json()}
+async function post(url,body){const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):''});const t=await r.text();if(!r.ok)throw new Error(t);return t?JSON.parse(t):{}}
+function card(label,value){return `<div class="card"><div class="value">${esc(value)}</div><div class="label">${esc(label)}</div></div>`}
+function statusPill(n){if(n.stale)return '<span class="pill stale">STALE</span>';return n.connected?'<span class="pill online">ONLINE</span>':'<span class="pill offline">OFFLINE</span>'}
+function caps(c){return Object.entries(c||{}).filter(([,v])=>v===true).map(([k])=>k).join(', ')}
+async function action(id,name){if(name==='disconnect'&&!confirm(`Node ${id} wirklich trennen?`))return;try{await post(`/api/v1/nodes/${encodeURIComponent(id)}/${name}`);setTimeout(refreshAll,300)}catch(e){alert(e.message)}}
+function servicePill(level){const c=level==='available'?'online':level==='unavailable'?'offline':'stale';return `<span class="pill ${c}">${esc(String(level).toUpperCase())}</span>`}
+let coreNodes=[],coreSelectedNode=null;async function refreshAll(){try{const [s,cs,n,e]=await Promise.all([getj('/api/v1/status'),getj('/api/v1/core-services'),getj('/api/v1/nodes'),getj('/api/v1/events?limit=40')]);coreNodes=n;document.getElementById('cards').innerHTML=[card('Verbunden',s.connected_nodes),card('Bekannt',s.known_nodes),card('Stale',s.stale_nodes),card('Dienste OK',s.available_services+'/'+s.monitored_services),card('Dienste gestört',s.degraded_services+s.unavailable_services),card('Backend-Clients',s.backend_clients),card('Nachrichten',s.total_node_messages),card('Mediaframes',s.total_media_frames),card('Kommandos',s.total_commands)].join('');document.getElementById('coreServiceSummary').innerHTML='<h2>Backend-Dienste / TBS-Fallback</h2>'+cs.services.map(x=>`<div class="core-service-line"><b>${esc(x.service)}</b>${servicePill(x.level)}<div class="core-note wide">${esc(x.fallback_mode)}${x.message?' · '+esc(x.message):''}</div></div>`).join('');document.getElementById('services').innerHTML=cs.services.map(x=>`<tr><td>${servicePill(x.level)}</td><td><b>${esc(x.service)}</b></td><td>${x.critical_for_edge?'ja':'nein'}</td><td class="small">${esc(x.fallback_mode)}</td><td class="small">${esc(x.checked_at)}<br>${esc(x.last_success_at||'noch nie')}</td><td class="small">${esc(x.message||'')}</td></tr>`).join('')||'<tr><td colspan="6">Keine Monitorziele konfiguriert – TBS bleibt konservativ im Fallback.</td></tr>';document.getElementById('nodes').innerHTML=n.map(x=>`<tr><td>${statusPill(x)}</td><td>${coreButton(x.identity.station_name,'node-select',x.node_id,'class="core-row-title"')}<br><span class="small">${esc(x.node_id)}<br>${esc(x.peer)}</span></td><td>MCC ${esc(x.identity.mcc)} / MNC ${esc(x.identity.mnc)}<br>LA ${esc(x.identity.location_area)}, CC ${esc(x.identity.colour_code)}<br>Carrier ${esc(x.identity.main_carrier)}${x.identity.secondary_carrier?` / ${esc(x.identity.secondary_carrier)}`:''}</td><td>${esc(x.identity.stack_version)}</td><td>${esc(x.last_seen)}<br><span class="small">${esc(x.last_message_kind)}</span></td><td>Msg ${esc(x.message_count)}<br>Tel ${esc(x.telemetry_count)}<br>Ack ${esc(x.control_ack_count)}<br>Media ${esc(x.media_frame_count)}</td><td class="small">${esc(caps(x.capabilities))}</td><td>${coreButton('Ping','node-ping',x.node_id)}${coreButton('Trennen','node-disconnect',x.node_id,'class="danger"')}</td></tr>`).join('')||'<tr><td colspan="8">Noch keine TBS verbunden.</td></tr>';renderNodeDetail();document.getElementById('events').textContent=e.map(x=>`${x.timestamp} #${x.seq} ${x.kind}${x.node_id?' ['+x.node_id+']':''} ${JSON.stringify(x.detail)}`).join('\n')||'Noch keine Ereignisse.'}catch(e){document.getElementById('events').textContent='Fehler: '+e.message}}
+
+function renderNodeDetail(){const n=coreNodes.find(x=>x.node_id===coreSelectedNode)||coreNodes[0];if(!n){document.getElementById('coreNodeDetail').innerHTML='<h2>Basisstationsdetails</h2><p class="core-empty">Noch keine TBS verbunden.</p>';return}coreSelectedNode=n.node_id;document.getElementById('coreNodeDetail').innerHTML=`<h2>${esc(n.identity.station_name)}</h2>${statusPill(n)}<dl>${coreField('Node-ID',n.node_id,true)}${coreField('Peer (TBS)',n.peer,true)}${coreField('MCC / MNC',n.identity.mcc+' / '+n.identity.mnc)}${coreField('LA / CC',n.identity.location_area+' / '+n.identity.colour_code)}${coreField('Version',n.identity.stack_version)}${coreField('Letzter Kontakt',n.last_seen)}${coreField('Nachrichten',n.message_count)}${coreField('Telemetrie',n.telemetry_count)}${coreField('Mediaframes',n.media_frame_count)}${coreField('Control-Acks',n.control_ack_count)}${coreField('Fähigkeiten',caps(n.capabilities)||'Keine gemeldet',true)}</dl><div class="core-actions">${coreButton('Ping','node-ping',n.node_id)}${coreButton('Trennen','node-disconnect',n.node_id,'class="danger"')}</div>`;document.querySelectorAll('#nodes tr').forEach(r=>r.classList.toggle('core-selected',r.querySelector('[data-core-id]')?.dataset.coreId===n.node_id));}
+window.coreActions['node-select']=id=>{coreSelectedNode=id;renderNodeDetail()};window.coreActions['node-ping']=id=>action(id,'ping');window.coreActions['node-disconnect']=id=>action(id,'disconnect');
+
+refreshAll();setInterval(refreshAll,5000);
+
+coreView('overview');
+</script>
+</body>
+</html>

@@ -1,0 +1,80 @@
+name: NetCore service WebUIs
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - system-backend/**
+      - bins/netcore-control-room/**
+      - misc/brew-server/**
+      - misc/brew-server.py
+      - misc/ID-Server/**
+      - tools/*service*ui*
+      - tools/embed_*service_design.py
+      - .github/workflows/service-ui-tests.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install isolated browser dependencies
+        run: |
+          npm install --prefix "$RUNNER_TEMP/service-ui" --no-save playwright@1.62.1
+          "$RUNNER_TEMP/service-ui/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Check standalone bundles are synchronized
+        run: |
+          python3 tools/embed_auxiliary_service_design.py --check
+          python3 tools/embed_edge_service_design.py --check
+          python3 tools/embed_workflow_service_design.py --check
+      - name: Test light and dark modes across all service surfaces
+        env:
+          NODE_PATH: ${{ runner.temp }}/service-ui/node_modules
+          NETCORE_WORKFLOW_SCREENSHOT_DIR: target/service-ui-preview/workflow
+        run: |
+          node system-backend/shared/web-ui/tests/service-design.mjs
+          node tools/test_core_service_ui.mjs
+          node tools/test_media_service_ui.mjs
+          node tools/test_workflow_service_ui.mjs
+          node tools/test_auxiliary_service_ui.mjs
+          node tools/test_edge_service_ui.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: service-browser-previews
+          path: target/service-ui-preview/
+
+  rust:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsoapysdr-dev libgsm1-dev pkg-config cmake ffmpeg
+          cmake -S tetra-codec-master -B "$RUNNER_TEMP/tetra-codec-build" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib
+          cmake --build "$RUNNER_TEMP/tetra-codec-build" --parallel 2
+          sudo cmake --install "$RUNNER_TEMP/tetra-codec-build"
+          sudo ldconfig
+      - name: Verify Rust services and renderers
+        run: |
+          cargo test --locked \
+            -p netcore-node-gateway -p netcore-subscriber-core -p netcore-group-core \
+            -p netcore-mobility-core -p netcore-call-control -p netcore-media-switch \
+            -p netcore-sds-router -p netcore-packet-core -p netcore-ip-gateway \
+            -p netcore-security-core -p netcore-kmf -p netcore-transit \
+            -p netcore-application-gateway -p netcore-media-library -p netcore-recorder \
+            -p netcore-observability -p netcore-provisioning-core -p netcore-iot-gateway \
+            -p netcore-control-room
+          cargo test --locked --manifest-path misc/brew-server/Cargo.toml dashboard::
+      - name: Verify Warnzentrale access and warning behavior
+        run: python3 -m unittest discover -s system-backend/alert-service/tests

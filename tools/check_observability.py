@@ -19,6 +19,7 @@ REQUIRED=[
     "system-backend/observability/src/collector.rs",
     "system-backend/observability/src/state.rs",
     "system-backend/observability/src/http.rs",
+    "system-backend/observability/web-ui/index.html",
     "system-backend/observability/config/observability.example.toml",
     "system-backend/observability/systemd/netcore-observability.service",
     "system-backend/observability/install/install.sh",
@@ -40,7 +41,7 @@ MARKERS={
     "system-backend/observability/src/state.rs":"netcore_observability_target_up",
     "system-backend/observability/src/state.rs#2":"diagnostic.create",
     "system-backend/observability/src/http.rs":"/api/v1/logs/ingest",
-    "system-backend/observability/src/http.rs#2":"OPEN LAB",
+    "system-backend/observability/web-ui/index.html":"OPEN LAB",
     "system-backend/services.toml":"management_port = 8210",
     "Cargo.toml":"system-backend/observability",
 }
@@ -139,7 +140,7 @@ def main():
     # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
     try:json.loads((ROOT/'system-backend/observability/stack/grafana/dashboards/netcore-overview.json').read_text())
     except Exception as e:errors.append(f"invalid Grafana JSON: {e}")
-    web=(ROOT/'system-backend/observability/src/http.rs').read_text();m=re.search(r'<script>(.*)</script>',web,re.S)
+    web=(ROOT/'system-backend/observability/web-ui/index.html').read_text();m=re.search(r'<script>(.*)</script>',web,re.S)
     if not m:errors.append('embedded WebUI JavaScript not found')
     else:
         with tempfile.NamedTemporaryFile('w',suffix='.js',delete=False) as h:h.write(m.group(1));js=Path(h.name)

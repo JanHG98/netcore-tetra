@@ -25,6 +25,7 @@ REQUIRED = [
     "system-backend/transit/install/uninstall.sh",
     "system-backend/transit/tests/transit_reference.py",
     "Docs/SWMI_CORE_1_PACKAGE_K_TRANSIT.md",
+    "system-backend/transit/web-ui/index.html",
 ]
 MARKERS = {
     "Cargo.toml": '"system-backend/transit"',
@@ -168,8 +169,8 @@ def main() -> int:
         if error:
             errors.append(f"{path.relative_to(ROOT)}: {error}")
 
-    http = (ROOT / "system-backend/transit/src/http.rs").read_text()
-    match = re.search(r"<script>(.*)</script>", http, flags=re.S)
+    webui = (ROOT / "system-backend/transit/web-ui/index.html").read_text()
+    match = re.search(r"<script>(.*)</script>", webui, flags=re.S)
     if not match:
         errors.append("WebUI JavaScript not found")
     else:

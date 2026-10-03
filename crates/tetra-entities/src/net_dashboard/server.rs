@@ -3103,6 +3103,42 @@ fn handle_connection(
     let header_str = String::from_utf8_lossy(&header_buf);
     let req_line = header_str.lines().next().unwrap_or("").to_string();
 
+    // Compile-time assets are public so the login form and opt-in overview can share
+    // the same design. Resolve only this exact allowlist; never map URLs to the disk.
+    if let Some((content_type, body)) = dashboard_asset_request(&req_line) {
+        drain_http_headers(&mut stream);
+        serve_dashboard_asset(stream, content_type, body);
+        return;
+    }
+    if request_route(&req_line).starts_with("/assets/") {
+        drain_http_headers(&mut stream);
+        http_response(stream, 404, "Asset not found");
+        return;
+    }
+
+    // Public access is an explicit operator choice, even when dashboard login is
+    // disabled or the visitor already has a session. The projection contains no
+    // station identities, configuration, messages or per-device records.
+    if req_line.starts_with("GET ") && request_route(&req_line) == "/api/public" {
+        drain_http_headers(&mut stream);
+        if public_overview {
+            serve_public_snapshot(stream, &state);
+        } else {
+            http_response(stream, 404, "Public overview is disabled");
+        }
+        return;
+    }
+
+    // A harmless bootstrap probe replaces privileged API calls made just to learn
+    // whether a visitor can initialize the dashboard. The JS-readable fs_auth
+    // marker is deliberately ignored; only the HttpOnly session is authoritative.
+    if req_line.starts_with("GET ") && request_route(&req_line) == "/api/session" {
+        let body = dashboard_access_status(&header_str, &sessions, auth.is_some(), public_overview).to_string();
+        drain_http_headers(&mut stream);
+        http_json_no_cache_response(stream, 200, &body);
+        return;
+    }
+
     // Snom/desk-phone ActionURL endpoint. It has its own token and must work without the
     // dashboard cookie session, so handle it before the normal dashboard auth gate.
     if is_tpg2200_action_request(&req_line) {
@@ -3136,12 +3172,7 @@ fn handle_connection(
 
         // Validate session cookie when present. Note: validate() refreshes last-seen,
         // so active users effectively never time out.
-        let session_ok = parse_session_cookie(&header_str)
-            .and_then(|token| {
-                let mut store = sessions.lock().ok()?;
-                Some(store.validate(&token))
-            })
-            .unwrap_or(false);
+        let session_ok = dashboard_session_valid(&header_str, &sessions);
 
         if is_login_page {
             let mut buf = BufReader::new(stream);
@@ -3254,15 +3285,6 @@ fn handle_connection(
                 serve_html(inner);
                 return;
             }
-            if public_overview
-                && (req_line.starts_with("GET /api/public ")
-                    || req_line.starts_with("GET /api/public?")
-                    || req_line == "GET /api/public HTTP/1.1")
-            {
-                serve_public_snapshot(inner, &state);
-                return;
-            }
-
             // For GET / (the dashboard SPA): redirect to /login so the browser navigates.
             // For API requests: 401 so JS code can detect and refresh.
             if is_root {
@@ -4572,6 +4594,9 @@ fn serve_bts_info(mut stream: TcpStream, shared_config: &Option<tetra_config::bl
                 "mnc": c.net.mnc,
                 "main_carrier": c.cell.main_carrier,
                 "neighbor_count": c.cell.neighbor_cells_ca.len(),
+                // Configuration advertised for cell reselection, not measured
+                // neighbor availability, RF quality or live handover state.
+                "neighbors": c.cell.neighbor_cells_ca.iter().map(neighbor_cell_snapshot).collect::<Vec<_>>(),
                 "hangtime_secs": c.cell.hangtime_secs,
                 "whitelist_restricted": restricted,
                 "whitelist_count": wl_count,
@@ -4586,6 +4611,23 @@ fn serve_bts_info(mut stream: TcpStream, shared_config: &Option<tetra_config::bl
     );
     let _ = stream.write_all(header.as_bytes());
     let _ = stream.write_all(body.as_bytes());
+}
+
+// Was: Projiziert ausschließlich konfigurierte Nachbarzellen auf die angemeldete BTS-Ansicht.
+// Warum: Die Oberfläche zeigt vorhandene Daten, ohne gemessene Erreichbarkeit oder Handover vorzutäuschen.
+fn neighbor_cell_snapshot(cell: &tetra_config::bluestation::CfgNeighborCellCa) -> serde_json::Value {
+    serde_json::json!({
+        "cell_identifier_ca": cell.cell_identifier_ca,
+        "main_carrier_number": cell.main_carrier_number,
+        "main_carrier_number_extension": cell.main_carrier_number_extension,
+        "cell_reselection_types_supported": cell.cell_reselection_types_supported,
+        "neighbor_cell_synchronized": cell.neighbor_cell_synchronized,
+        "cell_load_ca": cell.cell_load_ca,
+        "mcc": cell.mcc,
+        "mnc": cell.mnc,
+        "location_area": cell.location_area,
+        "tdma_frame_offset": cell.tdma_frame_offset,
+    })
 }
 
 /// GET /api/dualcarrier — current Dual-Carrier ON/OFF state for the first-page toggle.
@@ -7891,29 +7933,62 @@ fn save_config_profile(config_path: &str, profile_name: &str, content: &str) -> 
 // Was: Diese Funktion stellt public snapshot.
 // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_public_snapshot(stream: TcpStream, state: &DashboardState) {
-    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let body = match state.read() {
-        Ok(s) => {
-            let active_calls = s.calls.len();
-            let group_calls = s.calls.values().filter(|c| c.is_group).count();
-            let individual_calls = active_calls - group_calls;
-            let center_freq_hz = s.last_tx_visual.as_ref().map(|v| v.center_freq_hz);
-            serde_json::json!({
-                "registered_ms": s.ms_map.len(),
-                "active_calls": active_calls,
-                "group_calls": group_calls,
-                "individual_calls": individual_calls,
-                "center_freq_hz": center_freq_hz,
-                "rf_active": s.last_tx_visual.is_some(),
-                "brew_online": s.brew_online,
-                "stack_version": tetra_core::STACK_VERSION,
-            })
-            .to_string()
+        Ok(s) => public_snapshot(&s).to_string(),
+        Err(_) => {
+            http_json_no_cache_response(stream, 503, r#"{"error":"dashboard_state_unavailable"}"#);
+            return;
         }
-        Err(_) => "{}".to_string(),
     };
-    http_json_response(stream, 200, &body);
+    http_json_no_cache_response(stream, 200, &body);
+}
+
+// Was: Wählt nur einen bekannten CPU-/SoC-Temperatursensor aus der vorhandenen Telemetrie.
+// Warum: NVMe-, GPU- und Netzteilsensoren dürfen nicht als CPU-Temperatur erscheinen.
+fn public_cpu_temperature(state: &DashboardStateInner) -> Option<f32> {
+    use crate::net_telemetry::events::SysSensorKind;
+    state.last_sys_health.as_ref()?.sensors.iter().find_map(|sensor| {
+        let name = sensor.name.to_ascii_lowercase();
+        let cpu_sensor = name.contains("cpu")
+            || name.contains("coretemp")
+            || name.contains("k10temp")
+            || name.contains("bcm")
+            || name.contains("soc")
+            || name.starts_with("package")
+            || name.starts_with("core ")
+            || name == "tctl"
+            || name.starts_with("tccd");
+        (sensor.kind == SysSensorKind::Temperature && cpu_sensor && sensor.value.is_finite()).then_some(sensor.value)
+    })
+}
+
+// Was: Erstellt die kleine öffentliche Projektion aus bereits gepufferter Telemetrie.
+// Warum: Keine Host-Abfragen pro Aufruf und keine privaten Kennungen, Nachrichten oder Konfiguration im Login-Bereich.
+fn public_snapshot(state: &DashboardStateInner) -> serde_json::Value {
+    let active_calls = state.calls.len();
+    let group_calls = state.calls.values().filter(|call| call.is_group).count();
+    let captured_at_unix_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .ok()
+        .and_then(|duration| u64::try_from(duration.as_millis()).ok());
+    serde_json::json!({
+        "registered_ms": state.ms_map.len(),
+        "active_calls": active_calls,
+        "group_calls": group_calls,
+        "individual_calls": active_calls - group_calls,
+        "center_freq_hz": state.last_tx_visual.as_ref().map(|visual| visual.center_freq_hz),
+        "rf_active": state.last_tx_visual.is_some(),
+        "brew_online": state.brew_online,
+        "stack_version": tetra_core::STACK_VERSION,
+        "uptime_secs": state.last_health.as_ref().map(|health| health.uptime_secs),
+        "cpu_temp_c": public_cpu_temperature(state),
+        // CPU utilization is not part of the cached telemetry. Keep it unavailable
+        // rather than calling the privileged /api/system host probe from this route.
+        "cpu_load_pct": serde_json::Value::Null,
+        "health_status": state.last_health.as_ref().map(|health| health.overall.as_str()),
+        // Projection time only; the telemetry model carries no measurement timestamp.
+        "captured_at_unix_ms": captured_at_unix_ms,
+    })
 }
 
 /// GET /api/rf-monitor — narrow machine-readable RF snapshot for the Phase-7 TBS agent.
@@ -7980,6 +8055,36 @@ fn activate_config_profile(config_path: &str, profile_name: &str) -> Result<(), 
         .map_err(|e| format!("failed to copy profile: {}", e))
 }
 
+// Was: Ordnet GET-Anfragen exakt den einkompilierten Design-Dateien zu.
+// Warum: Öffentliche Assets bleiben unabhängig vom Login erreichbar, ohne Dateisystemzugriff oder Pfad-Traversal.
+fn dashboard_asset_request(req_line: &str) -> Option<(&'static str, &'static [u8])> {
+    if req_line.split_whitespace().next()? != "GET" {
+        return None;
+    }
+    use crate::net_dashboard::html;
+    match request_route(req_line) {
+        "/assets/netcore.css" => Some(("text/css; charset=utf-8", html::NETCORE_CSS.as_bytes())),
+        "/assets/netcore.js" => Some(("text/javascript; charset=utf-8", html::NETCORE_JS.as_bytes())),
+        "/assets/netcore-rf.css" => Some(("text/css; charset=utf-8", html::NETCORE_RF_CSS.as_bytes())),
+        "/assets/netcore-rf.js" => Some(("text/javascript; charset=utf-8", html::NETCORE_RF_JS.as_bytes())),
+        "/assets/netcore-login.js" => Some(("text/javascript; charset=utf-8", html::NETCORE_LOGIN_JS.as_bytes())),
+        "/assets/netcore-logo.png" => Some(("image/png", html::NETCORE_LOGO)),
+        _ => None,
+    }
+}
+
+// Was: Liefert statische Design-Dateien mit passendem Typ und expliziter Cache-Revalidierung.
+// Warum: Neue Branch-Builds erscheinen sofort; Browser interpretieren Assets nicht als HTML.
+fn serve_dashboard_asset(mut stream: TcpStream, content_type: &str, body: &[u8]) {
+    let header = format!(
+        "HTTP/1.1 200 OK\r\nContent-Type: {}\r\nContent-Length: {}\r\nCache-Control: no-cache\r\nX-Content-Type-Options: nosniff\r\nConnection: close\r\n\r\n",
+        content_type,
+        body.len()
+    );
+    let _ = stream.write_all(header.as_bytes());
+    let _ = stream.write_all(body);
+}
+
 // Was: Diese Funktion stellt html.
 // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn serve_html(mut stream: TcpStream) {
@@ -8040,6 +8145,24 @@ fn http_json_response(mut stream: TcpStream, code: u16, body: &str) {
         body
     );
     let _ = stream.write_all(resp.as_bytes());
+}
+
+// Was: Liefert eine flüchtige Status-Projektion ohne Browser-/Proxy-Cache.
+// Warum: Sitzungs- und öffentliche Zustandsinformationen dürfen nicht aus einem alten Login stammen.
+fn http_json_no_cache_response(mut stream: TcpStream, code: u16, body: &str) {
+    let status = match code {
+        200 => "OK",
+        503 => "Service Unavailable",
+        _ => "Error",
+    };
+    let header = format!(
+        "HTTP/1.1 {} {}\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: {}\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\nConnection: close\r\n\r\n",
+        code,
+        status,
+        body.len()
+    );
+    let _ = stream.write_all(header.as_bytes());
+    let _ = stream.write_all(body.as_bytes());
 }
 
 /// Consume and discard HTTP request headers up to the blank line. Use this
@@ -8113,6 +8236,24 @@ fn read_http_body(stream: &mut TcpStream) -> Vec<u8> {
 }
 
 // ── Login UI / session helpers ──────────────────────────────────────────────
+
+// Was: Prüft ausschließlich den HttpOnly-Sitzungscookie gegen den vorhandenen SessionStore.
+// Warum: Der lesbare fs_auth-Marker und frei erfundene Tokens verleihen keine Zugriffsrechte.
+fn dashboard_session_valid(headers: &str, sessions: &SharedSessionStore) -> bool {
+    parse_session_cookie(headers)
+        .and_then(|token| sessions.lock().ok().map(|mut store| store.validate(&token)))
+        .unwrap_or(false)
+}
+
+// Was: Gibt nur die für den sicheren Frontend-Start benötigten Zugriffsflags zurück.
+// Warum: Anonyme Besucher müssen keine privilegierte System-API als Login-Probe aufrufen.
+fn dashboard_access_status(headers: &str, sessions: &SharedSessionStore, auth_required: bool, public_overview: bool) -> serde_json::Value {
+    serde_json::json!({
+        "authenticated": !auth_required || dashboard_session_valid(headers, sessions),
+        "auth_required": auth_required,
+        "public_overview": public_overview,
+    })
+}
 
 /// Parse a login POST body. Accepts both `application/x-www-form-urlencoded`
 /// (user=...&password=...) and a minimal JSON shape `{"user":"...","password":"..."}`.
@@ -8263,15 +8404,262 @@ fn serve_login_page(mut stream: TcpStream) {
 // Was: Bindet das Untermodul tests in diesen Bereich ein.
 // Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
-    use super::{
-        DashboardServer, binary_built_from, build_dapnet_call_payload, dapnet_ric_routes_from_json, dapnet_ric_routes_from_json_key,
-        dapnet_ric_set_from_json, is_tpg2200_action_request, normalize_dapnet_api_url, query_params, truncate_action_text,
-    };
+    use super::*;
+    use crate::health::{HealthLevel, HealthSnapshot};
+    use crate::net_dashboard::state::SysHealthSnapshot;
     use crate::net_telemetry::TelemetryEvent;
+    use crate::net_telemetry::events::{SysSensor, SysSensorKind};
     use crate::tpg2200::{
         build_tpg2200_callout_payload, default_tpg2200_ric, parse_hex_payload, tpg2200_callout_id_byte, tpg2200_priority_byte,
     };
     use std::collections::BTreeMap;
+    use std::io::{Read, Write};
+    use std::net::{TcpListener, TcpStream};
+    use std::sync::{Arc, Mutex, RwLock};
+    use std::time::{Duration, Instant};
+
+    // Was: Schickt eine echte HTTP-Anfrage durch den Dashboard-Dispatcher.
+    // Warum: Die Tests prüfen die Zugriffsschranke und tatsächliche Header, nicht nur Routing-Hilfsfunktionen.
+    fn dashboard_http_request(request: &str, auth_required: bool, public_overview: bool) -> String {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let worker = std::thread::spawn(move || {
+            let (stream, _) = listener.accept().unwrap();
+            handle_connection(
+                stream,
+                Arc::new(RwLock::new(DashboardStateInner::default())),
+                Arc::new(Mutex::new(Vec::new())),
+                "/tmp/netcore-dashboard-http-test.toml".to_string(),
+                Arc::new(Mutex::new(None)),
+                Arc::new(Mutex::new(None)),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+                Arc::new(Mutex::new(UpdateState::new())),
+                None,
+                auth_required.then(|| ("operator".to_string(), "private-password".to_string())),
+                None,
+                Arc::new(Mutex::new(SessionStore::new())),
+                public_overview,
+            );
+        });
+        let mut client = TcpStream::connect(address).unwrap();
+        client.set_read_timeout(Some(Duration::from_secs(3))).unwrap();
+        client.write_all(request.as_bytes()).unwrap();
+        let mut response = String::new();
+        // The PNG route is checked separately below, since its bytes are not UTF-8.
+        client.read_to_string(&mut response).unwrap();
+        worker.join().unwrap();
+        response
+    }
+
+    #[test]
+    fn dashboard_assets_have_an_exact_public_allowlist() {
+        let expected = [
+            ("/assets/netcore.css", "text/css; charset=utf-8"),
+            ("/assets/netcore.js", "text/javascript; charset=utf-8"),
+            ("/assets/netcore-rf.css", "text/css; charset=utf-8"),
+            ("/assets/netcore-rf.js", "text/javascript; charset=utf-8"),
+            ("/assets/netcore-login.js", "text/javascript; charset=utf-8"),
+            ("/assets/netcore-logo.png", "image/png"),
+        ];
+        for (path, content_type) in expected {
+            let request = format!("GET {path}?v=branch HTTP/1.1");
+            let (actual_type, body) = dashboard_asset_request(&request).unwrap();
+            assert_eq!(actual_type, content_type);
+            assert!(!body.is_empty());
+        }
+        assert!(dashboard_asset_request("POST /assets/netcore.css HTTP/1.1").is_none());
+        for path in [
+            "/assets/netcore.css/extra",
+            "/assets/../config.toml",
+            "/assets/%2e%2e/config.toml",
+            "/assets/netcore.js.bak",
+            "/assets/server.rs",
+        ] {
+            assert!(dashboard_asset_request(&format!("GET {path} HTTP/1.1")).is_none());
+        }
+        let (_, logo) = dashboard_asset_request("GET /assets/netcore-logo.png HTTP/1.1").unwrap();
+        assert!(logo.starts_with(b"\x89PNG\r\n\x1a\n"));
+
+        let response = dashboard_http_request("GET /assets/netcore.css HTTP/1.1\r\nHost: localhost\r\n\r\n", true, false);
+        assert!(response.starts_with("HTTP/1.1 200 OK\r\n"));
+        assert!(response.contains("Content-Type: text/css; charset=utf-8\r\n"));
+        assert!(response.contains("X-Content-Type-Options: nosniff\r\n"));
+        assert!(response.contains("Cache-Control: no-cache\r\n"));
+        let missing = dashboard_http_request("GET /assets/../config.toml HTTP/1.1\r\nHost: localhost\r\n\r\n", true, false);
+        assert!(missing.starts_with("HTTP/1.1 404 "));
+    }
+
+    #[test]
+    fn public_snapshot_contains_only_aggregate_allowlisted_fields() {
+        let mut state = DashboardStateInner::default();
+        let now = Instant::now();
+        state.ms_map.insert(
+            7654321,
+            MsEntry {
+                issi: 7654321,
+                groups: vec![9876543],
+                selected_group: Some(9876543),
+                rssi_dbfs: Some(-38.0),
+                registered_at: now,
+                last_seen: now,
+                energy_saving_mode: 0,
+            },
+        );
+        state.calls.insert(
+            43,
+            CallEntry {
+                call_id: 43,
+                is_group: true,
+                gssi: 9876543,
+                caller_issi: 7654321,
+                called_issi: 1234567,
+                speaker_issi: Some(7654321),
+                started_at: now,
+                simplex: true,
+                ts: 2,
+                carrier_num: 1585,
+                priority: 0,
+            },
+        );
+        state.config_path = "/private/config.toml".into();
+        state.fallback_config_reason = "private configuration error".into();
+        state.push_log("ERROR", "private SDS message from 7654321".into());
+        state.last_health = Some(HealthSnapshot {
+            overall: HealthLevel::Degraded,
+            domains: Vec::new(),
+            last_action: Some("private reason".into()),
+            uptime_secs: 321,
+        });
+        state.last_sys_health = Some(SysHealthSnapshot {
+            total_power_w: Some(5.0),
+            sensors: vec![
+                SysSensor {
+                    name: "NVMe nvme0".into(),
+                    kind: SysSensorKind::Temperature,
+                    value: 77.0,
+                },
+                SysSensor {
+                    name: "CPU package (RAPL)".into(),
+                    kind: SysSensorKind::Power,
+                    value: 9.0,
+                },
+                SysSensor {
+                    name: "cpu-thermal".into(),
+                    kind: SysSensorKind::Temperature,
+                    value: 42.5,
+                },
+            ],
+        });
+        let snapshot = public_snapshot(&state);
+        assert_eq!(snapshot["registered_ms"], 1);
+        assert_eq!(snapshot["active_calls"], 1);
+        assert_eq!(snapshot["group_calls"], 1);
+        assert_eq!(snapshot["individual_calls"], 0);
+        assert_eq!(snapshot["uptime_secs"], 321);
+        assert_eq!(snapshot["cpu_temp_c"], 42.5);
+        assert_eq!(snapshot["health_status"], "degraded");
+        assert!(snapshot["cpu_load_pct"].is_null());
+        let allowed = [
+            "registered_ms",
+            "active_calls",
+            "group_calls",
+            "individual_calls",
+            "center_freq_hz",
+            "rf_active",
+            "brew_online",
+            "stack_version",
+            "uptime_secs",
+            "cpu_temp_c",
+            "cpu_load_pct",
+            "health_status",
+            "captured_at_unix_ms",
+        ];
+        let object = snapshot.as_object().unwrap();
+        assert_eq!(object.len(), allowed.len());
+        assert!(object.keys().all(|key| allowed.contains(&key.as_str())));
+        let serialized = snapshot.to_string();
+        for private_value in ["7654321", "9876543", "1234567", "/private/config", "private SDS", "private reason"] {
+            assert!(!serialized.contains(private_value));
+        }
+
+        // Unknown temperature remains unknown, rather than reporting the first disk sensor.
+        state.last_sys_health.as_mut().unwrap().sensors.remove(2);
+        assert!(public_snapshot(&state)["cpu_temp_c"].is_null());
+        state.last_health = None;
+        assert!(public_snapshot(&state)["uptime_secs"].is_null());
+    }
+
+    #[test]
+    fn public_overview_is_opt_in_and_does_not_open_privileged_routes() {
+        for auth_required in [false, true] {
+            let request = "GET /api/public HTTP/1.1\r\nHost: localhost\r\n\r\n";
+            let disabled = dashboard_http_request(request, auth_required, false);
+            assert!(disabled.starts_with("HTTP/1.1 404 "));
+            let enabled = dashboard_http_request(request, auth_required, true);
+            assert!(enabled.starts_with("HTTP/1.1 200 OK\r\n"));
+            assert!(enabled.contains("Cache-Control: no-store\r\n"));
+        }
+        for route in ["/api/system", "/api/btsinfo", "/api/config", "/ws", "/api/public/extra"] {
+            let response = dashboard_http_request(&format!("GET {route} HTTP/1.1\r\nHost: localhost\r\n\r\n"), true, true);
+            assert!(response.starts_with("HTTP/1.1 401 "), "route {route} must remain private");
+        }
+    }
+
+    #[test]
+    fn neighbor_projection_preserves_config_without_invented_live_status() {
+        let cell = toml::from_str::<tetra_config::bluestation::CfgNeighborCellCa>(
+            r#"cell_identifier_ca = 2
+cell_reselection_types_supported = 1
+neighbor_cell_synchronized = true
+cell_load_ca = 3
+main_carrier_number = 1590
+mcc = 262
+mnc = 100
+location_area = 17
+tdma_frame_offset = 6
+"#,
+        )
+        .unwrap();
+        let projected = neighbor_cell_snapshot(&cell);
+        assert_eq!(projected["cell_identifier_ca"], 2);
+        assert_eq!(projected["main_carrier_number"], 1590);
+        assert_eq!(projected["neighbor_cell_synchronized"], true);
+        assert_eq!(projected["cell_load_ca"], 3);
+        assert_eq!(projected["mcc"], 262);
+        assert_eq!(projected["mnc"], 100);
+        assert_eq!(projected["location_area"], 17);
+        assert_eq!(projected["tdma_frame_offset"], 6);
+        assert!(projected["main_carrier_number_extension"].is_null());
+        assert!(projected.get("online").is_none());
+        assert!(projected.get("handover").is_none());
+        assert!(projected.get("rssi").is_none());
+    }
+
+    #[test]
+    fn session_probe_uses_session_authority_and_never_returns_tokens() {
+        let sessions = Arc::new(Mutex::new(SessionStore::new()));
+        let marker = "GET /api/session HTTP/1.1\r\nCookie: fs_auth=1\r\n\r\n";
+        assert_eq!(dashboard_access_status(marker, &sessions, true, true)["authenticated"], false);
+        let token = sessions.lock().unwrap().create();
+        let headers = format!("GET /api/session HTTP/1.1\r\nCookie: fs_session={token}\r\n\r\n");
+        let status = dashboard_access_status(&headers, &sessions, true, false);
+        assert_eq!(status["authenticated"], true);
+        assert_eq!(status["auth_required"], true);
+        assert_eq!(status["public_overview"], false);
+        assert!(!status.to_string().contains(&token));
+        sessions.lock().unwrap().invalidate(&token);
+        assert_eq!(dashboard_access_status(&headers, &sessions, true, false)["authenticated"], false);
+        assert_eq!(dashboard_access_status(marker, &sessions, false, false)["authenticated"], true);
+        let response = dashboard_http_request(marker, true, true);
+        assert!(response.starts_with("HTTP/1.1 200 OK\r\n"));
+        assert!(response.contains("Cache-Control: no-store\r\n"));
+        let body = response.split_once("\r\n\r\n").unwrap().1;
+        let object: serde_json::Value = serde_json::from_str(body).unwrap();
+        assert_eq!(object.as_object().unwrap().len(), 3);
+        assert_eq!(object["authenticated"], false);
+    }
 
     /// FH-BUG (brew shown as v0): the transport reports version 0 ("unknown") on every (re)connect
     /// and v1 is learned lazily from a v1 group call. A confirmed v1 must never be downgraded by a

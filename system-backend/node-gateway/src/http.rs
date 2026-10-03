@@ -1,6 +1,9 @@
 // NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für die Verbindung zwischen Basisstationen und Backend-Diensten.
 // NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
 
+#[path = "../../shared/web-ui/service-design.rs"]
+mod service_design;
+
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::net::TcpStream;
@@ -46,7 +49,7 @@ impl HttpResponse {
 
     // Was: Führt den Arbeitsschritt `html` für html aus.
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    fn html(status: u16, body: &'static str) -> Self {
+    fn html(status: u16, body: &str) -> Self {
         Self { status, content_type: "text/html; charset=utf-8", body: body.as_bytes().to_vec() }
     }
 
@@ -89,7 +92,7 @@ fn route(request: HttpRequest, gateway: &SharedGateway, config: &NodeGatewayConf
     // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
     // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match (request.method.as_str(), request.path.as_str()) {
-        ("GET", "/") => HttpResponse::html(200, INDEX_HTML),
+        ("GET", "/") => HttpResponse::html(200, &service_design::render(INDEX_HTML, "Node Gateway", "open-lab")),
         ("GET", "/health/live") => HttpResponse::json(200, &json!({
             "ok": true,
             "service": "netcore-node-gateway",
@@ -352,36 +355,7 @@ fn reason_phrase(status: u16) -> &'static str {
 
 // Was: Legt den festen Wert `INDEX_HTML` für index html fest.
 // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
-const INDEX_HTML: &str = r#"<!doctype html>
-<html lang="de">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NetCore Node Gateway</title>
-<style>
-:root{color-scheme:dark;--bg:#0b1220;--panel:#121d31;--panel2:#17243c;--text:#e9f0fb;--muted:#91a4c2;--ok:#4ade80;--warn:#facc15;--bad:#fb7185;--line:#2a3b58;--accent:#60a5fa}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif}.wrap{max-width:1450px;margin:auto;padding:20px}.lab{background:#7f1d1d;border:2px solid #fb7185;padding:13px 18px;border-radius:12px;font-weight:800;margin-bottom:16px}h1{margin:.2rem 0}.sub{color:var(--muted);margin-top:4px}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:18px 0}.card,.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}.value{font-size:2rem;font-weight:800}.label{color:var(--muted)}.panel{margin-top:14px;overflow:auto}table{width:100%;border-collapse:collapse;min-width:1050px}th,td{text-align:left;padding:10px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-size:.85rem}.pill{display:inline-block;padding:3px 8px;border-radius:99px;font-size:.8rem;font-weight:700}.online{background:#14532d;color:#bbf7d0}.offline{background:#4c0519;color:#fecdd3}.stale{background:#713f12;color:#fef08a}button{border:0;border-radius:8px;padding:8px 10px;margin:2px;background:var(--accent);color:#07111f;font-weight:700;cursor:pointer}.danger{background:var(--bad)}pre{white-space:pre-wrap;color:#c9d7ed;font-size:.8rem}.toolbar{display:flex;gap:8px;align-items:center;justify-content:space-between}.small{font-size:.8rem;color:var(--muted)}a{color:#93c5fd}</style>
-</head>
-<body><div class="wrap">
-<div class="lab">⚠ OFFENER TESTMODUS: KEINE AUTHENTIFIZIERUNG, KEINE TOKENS, KEIN TLS. Nur im isolierten Testnetz verwenden.</div>
-<div class="toolbar"><div><h1>NetCore Node Gateway</h1><div class="sub">Zentrale TBS-Annahme, Backend-Transport und Verwaltungs-WebUI</div></div><button onclick="refreshAll()">Aktualisieren</button></div>
-<div id="cards" class="cards"></div>
-<div class="panel"><h2>Backend-Dienste / TBS-Fallback</h2><table><thead><tr><th>Status</th><th>Dienst</th><th>Edge-kritisch</th><th>Fallback</th><th>Letzte Prüfung</th><th>Meldung</th></tr></thead><tbody id="services"></tbody></table></div>
-<div class="panel"><h2>Basisstationen</h2><table><thead><tr><th>Status</th><th>Node</th><th>Zelle</th><th>Version</th><th>Letzter Kontakt</th><th>Zähler</th><th>Fähigkeiten</th><th>Aktionen</th></tr></thead><tbody id="nodes"></tbody></table></div>
-<div class="panel"><h2>Letzte Gateway-Ereignisse</h2><pre id="events">Lade…</pre></div>
-<div class="panel small">API: <a href="/openapi.json">OpenAPI</a> · <a href="/metrics">Metriken</a> · <a href="/api/v1/config">Effektive Konfiguration</a></div>
-</div>
-<script>
-const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-async function getj(url){const r=await fetch(url);if(!r.ok)throw new Error(await r.text());return r.json()}
-async function post(url,body){const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):''});const t=await r.text();if(!r.ok)throw new Error(t);return t?JSON.parse(t):{}}
-function card(label,value){return `<div class="card"><div class="value">${esc(value)}</div><div class="label">${esc(label)}</div></div>`}
-function statusPill(n){if(n.stale)return '<span class="pill stale">STALE</span>';return n.connected?'<span class="pill online">ONLINE</span>':'<span class="pill offline">OFFLINE</span>'}
-function caps(c){return Object.entries(c||{}).filter(([,v])=>v===true).map(([k])=>k).join(', ')}
-async function action(id,name){if(name==='disconnect'&&!confirm(`Node ${id} wirklich trennen?`))return;try{await post(`/api/v1/nodes/${encodeURIComponent(id)}/${name}`);setTimeout(refreshAll,300)}catch(e){alert(e.message)}}
-function servicePill(level){const c=level==='available'?'online':level==='unavailable'?'offline':'stale';return `<span class="pill ${c}">${esc(String(level).toUpperCase())}</span>`}
-async function refreshAll(){try{const [s,cs,n,e]=await Promise.all([getj('/api/v1/status'),getj('/api/v1/core-services'),getj('/api/v1/nodes'),getj('/api/v1/events?limit=40')]);document.getElementById('cards').innerHTML=[card('Verbunden',s.connected_nodes),card('Bekannt',s.known_nodes),card('Stale',s.stale_nodes),card('Dienste OK',s.available_services+'/'+s.monitored_services),card('Dienste gestört',s.degraded_services+s.unavailable_services),card('Backend-Clients',s.backend_clients),card('Nachrichten',s.total_node_messages),card('Mediaframes',s.total_media_frames),card('Kommandos',s.total_commands)].join('');document.getElementById('services').innerHTML=cs.services.map(x=>`<tr><td>${servicePill(x.level)}</td><td><b>${esc(x.service)}</b></td><td>${x.critical_for_edge?'ja':'nein'}</td><td class="small">${esc(x.fallback_mode)}</td><td class="small">${esc(x.checked_at)}<br>${esc(x.last_success_at||'noch nie')}</td><td class="small">${esc(x.message||'')}</td></tr>`).join('')||'<tr><td colspan="6">Keine Monitorziele konfiguriert – TBS bleibt konservativ im Fallback.</td></tr>';document.getElementById('nodes').innerHTML=n.map(x=>`<tr><td>${statusPill(x)}</td><td><b>${esc(x.identity.station_name)}</b><br><span class="small">${esc(x.node_id)}<br>${esc(x.peer)}</span></td><td>MCC ${esc(x.identity.mcc)} / MNC ${esc(x.identity.mnc)}<br>LA ${esc(x.identity.location_area)}, CC ${esc(x.identity.colour_code)}<br>Carrier ${esc(x.identity.main_carrier)}${x.identity.secondary_carrier?` / ${esc(x.identity.secondary_carrier)}`:''}</td><td>${esc(x.identity.stack_version)}</td><td>${esc(x.last_seen)}<br><span class="small">${esc(x.last_message_kind)}</span></td><td>Msg ${esc(x.message_count)}<br>Tel ${esc(x.telemetry_count)}<br>Ack ${esc(x.control_ack_count)}<br>Media ${esc(x.media_frame_count)}</td><td class="small">${esc(caps(x.capabilities))}</td><td><button onclick="action('${esc(x.node_id)}','ping')">Ping</button><button class="danger" onclick="action('${esc(x.node_id)}','disconnect')">Trennen</button></td></tr>`).join('')||'<tr><td colspan="8">Noch keine TBS verbunden.</td></tr>';document.getElementById('events').textContent=e.map(x=>`${x.timestamp} #${x.seq} ${x.kind}${x.node_id?' ['+x.node_id+']':''} ${JSON.stringify(x.detail)}`).join('\n')||'Noch keine Ereignisse.'}catch(e){document.getElementById('events').textContent='Fehler: '+e.message}}
-refreshAll();setInterval(refreshAll,5000);
-</script></body></html>"#;
+const INDEX_HTML: &str = include_str!("../web-ui/index.html");
 
 #[cfg(test)]
 // Was: Bindet das Untermodul tests in diesen Bereich ein.

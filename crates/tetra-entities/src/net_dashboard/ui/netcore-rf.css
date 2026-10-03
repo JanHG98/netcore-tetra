@@ -1,0 +1,121 @@
+/* Gemeinsame NetCore-Farben stammen aus netcore.css und folgen allen Themes. */
+#page-rf .rf-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0;
+  margin-bottom: 18px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 0;
+}
+#page-rf .rf-metric {
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 2px 22px;
+}
+#page-rf .rf-metric + .rf-metric { border-left: 1px solid var(--border); }
+#page-rf .rf-metric-label { color: var(--text2); font-size: calc(12px * var(--ts, 1)); line-height: 1.5; text-transform: none; letter-spacing: 0; }
+#page-rf .rf-metric-value { margin-top: 4px; color: var(--text); font-family: var(--sans); font-size: calc(19px * var(--ts, 1)); line-height: 1.4; overflow-wrap: anywhere; }
+.nc-rf-workbench { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(290px, 1fr); gap: 18px; align-items: start; }
+.nc-rf-plots, .nc-rf-telemetry > .rf-quality-card, .nc-rf-constellation, .nc-rf-carriers {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.nc-rf-card-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 20px; margin: 0 20px; padding: 17px 0; border-bottom: 1px solid var(--border); }
+.nc-rf-card-heading h2 { margin: 0; font-size: calc(17px * var(--ts, 1)); color: var(--text); font-weight: 700; }
+.nc-rf-card-heading > span { color: var(--text2); font-size: calc(11px * var(--ts, 1)); line-height: 1.5; }
+#page-rf .nc-rf-plots .rf-panel { padding: 14px 20px 16px; border: 0; border-radius: 0; background: transparent; }
+#page-rf .nc-rf-plots .rf-panel + .rf-panel { padding-top: 0; }
+#page-rf .rf-panel-title { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 7px 14px; font-size: calc(12px * var(--ts, 1)); text-transform: none; letter-spacing: 0; line-height: 1.45; }
+#page-rf .rf-hint { font-size: calc(10px * var(--ts, 1)); color: var(--text2); }
+#page-rf .nc-rf-plots .rf-panel-title > span:first-child { color: var(--text2); font-weight: 600; }
+.nc-rf-canvas-frame { position: relative; min-width: 0; }
+#page-rf .rf-canvas { display: block; width: 100%; height: 270px; margin-top: 10px; border-radius: 6px; background: var(--bg); }
+#page-rf .rf-canvas.tall { height: 195px; }
+.nc-rf-awaiting { position: absolute; inset: 0; display: grid; place-items: center; padding: 20px; text-align: center; background: var(--bg); color: var(--text2); border: 1px dashed var(--border); border-radius: 6px; font-size: calc(13px * var(--ts, 1)); }
+.nc-rf-awaiting[hidden] { display: none; }
+.nc-rf-telemetry { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+#page-rf .nc-rf-telemetry > .rf-quality-card { margin: 0; padding: 17px 18px; }
+#page-rf .nc-rf-telemetry .rf-panel-title { font-size: calc(15px * var(--ts, 1)); padding-bottom: 13px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+#page-rf .nc-rf-telemetry .rf-panel-title .rf-hint { font-size: calc(10px * var(--ts, 1)); font-weight: 400; }
+#page-rf .rf-quality-grid { grid-template-columns: 1fr; gap: 0; }
+#page-rf .rf-qmetric { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 16px; row-gap: 7px; padding: 11px 0; background: transparent; border: 0; border-radius: 0; }
+#page-rf .rf-qmetric + .rf-qmetric { border-top: 1px solid var(--border); }
+#page-rf .rf-qmetric-label { font-size: calc(11px * var(--ts, 1)); letter-spacing: 0; text-transform: none; line-height: 1.4; align-self: center; color: var(--text2); }
+#page-rf .rf-qmetric-value { margin: 0; font-size: calc(18px * var(--ts, 1)); line-height: 1.4; text-align: right; white-space: nowrap; }
+#page-rf .rf-qmetric > .gauge { grid-column: 1 / -1; }
+#page-rf .rf-hw-grid { grid-template-columns: 1fr 1fr; gap: 14px 18px; }
+#page-rf .rf-hw-temp { grid-column: 1 / -1; padding: 0 0 12px; border: 0; border-bottom: 1px solid var(--border); background: transparent; }
+#page-rf .rf-hw-temp-value { font-size: calc(24px * var(--ts, 1)); margin: 6px 0 0; }
+#page-rf .rf-hw-temp-state { margin: 3px 0 7px; font-size: calc(11px * var(--ts, 1)); }
+#page-rf .rf-hw-gain-block { padding: 0; }
+#page-rf .rf-hw-gain-list { margin-top: 9px; }
+#page-rf .rf-hw-gain-row { font-size: calc(11px * var(--ts, 1)); padding: 5px 0; gap: 9px; }
+.nc-rf-constellation summary { padding: 14px 18px; color: var(--accent); font-size: calc(12px * var(--ts, 1)); font-weight: 600; cursor: pointer; }
+.nc-rf-constellation summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+#page-rf .nc-rf-constellation .rf-panel { border: 0; border-radius: 0; padding: 2px 18px 18px; background: transparent; }
+#page-rf .nc-rf-constellation .rf-panel-title { border: 0; padding: 0; font-size: calc(11px * var(--ts, 1)); }
+#page-rf .nc-rf-constellation .rf-canvas { height: 250px; }
+.nc-rf-carriers { margin-top: 18px; }
+.nc-rf-carrier-rows { padding: 0 20px; }
+.nc-rf-carrier-row { display: grid; grid-template-columns: minmax(100px, 0.7fr) repeat(4, minmax(0, 1fr)); gap: 16px; align-items: stretch; padding: 14px 0; }
+.nc-rf-carrier-row + .nc-rf-carrier-row { border-top: 1px solid var(--border); }
+.nc-rf-carrier-description { display: flex; flex-direction: column; align-self: center; gap: 4px; min-width: 0; }
+.nc-rf-carrier-description strong { font-size: calc(13px * var(--ts, 1)); color: var(--text); }
+.nc-rf-carrier-description span { font-size: calc(10px * var(--ts, 1)); color: var(--text2); }
+.nc-rf-slot { min-width: 0; }
+.nc-rf-slot-number { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 3px; margin-bottom: 6px; color: var(--text2); font-size: calc(10px * var(--ts, 1)); }
+.nc-rf-slot-number > span { font-size: calc(9px * var(--ts, 1)); color: var(--text3); }
+.nc-rf-slot-state { padding: 10px 8px; border-radius: 6px; background: var(--bg3); color: var(--text2); font-size: calc(12px * var(--ts, 1)); font-weight: 600; text-align: center; overflow-wrap: anywhere; border: 1px solid var(--border); }
+.nc-rf-slot-detail { margin-top: 5px; color: var(--text2); font-size: calc(10px * var(--ts, 1)); text-align: center; overflow-wrap: anywhere; }
+.nc-rf-slot.is-mcch .nc-rf-slot-state { background: color-mix(in srgb, var(--accent) 11%, var(--bg2)); border-color: color-mix(in srgb, var(--accent) 24%, var(--border)); color: var(--accent); }
+.nc-rf-slot.is-call .nc-rf-slot-state { background: color-mix(in srgb, var(--accent) 13%, var(--bg2)); border-color: var(--accent); color: var(--accent); }
+.nc-rf-slot.is-voice .nc-rf-slot-state { background: var(--accent); border-color: var(--accent); color: #fff; }
+.nc-rf-slot.is-emergency .nc-rf-slot-state { background: var(--danger); border-color: var(--danger); color: #fff; }
+.nc-rf-carrier-empty { margin: 0; padding: 20px 0; color: var(--text2); font-size: calc(13px * var(--ts, 1)); }
+
+@media (max-width: 1100px) {
+  .nc-rf-workbench { grid-template-columns: minmax(0, 1.7fr) minmax(270px, 1fr); gap: 14px; }
+  #page-rf .rf-metric { padding: 2px 14px; }
+  #page-rf .rf-metric-value { font-size: calc(16px * var(--ts, 1)); }
+  .nc-rf-card-heading { margin: 0 16px; }
+  #page-rf .nc-rf-plots .rf-panel { padding-left: 16px; padding-right: 16px; }
+  .nc-rf-carrier-row { gap: 10px; }
+}
+@media (max-width: 850px) {
+  .nc-rf-workbench { grid-template-columns: 1fr; }
+  .nc-rf-telemetry { display: grid; grid-template-columns: 1fr 1fr; }
+  .nc-rf-constellation { grid-column: 1 / -1; }
+  #page-rf .nc-rf-constellation .rf-canvas { height: 280px; }
+  #page-rf .rf-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 16px; }
+  #page-rf .rf-metric:nth-child(4) { border-left: 0; }
+}
+@media (max-width: 560px) {
+  #page-rf .rf-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 14px 0; }
+  #page-rf .rf-metric { padding: 2px 12px; }
+  #page-rf .rf-metric:nth-child(odd) { border-left: 0; }
+  #page-rf .rf-metric:nth-child(4) { border-left: 1px solid var(--border); }
+  #page-rf .rf-metric:last-child { grid-column: 1 / -1; }
+  #page-rf .rf-metric-label { font-size: calc(10px * var(--ts, 1)); }
+  #page-rf .rf-metric-value { font-size: calc(15px * var(--ts, 1)); }
+  #page-rf .rf-canvas { height: 215px; }
+  #page-rf .rf-canvas.tall { height: 160px; }
+  .nc-rf-telemetry { display: flex; }
+  .nc-rf-carrier-rows { padding: 0 14px; }
+  .nc-rf-carrier-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px; }
+  .nc-rf-carrier-description { grid-column: 1 / -1; flex-direction: row; align-items: center; justify-content: space-between; }
+  .nc-rf-card-heading h2 { font-size: calc(15px * var(--ts, 1)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #page-rf * { animation: none !important; transition: none !important; }
+}
+
+/* The shell heading and metric strip already identify this workspace. */
+#page-rf > .hero{display:none}
+#page-rf .rf-panel-title,#page-rf .rf-metric-label,#page-rf .rf-qmetric-label{font-family:var(--sans)}
+#page-rf .rf-hint{font-family:var(--sans)}

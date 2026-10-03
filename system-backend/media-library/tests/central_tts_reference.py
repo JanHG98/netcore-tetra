@@ -14,7 +14,7 @@ def main() -> None:
     media_http = read("system-backend/media-library/src/http.rs")
     media_main = read("system-backend/media-library/src/main.rs")
     media_tts = read("system-backend/media-library/src/tts.rs")
-    bs_html = read("crates/tetra-entities/src/net_dashboard/html.rs")
+    bs_html = read("crates/tetra-entities/src/net_dashboard/ui/dashboard.html")
     bs_main = read("bins/bluestation-bs/src/main.rs")
     bs_updater = read("install/update-basisstation.sh")
     player = read("crates/tetra-entities/src/net_audio_player/service.rs")

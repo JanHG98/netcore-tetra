@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NetCore SDS Router</title>
+<style>
+/* Dienstansichten ergänzen die gemeinsame NetCore-Oberfläche. */
+.wrap{display:grid;gap:18px}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:14px;margin:18px 0}.toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:14px 0}.toolbar>h2{margin-right:auto}.toolbar>label{flex:1 1 200px}.toolbar>label input{width:100%}.panel{min-width:0}.btn{display:inline-flex;align-items:center;justify-content:center}label{display:grid;gap:5px}dialog{width:94%;max-width:800px}h1,h2,h3{margin:0 0 12px}.pill,.tag{display:inline-block}.core-editor form{min-width:0}
+
+.core-nav{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px 26px;background:var(--nc-panel);border-bottom:1px solid var(--nc-border)}
+.core-nav button{border:0;border-radius:0;background:transparent;color:var(--nc-muted);padding:14px 12px;box-shadow:none}
+.core-nav button.active{color:var(--nc-accent);border-bottom:2px solid var(--nc-accent)}
+.core-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(300px,1fr);gap:18px;align-items:start}
+.core-layout>.panel{min-width:0;margin-top:0}.core-layout .core-wide{grid-column:1/-1}
+.core-stack{display:grid;gap:18px;min-width:0}.core-detail{align-self:start;position:sticky;top:160px}
+.core-detail dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:18px 0}.core-detail dt{font-size:12px;color:var(--nc-muted);margin-bottom:5px}.core-detail dd{margin:0;overflow-wrap:anywhere;font-weight:650}.core-detail .wide{grid-column:1/-1}
+.core-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.core-selected{background:var(--nc-selected,var(--nc-panel-2))}
+.core-row-title{padding:0!important;border:0!important;background:transparent!important;color:var(--nc-text)!important;box-shadow:none!important;font:inherit!important;font-weight:750!important;text-align:left;cursor:pointer}
+.core-empty{color:var(--nc-muted);padding:18px 0}.core-note{color:var(--nc-muted);font-size:13px;line-height:1.5}.core-info{border:1px solid var(--nc-border);background:var(--nc-panel-2);border-radius:10px;padding:14px;margin:14px 0}
+[data-core-view][hidden]{display:none!important}.view{display:none}.view.active{display:block}.tablewrap{overflow:auto}.tablewrap>table{min-width:650px}.core-detail .tablewrap>table{min-width:380px}form.grid,.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.wide{grid-column:1/-1}.form{display:flex;flex-wrap:wrap;gap:10px}.form label{flex:1 1 160px;display:grid;gap:5px}.form button{align-self:end}
+label:has(input[type=checkbox]){display:flex;align-items:center;gap:9px}input[type=checkbox]{width:auto;min-width:16px}pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:420px;overflow:auto}.small{font-size:12px}.mode{display:inline-flex;padding:5px 10px;border-radius:99px;background:var(--nc-panel-2);font-size:13px}
+@media(max-width:1050px){.core-layout{grid-template-columns:1fr!important}.core-detail{position:static}.core-layout .core-wide{grid-column:auto}}
+@media(max-width:640px){.core-nav{padding:6px 12px}.core-nav button{padding:12px 8px}form.grid,.grid{grid-template-columns:1fr}.wide{grid-column:auto}.core-detail dl{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<nav class="core-nav" aria-label="Dienstansichten"><button type="button" data-core-nav="messages" class="active" aria-current="page">Nachrichten</button><button type="button" data-core-nav="routes" class="" aria-current="false">Routing</button><button type="button" data-core-nav="presence" class="" aria-current="false">Präsenz</button><button type="button" data-core-nav="events" class="" aria-current="false">Ereignisse</button></nav><header><h1>NetCore-Tetra · SDS Router</h1>
+<div id="gateway" class="muted">verbinde …</div>
+<div class="warn">
+<b>OPEN LAB:</b> keine Tokens, keine Anmeldung und kein TLS. Nur im isolierten Testnetz betreiben.</div></header><main>
+<div id="cards" class="cards"></div>
+<div class="core-layout">
+<section class="panel" data-core-view="messages"><div class="toolbar">
+<h2 style="margin-right:auto">SDS / Status</h2>
+<button class="primary" onclick="messageDialog.showModal()">Nachricht senden</button><select id="stateFilter" onchange="refresh()"><option value="">alle Zustände</option>
+<option>queued</option>
+<option>offline</option>
+<option>in_flight</option>
+<option>delivered</option>
+<option>failed</option>
+<option>dead_letter</option>
+<option>expired</option></select>
+</div>
+<div class="tablewrap"><table>
+<thead><tr>
+<th>Zeit</th>
+<th>Quelle → Ziel</th>
+<th>Typ</th>
+<th>Inhalt</th>
+<th>Zustand</th>
+<th>Legs</th>
+<th>Aktionen</th>
+</tr></thead>
+<tbody id="messageRows"></tbody>
+</table></div></section>
+<aside class="panel core-detail" id="coreMessageDetail" data-core-view="messages"><h2>Nachrichtendetails</h2>
+<p class="core-empty">Eintrag auswählen, um Details anzuzeigen.</p></aside><section class="panel core-wide" data-core-view="routes"><div class="toolbar">
+<h2 style="margin-right:auto">Routingregeln</h2>
+<button class="primary" onclick="openRoute()">Regel anlegen</button>
+</div>
+<div class="tablewrap"><table>
+<thead><tr>
+<th>Name</th>
+<th>Match</th>
+<th>Ziel</th>
+<th>Modus</th>
+<th>Aktiv</th>
+<th>Aktionen</th>
+</tr></thead>
+<tbody id="routeRows"></tbody>
+</table></div></section>
+<section class="panel core-wide" data-core-view="presence"><h2>Präsenz</h2>
+<div class="grid">
+<div>
+<h3>TBS</h3>
+<pre id="nodes"></pre>
+</div>
+<div>
+<h3>Teilnehmer</h3>
+<pre id="subscribers"></pre>
+</div>
+<div>
+<h3>Gruppen</h3>
+<pre id="groups"></pre>
+</div>
+</div></section>
+<section class="panel core-wide" data-core-view="events"><h2>Ereignisse</h2>
+<pre id="events"></pre></section>
+</div></main>
+<dialog id="messageDialog" class="core-editor"><form id="messageForm" class="grid" onsubmit="sendMessage(event)">
+<h2 class="wide">SDS / Status senden</h2>
+<label>Quell-ISSI<input name="source_issi" type="number" min="1" max="16777215" required></label><label>Ziel ISSI/GSSI<input name="dest_issi" type="number" min="1" max="16777215" required></label><label>Adressart<select name="is_group"><option value="false">Einzel</option>
+<option value="true">Gruppe</option></select></label><label>SDS-Typ<select name="sds_type" onchange="toggleStatus()"><option value="4">Type 4</option>
+<option value="3">Type 3</option>
+<option value="2">Type 2</option>
+<option value="1">Type 1</option>
+<option value="0">Status</option></select></label><label>Protocol-ID<input name="protocol_id" type="number" min="0" max="255" value="130"></label><label>Priorität<input name="priority" type="number" min="0" max="15" value="0"></label><label>TTL Sekunden<input name="ttl_secs" type="number" min="5" value="300"></label><label id="statusLabel">Statuscode<input name="status_code" type="number" min="0" max="65535"></label><label class="wide">Text<textarea name="text" rows="4"></textarea></label><label class="wide">Payload hex (alternativ zu Text)<textarea name="payload_hex" rows="3"></textarea></label><label class="wide">TBS erzwingen, kommasepariert<input name="force_nodes"></label><div class="wide toolbar">
+<button class="primary" type="submit">Einplanen</button><button type="button" onclick="messageDialog.close()">Abbrechen</button>
+</div>
+</form></dialog>
+<dialog id="routeDialog" class="core-editor"><form id="routeForm" class="grid" onsubmit="saveRoute(event)">
+<h2 class="wide">Routingregel</h2>
+<label>Name<input name="name" required></label><label>Art<select name="kind"><option value="protocol">Protocol-ID</option>
+<option value="individual">Einzelziel</option>
+<option value="group">Gruppenziel</option></select></label><label>Matchwert<input name="match_value" type="number" min="0" max="16777215" required></label><label>Zielart<select name="target_kind"><option value="application">Anwendung</option>
+<option value="node">TBS Node</option></select></label><label>Ziel<input name="target" required></label><label>Modus<select name="mode"><option value="route">Route</option>
+<option value="tap">Tap</option>
+<option value="intercept">Intercept</option></select></label><label><span>Aktiv</span><input name="enabled" type="checkbox" checked></label><label class="wide">Notizen<textarea name="notes"></textarea></label><div class="wide toolbar">
+<button class="primary" type="submit">Speichern</button><button type="button" onclick="routeDialog.close()">Abbrechen</button>
+</div>
+</form></dialog>
+<script>
+// Die Navigation schaltet ausschließlich vorhandene Dienstbereiche um.
+function coreView(view){document.querySelectorAll('[data-core-view]').forEach(p=>{p.hidden=!p.dataset.coreView.split(' ').includes(view)});document.querySelectorAll('[data-core-nav]').forEach(b=>{const active=b.dataset.coreNav===view;b.classList.toggle('active',active);b.setAttribute('aria-current',active?'page':'false')});}
+document.querySelectorAll('[data-core-nav]').forEach(b=>b.addEventListener('click',()=>coreView(b.dataset.coreNav)));
+function coreField(label,value,wide=false){return `<div${wide?' class="wide"':''}><dt>${esc(label)}</dt><dd>${esc(value??'–')}</dd></div>`}
+function coreButton(label,action,id,extra=''){return `<button type="button" data-core-action="${esc(action)}" data-core-id="${esc(id)}" ${extra}>${esc(label)}</button>`}
+document.addEventListener('click',event=>{const b=event.target.closest('[data-core-action]');if(!b)return;const handler=window.coreActions?.[b.dataset.coreAction];if(handler)handler(b.dataset.coreId,b);});
+window.coreActions={};
+let coreSelectedMessage=null,coreMessageRequest=0;
+
+let messages=[],routes=[];const messageDialog=document.getElementById('messageDialog'),messageForm=document.getElementById('messageForm'),routeDialog=document.getElementById('routeDialog'),routeForm=document.getElementById('routeForm');
+async function api(path,opt){const r=await fetch(path,opt);if(!r.ok&&r.status!==204){let e={};try{e=await r.json()}catch{}throw new Error(e.error||r.statusText)}return r.status===204?null:r.json()}
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+async function refresh(){try{const sf=document.getElementById('stateFilter').value;const [s,m,r,n,u,g,e]=await Promise.all([api('/api/v1/status'),api('/api/v1/messages?limit=300'+(sf?'&state='+sf:'')),api('/api/v1/routes'),api('/api/v1/nodes'),api('/api/v1/subscribers'),api('/api/v1/groups'),api('/api/v1/events?limit=80')]);messages=m;routes=r;document.getElementById('gateway').innerHTML=s.node_gateway_connected?'<span class="ok">● Node Gateway verbunden</span>':'<span class="bad">● Node Gateway getrennt</span>';document.getElementById('cards').innerHTML=[['Nachrichten',s.messages_total],['Wartend',s.queued],['Offline',s.offline],['In Flight',s.in_flight],['Zugestellt',s.delivered],['Dead Letter',s.dead_letter],['TBS online',s.nodes_connected],['Duplikate',s.duplicate_messages]].map(x=>`<div class="card"><div class="muted">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');renderMessages();renderRoutes();if(coreSelectedMessage&&messages.some(m=>m.id===coreSelectedMessage))showMessage(coreSelectedMessage);document.getElementById('nodes').textContent=n.map(x=>`${x.connected?'●':'○'} ${x.node_id} ${x.station_name}`).join('\n');document.getElementById('subscribers').textContent=u.map(x=>`${x.issi} → ${x.node_id}`).join('\n');document.getElementById('groups').textContent=g.map(x=>`${x.gssi} → ${x.nodes.join(', ')}`).join('\n');document.getElementById('events').textContent=e.map(x=>`${x.timestamp} #${x.seq} ${x.kind} ${x.node_id||''} ${x.message_id||''}`).join('\n')}catch(e){document.getElementById('gateway').innerHTML='<span class="bad">UI-Fehler: '+esc(e.message)+'</span>'}}
+function renderMessages(){document.getElementById('messageRows').innerHTML=messages.map(m=>`<tr class="${m.id===coreSelectedMessage?'core-selected':''}" data-core-message="${esc(m.id)}"><td>${esc(m.created_at)}</td><td>${m.source_issi} → ${m.dest_issi}${m.is_group?' (G)':''}</td><td>${m.sds_type===0?'Status':'SDS-'+m.sds_type}<br><span class="muted">PID ${m.protocol_id}, P${m.priority}</span></td><td>${esc(m.text_preview)}<br><span class="muted">${esc(m.payload_hex)}</span></td><td>${esc(m.state)}</td><td>${m.delivered_legs}/${m.total_legs}</td><td><button onclick="showMessage('${m.id}')">Details</button> <button onclick="act('${m.id}','retry')">Retry</button> <button onclick="act('${m.id}','requeue')">Requeue</button> <button onclick="act('${m.id}','cancel')">Stop</button></td></tr>`).join('')}
+function renderRoutes(){document.getElementById('routeRows').innerHTML=routes.map(r=>`<tr><td>${esc(r.name)}</td><td>${r.kind}: ${r.match_value}</td><td>${r.target_kind}: ${esc(r.target)}</td><td>${r.mode}</td><td>${r.enabled?'ja':'nein'}</td><td><button onclick="editRoute('${r.id}')">Bearbeiten</button> <button class="danger" onclick="deleteRoute('${r.id}')">Löschen</button></td></tr>`).join('')}
+async function showMessage(id){const seq=++coreMessageRequest;coreSelectedMessage=id;try{const m=await api('/api/v1/messages/'+encodeURIComponent(id));if(seq!==coreMessageRequest)return;renderMessageDetail(m)}catch(e){document.getElementById('coreMessageDetail').innerHTML='<h2>Nachrichtendetails</h2><p class="bad">'+esc(e.message)+'</p>'}}async function act(id,action){try{await api(`/api/v1/messages/${id}/${action}`,{method:'POST'});refresh()}catch(e){alert(e.message)}}
+function toggleStatus(){document.getElementById('statusLabel').style.display=Number(messageForm.sds_type.value)===0?'flex':'none'}toggleStatus();
+async function sendMessage(e){e.preventDefault();const f=new FormData(messageForm),nodes=String(f.get('force_nodes')||'').split(',').map(x=>x.trim()).filter(Boolean);const p={source_issi:Number(f.get('source_issi')),dest_issi:Number(f.get('dest_issi')),is_group:f.get('is_group')==='true',sds_type:Number(f.get('sds_type')),protocol_id:Number(f.get('protocol_id')),status_code:f.get('status_code')?Number(f.get('status_code')):null,payload_hex:String(f.get('payload_hex')||''),text:String(f.get('text')||''),priority:Number(f.get('priority')),ttl_secs:Number(f.get('ttl_secs')),ingress:'webui',force_nodes:nodes};try{await api('/api/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});messageDialog.close();messageForm.reset();toggleStatus();refresh()}catch(e){alert(e.message)}}
+function openRoute(){routeForm.reset();routeForm.dataset.id='';routeForm.enabled.checked=true;routeDialog.showModal()}
+function editRoute(id){const r=routes.find(x=>x.id===id);if(!r)return;routeForm.dataset.id=id;for(const[k,v]of Object.entries(r)){const el=routeForm.elements[k];if(!el)continue;if(el.type==='checkbox')el.checked=!!v;else el.value=v??''}routeDialog.showModal()}
+async function saveRoute(e){e.preventDefault();const f=new FormData(routeForm),p={name:String(f.get('name')||''),enabled:routeForm.enabled.checked,kind:f.get('kind'),match_value:Number(f.get('match_value')),target_kind:f.get('target_kind'),target:String(f.get('target')||''),mode:f.get('mode'),notes:String(f.get('notes')||'')},id=routeForm.dataset.id;try{await api(id?'/api/v1/routes/'+id:'/api/v1/routes',{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});routeDialog.close();refresh()}catch(e){alert(e.message)}}
+async function deleteRoute(id){if(!confirm('Routingregel löschen?'))return;try{await api('/api/v1/routes/'+id,{method:'DELETE'});refresh()}catch(e){alert(e.message)}}
+
+function renderMessageDetail(m){const el=document.getElementById('coreMessageDetail');el.innerHTML=`<h2>${m.source_issi} → ${m.dest_issi}${m.is_group?' (Gruppe)':''}</h2><p>${esc(m.state)} · ${m.sds_type===0?'Status':'SDS-'+m.sds_type}</p><dl>${coreField('Message-ID',m.id,true)}${coreField('Protocol-ID',m.protocol_id)}${coreField('Priorität',m.priority)}${coreField('Erstellt',m.created_at,true)}${coreField('Gültig bis',m.expires_at,true)}${coreField('Letzter Fehler',m.last_error||'Keiner',true)}</dl><h3>Payload</h3><pre>${esc(m.payload_hex||messages.find(x=>x.id===m.id)?.payload_hex||'–')}</pre><div class="core-actions">${coreButton('Retry','sds-retry',m.id)}${coreButton('Requeue','sds-requeue',m.id)}${coreButton('Stop','sds-cancel',m.id,'class="danger"')}</div><h3>Zustellungs-Legs</h3><pre>${esc(JSON.stringify(m.delivery_legs||[],null,2))}</pre><h3>Trace</h3><pre>${esc((m.trace||[]).map(t=>t.timestamp+' '+t.kind+' '+t.detail).join('\n')||'Keine Einträge.')}</pre><details><summary>Vollständige Nachricht (JSON)</summary><pre>${esc(JSON.stringify(m,null,2))}</pre></details>`;document.querySelectorAll('#messageRows tr').forEach(r=>r.classList.toggle('core-selected',r.dataset.coreMessage===m.id));}
+window.coreActions['sds-retry']=id=>act(id,'retry');window.coreActions['sds-requeue']=id=>act(id,'requeue');window.coreActions['sds-cancel']=id=>act(id,'cancel');
+
+refresh();setInterval(refresh,4000);
+
+coreView('messages');
+</script>
+</body>
+</html>

@@ -25,6 +25,7 @@ REQUIRED = [
     "system-backend/kmf/install/uninstall.sh",
     "system-backend/kmf/tests/lab_edge_unwrap.py",
     "Docs/SWMI_CORE_1_PACKAGE_J_KMF.md",
+    "system-backend/kmf/web-ui/index.html",
 ]
 MARKERS = {
     "Cargo.toml": '"system-backend/kmf"',
@@ -172,8 +173,8 @@ def main() -> int:
         if error:
             errors.append(f"{path.relative_to(ROOT)}: {error}")
 
-    http = (ROOT / "system-backend/kmf/src/http.rs").read_text()
-    match = re.search(r"<script>(.*)</script>", http, flags=re.S)
+    webui = (ROOT / "system-backend/kmf/web-ui/index.html").read_text()
+    match = re.search(r"<script>(.*)</script>", webui, flags=re.S)
     if not match:
         errors.append("WebUI JavaScript not found")
     else:
@@ -217,7 +218,7 @@ def main() -> int:
         errors.append("unexpected KMF vault provider")
 
     state_text = (ROOT / "system-backend/kmf/src/state.rs").read_text()
-    http_text = (ROOT / "system-backend/kmf/src/http.rs").read_text()
+    http_text = (ROOT / "system-backend/kmf/src/http.rs").read_text() + (ROOT / "system-backend/kmf/web-ui/index.html").read_text()
     management_text = state_text[state_text.index("pub fn status"):state_text.index("pub fn metrics")]
     # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
     # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.

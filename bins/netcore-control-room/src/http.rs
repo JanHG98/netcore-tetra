@@ -168,7 +168,7 @@ fn route_http(
     // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
     // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match (request.method.as_str(), request.path.as_str()) {
-        ("GET", "/") => HttpResponse::html(200, index_html(node_path, ui_path)),
+        ("GET", "/") => HttpResponse::html(200, index_html(node_path, ui_path, auth.enabled())),
         ("GET", "/health/live") => HttpResponse::json(200, &json!({
             "ok": true,
             "service": "netcore-control-room",
@@ -1963,6 +1963,6 @@ fn reason_phrase(status: u16) -> &'static str {
 
 // Was: Führt den Arbeitsschritt `index_html` für index html aus.
 // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-fn index_html(node_path: &str, ui_path: &str) -> String {
-    crate::webui::index_html(node_path, ui_path)
+fn index_html(node_path: &str, ui_path: &str, auth_enabled: bool) -> String {
+    crate::webui::index_html(node_path, ui_path, auth_enabled)
 }
