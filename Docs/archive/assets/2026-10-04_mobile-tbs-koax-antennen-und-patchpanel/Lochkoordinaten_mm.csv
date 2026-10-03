@@ -1,0 +1,59 @@
+﻿Position;Funktion;X ab linker Kante;Y ab realer Unterkante;Durchmesser mm;Ansicht
+unten_1;RADIO1 USB;48.0;22.1;24.2;Vorderansicht
+unten_1_M3_links_oben;RADIO1 USB;38.5;34.1;3.3;Vorderansicht
+unten_1_M3_rechts_unten;RADIO1 USB;57.5;10.100000000000001;3.3;Vorderansicht
+unten_2;RADIO1 LAN;94.0;22.1;24.2;Vorderansicht
+unten_2_M3_links_oben;RADIO1 LAN;84.5;34.1;3.3;Vorderansicht
+unten_2_M3_rechts_unten;RADIO1 LAN;103.5;10.100000000000001;3.3;Vorderansicht
+unten_3;RADIO2 USB;158.0;22.1;24.2;Vorderansicht
+unten_3_M3_links_oben;RADIO2 USB;148.5;34.1;3.3;Vorderansicht
+unten_3_M3_rechts_unten;RADIO2 USB;167.5;10.100000000000001;3.3;Vorderansicht
+unten_4;RADIO2 LAN;204.0;22.1;24.2;Vorderansicht
+unten_4_M3_links_oben;RADIO2 LAN;194.5;34.1;3.3;Vorderansicht
+unten_4_M3_rechts_unten;RADIO2 LAN;213.5;10.100000000000001;3.3;Vorderansicht
+unten_5;RESERVE;274.0;22.1;24.2;Vorderansicht
+unten_5_M3_links_oben;RESERVE;264.5;34.1;3.3;Vorderansicht
+unten_5_M3_rechts_unten;RESERVE;283.5;10.100000000000001;3.3;Vorderansicht
+unten_6;PWR1;320.0;22.1;24.2;Vorderansicht
+unten_6_M3_links_oben;PWR1;310.5;34.1;3.3;Vorderansicht
+unten_6_M3_rechts_unten;PWR1;329.5;10.100000000000001;3.3;Vorderansicht
+unten_7;PWR2;366.0;22.1;24.2;Vorderansicht
+unten_7_M3_links_oben;PWR2;356.5;34.1;3.3;Vorderansicht
+unten_7_M3_rechts_unten;PWR2;375.5;10.100000000000001;3.3;Vorderansicht
+unten_8;AUX;430.0;22.1;24.2;Vorderansicht
+unten_8_M3_links_oben;AUX;420.5;34.1;3.3;Vorderansicht
+unten_8_M3_rechts_unten;AUX;439.5;10.100000000000001;3.3;Vorderansicht
+oben_1;RADIO1 TX;48.0;63.1;24.2;Vorderansicht
+oben_1_M3_links_oben;RADIO1 TX;38.5;75.1;3.3;Vorderansicht
+oben_1_M3_rechts_unten;RADIO1 TX;57.5;51.1;3.3;Vorderansicht
+oben_2;RADIO1 RX;94.0;63.1;24.2;Vorderansicht
+oben_2_M3_links_oben;RADIO1 RX;84.5;75.1;3.3;Vorderansicht
+oben_2_M3_rechts_unten;RADIO1 RX;103.5;51.1;3.3;Vorderansicht
+oben_3;RADIO2 TX;158.0;63.1;24.2;Vorderansicht
+oben_3_M3_links_oben;RADIO2 TX;148.5;75.1;3.3;Vorderansicht
+oben_3_M3_rechts_unten;RADIO2 TX;167.5;51.1;3.3;Vorderansicht
+oben_4;RADIO2 RX;204.0;63.1;24.2;Vorderansicht
+oben_4_M3_links_oben;RADIO2 RX;194.5;75.1;3.3;Vorderansicht
+oben_4_M3_rechts_unten;RADIO2 RX;213.5;51.1;3.3;Vorderansicht
+oben_5;DUP TX;274.0;63.1;24.2;Vorderansicht
+oben_5_M3_links_oben;DUP TX;264.5;75.1;3.3;Vorderansicht
+oben_5_M3_rechts_unten;DUP TX;283.5;51.1;3.3;Vorderansicht
+oben_6;DUP RX;320.0;63.1;24.2;Vorderansicht
+oben_6_M3_links_oben;DUP RX;310.5;75.1;3.3;Vorderansicht
+oben_6_M3_rechts_unten;DUP RX;329.5;51.1;3.3;Vorderansicht
+oben_7;DUP ANT;366.0;63.1;24.2;Vorderansicht
+oben_7_M3_links_oben;DUP ANT;356.5;75.1;3.3;Vorderansicht
+oben_7_M3_rechts_unten;DUP ANT;375.5;51.1;3.3;Vorderansicht
+oben_8;AUX RF;430.0;63.1;24.2;Vorderansicht
+oben_8_M3_links_oben;AUX RF;420.5;75.1;3.3;Vorderansicht
+oben_8_M3_rechts_unten;AUX RF;439.5;51.1;3.3;Vorderansicht
+Rack;Langloch 10 x 6.6;8.75;5.95;;Vorderansicht
+Rack;Langloch 10 x 6.6;8.75;82.15;;Vorderansicht
+Rack;Langloch 10 x 6.6;473.85;5.95;;Vorderansicht
+Rack;Langloch 10 x 6.6;473.85;82.15;;Vorderansicht
+Verbindung;M3;233.3;14.0;3.3;Vorderansicht
+Verbindung;M3;233.3;44.0;3.3;Vorderansicht
+Verbindung;M3;233.3;74.0;3.3;Vorderansicht
+Verbindung;M3;249.3;14.0;3.3;Vorderansicht
+Verbindung;M3;249.3;44.0;3.3;Vorderansicht
+Verbindung;M3;249.3;74.0;3.3;Vorderansicht
