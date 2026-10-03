@@ -140,3 +140,11 @@ Ein Backend-Dienst gilt erst als vollständig, wenn:
 Die Referenzimplementierung liegt unter `system-backend/shared/web-ui/`. Sie enthält Design-Tokens, responsive Grundkomponenten, Statusanzeige, JSON-API-Client, Bestätigungsdialoge, Toasts und i18n-Basistexte. Ein Dienst darf die Assets einbetten oder bei der Installation kopieren; ein separater Frontend-Container oder Node.js-Produktionsserver bleibt unzulässig.
 
 Die Migration bestehender WebUIs erfolgt schrittweise. Fachfunktionen, Notfallbedienung und dienstspezifische Diagnose dürfen nicht zugunsten optischer Vereinheitlichung entfernt werden.
+
+## Gemeinsames NetCore-Design
+
+Der Branch `feat/netcore-dashboard-design` integriert das freigegebene helle Design in alle 29 vorhandenen Dienst-WebUIs, einschließlich der eigenständigen Legacy-Oberflächen. Navigation, Tabellen, Formulare und Dialoge verwenden dieselben Grundlagen wie das Basisstations-Dashboard. Die tatsächlichen Fachseiten und Zugangsmodi des Dienstes bestimmen den Seitenumfang; die oben beschriebenen langfristigen Pflichtbereiche und zentralen Rollen werden durch eine optische Migration nicht automatisch implementiert.
+
+Das gemeinsame Bundle liegt unter `system-backend/shared/web-ui/assets/service-design.*`. Rust bettet es mit dem dependency-freien Renderer `service-design.rs` ein. Für installierte Python-Einzeldateien und statische Seiten erzeugen die `tools/embed_*service_design.py`-Skripte die entsprechenden Bundles während der Entwicklung. Die Produktion braucht dafür keine Generatoren und keinen Zugriff auf diesen Checkout. Der Original-Logo-PNG wird unverändert eingebettet.
+
+Installation, Dienstzuordnung und Rückweg: [DIENST-WEBUI-DESIGN-UPDATE.md](DIENST-WEBUI-DESIGN-UPDATE.md).

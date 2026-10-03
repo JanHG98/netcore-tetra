@@ -2,7 +2,7 @@
 
 Die Basisstation verwendet eine gemeinsame helle Oberfläche mit weißen Arbeitsflächen, kühlem graublauem Hintergrund, dunkler Schrift und blauem Aktionsakzent. Die Hauptnavigation liegt horizontal über den jeweiligen Bereichsseiten. Das vom Betreiber gelieferte Logo wird unverändert als PNG eingebettet; die Darstellung im Kopf ordnet dessen vorhandenes Zeichen und Wortmarke über CSS an.
 
-Die semantischen Farben, Abstände und Komponenten liegen in `crates/tetra-entities/src/net_dashboard/ui/netcore.css`. Diese Datei beschreibt das gemeinsame Grundprinzip für spätere Oberflächen der zentralen Dienste. Dieser Branch ändert zunächst die Basisstation. Die vorhandenen dunklen und blauen Themes sowie Lesbarkeit und Touchbedienung bleiben verfügbar.
+Die semantischen Farben, Abstände und Komponenten liegen in `crates/tetra-entities/src/net_dashboard/ui/netcore.css`. Das gemeinsame Grundprinzip gilt auch für die Dienstoberflächen in `system-backend/shared/web-ui/`. Dieser Branch enthält Basisstation und alle vorhandenen Dienst-WebUIs; der Dienst-Rollout steht in [DIENST-WEBUI-DESIGN-UPDATE.md](DIENST-WEBUI-DESIGN-UPDATE.md). Die vorhandenen dunklen und blauen Themes sowie Lesbarkeit und Touchbedienung bleiben verfügbar.
 
 ## Ansichten
 

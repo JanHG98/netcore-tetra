@@ -24,3 +24,6 @@ tokio-tungstenite = "0.29.0"
 
 [build-dependencies]
 cc = "1"
+
+# This legacy component is built and packaged independently of the NetCore workspace.
+[workspace]

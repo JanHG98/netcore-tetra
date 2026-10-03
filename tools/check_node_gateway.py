@@ -17,7 +17,7 @@ required = {
     "backend websocket": (ROOT / "system-backend/node-gateway/src/ws.rs", "handle_backend_websocket"),
     "compatibility marker": (ROOT / "system-backend/node-gateway/src/ws.rs", '"x-netcore-control-room"'),
     "gateway marker": (ROOT / "system-backend/node-gateway/src/ws.rs", '"x-netcore-node-gateway"'),
-    "webui warning": (ROOT / "system-backend/node-gateway/src/http.rs", "OFFENER TESTMODUS"),
+    "webui warning": (ROOT / "system-backend/node-gateway/web-ui/index.html", "OFFENER TESTMODUS"),
     "health live": (ROOT / "system-backend/node-gateway/src/http.rs", '"/health/live"'),
     "metrics": (ROOT / "system-backend/node-gateway/src/http.rs", '"/metrics"'),
     "core service API": (ROOT / "system-backend/node-gateway/src/http.rs", '"/api/v1/core-services"'),

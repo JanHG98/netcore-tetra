@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NetCore Packet Core</title>
+<style>
+/* Dienstansichten ergänzen die gemeinsame NetCore-Oberfläche. */
+.wrap{display:grid;gap:18px}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:14px;margin:18px 0}.toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:14px 0}.toolbar>h2{margin-right:auto}.toolbar>label{flex:1 1 200px}.toolbar>label input{width:100%}.panel{min-width:0}.btn{display:inline-flex;align-items:center;justify-content:center}label{display:grid;gap:5px}dialog{width:94%;max-width:800px}h1,h2,h3{margin:0 0 12px}.pill,.tag{display:inline-block}.core-editor form{min-width:0}
+
+.core-nav{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px 26px;background:var(--panel,#fff);border-bottom:1px solid var(--line,#dbe5f2)}
+.core-nav button{border:0;border-radius:0;background:transparent;color:var(--muted,#425779);padding:14px 12px;box-shadow:none}
+.core-nav button.active{color:var(--accent,#2463eb);border-bottom:2px solid var(--accent,#2463eb)}
+.core-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(300px,1fr);gap:18px;align-items:start}
+.core-layout>.panel{min-width:0;margin-top:0}.core-layout .core-wide{grid-column:1/-1}
+.core-stack{display:grid;gap:18px;min-width:0}.core-detail{align-self:start;position:sticky;top:160px}
+.core-detail dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:18px 0}.core-detail dt{font-size:12px;color:var(--muted,#425779);margin-bottom:5px}.core-detail dd{margin:0;overflow-wrap:anywhere;font-weight:650}.core-detail .wide{grid-column:1/-1}
+.core-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.core-selected{background:var(--selected,#e8f2ff)}
+.core-row-title{padding:0!important;border:0!important;background:transparent!important;color:var(--text,#0b1832)!important;box-shadow:none!important;font:inherit!important;font-weight:750!important;text-align:left;cursor:pointer}
+.core-empty{color:var(--muted,#425779);padding:18px 0}.core-note{color:var(--muted,#425779);font-size:13px;line-height:1.5}.core-info{border:1px solid var(--line,#dbe5f2);background:var(--panel2,#f3f7ff);border-radius:10px;padding:14px;margin:14px 0}
+[data-core-view][hidden]{display:none!important}.view{display:none}.view.active{display:block}.tablewrap{overflow:auto}.tablewrap>table{min-width:900px}.core-detail .tablewrap>table{min-width:380px}form.grid,.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.wide{grid-column:1/-1}.form{display:flex;flex-wrap:wrap;gap:10px}.form label{flex:1 1 160px;display:grid;gap:5px}.form button{align-self:end}
+label:has(input[type=checkbox]){display:flex;align-items:center;gap:9px}input[type=checkbox]{width:auto;min-width:16px}pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:420px;overflow:auto}.small{font-size:12px}.mode{display:inline-flex;padding:5px 10px;border-radius:99px;background:var(--panel2,#e9f1ff);font-size:13px}
+@media(max-width:1050px){.core-layout{grid-template-columns:1fr!important}.core-detail{position:static}.core-layout .core-wide{grid-column:auto}}
+@media(max-width:640px){.core-nav{padding:6px 12px}.core-nav button{padding:12px 8px}form.grid,.grid{grid-template-columns:1fr}.wide{grid-column:auto}.core-detail dl{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<nav class="tabs core-nav" aria-label="Dienstansichten"><button class="active" onclick="show('overview',this)">Übersicht</button><button onclick="show('contexts',this)">PDP Contexts</button><button onclick="show('bearers',this)">PDCH &amp; Flow</button><button onclick="show('edge',this)">Edge/API</button><button onclick="show('events',this)">Ereignisse</button><button onclick="show('config',this)">Konfiguration</button></nav>
+<header><div style="display:flex;align-items:center;flex-wrap:wrap">
+<h1>NetCore-Tetra · Packet Core</h1>
+<span id="mode" class="mode">…</span>
+</div>
+<div id="gateway" class="muted">verbinde …</div>
+<div class="warn">
+<b>OPEN LAB:</b> keine Tokens, keine Anmeldung, kein TLS. Jeder erreichbare Client kann PDP-Kontexte ändern oder trennen.</div>
+<p class="core-note">Shadow spiegelt TBS-Snapshots. Manuelle Kontext-Aktionen können den Funkbetrieb verändern.</p></header><main>
+<section id="overview" class="view active"><div id="cards" class="cards"></div>
+<div class="panel">
+<h2>Knoten</h2>
+<div class="tablewrap"><table>
+<thead><tr>
+<th>TBS</th>
+<th>Status</th>
+<th>Packet Data</th>
+<th>Gateway</th>
+<th>Contexts</th>
+<th>Bearer</th>
+<th>Verkehr UL/DL</th>
+</tr></thead>
+<tbody id="nodeRows"></tbody>
+</table></div>
+</div>
+<div class="panel">
+<h2>Aktive Reassembly</h2>
+<div class="tablewrap"><table>
+<thead><tr>
+<th>ID</th>
+<th>TBS</th>
+<th>ISSI/NSAPI</th>
+<th>Richtung</th>
+<th>Fragmente</th>
+<th>Bytes</th>
+<th>Gesamt</th>
+<th>Timeout</th>
+</tr></thead>
+<tbody id="reassemblyRows"></tbody>
+</table></div>
+</div></section>
+<section id="contexts" class="view"><div class="core-layout">
+<div class="panel">
+<div class="toolbar">
+<h2 style="margin-right:auto">PDP Contexts / NSAPI</h2>
+<button class="primary" onclick="downlinkDialog.showModal()">N-PDU Downlink</button><button onclick="refresh()">Aktualisieren</button>
+</div>
+<div class="tablewrap"><table>
+<thead><tr>
+<th>ISSI / NSAPI</th>
+<th>TBS / Anchor</th>
+<th>IPv4</th>
+<th>Zustand</th>
+<th>SNEI</th>
+<th>MTU / Prio</th>
+<th>Queue</th>
+<th>Traffic</th>
+<th>Aktionen</th>
+</tr></thead>
+<tbody id="contextRows"></tbody>
+</table></div>
+</div>
+<aside class="panel core-detail" id="coreContextDetail"><h2>PDP-Kontextdetails</h2>
+<p class="core-empty">Eintrag auswählen, um Details anzuzeigen.</p></aside>
+</div></section>
+<section id="bearers" class="view"><div class="panel">
+<h2>PDCH Bearer</h2>
+<div class="tablewrap"><table>
+<thead><tr>
+<th>TBS</th>
+<th>ISSI</th>
+<th>Carrier / TS</th>
+<th>NSAPI</th>
+<th>Aktiv</th>
+<th>Alter</th>
+<th>Idle</th>
+</tr></thead>
+<tbody id="bearerRows"></tbody>
+</table></div>
+</div>
+<div class="panel">
+<h2>Edge-Actions / Flow-Control</h2>
+<div class="tablewrap"><table>
+<thead><tr>
+<th>Seq</th>
+<th>TBS</th>
+<th>Context</th>
+<th>Typ</th>
+<th>Status</th>
+<th>Versuche</th>
+<th>Erstellt</th>
+<th>Fehler</th>
+</tr></thead>
+<tbody id="actionRows"></tbody>
+</table></div>
+</div></section>
+<section id="edge" class="view"><div class="panel">
+<div class="toolbar">
+<h2 style="margin-right:auto">Edge-Schnittstelle</h2>
+<button class="primary" onclick="edgeDialog.showModal()">Testevent einspeisen</button>
+</div>
+<p>Protokoll: <code>netcore-packet-edge-v1</code>. Der direkte Edge-Kanal kann Context-Aktivierung, READY/STANDBY, Modify, Reconnect, Deactivation, Bearer und Fragmente transportieren. Im <b>shadow</b>-Modus werden vorhandene TBS-Snapshots gespiegelt; im <b>authoritative</b>-Modus erzeugt der Core echte Edge-Actions.</p>
+<pre>POST /api/v1/edge/events
+GET  /api/v1/actions?node_id=tbs-a&amp;after=0
+POST /api/v1/actions/{id}/ack
+POST /api/v1/downlink</pre>
+</div>
+<div class="panel">
+<h2>Reassemblierte N-PDUs</h2>
+<div class="tablewrap"><table>
+<thead><tr>
+<th>Zeit</th>
+<th>TBS</th>
+<th>ISSI/NSAPI</th>
+<th>Richtung</th>
+<th>Datagramm</th>
+<th>Bytes</th>
+<th>Aktion</th>
+</tr></thead>
+<tbody id="npduRows"></tbody>
+</table></div>
+</div></section>
+<section id="events" class="view"><div class="panel">
+<h2>Ereignisse &amp; Audit</h2>
+<pre id="eventLog"></pre>
+</div></section>
+<section id="config" class="view"><div class="panel">
+<h2>Aktive Konfiguration</h2>
+<pre id="configDump"></pre>
+<p><a href="/openapi.json" target="_blank">OpenAPI</a> · <a href="/metrics" target="_blank">Prometheus Metrics</a> · <a href="/api/v1/export.json">JSON-Export</a></p>
+</div></section>
+</main>
+<dialog id="downlinkDialog" class="core-editor"><form id="downlinkForm" class="grid" onsubmit="sendDownlink(event)">
+<h2 class="wide">N-PDU für Teilnehmer einplanen</h2>
+<label>ISSI<input name="issi" type="number" min="1" max="16777215" required></label><label>NSAPI<input name="nsapi" type="number" min="1" max="14" required></label><label>Service<select name="acknowledged"><option value="false">SN-UNITDATA</option>
+<option value="true">SN-DATA</option></select></label><label>Priorität<input name="priority" type="number" min="0" max="7" value="4"></label><label class="wide">N-PDU als Hex<textarea name="payload_hex" rows="7" required placeholder="4500001c..."></textarea></label><div class="wide toolbar">
+<button class="primary" type="submit">Fragmentieren &amp; einplanen</button><button type="button" onclick="downlinkDialog.close()">Abbrechen</button>
+</div>
+</form></dialog>
+<dialog id="edgeDialog" class="core-editor"><form id="edgeForm" onsubmit="sendEdge(event)">
+<h2>Edge-Testevent</h2>
+<p class="muted">Beliebiges JSON gemäß <code>EdgeEventInput</code>. Beispiel: Context-Aktivierung.</p>
+<textarea name="json" rows="18" style="width:100%">{
+  "kind": "context_activated",
+  "node_id": "tbs-lab-01",
+  "issi": 4010001,
+  "nsapi": 1,
+  "ipv4": "10.0.0.2",
+  "primary_nsapi": null,
+  "snei": 1001,
+  "mtu": 480,
+  "priority": 4
+}</textarea><div class="toolbar">
+<button class="primary" type="submit">Senden</button><button type="button" onclick="edgeDialog.close()">Abbrechen</button>
+</div>
+</form></dialog>
+<dialog id="corePayloadDialog" class="core-editor"><h2 id="corePayloadTitle">N-PDU</h2><pre id="corePayloadBody"></pre><button type="button" onclick="document.getElementById('corePayloadDialog').close()">Schließen</button></dialog><script>
+// Die Navigation schaltet ausschließlich vorhandene Dienstbereiche um.
+function coreView(view){document.querySelectorAll('[data-core-view]').forEach(p=>{p.hidden=!p.dataset.coreView.split(' ').includes(view)});document.querySelectorAll('[data-core-nav]').forEach(b=>{const active=b.dataset.coreNav===view;b.classList.toggle('active',active);b.setAttribute('aria-current',active?'page':'false')});}
+document.querySelectorAll('[data-core-nav]').forEach(b=>b.addEventListener('click',()=>coreView(b.dataset.coreNav)));
+function coreField(label,value,wide=false){return `<div${wide?' class="wide"':''}><dt>${esc(label)}</dt><dd>${esc(value??'–')}</dd></div>`}
+function coreButton(label,action,id,extra=''){return `<button type="button" data-core-action="${esc(action)}" data-core-id="${esc(id)}" ${extra}>${esc(label)}</button>`}
+document.addEventListener('click',event=>{const b=event.target.closest('[data-core-action]');if(!b)return;const handler=window.coreActions?.[b.dataset.coreAction];if(handler)handler(b.dataset.coreId,b);});
+window.coreActions={};
+let coreSelectedContext=null;
+
+let contexts=[],nodes=[],bearers=[],actions=[],reassemblies=[],npdus=[],events=[];const downlinkDialog=document.getElementById('downlinkDialog'),edgeDialog=document.getElementById('edgeDialog');
+function show(id,b){document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');b.classList.add('active')}
+async function api(path,opt){const r=await fetch(path,opt);if(!r.ok&&r.status!==204){let e={};try{e=await r.json()}catch{}throw new Error(e.error||r.statusText)}return r.status===204?null:r.json()}
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function actionKind(a){return a&&a.payload&&a.payload.kind||'?'}
+async function refresh(){try{const [s,n,c,b,a,r,p,e,cfg]=await Promise.all([api('/api/v1/status'),api('/api/v1/nodes'),api('/api/v1/contexts'),api('/api/v1/bearers'),api('/api/v1/actions?limit=500'),api('/api/v1/reassemblies'),api('/api/v1/npdu-outbox?limit=200'),api('/api/v1/events?limit=160'),api('/api/v1/config')]);nodes=n;contexts=c;bearers=b;actions=a;reassemblies=r;npdus=p;events=e;document.getElementById('mode').textContent=s.mode.toUpperCase();document.getElementById('gateway').innerHTML=s.node_gateway_connected?'<span class="ok">● Node Gateway verbunden</span>':'<span class="bad">● Node Gateway getrennt</span>';document.getElementById('cards').innerHTML=[['Contexts',s.contexts_total],['READY',s.contexts_ready],['STANDBY',s.contexts_standby],['Suspended',s.contexts_suspended],['PDCH Bearer',s.bearers_active],['Actions offen',s.actions_pending],['Reassembly',s.reassemblies_active],['N-PDU Outbox',s.npdu_outbox],['Queue Pakete',s.queued_packets],['Queue Bytes',s.queued_bytes]].map(x=>`<div class="card"><div class="muted">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');render();document.getElementById('configDump').textContent=JSON.stringify(cfg,null,2)}catch(e){document.getElementById('gateway').innerHTML='<span class="bad">UI-Fehler: '+esc(e.message)+'</span>'}}
+function render(){document.getElementById('nodeRows').innerHTML=nodes.map(n=>`<tr><td>${esc(n.station_name)}<br><span class="muted">${esc(n.node_id)}</span></td><td>${n.connected?'<span class="ok">online</span>':'<span class="bad">offline</span>'}</td><td>${n.packet_data_capable?'ja':'nein'} / Multi ${n.multi_pdch_capable?'ja':'nein'}</td><td>${n.gateway_running?'<span class="ok">UP</span>':'DOWN'} ${esc(n.interface_name||'')}<br>${esc(n.gateway_address||'')}</td><td>${n.active_contexts}</td><td>${n.active_bearers}/${n.bearer_capacity}</td><td>${n.packets_from_mobile}/${n.packets_to_mobile}<br><span class="muted">${n.bytes_from_mobile}/${n.bytes_to_mobile} B</span></td></tr>`).join('');document.getElementById('contextRows').innerHTML=contexts.map(c=>`<tr><td>${coreButton(c.issi,'context-select',c.id,'class="core-row-title"')} / ${c.nsapi}<br><span class="small muted">${esc(c.source)}</span></td><td>${esc(c.node_id)}<br><span class="muted">Anchor ${esc(c.anchor_node_id)}</span></td><td>${esc(c.ipv4)}</td><td><span class="pill">${esc(c.state)}</span><br>${c.available?'verfügbar':'gesperrt'} / ${c.usage_active?'aktiv':'inaktiv'}</td><td>${c.snei??'-'}</td><td>${c.mtu} / P${c.priority}</td><td>${c.queued_packets} / ${c.queued_bytes} B</td><td>UL ${c.packets_up}/${c.bytes_up} B<br>DL ${c.packets_down}/${c.bytes_down} B</td><td><button onclick="ctx('${c.id}','wake')">Wake</button> <button onclick="ctx('${c.id}','end-of-data')">EoD</button> <button onclick="ctx('${c.id}','suspend')">Sperren</button> <button onclick="ctx('${c.id}','resume')">Freigeben</button> <button onclick="ctx('${c.id}','flush')">Queue leeren</button> <button class="danger" onclick="ctx('${c.id}','deactivate')">Trennen</button></td></tr>`).join('');document.getElementById('bearerRows').innerHTML=bearers.map(b=>`<tr><td>${esc(b.node_id)}</td><td>${b.issi}</td><td>${b.carrier_num} / LTS ${b.logical_ts} / Air ${b.air_ts}</td><td>${b.nsapis.join(', ')}</td><td>${b.active?'ja':'nein'}</td><td>${b.age_secs}s</td><td>${b.idle_secs}s</td></tr>`).join('');document.getElementById('actionRows').innerHTML=actions.slice().reverse().map(a=>`<tr><td>${a.sequence}</td><td>${esc(a.node_id)}</td><td>${esc(a.context_id||'')}</td><td>${esc(actionKind(a))}</td><td>${esc(a.state)}</td><td>${a.attempts}/${a.max_attempts}</td><td>${esc(a.created_at)}</td><td>${esc(a.last_error||'')}</td></tr>`).join('');document.getElementById('reassemblyRows').innerHTML=reassemblies.map(r=>`<tr><td>${esc(r.datagram_id)}</td><td>${esc(r.node_id)}</td><td>${r.issi}/${r.nsapi}</td><td>${esc(r.direction)}</td><td>${r.fragment_count}</td><td>${r.received_bytes}</td><td>${r.total_len??'?'}</td><td>${esc(r.expires_at)}</td></tr>`).join('');document.getElementById('npduRows').innerHTML=npdus.map(n=>`<tr><td>${esc(n.created_at)}</td><td>${esc(n.node_id)}</td><td>${n.issi}/${n.nsapi}</td><td>${esc(n.direction)}</td><td>${esc(n.datagram_id)}</td><td>${n.payload.length}</td><td><button onclick="showNpdu('${n.id}')">Hex</button> <button onclick="dropNpdu('${n.id}')">Erledigt</button></td></tr>`).join('');renderContextDetail();document.getElementById('eventLog').textContent=events.map(e=>`${e.timestamp} #${e.sequence} ${e.kind} ${e.node_id||''} ${e.context_id||''} ${JSON.stringify(e.detail)}`).join('\n')}
+async function ctx(id,action){if(action==='deactivate'&&!confirm('PDP Context wirklich trennen?'))return;try{await api(`/api/v1/contexts/${encodeURIComponent(id)}/${action}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reason:'WebUI open-lab action'})});refresh()}catch(e){alert(e.message)}}
+async function sendDownlink(e){e.preventDefault();const f=new FormData(e.target),p={issi:Number(f.get('issi')),nsapi:Number(f.get('nsapi')),payload_hex:String(f.get('payload_hex')),acknowledged:f.get('acknowledged')==='true',priority:Number(f.get('priority'))};try{await api('/api/v1/downlink',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});downlinkDialog.close();e.target.reset();refresh()}catch(e){alert(e.message)}}
+async function sendEdge(e){e.preventDefault();try{const p=JSON.parse(new FormData(e.target).get('json'));await api('/api/v1/edge/events',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});edgeDialog.close();refresh()}catch(e){alert(e.message)}}
+function showNpdu(id){const n=npdus.find(x=>x.id===id);if(!n)return;document.getElementById('corePayloadTitle').textContent='N-PDU '+n.datagram_id;document.getElementById('corePayloadBody').textContent=n.payload.map(x=>x.toString(16).padStart(2,'0')).join('');document.getElementById('corePayloadDialog').showModal()}
+async function dropNpdu(id){try{await api('/api/v1/npdu-outbox/'+id,{method:'DELETE'});refresh()}catch(e){alert(e.message)}}
+
+function renderContextDetail(){const c=contexts.find(x=>x.id===coreSelectedContext)||contexts[0],el=document.getElementById('coreContextDetail');if(!c){el.innerHTML='<h2>PDP-Kontextdetails</h2><p class="core-empty">Keine PDP-Kontexte vorhanden.</p>';return}coreSelectedContext=c.id;el.innerHTML=`<h2>ISSI ${c.issi} / NSAPI ${c.nsapi}</h2><p>${esc(c.state)} · ${c.available?'Verfügbar':'Gesperrt'}</p><dl>${coreField('IPv4',c.ipv4)}${coreField('MTU / Priorität',c.mtu+' / '+c.priority)}${coreField('Serving Node',c.node_id,true)}${coreField('Anchor',c.anchor_node_id,true)}${coreField('SNEI',c.snei)}${coreField('Queue',c.queued_packets+' / '+c.queued_bytes+' B')}${coreField('Uplink',c.packets_up+' / '+c.bytes_up+' B')}${coreField('Downlink',c.packets_down+' / '+c.bytes_down+' B')}${coreField('Carrier / LTS', (c.carrier_num??'–')+' / '+(c.logical_ts??'–'))}${coreField('Letzte Aktivität',c.last_activity_at)}${coreField('Letzter Fehler',c.last_error||'Keiner',true)}</dl><p class="core-info">Auch im Shadow-Modus können manuelle Kontext-Aktionen den Funkbetrieb verändern.</p><div class="core-actions">${['wake','end-of-data','suspend','resume','flush','deactivate'].map((a,i)=>coreButton(['Wake','End of Data','Sperren','Freigeben','Queue leeren','Trennen'][i],'context-'+a,c.id,a==='deactivate'?'class="danger"':'')).join('')}</div>`;document.querySelectorAll('#contextRows tr').forEach(r=>r.classList.toggle('core-selected',r.querySelector('[data-core-id]')?.dataset.coreId===c.id));}
+window.coreActions['context-select']=id=>{coreSelectedContext=id;renderContextDetail()};['wake','end-of-data','suspend','resume','flush','deactivate'].forEach(a=>window.coreActions['context-'+a]=id=>ctx(id,a));
+
+refresh();setInterval(refresh,4000);
+</script>
+</body>
+</html>

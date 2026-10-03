@@ -26,6 +26,7 @@ REQUIRED = [
     "system-backend/application-gateway/install/uninstall.sh",
     "system-backend/application-gateway/tests/application_gateway_reference.py",
     "Docs/SWMI_CORE_1_PACKAGE_N_APPLICATION_GATEWAY.md",
+    "system-backend/application-gateway/web-ui/index.html",
 ]
 MARKERS = {
     "system-backend/application-gateway/src/main.rs": "worker::spawn_worker",
@@ -37,7 +38,7 @@ MARKERS = {
     "system-backend/application-gateway/src/worker.rs": "send_piper",
     "system-backend/application-gateway/src/worker.rs#2": "validate_wav",
     "system-backend/application-gateway/src/http.rs": "/api/v1/webhooks/",
-    "system-backend/application-gateway/src/http.rs#2": "OPEN LAB",
+    "system-backend/application-gateway/web-ui/index.html": "OPEN LAB",
     "system-backend/services.toml": "management_port = 8220",
     "Cargo.toml": "system-backend/application-gateway",
 }
@@ -169,7 +170,7 @@ def main() -> int:
         error = rust_balanced(ROOT / relative)
         if error: errors.append(f"{relative}: {error}")
 
-    webui = (ROOT / "system-backend/application-gateway/src/http.rs").read_text()
+    webui = (ROOT / "system-backend/application-gateway/web-ui/index.html").read_text()
     match = re.search(r"<script>(.*)</script>", webui, flags=re.S)
     if not match:
         errors.append("Application Gateway WebUI JavaScript not found")

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NetCore Media Switch</title>
+<style>
+/* Dienstansichten ergänzen die gemeinsame NetCore-Oberfläche. */
+.wrap{display:grid;gap:18px}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:14px;margin:18px 0}.toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:14px 0}.toolbar>h2{margin-right:auto}.toolbar>label{flex:1 1 200px}.toolbar>label input{width:100%}.panel{min-width:0}.btn{display:inline-flex;align-items:center;justify-content:center}label{display:grid;gap:5px}dialog{width:94%;max-width:800px}h1,h2,h3{margin:0 0 12px}.pill,.tag{display:inline-block}.core-editor form{min-width:0}
+
+.core-nav{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px 26px;background:var(--panel,#fff);border-bottom:1px solid var(--line,#dbe5f2)}
+.core-nav button{border:0;border-radius:0;background:transparent;color:var(--muted,#425779);padding:14px 12px;box-shadow:none}
+.core-nav button.active{color:var(--accent,#2463eb);border-bottom:2px solid var(--accent,#2463eb)}
+.core-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(300px,1fr);gap:18px;align-items:start}
+.core-layout>.panel{min-width:0;margin-top:0}.core-layout .core-wide{grid-column:1/-1}
+.core-stack{display:grid;gap:18px;min-width:0}.core-detail{align-self:start;position:sticky;top:160px}
+.core-detail dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:18px 0}.core-detail dt{font-size:12px;color:var(--muted,#425779);margin-bottom:5px}.core-detail dd{margin:0;overflow-wrap:anywhere;font-weight:650}.core-detail .wide{grid-column:1/-1}
+.core-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.core-selected{background:var(--selected,#e8f2ff)}
+.core-row-title{padding:0!important;border:0!important;background:transparent!important;color:var(--text,#0b1832)!important;box-shadow:none!important;font:inherit!important;font-weight:750!important;text-align:left;cursor:pointer}
+.core-empty{color:var(--muted,#425779);padding:18px 0}.core-note{color:var(--muted,#425779);font-size:13px;line-height:1.5}.core-info{border:1px solid var(--line,#dbe5f2);background:var(--panel2,#f3f7ff);border-radius:10px;padding:14px;margin:14px 0}
+[data-core-view][hidden]{display:none!important}.view{display:none}.view.active{display:block}.tablewrap{overflow:auto}.tablewrap>table{min-width:650px}.core-detail .tablewrap>table{min-width:380px}form.grid,.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.wide{grid-column:1/-1}.form{display:flex;flex-wrap:wrap;gap:10px}.form label{flex:1 1 160px;display:grid;gap:5px}.form button{align-self:end}
+label:has(input[type=checkbox]){display:flex;align-items:center;gap:9px}input[type=checkbox]{width:auto;min-width:16px}pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:420px;overflow:auto}.small{font-size:12px}.mode{display:inline-flex;padding:5px 10px;border-radius:99px;background:var(--panel2,#e9f1ff);font-size:13px}
+@media(max-width:1050px){.core-layout{grid-template-columns:1fr!important}.core-detail{position:static}.core-layout .core-wide{grid-column:auto}}
+@media(max-width:640px){.core-nav{padding:6px 12px}.core-nav button{padding:12px 8px}form.grid,.grid{grid-template-columns:1fr}.wide{grid-column:auto}.core-detail dl{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<nav class="core-nav" aria-label="Dienstansichten"><button type="button" data-core-nav="sessions" class="active" aria-current="page">Sessions</button><button type="button" data-core-nav="streams" class="" aria-current="false">Streams</button><button type="button" data-core-nav="buffers" class="" aria-current="false">Jitter-Puffer</button><button type="button" data-core-nav="nodes" class="" aria-current="false">Basisstationen</button><button type="button" data-core-nav="inject" class="" aria-current="false">Testframe</button><button type="button" data-core-nav="taps" class="" aria-current="false">Media-Taps</button><button type="button" data-core-nav="events" class="" aria-current="false">Ereignisse</button></nav><div class="lab">⚠ OPEN LAB – keine Anmeldung, keine Tokens, kein TLS. Jeder erreichbare Client darf Medienströme stummschalten, puffern und Testframes einspeisen.</div>
+<header><div>
+<h1>Media Switch</h1>
+<div class="muted">Netzweites Routing gepackter TETRA-Sprachframes, Jitter-Puffer und Media-Taps</div>
+</div>
+<div id="links">Verbindungen …</div></header><main class="wrap"><section class="cards" id="cards"></section><div class="core-layout">
+<section class="panel" data-core-view="sessions"><h2>Media-Sessions</h2>
+<div class="tablewrap"><table>
+<thead><tr>
+<th>Session</th>
+<th>Typ / Zustand</th>
+<th>Floor</th>
+<th>Streams</th>
+<th>Frames</th>
+<th>Aktion</th>
+</tr></thead>
+<tbody id="sessionRows"></tbody>
+</table></div></section><aside class="panel core-detail" id="coreMediaDetail" data-core-view="sessions"><h2>Media-Session</h2>
+<p class="core-empty">Eintrag auswählen, um Details anzuzeigen.</p></aside><section class="panel core-wide" data-core-view="sessions streams"><h2>Streams / TBS-Legs</h2>
+<div class="tablewrap"><table>
+<thead><tr>
+<th>Session</th>
+<th>Node / TS</th>
+<th>Status</th>
+<th>RX / TX / Drop</th>
+<th>Sequenz</th>
+<th>Aktion</th>
+</tr></thead>
+<tbody id="streamRows"></tbody>
+</table></div></section><section class="panel core-wide" data-core-view="buffers"><h2>Jitter-Puffer</h2>
+<div class="tablewrap"><table>
+<thead><tr>
+<th>Session</th>
+<th>Ziel</th>
+<th>Frames</th>
+<th>Fällig in</th>
+</tr></thead>
+<tbody id="bufferRows"></tbody>
+</table></div></section><section class="panel core-wide" data-core-view="nodes"><h2>Basisstationen</h2>
+<div class="tablewrap"><table>
+<thead><tr>
+<th>Node</th>
+<th>Zelle</th>
+<th>Online</th>
+<th>Media Bridge</th>
+<th>Frames</th>
+</tr></thead>
+<tbody id="nodeRows"></tbody>
+</table></div></section><section class="panel core-wide" data-core-view="inject"><h2>Testframe einspeisen</h2>
+<div class="muted">35 gepackte Bytes, dezimal und kommasepariert. Diese offene Schnittstelle ist zugleich der vorbereitete Audio-Player-Eingang.</div>
+<div class="toolbar">
+<label>Session-ID<input id="injectSession" placeholder="Session-ID"></label><label>Ziel-Node optional<input id="injectNode" placeholder="Ziel-Node optional"></label><label>Ziel-TS optional<input id="injectTs" type="number" min="1" max="7" placeholder="Ziel-TS optional"></label><textarea id="injectPayload" rows="3" placeholder="0,0,0,... exakt 35 Werte"></textarea><button class="primary" onclick="injectFrame()">Einspeisen</button>
+</div></section><section class="panel core-wide" data-core-view="taps"><h2>Media-Taps</h2>
+<pre id="taps" class="muted"></pre></section><section class="panel core-wide" data-core-view="events"><h2>Ereignisse</h2>
+<pre id="events" class="muted"></pre></section>
+</div></main><script>
+// Die Navigation schaltet ausschließlich vorhandene Dienstbereiche um.
+function coreView(view){document.querySelectorAll('[data-core-view]').forEach(p=>{p.hidden=!p.dataset.coreView.split(' ').includes(view)});document.querySelectorAll('[data-core-nav]').forEach(b=>{const active=b.dataset.coreNav===view;b.classList.toggle('active',active);b.setAttribute('aria-current',active?'page':'false')});}
+document.querySelectorAll('[data-core-nav]').forEach(b=>b.addEventListener('click',()=>coreView(b.dataset.coreNav)));
+function coreField(label,value,wide=false){return `<div${wide?' class="wide"':''}><dt>${esc(label)}</dt><dd>${esc(value??'–')}</dd></div>`}
+function coreButton(label,action,id,extra=''){return `<button type="button" data-core-action="${esc(action)}" data-core-id="${esc(id)}" ${extra}>${esc(label)}</button>`}
+document.addEventListener('click',event=>{const b=event.target.closest('[data-core-action]');if(!b)return;const handler=window.coreActions?.[b.dataset.coreAction];if(handler)handler(b.dataset.coreId,b);});
+window.coreActions={};
+let coreSelectedMedia=null;
+let sessions=[],streams=[];const el=id=>document.getElementById(id);async function api(path,opt){const r=await fetch(path,opt);if(!r.ok&&r.status!==204){let e={};try{e=await r.json()}catch{}throw new Error(e.error||r.statusText)}return r.status===204?null:r.json()}function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}function post(path,body){return api(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})})}async function refresh(){try{const[s,se,st,b,n,t,e]=await Promise.all([api('/api/v1/status'),api('/api/v1/sessions'),api('/api/v1/streams'),api('/api/v1/buffers'),api('/api/v1/nodes'),api('/api/v1/taps?limit=30'),api('/api/v1/events?limit=40')]);sessions=se;streams=st;el('links').innerHTML=(s.node_gateway_connected?'<span class="ok">● Gateway</span>':'<span class="bad">● Gateway</span>')+' &nbsp; '+(s.call_control_connected?'<span class="ok">● Call Control</span>':'<span class="bad">● Call Control</span>');el('cards').innerHTML=[['Sessions',s.sessions_active],['Streams',s.streams_active],['Puffer',s.pending_frames],['RX',s.frames_received],['geroutet',s.frames_routed],['gesendet',s.frames_sent],['Drops',s.frames_dropped],['Duplikate',s.duplicate_frames],['Injection',s.frames_injected]].map(x=>`<div class="card"><div class="muted">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');renderSessions();renderStreams();renderMediaDetail();el('bufferRows').innerHTML=b.map(x=>`<tr><td>${esc(x.session_id)}</td><td>${esc(x.target_node_id)} / TS ${x.target_logical_ts}</td><td>${x.queued_frames}</td><td>${x.oldest_due_in_ms} ms</td></tr>`).join('');el('nodeRows').innerHTML=n.map(x=>`<tr><td>${esc(x.node_id)}<br><span class="muted">${esc(x.station_name)}</span></td><td>${x.mcc}/${x.mnc} LA ${x.location_area} CC ${x.colour_code}</td><td>${x.connected&&!x.stale?'<span class="ok">online</span>':'<span class="bad">offline</span>'}</td><td>${x.media_bridge?'ja':'nein'}</td><td>${x.media_frame_count}</td></tr>`).join('');el('taps').textContent=t.map(x=>`${x.timestamp} #${x.seq} ${x.session_id} ${x.source_node_id}/TS${x.source_logical_ts} seq=${x.source_sequence} → ${x.target_count}${x.injected?' INJECT':''}`).join('\n');el('events').textContent=e.map(x=>`${x.timestamp} #${x.seq} ${x.kind} ${x.session_id||''} ${x.node_id||''}`).join('\n')}catch(e){el('links').innerHTML='<span class="bad">UI-Fehler: '+esc(e.message)+'</span>'}}function renderSessions(){el('sessionRows').innerHTML=sessions.map(s=>`<tr><td>${coreButton(s.logical_call_id,'media-select',s.logical_call_id,'class="core-row-title"')}</td><td>${esc(s.kind)} / ${esc(s.phase)}${s.emergency?' / NOTRUF':''}</td><td>${s.floor_holder??'frei'}</td><td>${Object.keys(s.legs||{}).length}</td><td>${s.frames_received} / ${s.frames_routed} / ${s.frames_dropped}</td><td><button class="danger" onclick="flushSession('${s.logical_call_id}')">Puffer leeren</button></td></tr>`).join('')}function renderStreams(){el('streamRows').innerHTML=streams.map(s=>`<tr><td>${esc(s.session_id)}</td><td>${esc(s.node_id)} / TS ${s.logical_ts}<br><span class="muted">Call ${s.local_call_id??'–'} Carrier ${s.carrier_num??'–'}</span></td><td>${esc(s.phase)} ${s.muted?'<span class="bad">STUMM</span>':''}</td><td>${s.rx_frames} / ${s.tx_frames} / ${s.dropped_frames}</td><td>${s.last_sequence??'–'}</td><td><button onclick="muteStream('${s.session_id}','${s.node_id}',${s.logical_ts},${!s.muted})">${s.muted?'Aktivieren':'Stumm'}</button></td></tr>`).join('')}async function muteStream(id,node,ts,muted){try{await post(`/api/v1/sessions/${id}/mute`,{node_id:node,logical_ts:ts,muted});refresh()}catch(e){alert(e.message)}}async function flushSession(id){if(!confirm('Jitter-Puffer dieser Session leeren?'))return;try{await post(`/api/v1/sessions/${id}/flush`,{});refresh()}catch(e){alert(e.message)}}async function injectFrame(){try{const payload=el('injectPayload').value.split(/[\s,;]+/).filter(Boolean).map(Number);await post(`/api/v1/sessions/${encodeURIComponent(el('injectSession').value.trim())}/inject`,{payload,target_node:el('injectNode').value.trim()||null,target_logical_ts:el('injectTs').value?Number(el('injectTs').value):null});refresh()}catch(e){alert(e.message)}}
+function renderMediaDetail(){const s=sessions.find(x=>x.logical_call_id===coreSelectedMedia)||sessions[0],el=document.getElementById('coreMediaDetail');if(!s){el.innerHTML='<h2>Media-Session</h2><p class="core-empty">Keine Media-Sessions vorhanden.</p>';return}coreSelectedMedia=s.logical_call_id;const ss=streams.filter(x=>x.session_id===s.logical_call_id);el.innerHTML=`<h2>${esc(s.logical_call_id)}</h2><p>${esc(s.kind)} · ${esc(s.phase)}${s.emergency?' · NOTRUF':''}</p><dl>${coreField('Floorhalter',s.floor_holder??'Frei')}${coreField('Streams',ss.length)}${coreField('RX-Frames',s.frames_received)}${coreField('Geroutete Frames',s.frames_routed)}${coreField('Drops',s.frames_dropped)}${coreField('TBS-Legs',Object.keys(s.legs||{}).length)}</dl><div class="core-actions">${coreButton('Jitter-Puffer leeren','media-flush',s.logical_call_id,'class="danger"')}</div><h3>Streamstatus</h3>${ss.length?ss.map(x=>`<p>${esc(x.node_id)} / TS ${x.logical_ts} <span class="${x.muted?'bad':'ok'}">${x.muted?'Stumm':'Aktiv'}</span></p>`).join(''):'<p class="core-note">Keine Streams vorhanden.</p>'}`;document.querySelectorAll('#sessionRows tr').forEach(r=>r.classList.toggle('core-selected',r.querySelector('[data-core-id]')?.dataset.coreId===s.logical_call_id));}
+window.coreActions['media-select']=id=>{coreSelectedMedia=id;renderMediaDetail()};window.coreActions['media-flush']=flushSession;
+
+refresh();setInterval(refresh,2000)
+coreView('sessions');
+</script>
+</body>
+</html>

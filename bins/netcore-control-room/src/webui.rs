@@ -3,8 +3,11 @@
 
 // Was: Führt den Arbeitsschritt `index_html` für index html aus.
 // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-pub fn index_html(node_path: &str, ui_path: &str) -> String {
-    format!(
+#[path = "../../../system-backend/shared/web-ui/service-design.rs"]
+mod service_design;
+
+pub fn index_html(node_path: &str, ui_path: &str, auth_enabled: bool) -> String {
+    let html = format!(
         r####"<!doctype html>
 <html lang="de">
 <head>
@@ -12,70 +15,57 @@ pub fn index_html(node_path: &str, ui_path: &str) -> String {
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>NetCore Control Room</title>
   <style>
-    :root {{ color-scheme: dark; --bg:#071019; --panel:#0d1b28; --panel2:#122437; --line:#23415a; --text:#e7f2fa; --muted:#8eacc0; --ok:#45d483; --warn:#ffc857; --bad:#ff6b6b; --info:#62b6ff; }}
+
+    :root {{ color-scheme:light; --bg:#f3f6fb; --panel:#fff; --panel2:#f4f7fc; --line:#dce4ef; --text:#0b1832; --muted:#425779; --ok:#168452; --warn:#a86713; --bad:#c33545; --info:#2463eb; }}
     * {{ box-sizing:border-box; }}
-    body {{ margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; background:linear-gradient(160deg,#06111b,#091925 55%,#071019); color:var(--text); min-height:100vh; }}
-    header {{ position:sticky; top:0; z-index:5; background:rgba(7,16,25,.94); backdrop-filter:blur(12px); border-bottom:1px solid var(--line); padding:16px 24px; display:flex; align-items:center; gap:18px; flex-wrap:wrap; }}
-    .brand {{ font-size:20px; font-weight:800; letter-spacing:.02em; }}
-    .sub {{ color:var(--muted); font-size:13px; }}
-    .warning {{ background:#3b2d0a; color:#ffe4a1; border:1px solid #745817; padding:10px 14px; border-radius:10px; font-weight:700; flex:1; min-width:320px; }}
-    .actions {{ display:flex; gap:8px; flex-wrap:wrap; }}
-    button,a.button {{ border:1px solid var(--line); background:var(--panel2); color:var(--text); padding:9px 12px; border-radius:9px; cursor:pointer; text-decoration:none; font-weight:700; }}
-    button:hover,a.button:hover {{ border-color:var(--info); }}
-    main {{ padding:22px; max-width:1700px; margin:auto; }}
-    .grid {{ display:grid; gap:14px; }}
-    .kpis {{ grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); margin-bottom:18px; }}
-    .services {{ grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); }}
-    .domains {{ grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); }}
-    .metric-list {{ display:grid; grid-template-columns:1fr auto; gap:6px 12px; margin-top:12px; font-size:12px; }}
-    .metric-list span:nth-child(odd) {{ color:var(--muted); overflow-wrap:anywhere; }}
-    .metric-list span:nth-child(even) {{ font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-weight:800; text-align:right; }}
-    .two {{ grid-template-columns:repeat(auto-fit,minmax(420px,1fr)); margin-top:18px; }}
-    .card {{ background:rgba(13,27,40,.94); border:1px solid var(--line); border-radius:14px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.18); }}
-    .kpi .value {{ font-size:30px; font-weight:850; }}
-    .kpi .label {{ color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.08em; }}
-    h2 {{ margin:0 0 12px; font-size:17px; }}
-    h3 {{ margin:0; font-size:15px; }}
-    .service-head {{ display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }}
-    .pill {{ display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:4px 9px; font-size:12px; font-weight:800; border:1px solid currentColor; }}
-    .healthy {{ color:var(--ok); }} .degraded,.unknown {{ color:var(--warn); }} .offline {{ color:var(--bad); }} .disabled {{ color:var(--muted); }}
-    .service-meta {{ color:var(--muted); font-size:12px; margin-top:10px; line-height:1.55; word-break:break-word; }}
-    .service-actions {{ display:flex; gap:8px; margin-top:12px; }}
-    table {{ width:100%; border-collapse:collapse; font-size:13px; }}
-    th,td {{ text-align:left; padding:9px 8px; border-bottom:1px solid var(--line); vertical-align:top; }}
-    th {{ color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.06em; }}
-    tbody tr:hover {{ background:rgba(98,182,255,.05); }}
-    .scroll {{ max-height:420px; overflow:auto; }}
-    form {{ display:grid; gap:9px; margin-top:12px; }}
-    input,textarea,select {{ width:100%; background:#081522; border:1px solid var(--line); color:var(--text); border-radius:8px; padding:9px; font:inherit; }}
-    textarea {{ min-height:74px; resize:vertical; }}
-    .row {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:8px; }}
-    .muted {{ color:var(--muted); }}
-    .critical {{ color:var(--bad); font-weight:800; }}
-    .warning-text {{ color:var(--warn); font-weight:700; }}
-    .empty {{ color:var(--muted); padding:18px 8px; text-align:center; }}
-    details {{ margin-top:12px; }}
-    summary {{ cursor:pointer; color:var(--muted); }}
-    code {{ font-family:ui-monospace,SFMono-Regular,Consolas,monospace; background:#07131e; padding:2px 5px; border-radius:5px; }}
-    footer {{ color:var(--muted); font-size:12px; padding:24px; text-align:center; }}
-    @media (max-width:700px) {{ main {{ padding:12px; }} header {{ padding:12px; }} .two {{ grid-template-columns:1fr; }} .warning {{ min-width:0; }} }}
+    body {{ margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }}
+    header {{ position:sticky; top:0; z-index:5; background:#fff; border-bottom:1px solid var(--line); padding:16px 28px; display:flex; align-items:center; gap:18px; flex-wrap:wrap; }}
+    .brand {{ font-size:18px; font-weight:800; }} .sub {{ color:var(--muted); font-size:12px; margin-top:4px; }}
+    .warning {{ color:#a86713; background:#fff5e5; border:1px solid #efddb5; padding:6px 10px; border-radius:999px; font-size:11px; font-weight:700; }}
+    .actions {{ display:flex; gap:8px; flex-wrap:wrap; margin-left:auto; }}
+    button,a.button {{ border:1px solid var(--line); background:#fff; color:var(--text); padding:9px 12px; border-radius:8px; cursor:pointer; text-decoration:none; font-weight:600; }}
+    button:hover,a.button:hover {{ border-color:var(--info); color:var(--info); }}
+    button[type=submit],#poll {{ background:var(--info); color:#fff; border-color:var(--info); }}
+    .section-nav {{ display:flex; gap:7px; flex-wrap:wrap; padding:0 28px; background:#fff; border-bottom:1px solid var(--line); }}
+    .section-nav a {{ padding:13px 15px; text-decoration:none; font-size:13px; font-weight:650; color:var(--muted); border-bottom:3px solid transparent; }}
+    .section-nav a:hover,.section-nav a:focus {{ color:var(--info); background:#f3f6fb; border-bottom-color:var(--info); }}
+    main {{ padding:28px; max-width:1700px; margin:auto; }} .page-heading {{ margin-bottom:22px; }} h1 {{ margin:0 0 7px; font-size:28px; letter-spacing:-.6px; }}
+    section[id] {{ scroll-margin-top:130px; }} .grid {{ display:grid; gap:16px; }} .kpis {{ grid-template-columns:repeat(4,minmax(0,1fr)); margin-bottom:20px; }}
+    .domains {{ grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); }} .metric-list {{ display:grid; grid-template-columns:1fr auto; gap:6px 12px; margin-top:12px; font-size:12px; }}
+    .metric-list span:nth-child(odd) {{ color:var(--muted); overflow-wrap:anywhere; }} .metric-list span:nth-child(even) {{ font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-weight:700; text-align:right; }}
+    .two {{ grid-template-columns:repeat(2,minmax(0,1fr)); margin-top:20px; }} .card {{ background:#fff; border:1px solid var(--line); border-radius:12px; padding:20px; box-shadow:0 3px 12px #122c5510; min-width:0; }}
+    .kpi .value {{ font-size:30px; font-weight:750; margin-bottom:8px; }} .kpi .label {{ color:var(--muted); font-size:12px; }} .secondary-kpis {{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:16px 0 20px; }}
+    .secondary-kpis .card {{ padding:13px 16px; box-shadow:none; }} .secondary-kpis .value {{ font-size:22px; }}
+    h2 {{ margin:0 0 16px; font-size:17px; }} h3 {{ margin:0; font-size:15px; }} .service-head {{ display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }}
+    .pill {{ display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:4px 9px; font-size:11px; font-weight:650; border:1px solid currentColor; }}
+    .healthy {{ color:var(--ok); }} .degraded,.unknown {{ color:var(--warn); }} .offline,.critical {{ color:var(--bad); }} .disabled,.muted {{ color:var(--muted); }} .critical {{ font-weight:700; }} .warning-text {{ color:var(--warn); font-weight:650; }}
+    .service-meta {{ color:var(--muted); font-size:12px; margin-top:5px; line-height:1.55; overflow-wrap:anywhere; }} .service-actions {{ display:flex; gap:8px; flex-wrap:wrap; }}
+    table {{ width:100%; border-collapse:collapse; font-size:13px; }} th,td {{ text-align:left; padding:12px 10px; border-bottom:1px solid var(--line); vertical-align:top; }} th {{ color:var(--muted); font-size:11px; font-weight:650; background:#f6f8fc; }}
+    tbody tr:hover {{ background:#f7faff; }} .scroll {{ max-height:440px; overflow:auto; }} .service-table {{ min-width:680px; }} form {{ display:grid; gap:10px; margin-top:14px; }}
+    input,textarea,select {{ width:100%; background:#fff; border:1px solid var(--line); color:var(--text); border-radius:8px; padding:10px; font:inherit; }} textarea {{ min-height:78px; resize:vertical; }}
+    .row {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; }} .empty {{ color:var(--muted); padding:22px 8px; text-align:center; }}
+    details {{ margin-top:15px; }} summary {{ cursor:pointer; color:var(--muted); }} code {{ font-family:ui-monospace,SFMono-Regular,Consolas,monospace; background:#f2f5fa; padding:2px 5px; border-radius:5px; }}
+    footer {{ color:var(--muted); font-size:11px; padding:24px; text-align:center; }} :focus-visible {{ outline:3px solid #a7c0ff; outline-offset:3px; }}
+    @media(max-width:850px) {{ .two {{ grid-template-columns:1fr; }} .kpis,.secondary-kpis {{ grid-template-columns:repeat(2,minmax(0,1fr)); }} header,main {{ padding:16px; }} .section-nav {{ padding:0 12px; }} .actions {{ margin-left:0; }} }}
   </style>
 </head>
 <body>
 <header>
-  <div><div class="brand">NetCore Control Room</div><div class="sub">Leitstellen- und Bedienebene · Core-Dienste bleiben autoritativ</div></div>
-  <div class="warning">OPEN LAB — keine Anmeldung, keine Tokens und kein TLS. Ausschließlich im isolierten Testnetz betreiben.</div>
+  <div class="sub">Leitstellen- und Bedienebene</div>
   <div class="actions">
     <button id="poll">Dienste prüfen</button>
-    <a class="button" href="/api/v1/export" target="_blank">Export</a>
-    <a class="button" href="/api/v1/openapi.json" target="_blank">API</a>
+    <a class="button" href="/api/v1/export" target="_blank" rel="noopener">Export</a>
+    <a class="button" href="/api/v1/openapi.json" target="_blank" rel="noopener">API</a>
   </div>
 </header>
-<main>
+<nav class="section-nav" aria-label="Leitstelle"><a href="#lagebild">Lagebild</a><a href="#dienstelage">Dienste</a><a href="#bedienung">Bedienung</a><a href="#journal">Journal</a></nav>
+<main id="lagebild">
+  <div class="page-heading"><h1>Kernlagebild</h1><p class="muted">Dienste, Basisstationen und laufende Vorgänge im Überblick.</p></div>
   <section class="grid kpis" id="kpis"></section>
-  <section class="card">
+  <details class="card"><summary>Weitere Kennzahlen</summary><div class="secondary-kpis" id="supplementary-kpis"></div></details>
+  <section class="card" id="dienstelage">
     <div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><h2>Core- und Edge-Dienste</h2><span class="muted" id="poll-time">noch nicht geprüft</span></div>
-    <div class="grid services" id="services"></div>
+    <div class="scroll"><table class="service-table"><thead><tr><th>Dienst</th><th>Status</th><th>Bereitschaft</th><th>Antwortzeit</th><th>Aktion</th></tr></thead><tbody id="services"></tbody></table></div>
   </section>
 
   <section class="card" style="margin-top:18px">
@@ -93,12 +83,12 @@ pub fn index_html(node_path: &str, ui_path: &str) -> String {
       <div class="scroll"><table><thead><tr><th>Node</th><th>Standort</th><th>Verbindung</th><th>Teilnehmer</th><th>Rufe</th></tr></thead><tbody id="nodes"></tbody></table></div>
     </div>
     <div class="card">
-      <h2>Operator-Schnellaktion</h2>
+      <h2 id="bedienung">Operator-Schnellaktion</h2>
       <p class="muted">Typisierte Kommandos direkt an eine TBS. Kein generischer Backend-Schreibproxy.</p>
       <form id="command-form">
         <div class="row"><input name="operator_id" placeholder="Operator" value="jan"><input name="node_id" list="node-options" placeholder="Node-ID" required><datalist id="node-options"></datalist></div>
         <div class="row"><select name="action"><option value="kick">Teilnehmer abmelden</option><option value="clear-emergency">Notfall löschen</option><option value="dgna-attach">DGNA Attach</option><option value="dgna-detach">DGNA Detach</option></select><input name="issi" type="number" min="0" max="16777215" placeholder="ISSI" required><input name="gssi" type="number" min="1" max="16777215" placeholder="GSSI nur DGNA"></div>
-        <button type="submit">Kommando senden</button>
+        <button type="submit" class="primary">Kommando senden</button>
         <div class="muted" id="command-result">Noch kein Kommando gesendet</div>
       </form>
     </div>
@@ -106,14 +96,14 @@ pub fn index_html(node_path: &str, ui_path: &str) -> String {
 
   <section class="grid two">
     <div class="card">
-      <h2>Einsatz- und Störungsjournal</h2>
+      <h2 id="journal">Einsatz- und Störungsjournal</h2>
       <div class="scroll"><table><thead><tr><th>Schwere</th><th>Titel</th><th>Status</th><th>Zeit</th><th>Aktion</th></tr></thead><tbody id="incidents"></tbody></table></div>
       <details><summary>Manuellen Eintrag anlegen</summary>
         <form id="incident-form">
           <div class="row"><input name="operator_id" placeholder="Operator" value="jan"><select name="severity"><option>warning</option><option>info</option><option>critical</option></select><input name="service" placeholder="Service optional"></div>
           <input name="title" placeholder="Titel" required>
           <textarea name="description" placeholder="Beschreibung"></textarea>
-          <button type="submit">Incident anlegen</button>
+          <button type="submit" class="primary">Incident anlegen</button>
         </form>
       </details>
     </div>
@@ -123,7 +113,7 @@ pub fn index_html(node_path: &str, ui_path: &str) -> String {
       <form id="shift-form">
         <div class="row"><input name="operator_id" placeholder="Operator" value="jan"><input name="category" placeholder="Kategorie" value="general"></div>
         <textarea name="text" placeholder="Schichtbucheintrag" required></textarea>
-        <button type="submit">Eintrag speichern</button>
+        <button type="submit" class="primary">Eintrag speichern</button>
       </form>
     </div>
   </section>
@@ -138,7 +128,7 @@ pub fn index_html(node_path: &str, ui_path: &str) -> String {
 <script>
 const $ = (id) => document.getElementById(id);
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, c => ({{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}}[c]));
-const fmt = (value) => value ? new Date(value).toLocaleString() : '—';
+const fmt = (value) => value ? new Date(value).toLocaleString('de-DE') : '—';
 async function api(path, options={{}}) {{
   const response = await fetch(path, {{headers:{{'Content-Type':'application/json'}}, ...options}});
   const text = await response.text();
@@ -152,11 +142,11 @@ function renderKpis(data) {{
   const pick = (key, fallback=0) => f[key] ?? fallback ?? 0;
   const rows = [
     ['Dienste gesund', `${{o.services_healthy||0}} / ${{o.services_total||0}}`],
-    ['Kritisch offline', o.critical_services_offline||0],
-    ['Offene Incidents', (o.incidents_open||0)+(o.incidents_acknowledged||0)],
     ['TBS verbunden', pick('connected_nodes', l.nodes_connected)],
     ['Teilnehmer registriert', pick('subscribers_registered', l.subscribers_online)],
     ['Aktive Rufe', pick('active_calls', l.active_calls_total)],
+    ['Kritisch offline', o.critical_services_offline||0],
+    ['Offene Incidents', (o.incidents_open||0)+(o.incidents_acknowledged||0)],
     ['SDS wartend', pick('sds_queued')],
     ['PDP bereit', pick('packet_contexts_ready')],
     ['Security-Alarme', pick('security_alarms')],
@@ -164,14 +154,19 @@ function renderKpis(data) {{
     ['App-Dead-Letter', pick('application_dead_letters')],
     ['Aktive Notfälle', l.emergencies_active||0],
   ];
-  $('kpis').innerHTML = rows.map(([label,value]) => `<div class="card kpi"><div class="value">${{esc(value)}}</div><div class="label">${{esc(label)}}</div></div>`).join('');
+  const metric = ([label,value]) => `<div class="card kpi"><div class="value">${{esc(value)}}</div><div class="label">${{esc(label)}}</div></div>`;
+  $('kpis').innerHTML = rows.slice(0,4).map(metric).join('');
+  $('supplementary-kpis').innerHTML = rows.slice(4).map(metric).join('');
 }}
 function renderServices(services) {{
-  $('services').innerHTML = services.map(s => `<article class="card">
-    <div class="service-head"><div><h3>${{esc(s.display_name)}}</h3><div class="muted">${{esc(s.kind)}}${{s.critical?' · kritisch':''}}</div></div><span class="pill ${{esc(s.status)}}">${{esc(s.status)}}</span></div>
-    <div class="service-meta">${{esc(s.base_url)}}<br>live: ${{esc(s.live)}} · ready: ${{esc(s.ready)}} · ${{esc(s.latency_ms ?? '—')}} ms<br>${{esc(s.message || '')}}</div>
-    <div class="service-actions"><a class="button" href="${{esc(s.webui_url)}}" target="_blank">WebUI</a><button onclick="toggleService('${{esc(s.name)}}',${{!s.enabled}})">${{s.enabled?'Monitoring aus':'Monitoring an'}}</button></div>
-  </article>`).join('') || '<div class="empty">Keine Dienste konfiguriert</div>';
+  const statusLabel = {{healthy:'Gesund',degraded:'Eingeschränkt',offline:'Offline',unknown:'Unbekannt',disabled:'Monitoring aus'}};
+  $('services').innerHTML = services.map(s => `<tr>
+    <td><strong>${{esc(s.display_name)}}</strong><div class="service-meta">${{esc(s.kind)}}${{s.critical?' · kritisch':''}}<br>${{esc(s.base_url)}}${{s.message?'<br>'+esc(s.message):''}}</div></td>
+    <td><span class="pill ${{esc(s.status)}}">${{esc(statusLabel[s.status]||s.status)}}</span></td>
+    <td>${{s.ready===true?'Bereit':s.ready===false?'Nicht bereit':'Unbekannt'}}<div class="service-meta">Live: ${{s.live===true?'Ja':s.live===false?'Nein':'Unbekannt'}}</div></td>
+    <td>${{esc(s.latency_ms ?? '—')}} ms</td>
+    <td><div class="service-actions"><a class="button" href="${{esc(s.webui_url)}}" target="_blank" rel="noopener">WebUI</a><button onclick="toggleService('${{esc(s.name)}}',${{!s.enabled}})">${{s.enabled?'Monitoring aus':'Monitoring an'}}</button></div></td>
+  </tr>`).join('') || '<tr><td colspan="5" class="empty">Keine Dienste konfiguriert</td></tr>';
 }}
 const domainLabels = {{
   'node-gateway':'Node Gateway','subscriber-core':'Teilnehmer','group-core':'Gruppen',
@@ -195,7 +190,7 @@ async function toggleService(name, enabled) {{
 }}
 function incidentClass(severity) {{ return severity === 'critical' ? 'critical' : severity === 'warning' ? 'warning-text' : ''; }}
 function renderIncidents(rows) {{
-  $('incidents').innerHTML = rows.map(i => `<tr><td class="${{incidentClass(i.severity)}}">${{esc(i.severity)}}</td><td><strong>${{esc(i.title)}}</strong><br><span class="muted">${{esc(i.description)}}</span></td><td>${{esc(i.status)}}</td><td>${{fmt(i.created_at)}}</td><td>${{i.status==='resolved'?'—':`<button onclick="incidentAction('${{esc(i.id)}}','ack')">Ack</button> <button onclick="incidentAction('${{esc(i.id)}}','resolve')">Lösen</button>`}}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">Keine offenen Störungen 🎉</td></tr>';
+  $('incidents').innerHTML = rows.map(i => `<tr><td class="${{incidentClass(i.severity)}}">${{esc(i.severity)}}</td><td><strong>${{esc(i.title)}}</strong><br><span class="muted">${{esc(i.description)}}</span></td><td>${{esc(i.status)}}</td><td>${{fmt(i.created_at)}}</td><td>${{i.status==='resolved'?'—':`<button onclick="incidentAction('${{esc(i.id)}}','ack')">Quittieren</button> <button onclick="incidentAction('${{esc(i.id)}}','resolve')">Lösen</button>`}}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">Keine offenen Störungen 🎉</td></tr>';
 }}
 async function incidentAction(id, action) {{
   const note = prompt(action === 'ack' ? 'Notiz zur Übernahme (optional)' : 'Lösungsnotiz (optional)') || '';
@@ -205,7 +200,7 @@ function renderShift(rows) {{
   $('shift-log').innerHTML = rows.map(i => `<tr><td>${{fmt(i.timestamp)}}</td><td>${{esc(i.operator_id)}}</td><td>${{esc(i.category)}}</td><td>${{esc(i.text)}}</td></tr>`).join('') || '<tr><td colspan="4" class="empty">Noch kein Schichtbucheintrag</td></tr>';
 }}
 function renderNodes(rows) {{
-  $('nodes').innerHTML = rows.map(n => `<tr><td><strong>${{esc(n.station_name||n.node_id)}}</strong><br><span class="muted">${{esc(n.node_id)}}</span></td><td>${{esc(n.site||'—')}}</td><td class="${{n.connected?'healthy':'offline'}}">${{n.connected?'online':'offline'}}</td><td>${{esc(n.subscribers_online)}} / ${{esc(n.subscribers_total)}}</td><td>${{esc(n.active_calls_total)}}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">Keine TBS verbunden</td></tr>';
+  $('nodes').innerHTML = rows.map(n => `<tr><td><strong>${{esc(n.station_name||n.node_id)}}</strong><br><span class="muted">${{esc(n.node_id)}}</span></td><td>${{esc(n.site||'—')}}</td><td class="${{n.connected?'healthy':'offline'}}">${{n.connected?'Verbunden':'Getrennt'}}</td><td>${{esc(n.subscribers_online)}} / ${{esc(n.subscribers_total)}}</td><td>${{esc(n.active_calls_total)}}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">Keine TBS verbunden</td></tr>';
   $('node-options').innerHTML = rows.map(n => `<option value="${{esc(n.node_id)}}">${{esc(n.station_name||n.node_id)}}</option>`).join('');
 }}
 function renderLive(emergencies, calls) {{
@@ -239,5 +234,6 @@ refresh(); setInterval(refresh, 5000);
 </script>
 </body>
 </html>"####
-    )
+    );
+    service_design::render(&html, "Leitstelle · Control Room", if auth_enabled { "http-basic" } else { "open-lab" })
 }

@@ -1,0 +1,161 @@
+
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1"><title>TBS Connect</title>
+        <style>body>header:not(.nc-service-header){display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}.container{max-width:1600px;margin:0 auto;padding:24px;display:grid;grid-template-columns:minmax(0,1fr);gap:20px}.container>*{min-width:0}.card{padding:20px}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:14px}.stat{background:#f7faff;border:1px solid #e0e8f3;border-radius:12px;padding:16px}.stat-value{font-size:28px;font-weight:750;color:#0b1832}.stat-label{font-size:13px;color:#425779;margin-top:6px}.badge{display:inline-block;padding:3px 9px;border-radius:99px;font-size:12px}.badge-active{background:#edf9f1;color:#15803d}.badge-idle{background:#f3f6fb;color:#425779}.footer{text-align:center;color:#425779;font-size:12px}.log{background:#f7faff;color:#425779;padding:16px;border:1px solid #e0e8f3;border-radius:12px;font-family:ui-monospace,monospace;font-size:12px;max-height:320px;overflow-y:auto}.log .info{color:#15803d}.log .warning{color:#b45309}.log .error{color:#b91c1c}.log .debug{color:#64748b}.group-call{background:#edf3ff;padding:14px;border-radius:10px;margin:6px 0}.group-call .source{font-weight:750;color:#0b1832}.group-call .dest{color:#2463eb}.group-call .frames{color:#425779;font-size:12px}.loading{color:#64748b}.nc-dashboard-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.nc-sse{font-size:13px;color:#425779}@media(max-width:700px){.container{padding:16px}}</style>
+    </head>
+    <body>
+<header><div><h1>TBS-Verbindungen</h1><p class="muted">Verbindungen und Gruppengespräche in Echtzeit</p></div><div class="nc-dashboard-actions"><span id="sse-status" class="nc-sse">Verbinden …</span><button onclick="refreshAll()">Manuell aktualisieren</button><a class="btn" href="/logout">Abmelden</a></div></header><nav class="nc-service-nav" aria-label="Dienstnavigation"><a href="#stats-container">Übersicht</a><a href="#group-panel">Gruppengespräche</a><a href="#connection-panel">Verbindungen</a><a href="#log-panel">Logs</a></nav><main class="container">            <div class="card" id="stats-container">
+                <h2>Statistiken</h2>
+                <div class="stats" id="stats"><div class="stat"><div class="stat-value">⏳</div><div class="stat-label">Lade...</div></div></div>
+            </div>
+            <section class="card" id="group-panel">
+                <h2>Aktive Gruppengespräche</h2>
+                <div id="group-calls"><p class="loading">⏳ Lade...</p></div>
+            </section>
+            <section class="card" id="connection-panel">
+                <h2>Verbindungen &amp; Endgeräte</h2>
+                <table>
+                    <thead><tr><th>Verbindungs-UUID</th><th>Endgeräte (ISSI)</th><th>Verbunden seit</th><th>Aktive Anrufe</th></tr></thead>
+                    <tbody id="connections"><tr><td colspan="4" class="loading">⏳ Lade...</td></tr></tbody>
+                </table>
+            </section>
+            <section class="card" id="log-panel">
+                <h2>Live-Logs</h2>
+                <div class="log" id="logs"><div class="debug">⏳ Lade...</div></div>
+            </section>
+            <div class="footer">
+                Brew Server v2.0 · <span id="uptime">⏳</span>
+            </div>
+        </main>
+        <script>
+            // EventSource für Echtzeit-Updates
+            let eventSource = null;
+
+            function connectSSE() {
+                if (eventSource) {
+                    eventSource.close();
+                }
+                eventSource = new EventSource('/api/events');
+
+                eventSource.addEventListener('stats', function(e) {
+                    const data = JSON.parse(e.data);
+                    updateStats(data);
+                });
+
+                eventSource.addEventListener('connections', function(e) {
+                    const data = JSON.parse(e.data);
+                    updateConnections(data);
+                });
+
+                eventSource.addEventListener('group_calls', function(e) {
+                    const data = JSON.parse(e.data);
+                    updateGroupCalls(data);
+                });
+
+                eventSource.addEventListener('logs', function(e) {
+                    const data = JSON.parse(e.data);
+                    updateLogs(data);
+                });
+
+                eventSource.addEventListener('update', function(e) {
+                    // Generisches Update – wir haben bereits spezifische Events
+                });
+
+                eventSource.onerror = function(e) {
+                    document.getElementById('sse-status').textContent='Live-Verbindung unterbrochen';
+                    console.warn('SSE-Fehler, neu verbinden in 3s...', e);
+                    setTimeout(connectSSE, 3000);
+                };
+
+                eventSource.onopen = function() {
+                    document.getElementById('sse-status').textContent='Live verbunden';
+                    console.log('SSE verbunden');
+                };
+            }
+
+            function updateStats(data) {
+                const h = Math.floor(data.uptime / 3600);
+                const m = Math.floor((data.uptime % 3600) / 60);
+                const s = data.uptime % 60;
+                document.getElementById('uptime').textContent = `Laufzeit ${h}h ${m}m ${s}s`;
+                document.getElementById('stats').innerHTML = `
+                    <div class="stat"><div class="stat-value">${data.connections}</div><div class="stat-label">Verbindungen</div></div>
+                    <div class="stat"><div class="stat-value">${data.subscribers}</div><div class="stat-label">Registrierte Endgeräte</div></div>
+                    <div class="stat"><div class="stat-value">${data.active_calls}</div><div class="stat-label">Aktive Anrufe</div></div>
+                    <div class="stat"><div class="stat-value">${data.active_group_calls}</div><div class="stat-label">Aktive Gruppengespräche</div></div>
+                    <div class="stat"><div class="stat-value">${data.total_group_calls}</div><div class="stat-label">Gruppengespräche gesamt</div></div>
+                    <div class="stat"><div class="stat-value">${data.total_registrations}</div><div class="stat-label">Registrierungen gesamt</div></div>
+                    <div class="stat"><div class="stat-value">${data.total_calls}</div><div class="stat-label">Anrufe gesamt</div></div>
+                    <div class="stat"><div class="stat-value">${data.total_messages}</div><div class="stat-label">Nachrichten</div></div>
+                `;
+            }
+
+            function updateConnections(data) {
+                const tbody = document.getElementById('connections');
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#999;">Keine Verbindungen</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = data.map(conn => `
+                    <tr>
+                        <td>${conn.uuid}</td>
+                        <td>${conn.subscribers.join(', ') || '—'}</td>
+                        <td>${new Date(conn.connected_at).toLocaleString()}</td>
+                        <td>${conn.active_calls}</td>
+                    </tr>
+                `).join('');
+            }
+
+            function updateGroupCalls(data) {
+                const container = document.getElementById('group-calls');
+                if (data.length === 0) {
+                    container.innerHTML = '<p style="color:#999;">Keine aktiven Gruppengespräche</p>';
+                    return;
+                }
+                container.innerHTML = data.map(call => `
+                    <div class="group-call">
+                        <span class="source">${call.source_issi}</span>
+                        → <span class="dest">GSSI ${call.dest_gssi}</span>
+                        <span class="frames">(${call.frame_count} Frames, seit ${new Date(call.start_time).toLocaleTimeString()})</span>
+                        <span style="font-size:11px;color:#999;">UUID: ${call.uuid}</span>
+                    </div>
+                `).join('');
+            }
+
+            function updateLogs(data) {
+                const container = document.getElementById('logs');
+                container.innerHTML = data.map(entry =>
+                    `<div class="${entry.level.toLowerCase()}">[${entry.timestamp}] ${entry.issi ? '['+entry.issi+'] ' : ''}${entry.message}</div>`
+                ).join('');
+                container.scrollTop = container.scrollHeight;
+            }
+
+            async function refreshAll() {
+                // Manuelles Refresh via API – wird zusätzlich zu SSE verwendet
+                try {
+                    const [stats, groupCalls, connections, logs] = await Promise.all([
+                        fetch('/api/status').then(r => r.json()),
+                        fetch('/api/group_calls').then(r => r.json()),
+                        fetch('/api/connections').then(r => r.json()),
+                        fetch('/api/logs?limit=50').then(r => r.json())
+                    ]);
+                    updateStats(stats);
+                    updateGroupCalls(groupCalls);
+                    updateConnections(connections);
+                    updateLogs(logs);
+                } catch (e) {
+                    console.error('Refresh failed', e);
+                }
+            }
+
+            // SSE verbinden
+            connectSSE();
+
+            // Initiales Laden (falls SSE noch keine Daten hat)
+            setTimeout(refreshAll, 500);
+        </script>
+    </body>
+    </html>

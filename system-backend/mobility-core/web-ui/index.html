@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NetCore Mobility Core</title>
+<style>
+/* Dienstansichten ergänzen die gemeinsame NetCore-Oberfläche. */
+.wrap{display:grid;gap:18px}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:14px;margin:18px 0}.toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:14px 0}.toolbar>h2{margin-right:auto}.toolbar>label{flex:1 1 200px}.toolbar>label input{width:100%}.panel{min-width:0}.btn{display:inline-flex;align-items:center;justify-content:center}label{display:grid;gap:5px}dialog{width:94%;max-width:800px}h1,h2,h3{margin:0 0 12px}.pill,.tag{display:inline-block}.core-editor form{min-width:0}
+
+.core-nav{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px 26px;background:var(--panel,#fff);border-bottom:1px solid var(--line,#dbe5f2)}
+.core-nav button{border:0;border-radius:0;background:transparent;color:var(--muted,#425779);padding:14px 12px;box-shadow:none}
+.core-nav button.active{color:var(--accent,#2463eb);border-bottom:2px solid var(--accent,#2463eb)}
+.core-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(300px,1fr);gap:18px;align-items:start}
+.core-layout>.panel{min-width:0;margin-top:0}.core-layout .core-wide{grid-column:1/-1}
+.core-stack{display:grid;gap:18px;min-width:0}.core-detail{align-self:start;position:sticky;top:160px}
+.core-detail dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:18px 0}.core-detail dt{font-size:12px;color:var(--muted,#425779);margin-bottom:5px}.core-detail dd{margin:0;overflow-wrap:anywhere;font-weight:650}.core-detail .wide{grid-column:1/-1}
+.core-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.core-selected{background:var(--selected,#e8f2ff)}
+.core-row-title{padding:0!important;border:0!important;background:transparent!important;color:var(--text,#0b1832)!important;box-shadow:none!important;font:inherit!important;font-weight:750!important;text-align:left;cursor:pointer}
+.core-empty{color:var(--muted,#425779);padding:18px 0}.core-note{color:var(--muted,#425779);font-size:13px;line-height:1.5}.core-info{border:1px solid var(--line,#dbe5f2);background:var(--panel2,#f3f7ff);border-radius:10px;padding:14px;margin:14px 0}
+[data-core-view][hidden]{display:none!important}.view{display:none}.view.active{display:block}.tablewrap{overflow:auto}.tablewrap>table{min-width:650px}.core-detail .tablewrap>table{min-width:380px}form.grid,.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.wide{grid-column:1/-1}.form{display:flex;flex-wrap:wrap;gap:10px}.form label{flex:1 1 160px;display:grid;gap:5px}.form button{align-self:end}
+label:has(input[type=checkbox]){display:flex;align-items:center;gap:9px}input[type=checkbox]{width:auto;min-width:16px}pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:420px;overflow:auto}.small{font-size:12px}.mode{display:inline-flex;padding:5px 10px;border-radius:99px;background:var(--panel2,#e9f1ff);font-size:13px}
+@media(max-width:1050px){.core-layout{grid-template-columns:1fr!important}.core-detail{position:static}.core-layout .core-wide{grid-column:auto}}
+@media(max-width:640px){.core-nav{padding:6px 12px}.core-nav button{padding:12px 8px}form.grid,.grid{grid-template-columns:1fr}.wide{grid-column:auto}.core-detail dl{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<nav class="core-nav" aria-label="Dienstansichten"><button type="button" data-core-nav="subscribers" class="active" aria-current="page">Teilnehmer</button><button type="button" data-core-nav="transfers" class="" aria-current="false">Transfers</button><button type="button" data-core-nav="nodes" class="" aria-current="false">Basisstationen</button><button type="button" data-core-nav="events" class="" aria-current="false">Ereignisse</button></nav><div class="wrap">
+<div class="lab">⚠ OFFENER TESTMODUS: KEINE TOKENS, KEIN LOGIN, KEIN TLS. Jeder erreichbare Client darf Migrationen auslösen.</div>
+<h1>NetCore Mobility Core</h1>
+<div class="small">Zentrale Teilnehmerlage, Migrationen und Context Transfer zwischen TBS</div>
+<div id="cards" class="cards"></div>
+<div class="core-layout">
+<div class="panel" data-core-view="subscribers">
+<h2>Teilnehmer</h2>
+<div class="tablewrap"><table>
+<thead><tr>
+<th>ISSI</th>
+<th>Serving Node</th>
+<th>Status</th>
+<th>Gruppen</th>
+<th>EE</th>
+<th>RSSI</th>
+<th>Letzter Kontakt</th>
+</tr></thead>
+<tbody id="subs"></tbody>
+</table></div>
+</div>
+<div class="panel" data-core-view="subscribers transfers">
+<h2>Context Transfer starten</h2>
+<div class="form">
+<label>ISSI<input id="issi" type="number" placeholder="ISSI">
+</label><label>Quell-TBS<select id="source"></select></label><label>Ziel-TBS<select id="target"></select>
+</label><label>Ziel-ISSI (optional)<input id="local" type="number" placeholder="Ziel-ISSI (optional)">
+</label><button onclick="startTransfer()">Transfer starten</button>
+</div>
+</div>
+<div class="panel core-wide" data-core-view="subscribers transfers">
+<h2>Aktive und letzte Transfers</h2>
+<div class="tablewrap"><table>
+<thead><tr>
+<th>Phase</th>
+<th>ISSI</th>
+<th>Quelle → Ziel</th>
+<th>Ziel-ISSI</th>
+<th>Zeit</th>
+<th>Fehler</th>
+<th>Aktion</th>
+</tr></thead>
+<tbody id="transfers"></tbody>
+</table></div>
+</div>
+<div class="panel core-wide" data-core-view="nodes">
+<h2>Basisstationen</h2>
+<div class="tablewrap"><table>
+<thead><tr>
+<th>Status</th>
+<th>Node</th>
+<th>Zelle</th>
+<th>Carrier</th>
+<th>Letzter Kontakt</th>
+</tr></thead>
+<tbody id="nodes"></tbody>
+</table></div>
+</div>
+<div class="panel core-wide" data-core-view="events">
+<h2>Ereignisse</h2>
+<pre id="events"></pre>
+</div>
+</div>
+</div>
+<script>
+// Die Navigation schaltet ausschließlich vorhandene Dienstbereiche um.
+function coreView(view){document.querySelectorAll('[data-core-view]').forEach(p=>{p.hidden=!p.dataset.coreView.split(' ').includes(view)});document.querySelectorAll('[data-core-nav]').forEach(b=>{const active=b.dataset.coreNav===view;b.classList.toggle('active',active);b.setAttribute('aria-current',active?'page':'false')});}
+document.querySelectorAll('[data-core-nav]').forEach(b=>b.addEventListener('click',()=>coreView(b.dataset.coreNav)));
+function coreField(label,value,wide=false){return `<div${wide?' class="wide"':''}><dt>${esc(label)}</dt><dd>${esc(value??'–')}</dd></div>`}
+function coreButton(label,action,id,extra=''){return `<button type="button" data-core-action="${esc(action)}" data-core-id="${esc(id)}" ${extra}>${esc(label)}</button>`}
+document.addEventListener('click',event=>{const b=event.target.closest('[data-core-action]');if(!b)return;const handler=window.coreActions?.[b.dataset.coreAction];if(handler)handler(b.dataset.coreId,b);});
+window.coreActions={};
+
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function getj(u){const r=await fetch(u);if(!r.ok)throw new Error(await r.text());return r.json()}
+async function post(u,b){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:b?JSON.stringify(b):''});const t=await r.text();if(!r.ok)throw new Error(t);return t?JSON.parse(t):{}}
+const card=(l,v)=>`<div class="card"><div class="value">${esc(v)}</div><div class="label">${esc(l)}</div></div>`;
+async function startTransfer(){try{const issi=Number(document.querySelector('#issi').value);const source_node=document.querySelector('#source').value;const target_node=document.querySelector('#target').value;const lv=document.querySelector('#local').value;await post('/api/v1/transfers',{issi,source_node,target_node,target_local_issi:lv?Number(lv):null});refresh()}catch(e){alert(e.message)}}
+async function cancelTransfer(id){if(!confirm('Transfer abbrechen?'))return;try{await post(`/api/v1/transfers/${id}/cancel`);refresh()}catch(e){alert(e.message)}}
+async function refresh(){try{const [s,n,u,t,e]=await Promise.all([getj('/api/v1/status'),getj('/api/v1/nodes'),getj('/api/v1/subscribers'),getj('/api/v1/transfers'),getj('/api/v1/events?limit=60')]);document.querySelector('#cards').innerHTML=[card('Gateway',s.node_gateway_connected?'ONLINE':'OFFLINE'),card('TBS online',s.nodes_connected),card('Teilnehmer',s.subscribers_known),card('Transfers aktiv',s.transfers_active),card('Erfolgreich',s.transfers_completed),card('Fehlgeschlagen',s.transfers_failed)].join('');const opts=n.filter(x=>x.connected&&!x.stale).map(x=>`<option value="${esc(x.node_id)}">${esc(x.station_name)} (${esc(x.node_id)})</option>`).join('');const sourceSelection=document.querySelector('#source').value,targetSelection=document.querySelector('#target').value;document.querySelector('#source').innerHTML=opts;document.querySelector('#target').innerHTML=opts;if(n.some(x=>x.node_id===sourceSelection&&x.connected&&!x.stale))document.querySelector('#source').value=sourceSelection;if(n.some(x=>x.node_id===targetSelection&&x.connected&&!x.stale))document.querySelector('#target').value=targetSelection;document.querySelector('#nodes').innerHTML=n.map(x=>`<tr><td><span class="pill ${x.connected&&!x.stale?'online':'offline'}">${x.connected&&!x.stale?'ONLINE':'OFFLINE'}</span></td><td><b>${esc(x.station_name)}</b><br><span class="small">${esc(x.node_id)}</span></td><td>${x.mcc}/${x.mnc} LA ${x.location_area}, CC ${x.colour_code}</td><td>${x.main_carrier}${x.secondary_carrier?' / '+x.secondary_carrier:''}</td><td>${esc(x.last_seen)}</td></tr>`).join('')||'<tr><td colspan="5">Keine TBS.</td></tr>';document.querySelector('#subs').innerHTML=u.map(x=>`<tr><td><b>${x.issi}</b></td><td>${esc(x.serving_node||'-')}</td><td>${x.registered?'registriert':'offline'}</td><td>${[...x.groups].join(', ')||'-'}</td><td>${x.energy_saving_mode??'-'}</td><td>${x.last_rssi_dbfs==null?'-':x.last_rssi_dbfs.toFixed(1)+' dBFS'}</td><td>${esc(x.last_seen)}</td></tr>`).join('')||'<tr><td colspan="7">Noch keine Teilnehmertelemetrie.</td></tr>';document.querySelector('#transfers').innerHTML=t.map(x=>`<tr><td><span class="pill phase">${esc(x.phase)}</span></td><td>${x.issi}</td><td>${esc(x.source_node)} → ${esc(x.target_node)}</td><td>${x.target_local_issi}</td><td>${esc(x.updated_at)}</td><td>${esc(x.error||'-')}</td><td>${['completed','failed','timed_out','cancelled','source_cleanup_queued','source_cleanup_requested'].includes(x.phase)?'':`<button class="danger" onclick="cancelTransfer('${x.transfer_id}')">Abbrechen</button>`}</td></tr>`).join('')||'<tr><td colspan="7">Noch keine Transfers.</td></tr>';document.querySelector('#events').textContent=e.map(x=>`${x.timestamp} #${x.seq} ${x.kind}${x.issi?' ISSI '+x.issi:''}${x.transfer_id?' ['+x.transfer_id+']':''} ${JSON.stringify(x.detail)}`).join('\n')}catch(e){document.querySelector('#events').textContent='Fehler: '+e.message}}
+refresh();setInterval(refresh,4000);
+
+coreView('subscribers');
+</script>
+</body>
+</html>

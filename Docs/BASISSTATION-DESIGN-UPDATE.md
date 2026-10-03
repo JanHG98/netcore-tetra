@@ -1,6 +1,6 @@
 # Neues Basisstations-Dashboard installieren
 
-Das freigegebene Design liegt auf `feat/netcore-dashboard-design`. Diese Anleitung aktualisiert eine **bereits installierte Basisstation** aus einem Git-Checkout. Die Oberflächen der zentralen Dienste werden damit noch nicht aktualisiert. Das Dashboard wird in `bluestation-bs` eingebettet; ein zusätzlicher Webserver oder ein Node-/npm-Build ist nicht erforderlich.
+Das freigegebene Design liegt auf `feat/netcore-dashboard-design`. Dieser Branch enthält auch die neuen Dienstoberflächen. Diese Anleitung aktualisiert eine **bereits installierte Basisstation** aus einem Git-Checkout; für die zentralen Dienste gilt [DIENST-WEBUI-DESIGN-UPDATE.md](DIENST-WEBUI-DESIGN-UPDATE.md). Das Dashboard wird in `bluestation-bs` eingebettet; ein zusätzlicher Webserver oder ein Node-/npm-Build ist nicht erforderlich.
 
 Die folgenden Befehle in einer Bash-Sitzung auf der Basisstation als bisheriger Build-Benutzer ausführen. Für den Dienstneustart entsteht eine kurze Unterbrechung. Den bestehenden Quellcodeordner verwenden, beispielsweise `/opt/netcore-tetra`, falls dort tatsächlich dein Checkout liegt.
 

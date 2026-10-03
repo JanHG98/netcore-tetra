@@ -1,0 +1,137 @@
+/* Shared NetCore service design. Embedded after each service's functional styles. */
+html[data-netcore-ui] {
+  color-scheme: light;
+  --nc-bg: #f3f6fb; --nc-panel: #fff; --nc-panel-2: #eef3fa;
+  --nc-border: #d9e2ee; --nc-text: #0b1832; --nc-muted: #425779;
+  --nc-accent: #2463eb; --nc-ok: #12734c; --nc-warn: #945b08; --nc-error: #b42335;
+  --nc-ok-bg: #e6f5ed; --nc-warn-bg: #fff5dc; --nc-error-bg: #ffedf0;
+  --nc-radius: 14px; --nc-shadow: 0 4px 18px rgba(25, 53, 94, .055);
+  --bg: var(--nc-bg); --bg2: var(--nc-panel-2); --panel: var(--nc-panel);
+  --panel2: var(--nc-panel-2); --card: var(--nc-panel); --line: var(--nc-border);
+  --border: var(--nc-border); --line-strong: #bfd0e5; --text: var(--nc-text); --fg: var(--nc-text);
+  --muted: var(--nc-muted); --accent: var(--nc-accent); --blue: var(--nc-accent);
+  --ok: var(--nc-ok); --good: var(--nc-ok); --green: var(--nc-ok); --warn: var(--nc-warn);
+  --accent-strong: #184fd0; --purple: #7154ae;
+  --bad: var(--nc-error); --danger: var(--nc-error); --red: var(--nc-error);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--nc-bg); color: var(--nc-text); scroll-padding-top: 150px;
+}
+html[data-netcore-ui][data-nc-theme="dark"] {
+  color-scheme: dark;
+  --nc-bg: #101a2d; --nc-panel: #18263d; --nc-panel-2: #21314b;
+  --nc-border: #354663; --nc-text: #f0f5ff; --nc-muted: #b5c4dc;
+  --nc-accent: #7da8ff; --nc-ok: #76dda5; --nc-warn: #f4ca71; --nc-error: #ff9ba9;
+  --nc-ok-bg: #153d31; --nc-warn-bg: #45371d; --nc-error-bg: #48232f;
+  --nc-shadow: 0 4px 18px rgba(0, 0, 0, .12);
+}
+html[data-netcore-ui] *, html[data-netcore-ui] *::before, html[data-netcore-ui] *::after { box-sizing: border-box; }
+html[data-netcore-ui] body { margin: 0; background: var(--nc-bg); color: var(--nc-text); font: 14px/1.5 Inter, ui-sans-serif, system-ui, sans-serif; }
+html[data-netcore-ui] a { color: var(--nc-accent); text-underline-offset: 3px; }
+html[data-netcore-ui] :where(button, input, select, textarea) { font: inherit; }
+html[data-netcore-ui] :where(button, a, input, select, textarea, summary):focus-visible { outline: 3px solid var(--nc-accent); outline-offset: 3px; }
+html[data-netcore-ui] h1 { color: var(--nc-text); font-size: clamp(21px, 2vw, 28px); letter-spacing: -.025em; line-height: 1.25; }
+html[data-netcore-ui] h2 { color: var(--nc-text); font-size: 18px; letter-spacing: -.015em; line-height: 1.4; }
+html[data-netcore-ui] h3 { color: var(--nc-text); font-size: 15px; }
+html[data-netcore-ui] :where(h1, h2, h3) { margin-top: 0; }
+html[data-netcore-ui] :where(main, .wrap, .container, .nc-main) { min-width: 0; }
+html[data-netcore-ui] :where(body > main, body > .wrap, body > .container, body > .layout > main) { width: min(1680px, 100%); margin-inline: auto; padding: 24px 30px; }
+html[data-netcore-ui] .wrap { max-width: 1680px; }
+html[data-netcore-ui] [data-nc-layout] { display: block; min-height: 0; }
+html[data-netcore-ui] [data-nc-context] { position: static; height: auto; width: auto; border: 0; background: transparent; padding: 18px 30px 0; max-width: 1680px; margin: auto; }
+html[data-netcore-ui] .nc-service-header { position: sticky; top: 0; z-index: 30; display: block; background: var(--nc-panel); border-bottom: 1px solid var(--nc-border); padding: 0; color: var(--nc-text); box-shadow: 0 2px 10px rgba(25, 53, 94, .025); }
+html[data-netcore-ui] .nc-service-brandrow { min-height: 82px; width: min(1680px, 100%); margin: auto; padding: 12px 30px; display: flex; align-items: center; gap: 24px; }
+html[data-netcore-ui] .nc-service-brand { display: flex; align-items: center; min-width: 0; gap: 24px; }
+html[data-netcore-ui] .nc-service-logo { display: flex; align-items: center; gap: 8px; flex-shrink: 0; width: 208px; height: 55px; padding: 3px; background: #fff; border-radius: 6px; }
+html[data-netcore-ui] .nc-service-logo-mark, html[data-netcore-ui] .nc-service-logo-wordmark { position: relative; display: block; overflow: hidden; flex-shrink: 0; }
+html[data-netcore-ui] .nc-service-logo-mark { width: 48px; height: 50px; }
+html[data-netcore-ui] .nc-service-logo-wordmark { width: 146px; height: 20px; }
+html[data-netcore-ui] .nc-service-logo img { position: absolute; max-width: none; height: auto; display: block; }
+html[data-netcore-ui] .nc-service-logo-mark img { width: 128px; left: -36px; top: -33px; }
+html[data-netcore-ui] .nc-service-logo-wordmark img { width: 192px; left: -22.5px; top: -125px; }
+html[data-netcore-ui] .nc-service-name { font-size: 17px; font-weight: 750; letter-spacing: -.02em; padding-left: 24px; border-left: 1px solid var(--nc-border); }
+html[data-netcore-ui] .nc-service-tools { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+html[data-netcore-ui] .nc-service-access { display: inline-flex; align-items: center; white-space: nowrap; font-size: 11px; font-weight: 750; letter-spacing: .04em; padding: 5px 10px; border-radius: 30px; color: var(--nc-muted); background: var(--nc-panel-2); border: 1px solid var(--nc-border); }
+html[data-netcore-ui] .nc-service-access[data-access="open-lab"] { color: var(--nc-warn); background: var(--nc-warn-bg); border-color: #e5c783; }
+html[data-netcore-ui] .nc-theme-toggle { min-width: 42px; min-height: 40px; padding: 6px 12px; }
+html[data-netcore-ui] .nc-service-nav { position: static; display: flex; flex-direction: row; align-items: center; flex-wrap: wrap; gap: 5px; max-width: 1680px; margin: auto; padding: 0 30px 11px; border: 0; border-top: 1px solid var(--nc-border); background: transparent; overflow-x: auto; height: auto; }
+html[data-netcore-ui] .nc-service-nav :where(button, a) { width: auto; flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; min-height: 40px; margin: 6px 0 0; padding: 8px 14px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--nc-muted); font-size: 13px; font-weight: 650; text-decoration: none; text-align: center; white-space: nowrap; }
+html[data-netcore-ui] .nc-service-nav :where(button, a):hover { background: var(--nc-panel-2); color: var(--nc-accent); }
+html[data-netcore-ui] .nc-service-nav :where(button, a).active, html[data-netcore-ui] .nc-service-nav :where(button, a)[aria-current="true"] { color: var(--nc-accent); background: var(--nc-panel-2); border-color: var(--nc-border); box-shadow: inset 0 -2px var(--nc-accent); }
+html[data-netcore-ui] .nc-original-header { position: static; background: transparent; color: var(--nc-text); border: 0; padding: 22px 30px 0; width: min(1680px, 100%); margin: auto; box-shadow: none; }
+html[data-netcore-ui] :where(.top, .topbar) { background: var(--nc-panel); color: var(--nc-text); border-color: var(--nc-border); }
+html[data-netcore-ui] :where(.card, .panel, .nc-card, .box, .stat, .kpi-card, .column, .kanban-column) { background: var(--nc-panel); color: var(--nc-text); border: 1px solid var(--nc-border); border-radius: var(--nc-radius); box-shadow: var(--nc-shadow); }
+html[data-netcore-ui] :where(.card, .panel, .nc-card) { padding: 18px; }
+html[data-netcore-ui] :where(.cards, .nc-grid, .kpis) { gap: 14px; }
+html[data-netcore-ui] :where(.cards .card, .kpis .card, .nc-grid .nc-card) { min-width: 0; border-top: 3px solid var(--nc-accent); }
+html[data-netcore-ui] :where(.value, .metric, .kpi, .stat-value) { color: var(--nc-text); font-size: clamp(23px, 2vw, 32px); font-weight: 760; font-variant-numeric: tabular-nums; letter-spacing: -.025em; overflow-wrap: anywhere; }
+html[data-netcore-ui] :where(.muted, .sub, .label, .nc-muted, label, .hint) { color: var(--nc-muted); }
+html[data-netcore-ui] :where(.ok, .green, .healthy, .online) { color: var(--nc-ok); }
+html[data-netcore-ui] :where(.bad, .red, .error, .offline) { color: var(--nc-error); }
+html[data-netcore-ui] :where(.warn, .stale) { color: var(--nc-warn); }
+html[data-netcore-ui] :where(.lab, [data-nc-lab], .openlab, .nc-open-lab) { background: var(--nc-warn-bg); color: var(--nc-warn); border-color: #e5c783; font-size: 12px; font-weight: 600; }
+html[data-netcore-ui] :where(body > .lab, body > .banner, .wrap > .lab, .wrap > .banner) { padding: 9px 22px; border-bottom: 1px solid #e5c783; text-align: left; }
+html[data-netcore-ui] :where(.notice, .warning) { background: var(--nc-warn-bg); color: var(--nc-warn); border-color: var(--nc-warn); border-radius: 8px; padding: 12px 14px; }
+html[data-netcore-ui] .notice.secret { background: var(--nc-error-bg); color: var(--nc-error); border-color: var(--nc-error); }
+html[data-netcore-ui] :where(button, .btn, .button, .action, .nc-button) { min-height: 38px; padding: 8px 12px; border: 1px solid var(--nc-border); border-radius: 8px; background: var(--nc-panel); color: var(--nc-text); font-weight: 600; cursor: pointer; text-decoration: none; transition: background .12s, border-color .12s; }
+html[data-netcore-ui] :where(button, .btn, .button, .action, .nc-button):hover { background: var(--nc-panel-2); border-color: var(--nc-accent); }
+html[data-netcore-ui] :where(button, .btn, .button, .action).primary, html[data-netcore-ui] button.action:not(.secondary):not(.danger) { background: #2463eb; border-color: #2463eb; color: #fff; }
+html[data-netcore-ui] :where(button, .btn, .button, .action).danger, html[data-netcore-ui] .nc-button[data-variant="danger"] { background: var(--nc-error-bg); border-color: var(--nc-error); color: var(--nc-error); }
+html[data-netcore-ui] :where(button, .btn, .button, .action).secondary { background: var(--nc-panel-2); color: var(--nc-text); }
+html[data-netcore-ui] button.hold { background: var(--nc-warn-bg); color: var(--nc-warn); }
+html[data-netcore-ui] button:disabled { opacity: .5; cursor: not-allowed; }
+html[data-netcore-ui] :where(input, select, textarea) { background: var(--nc-panel); color: var(--nc-text); border: 1px solid var(--nc-border); border-radius: 8px; min-height: 40px; padding: 9px 11px; max-width: 100%; }
+html[data-netcore-ui] :where(input, textarea)::placeholder { color: var(--nc-muted); opacity: .85; }
+html[data-netcore-ui] :where(input[type="checkbox"], input[type="radio"]) { width: 18px; min-height: 18px; height: 18px; padding: 0; accent-color: #2463eb; }
+html[data-netcore-ui] :where(input[type="hidden"], [hidden]) { display: none !important; }
+html[data-netcore-ui] .toolbar { gap: 9px; }
+html[data-netcore-ui] :where(.tablewrap, .table-wrap, .nc-table-wrap, .scroll) { border-radius: 10px; overflow: auto; }
+html[data-netcore-ui] table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; color: var(--nc-text); }
+html[data-netcore-ui] :where(th, td) { padding: 12px 11px; border-bottom: 1px solid var(--nc-border); text-align: left; vertical-align: top; }
+html[data-netcore-ui] th { background: var(--nc-panel-2); color: var(--nc-muted); font-size: 11px; font-weight: 750; text-transform: uppercase; letter-spacing: .035em; white-space: nowrap; }
+html[data-netcore-ui] tbody tr:hover { background: var(--nc-panel-2); }
+html[data-netcore-ui] tbody tr:last-child td { border-bottom: 0; }
+html[data-netcore-ui] :where(.pill, .badge, .chip, .tag, .nc-status) { background: var(--nc-panel-2); color: var(--nc-muted); border: 1px solid var(--nc-border); padding: 4px 9px; border-radius: 999px; font-size: 11px; font-weight: 650; line-height: 1.4; }
+html[data-netcore-ui] :where(.pill, .badge, .chip):is(.ok, .ready, .healthy, .approved, .completed, .delivered, .published, .connected, .up) { background: var(--nc-ok-bg); color: var(--nc-ok); border-color: var(--nc-ok); }
+html[data-netcore-ui] :where(.pill, .badge, .chip):is(.warn, .queued, .pending, .processing, .retry, .importing, .degraded, .playing) { background: var(--nc-warn-bg); color: var(--nc-warn); border-color: var(--nc-warn); }
+html[data-netcore-ui] :where(.pill, .badge, .chip):is(.bad, .danger, .failed, .rejected, .dead_letter, .down, .offline, .error) { background: var(--nc-error-bg); color: var(--nc-error); border-color: var(--nc-error); }
+html[data-netcore-ui] :where(pre, code) { color: var(--nc-text); font-size: 12px; }
+html[data-netcore-ui] pre { background: var(--nc-panel-2); border: 1px solid var(--nc-border); border-radius: 9px; padding: 13px; white-space: pre-wrap; overflow-wrap: anywhere; }
+html[data-netcore-ui] :where(dialog, .modal .box, .modal .dialog, .nc-dialog) { background: var(--nc-panel); color: var(--nc-text); border: 1px solid var(--nc-border); border-radius: 16px; box-shadow: 0 20px 80px rgba(11, 24, 50, .25); }
+html[data-netcore-ui] dialog { max-width: min(960px, calc(100vw - 32px)); }
+html[data-netcore-ui] dialog::backdrop { background: rgba(11, 24, 50, .55); }
+html[data-netcore-ui] .modal { background: rgba(11, 24, 50, .55); }
+html[data-netcore-ui] :where(.wave, .events, .event, .item, .task, .alarm, .kanban-card) { background-color: var(--nc-panel); color: var(--nc-text); border-color: var(--nc-border); }
+html[data-netcore-ui] canvas { border-radius: 10px; }
+html[data-netcore-ui] :where(.grid2, .split) { gap: 18px; }
+html[data-netcore-ui] .core-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 18px; }
+html[data-netcore-ui] :where(.core-main, .core-side, .core-detail) { min-width: 0; }
+@media (max-width: 1000px) {
+  html[data-netcore-ui] .nc-service-brandrow { padding-inline: 20px; gap: 12px; }
+  html[data-netcore-ui] .nc-service-brand { gap: 16px; }
+  html[data-netcore-ui] .nc-service-name { padding-left: 16px; }
+  html[data-netcore-ui] .nc-service-nav { padding-inline: 20px; flex-wrap: nowrap; }
+  html[data-netcore-ui] :where(body > main, body > .wrap, body > .container, body > .layout > main) { padding: 20px; }
+}
+@media (max-width: 680px) {
+  html[data-netcore-ui] .nc-service-brandrow { min-height: 76px; padding: 8px 14px; flex-wrap: wrap; }
+  html[data-netcore-ui] .nc-service-brand { flex: 1 1 100%; justify-content: space-between; gap: 10px; }
+  html[data-netcore-ui] .nc-service-logo { width: 157px; height: 42px; padding: 2px; gap: 5px; }
+  html[data-netcore-ui] .nc-service-logo-mark { width: 36px; height: 38px; }
+  html[data-netcore-ui] .nc-service-logo-mark img { width: 96px; left: -27px; top: -25px; }
+  html[data-netcore-ui] .nc-service-logo-wordmark { width: 108px; height: 16px; }
+  html[data-netcore-ui] .nc-service-logo-wordmark img { width: 142px; left: -16.6px; top: -92.5px; }
+  html[data-netcore-ui] .nc-service-name { font-size: 14px; padding-left: 10px; }
+  html[data-netcore-ui] .nc-service-tools { margin-left: 0; width: 100%; justify-content: flex-end; }
+  html[data-netcore-ui] .nc-service-access { margin-right: auto; }
+  html[data-netcore-ui] .nc-service-nav { padding: 0 14px 8px; }
+  html[data-netcore-ui] :where(body > main, body > .wrap, body > .container, body > .layout > main) { padding: 16px 14px; }
+  html[data-netcore-ui] :where(.card, .panel, .nc-card) { padding: 14px; }
+  html[data-netcore-ui] :where(.grid2, .split, .formgrid) { grid-template-columns: minmax(0, 1fr); }
+  html[data-netcore-ui] .core-layout { grid-template-columns: minmax(0, 1fr); }
+  html[data-netcore-ui] :where(.cards, .kpis) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html[data-netcore-ui] :where(.nc-original-header, [data-nc-context]) { padding: 16px 14px 0; }
+  html[data-netcore-ui] :where(button, .btn, .action) { min-height: 42px; }
+  html[data-netcore-ui] .toolbar { align-items: stretch; }
+  html[data-netcore-ui] .toolbar :where(input, select) { min-width: 130px; flex: 1 1 130px; }
+}
+@media (prefers-reduced-motion: reduce) { html[data-netcore-ui] * { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }

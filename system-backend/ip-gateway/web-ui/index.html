@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NetCore IP Gateway</title>
+<style>
+/* Dienstansichten ergänzen die gemeinsame NetCore-Oberfläche. */
+.wrap{display:grid;gap:18px}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:14px;margin:18px 0}.toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:14px 0}.toolbar>h2{margin-right:auto}.toolbar>label{flex:1 1 200px}.toolbar>label input{width:100%}.panel{min-width:0}.btn{display:inline-flex;align-items:center;justify-content:center}label{display:grid;gap:5px}dialog{width:94%;max-width:800px}h1,h2,h3{margin:0 0 12px}.pill,.tag{display:inline-block}.core-editor form{min-width:0}
+
+.core-nav{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px 26px;background:var(--panel,#fff);border-bottom:1px solid var(--line,#dbe5f2)}
+.core-nav button{border:0;border-radius:0;background:transparent;color:var(--muted,#425779);padding:14px 12px;box-shadow:none}
+.core-nav button.active{color:var(--accent,#2463eb);border-bottom:2px solid var(--accent,#2463eb)}
+.core-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(300px,1fr);gap:18px;align-items:start}
+.core-layout>.panel{min-width:0;margin-top:0}.core-layout .core-wide{grid-column:1/-1}
+.core-stack{display:grid;gap:18px;min-width:0}.core-detail{align-self:start;position:sticky;top:160px}
+.core-detail dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:18px 0}.core-detail dt{font-size:12px;color:var(--muted,#425779);margin-bottom:5px}.core-detail dd{margin:0;overflow-wrap:anywhere;font-weight:650}.core-detail .wide{grid-column:1/-1}
+.core-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.core-selected{background:var(--selected,#e8f2ff)}
+.core-row-title{padding:0!important;border:0!important;background:transparent!important;color:var(--text,#0b1832)!important;box-shadow:none!important;font:inherit!important;font-weight:750!important;text-align:left;cursor:pointer}
+.core-empty{color:var(--muted,#425779);padding:18px 0}.core-note{color:var(--muted,#425779);font-size:13px;line-height:1.5}.core-info{border:1px solid var(--line,#dbe5f2);background:var(--panel2,#f3f7ff);border-radius:10px;padding:14px;margin:14px 0}
+[data-core-view][hidden]{display:none!important}.view{display:none}.view.active{display:block}.tablewrap{overflow:auto}.tablewrap>table{min-width:650px}.core-detail .tablewrap>table{min-width:380px}form.grid,.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.wide{grid-column:1/-1}.form{display:flex;flex-wrap:wrap;gap:10px}.form label{flex:1 1 160px;display:grid;gap:5px}.form button{align-self:end}
+label:has(input[type=checkbox]){display:flex;align-items:center;gap:9px}input[type=checkbox]{width:auto;min-width:16px}pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:420px;overflow:auto}.small{font-size:12px}.mode{display:inline-flex;padding:5px 10px;border-radius:99px;background:var(--panel2,#e9f1ff);font-size:13px}
+@media(max-width:1050px){.core-layout{grid-template-columns:1fr!important}.core-detail{position:static}.core-layout .core-wide{grid-column:auto}}
+@media(max-width:640px){.core-nav{padding:6px 12px}.core-nav button{padding:12px 8px}form.grid,.grid{grid-template-columns:1fr}.wide{grid-column:auto}.core-detail dl{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<nav class="tabs core-nav" aria-label="Dienstansichten"><button class="active" onclick="show('overview',this)">Übersicht</button><button onclick="show('flows',this)">Flows</button><button onclick="show('policy',this)">Routing &amp; Policy</button><button onclick="show('captures',this)">Captures</button><button onclick="show('diag',this)">Diagnose</button></nav>
+<header><h1>NetCore-Tetra · IP Gateway <span id="mode" class="pill">…</span>
+</h1>
+<div class="warn">
+<b>OPEN LAB:</b> keine Anmeldung, keine Token und kein TLS. Jeder erreichbare Client darf Routing, NAT, Firewall und Captures verändern.</div></header>
+<main><div id="health" class="panel">Lade Status …</div>
+<div id="cards" class="cards"></div>
+<section id="overview" class="view active core-ip-overview"><div class="core-layout">
+<div class="panel">
+<h2>PDP/IP-Leases</h2>
+<div class="tablewrap"><table>
+<thead><tr>
+<th>IP</th>
+<th>ISSI/NSAPI</th>
+<th>TBS</th>
+<th>Status</th>
+<th>MTU/Priorität</th>
+<th>Zähler Core</th>
+</tr></thead>
+<tbody id="contextRows"></tbody>
+</table></div>
+</div>
+<div class="panel">
+<h2>Testdienste</h2>
+<p>WAP/HTTP: <code>http://gateway:8088/wap/</code> · HTTP Echo: <code>/test/echo</code> · UDP Echo: <code>7007/udp</code> · DNS: <code>gateway:53/udp</code></p>
+<p>Statische Namen: <code>netcore.test</code>, <code>wap.netcore.test</code>, <code>test.netcore.test</code>.</p>
+</div>
+</div></section>
+<section id="flows" class="view"><div class="panel">
+<div class="toolbar">
+<h2 style="margin-right:auto">Aktive Flows</h2>
+<button onclick="refresh()">Neu laden</button>
+</div>
+<div class="tablewrap"><table>
+<thead><tr>
+<th>Richtung</th>
+<th>Protokoll</th>
+<th>Quelle</th>
+<th>Ziel</th>
+<th>Teilnehmer</th>
+<th>Pakete/Bytes</th>
+<th>Block</th>
+</tr></thead>
+<tbody id="flowRows"></tbody>
+</table></div>
+</div></section>
+<section id="policy" class="view"><div class="panel">
+<div class="toolbar">
+<h2 style="margin-right:auto">Routen</h2>
+<button class="primary" onclick="addRoute()">Route hinzufügen</button>
+</div>
+<div class="tablewrap"><table>
+<thead><tr>
+<th>Name</th>
+<th>Ziel</th>
+<th>Gateway</th>
+<th>Interface</th>
+<th>Aktiv</th>
+<th></th>
+</tr></thead>
+<tbody id="routeRows"></tbody>
+</table></div>
+</div>
+<div class="panel">
+<div class="toolbar">
+<h2 style="margin-right:auto">Firewallregeln</h2>
+<button class="primary" onclick="addFirewall()">Regel hinzufügen</button>
+</div>
+<div class="tablewrap"><table>
+<thead><tr>
+<th>Prio</th>
+<th>Name</th>
+<th>Chain</th>
+<th>Match</th>
+<th>Aktion</th>
+<th></th>
+</tr></thead>
+<tbody id="firewallRows"></tbody>
+</table></div>
+</div>
+<div class="panel">
+<div class="toolbar">
+<h2 style="margin-right:auto">NAT</h2>
+<button class="primary" onclick="addNat()">NAT-Regel hinzufügen</button>
+</div>
+<div class="tablewrap"><table>
+<thead><tr>
+<th>Name</th>
+<th>Typ</th>
+<th>Quelle/Ziel</th>
+<th>Übersetzung</th>
+<th></th>
+</tr></thead>
+<tbody id="natRows"></tbody>
+</table></div>
+</div>
+<div class="panel">
+<div class="toolbar">
+<h2 style="margin-right:auto">DNS</h2>
+<button class="primary" onclick="addDns()">A-Record hinzufügen</button>
+</div>
+<div class="tablewrap"><table>
+<thead><tr>
+<th>Name</th>
+<th>Adresse</th>
+<th>Quelle</th>
+<th></th>
+</tr></thead>
+<tbody id="dnsRows"></tbody>
+</table></div>
+</div></section>
+<section id="captures" class="view"><div class="panel">
+<div class="toolbar">
+<h2 style="margin-right:auto">PCAP Captures</h2>
+<button class="primary" onclick="addCapture()">Capture starten</button>
+</div>
+<div class="tablewrap"><table>
+<thead><tr>
+<th>Name</th>
+<th>Status</th>
+<th>Filter</th>
+<th>Pakete</th>
+<th>Bytes</th>
+<th></th>
+</tr></thead>
+<tbody id="captureRows"></tbody>
+</table></div>
+</div></section>
+<section id="diag" class="view"><div class="panel">
+<div class="toolbar">
+<h2 style="margin-right:auto">Kernel-Plan</h2>
+<button class="primary" onclick="reconcile()">Jetzt abgleichen</button>
+</div>
+<pre id="kernelPlan"></pre>
+</div>
+<div class="panel">
+<h2>Ereignisse</h2>
+<pre id="eventLog"></pre>
+</div>
+<div class="panel">
+<h2>Konfiguration</h2>
+<pre id="configDump"></pre>
+<p><a href="/openapi.json" target="_blank">OpenAPI</a> · <a href="/metrics" target="_blank">Prometheus</a> · <a href="/api/v1/export.json">JSON-Export</a></p>
+</div></section></main>
+<dialog id="corePolicyDialog" class="core-editor"><form id="corePolicyForm" onsubmit="coreSavePolicy(event)"><h2 id="corePolicyTitle">Policy</h2><div class="grid" id="corePolicyFields"></div><p id="corePolicyError" class="bad" role="alert"></p><div class="toolbar"><button type="submit" class="primary">Speichern</button><button type="button" onclick="document.getElementById('corePolicyDialog').close()">Abbrechen</button></div></form></dialog><script>
+// Die Navigation schaltet ausschließlich vorhandene Dienstbereiche um.
+function coreView(view){document.querySelectorAll('[data-core-view]').forEach(p=>{p.hidden=!p.dataset.coreView.split(' ').includes(view)});document.querySelectorAll('[data-core-nav]').forEach(b=>{const active=b.dataset.coreNav===view;b.classList.toggle('active',active);b.setAttribute('aria-current',active?'page':'false')});}
+document.querySelectorAll('[data-core-nav]').forEach(b=>b.addEventListener('click',()=>coreView(b.dataset.coreNav)));
+function coreField(label,value,wide=false){return `<div${wide?' class="wide"':''}><dt>${esc(label)}</dt><dd>${esc(value??'–')}</dd></div>`}
+function coreButton(label,action,id,extra=''){return `<button type="button" data-core-action="${esc(action)}" data-core-id="${esc(id)}" ${extra}>${esc(label)}</button>`}
+document.addEventListener('click',event=>{const b=event.target.closest('[data-core-action]');if(!b)return;const handler=window.coreActions?.[b.dataset.coreAction];if(handler)handler(b.dataset.coreId,b);});
+window.coreActions={};
+
+let contexts=[],flows=[],routes=[],nat=[],firewall=[],dns=[],captures=[],events=[],plan={};
+function show(id,b){document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');b.classList.add('active')}
+async function api(path,opt){const r=await fetch(path,opt);if(!r.ok&&r.status!==204){let e={};try{e=await r.json()}catch{}throw new Error(e.error||r.statusText)}return r.status===204?null:r.json()}
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+async function refresh(){try{const [s,c,f,r,n,w,d,cap,e,p,cfg]=await Promise.all([api('/api/v1/status'),api('/api/v1/contexts'),api('/api/v1/flows?limit=1000'),api('/api/v1/routes'),api('/api/v1/nat'),api('/api/v1/firewall'),api('/api/v1/dns'),api('/api/v1/captures'),api('/api/v1/events?limit=200'),api('/api/v1/kernel/plan'),api('/api/v1/config')]);contexts=c;flows=f;routes=r;nat=n;firewall=w;dns=d;captures=cap;events=e;plan=p;document.getElementById('mode').textContent=s.mode.toUpperCase();const pc=s.packet_core_connected?'<span class="ok">verbunden</span>':'<span class="bad">getrennt</span>'+(s.packet_core_last_error?' <span class="small muted">('+esc(s.packet_core_last_error)+')</span>':'');const tun=s.authoritative?(s.tun_open?'<span class="ok">offen</span>':'<span class="bad">geschlossen</span>'+(s.tun_last_error?' <span class="small muted">('+esc(s.tun_last_error)+')</span>':'')):'<span class="muted">Shadow – absichtlich nicht geöffnet</span>';const kernel=s.kernel_last_error?'<span class="bad">'+esc(s.kernel_last_error)+'</span>':(s.authoritative?'<span class="ok">angewendet</span>':'<span class="ok">Plan bereit</span>');document.getElementById('health').innerHTML=`Packet Core: ${pc} · TUN ${esc(s.tun_name)}: ${tun} · Kernel: ${kernel}`;document.getElementById('cards').innerHTML=[['Contexts',s.contexts],['Flows',s.flows],['UL Pakete',s.packets_uplink],['DL Pakete',s.packets_downlink],['Drops',s.packets_dropped],['Captures',s.captures_active],['DNS Queries',s.dns_queries],['Testzugriffe',s.test_requests]].map(x=>`<div class="card"><div class="muted">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');render();document.getElementById('kernelPlan').textContent=JSON.stringify(plan,null,2);document.getElementById('eventLog').textContent=events.map(e=>`${e.timestamp} #${e.sequence} ${e.kind} ${JSON.stringify(e.detail)}`).join('\n');document.getElementById('configDump').textContent=JSON.stringify(cfg,null,2)}catch(e){document.getElementById('health').innerHTML='<span class="bad">UI-Fehler: '+esc(e.message)+'</span>'}}
+function render(){document.getElementById('contextRows').innerHTML=contexts.map(c=>`<tr><td><b>${esc(c.ipv4)}</b></td><td>${c.issi}/${c.nsapi}</td><td>${esc(c.node_id)}</td><td>${esc(c.state)} · ${c.available?'verfügbar':'gesperrt'}</td><td>${c.mtu}/P${c.priority}</td><td>UL ${c.packets_up}/${c.bytes_up} B<br>DL ${c.packets_down}/${c.bytes_down} B</td></tr>`).join('');document.getElementById('flowRows').innerHTML=flows.map(f=>`<tr><td>${esc(f.direction)}</td><td>${esc(f.protocol)}</td><td>${esc(f.source)}${f.source_port?':'+f.source_port:''}</td><td>${esc(f.destination)}${f.destination_port?':'+f.destination_port:''}</td><td>${f.issi??'-'}/${f.nsapi??'-'}<br><span class="small muted">${esc(f.node_id||'')}</span></td><td>${f.packets}/${f.bytes} B</td><td>${f.blocked?'<span class="bad">blockiert</span>':'<button onclick="block(\''+(f.direction==='uplink'?f.source:f.destination)+'\')">Blocken</button>'}</td></tr>`).join('');document.getElementById('routeRows').innerHTML=routes.map(x=>`<tr><td>${esc(x.name)}</td><td>${esc(x.destination)}</td><td>${esc(x.gateway||'-')}</td><td>${esc(x.interface||'-')}</td><td>${x.enabled?'ja':'nein'}</td><td><button class="danger" onclick="del('/api/v1/routes/${x.id}')">Löschen</button></td></tr>`).join('');document.getElementById('firewallRows').innerHTML=firewall.sort((a,b)=>a.priority-b.priority).map(x=>`<tr><td>${x.priority}</td><td>${esc(x.name)}</td><td>${esc(x.chain)}</td><td>${esc(x.protocol)} ${esc(x.source_cidr||'')} → ${esc(x.destination_cidr||'')} ${x.destination_port?'port '+x.destination_port:''}</td><td>${esc(x.action)}</td><td><button class="danger" onclick="del('/api/v1/firewall/${x.id}')">Löschen</button></td></tr>`).join('');document.getElementById('natRows').innerHTML=nat.map(x=>`<tr><td>${esc(x.name)}</td><td>${esc(x.kind)}</td><td>${esc(x.source_cidr||'')} → ${esc(x.destination_cidr||'')}</td><td>${esc(x.to_address||'')}${x.to_port?':'+x.to_port:''}</td><td><button class="danger" onclick="del('/api/v1/nat/${x.id}')">Löschen</button></td></tr>`).join('');document.getElementById('dnsRows').innerHTML=dns.map(x=>`<tr><td>${esc(x.name)}</td><td>${esc(x.address)}</td><td>${esc(x.source)}</td><td>${x.source==='builtin'?'':'<button class="danger" onclick="del(\'/api/v1/dns/'+x.id+'\')">Löschen</button>'}</td></tr>`).join('');document.getElementById('captureRows').innerHTML=captures.map(x=>`<tr><td>${esc(x.name)}</td><td>${esc(x.state)}</td><td>${esc(x.direction)} ${esc(x.host||'')} ${esc(x.protocol||'')} ${x.port||''}</td><td>${x.packet_count}</td><td>${x.captured_bytes}/${x.original_bytes}</td><td><a href="/api/v1/captures/${x.id}/download">PCAP</a> ${x.state==='active'?'<button onclick="post(\'/api/v1/captures/'+x.id+'/stop\',{})">Stop</button>':''} <button class="danger" onclick="del('/api/v1/captures/${x.id}')">Löschen</button></td></tr>`).join('')}
+async function post(path,p){try{await api(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});refresh()}catch(e){alert(e.message)}}async function del(path){if(!confirm('Wirklich löschen?'))return;try{await api(path,{method:'DELETE'});refresh()}catch(e){alert(e.message)}}
+
+// Formfelder spiegeln die tatsächlich unterstützten Input-Typen aus protocol.rs.
+const corePolicySchemas={
+ routes:{title:'Route hinzufügen',fields:[['name','Name','text','Neue Route'],['destination','Zielnetz (CIDR)','text','192.168.50.0/24',true],['gateway','Gateway IPv4 (optional)','text',''],['interface','Interface (optional)','text','ntc-tun0'],['metric','Metrik (optional)','number',''],['enabled','Aktiv','checkbox',true]]},
+ firewall:{title:'Firewallregel hinzufügen',fields:[['name','Name','text','Neue Firewallregel'],['chain','Chain','select','forward',['input','forward','output']],['action','Aktion','select','accept',['accept','drop','reject']],['protocol','Protokoll','select','any',['any','tcp','udp','icmp']],['source_cidr','Quellnetz (optional)','text',''],['destination_cidr','Zielnetz (optional)','text',''],['source_port','Quellport (optional)','port',''],['destination_port','Zielport (optional)','port',''],['in_interface','Eingangsinterface (optional)','text','ntc-tun0'],['out_interface','Ausgangsinterface (optional)','text',''],['priority','Priorität','number',100,true],['log','Loggen','checkbox',false],['enabled','Aktiv','checkbox',true]]},
+ nat:{title:'NAT-Regel hinzufügen',fields:[['name','Name','text','Neue NAT-Regel'],['kind','Typ','select','masquerade',['masquerade','snat','dnat']],['source_cidr','Quellnetz (optional)','text','10.0.0.0/24'],['destination_cidr','Zielnetz (optional)','text',''],['protocol','Protokoll (optional)','select','',['','tcp','udp','icmp']],['destination_port','Zielport (optional)','port',''],['out_interface','Ausgangsinterface (optional)','text',''],['to_address','Übersetzungsadresse (SNAT/DNAT)','text',''],['to_port','Übersetzungsport (optional)','port',''],['enabled','Aktiv','checkbox',true]]},
+ dns:{title:'DNS A-Record hinzufügen',fields:[['name','DNS-Name','text','service.netcore.test',true],['address','IPv4-Adresse','text','10.0.0.1',true]]},
+ captures:{title:'Capture starten',fields:[['name','Name','text','packet-data'],['direction','Richtung','select','both',['uplink','downlink','both']],['host','Host IPv4 (optional)','text',''],['protocol','Protokoll (optional)','select','',['','tcp','udp','icmp']],['port','Port (optional)','port','']]}
+};
+function corePolicy(kind){const schema=corePolicySchemas[kind],form=document.getElementById('corePolicyForm');form.dataset.kind=kind;document.getElementById('corePolicyTitle').textContent=schema.title;document.getElementById('corePolicyFields').innerHTML=schema.fields.map(([name,label,type,value,options])=>{if(type==='checkbox')return `<label><input name="${esc(name)}" type="checkbox" ${value?'checked':''}>${esc(label)}</label>`;if(type==='select')return `<label>${esc(label)}<select name="${esc(name)}">${options.map(v=>`<option value="${esc(v)}" ${v===value?'selected':''}>${esc(v||'Alle / kein Filter')}</option>`).join('')}</select></label>`;return `<label>${esc(label)}<input name="${esc(name)}" type="${type==='port'?'number':type}" value="${esc(value)}" ${type==='port'?'min="1" max="65535"':''} ${options===true?'required':''}></label>`}).join('');document.getElementById('corePolicyDialog').showModal()}
+async function coreSavePolicy(event){event.preventDefault();const form=event.target,kind=form.dataset.kind,schema=corePolicySchemas[kind],payload={};schema.fields.forEach(([name,label,type])=>{const field=form.elements[name];payload[name]=type==='checkbox'?field.checked:field.value===''?null:(type==='number'||type==='port'?Number(field.value):field.value)});if('name' in payload&&payload.name===null)payload.name='';try{await api('/api/v1/'+kind,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});document.getElementById('corePolicyDialog').close();refresh()}catch(error){document.getElementById('corePolicyError').textContent=error.message}}
+function addRoute(){document.getElementById('corePolicyError').textContent='';corePolicy('routes')}
+function addFirewall(){document.getElementById('corePolicyError').textContent='';corePolicy('firewall')}
+function addNat(){document.getElementById('corePolicyError').textContent='';corePolicy('nat')}
+function addDns(){document.getElementById('corePolicyError').textContent='';corePolicy('dns')}
+function addCapture(){document.getElementById('corePolicyError').textContent='';corePolicy('captures')}
+function block(address){if(confirm(address+' blockieren?'))post('/api/v1/blocked',{address,reason:'WebUI flow block'})}async function reconcile(){try{await api('/api/v1/kernel/reconcile',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});refresh()}catch(e){alert(e.message)}}
+refresh();setInterval(refresh,4000);
+</script>
+</body>
+</html>

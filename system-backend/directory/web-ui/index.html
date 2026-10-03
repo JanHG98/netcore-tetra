@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NetCore Directory</title>
+<style>body>header:not(.nc-service-header){display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.app{min-height:calc(100vh - 180px)}.main{padding:24px;max-width:1600px;margin:auto;min-width:0}html[data-netcore-ui] .main>.top{background:transparent}.top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px}.title h2{font-size:26px;margin:0}.title p{color:var(--muted);margin:5px 0 0}.actions{display:flex;gap:8px;flex-wrap:wrap}.grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;margin-bottom:20px}.stat{padding:18px}.stat .k{font-size:12px;color:var(--muted)}.stat .v{font-size:28px;font-weight:750;margin-top:7px}.panel-head{display:flex;align-items:center;justify-content:space-between;padding:16px;border-bottom:1px solid var(--border);gap:10px}.search{min-width:240px}.table-wrap{overflow:auto}.count{font-size:11px;background:#edf3ff;padding:2px 7px;border-radius:99px;color:#425779}.nav button.active{color:#2463eb;background:#edf3ff;border-color:#d6e3ff}.color-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px}.modal{position:fixed;inset:0;background:rgba(11,24,50,.3);display:none;align-items:center;justify-content:center;padding:18px;z-index:100}.modal.open{display:flex}.box{width:min(780px,100%);max-height:90vh;overflow:auto;background:white;border:1px solid #dbe4f2;border-radius:16px;box-shadow:0 20px 70px rgba(11,24,50,.18)}.box-head{display:flex;justify-content:space-between;align-items:center;padding:18px;border-bottom:1px solid #dbe4f2}.box-head h3{margin:0}.x{font-size:24px}.form{padding:18px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.field{display:flex;flex-direction:column;gap:6px}.field.full{grid-column:1/-1}.check{flex-direction:row;align-items:center}.box-actions{display:flex;justify-content:flex-end;gap:8px;padding:18px}.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#0b1832;color:white;border-radius:10px;padding:12px 20px;display:none;z-index:200}.toast.show{display:block}@media(max-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.form{grid-template-columns:1fr}.top,.panel-head{flex-wrap:wrap}.search{min-width:0;width:100%}.main{padding:16px}}
+</style>
+</head>
+<body>
+<header><div><h1>Geräteverzeichnis</h1><p id="ver" class="muted">Lokales Verzeichnis · LAN</p></div></header><nav class="nav nc-service-nav" aria-label="Verzeichnisbereiche">
+      <button data-tab="devices" class="active">Geräte <span class="count" id="c-devices">0</span></button>
+      <button data-tab="basestations">Basisstationen <span class="count" id="c-basestations">0</span></button>
+      <button data-tab="groups">Talkgroups <span class="count" id="c-groups">0</span></button>
+      <button data-tab="device_groups">Gerätegruppen <span class="count" id="c-device_groups">0</span></button>
+      <button data-tab="status_messages">Statusmeldungen <span class="count" id="c-status_messages">0</span></button>
+      <button data-tab="api">API Test <span class="count">curl</span></button>
+    </nav><div class="app">
+  <main class="main">
+    <div class="top">
+      <div class="title"><h2 id="page-title">Geräte</h2><p id="page-sub">ISSI-Verzeichnis für HRT/MRT/Gateways.</p></div>
+      <div class="actions">
+        <button class="btn" onclick="exportAll()">Export</button>
+        <button class="btn" onclick="document.getElementById('importFile').click()">Import</button>
+        <input id="importFile" type="file" accept=".json,application/json" hidden onchange="importAll(this.files[0])">
+        <button class="btn primary" id="newBtn">Neu anlegen</button>
+      </div>
+    </div>
+    <div class="grid">
+      <div class="stat"><div class="k">Geräte</div><div class="v" id="s-devices">0</div></div>
+      <div class="stat"><div class="k">Basisstationen</div><div class="v" id="s-basestations">0</div></div>
+      <div class="stat"><div class="k">Talkgroups</div><div class="v" id="s-groups">0</div></div>
+      <div class="stat"><div class="k">Gerätegruppen</div><div class="v" id="s-device_groups">0</div></div>
+      <div class="stat"><div class="k">Status</div><div class="v" id="s-status_messages">0</div></div>
+    </div>
+    <section class="panel" id="table-panel">
+      <div class="panel-head"><strong id="panel-title">Geräte</strong><input class="search" id="search" placeholder="Suchen..."></div>
+      <div class="table-wrap"><table><thead id="thead"></thead><tbody id="tbody"></tbody></table></div>
+    </section>
+    <section class="panel" id="api-panel" style="display:none">
+      <div class="panel-head"><strong>RadioID-kompatible lokale API</strong></div>
+      <div style="padding:16px;line-height:1.7;color:var(--muted)">
+        <p><code>/api/dmr/user/?id=2020001</code> → Gerät als RadioID-kompatible Antwort</p>
+        <p><code>/api/dmr/repeater/?id=4010001</code> → Basisstation als RadioID-kompatible Antwort</p>
+        <p><code>/api/devices</code>, <code>/api/basestations</code>, <code>/api/groups</code>, <code>/api/device-groups</code>, <code>/api/status</code></p>
+        <p><code>/api/status-group-members?issi=2020001</code> → Gerätegruppe(n) und Status-Sync-Members zu einer ISSI</p>
+        <div style="display:flex;gap:8px;margin-top:14px"><input id="apiId" value="2020001" style="flex:1"><button class="btn primary" onclick="testApi()">Test</button></div>
+        <pre id="apiOut" style="margin-top:14px;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px;overflow:auto"></pre>
+      </div>
+    </section>
+  </main>
+</div>
+<div class="modal" id="modal"><div class="box"><div class="box-head"><h3 id="modalTitle">Eintrag</h3><button class="x" onclick="closeModal()">×</button></div><div class="form" id="form"></div><div class="box-actions"><button class="btn" onclick="closeModal()">Abbrechen</button><button class="btn primary" onclick="saveCurrent()">Speichern</button></div></div></div>
+<div class="toast" id="toast"></div>
+<script>
+const API = {
+  devices:'/api/devices', basestations:'/api/basestations', groups:'/api/groups', device_groups:'/api/device-groups', status_messages:'/api/status'
+};
+const meta = {
+  devices:{title:'Geräte',sub:'ISSI-Verzeichnis für HRT/MRT/Gateways.',pk:'issi',cols:['issi','name','short','type','owner','role','visible'],fields:[
+    ['issi','ISSI','number'],['name','Name','text'],['short','Kurzname','text'],['type','Typ','text'],['owner','Owner','text'],['role','Rolle','text'],['icon','Icon','text'],['color','Farbe','text'],['visible','Sichtbar','checkbox'],['notes','Notizen','textarea']
+  ]},
+  basestations:{title:'Basisstationen',sub:'Lokale TBS/BS/Gateway-Verwaltung.',pk:'issi',cols:['issi','name','short','location','mcc','mnc','visible'],fields:[
+    ['issi','ISSI','number'],['name','Name','text'],['short','Kurzname','text'],['location','Standort','text'],['mcc','MCC','text'],['mnc','MNC','text'],['color','Farbe','text'],['visible','Sichtbar','checkbox'],['notes','Notizen','textarea']
+  ]},
+  groups:{title:'Gruppen',sub:'GSSI/Talkgroups mit Namen und Owner.',pk:'gssi',cols:['gssi','name','short','type','owner','visible'],fields:[
+    ['gssi','GSSI','number'],['name','Name','text'],['short','Kurzname','text'],['type','Typ','text'],['owner','Owner','text'],['color','Farbe','text'],['visible','Sichtbar','checkbox'],['notes','Notizen','textarea']
+  ]},
+  device_groups:{title:'Gerätegruppen',sub:'OPTA-/Fahrzeuggruppen: mehrere ISSIs teilen Status und Rückmeldung.',pk:'group_id',cols:['group_id','opta','name','short','type','members','status_sync','visible'],fields:[
+    ['group_id','Gruppen-ID','number'],['opta','OPTA / Kennung','text'],['name','Name','text'],['short','Kurzname','text'],['type','Typ','text'],['owner','Owner','text'],['color','Farbe','text'],['status_sync','Status synchronisieren','checkbox'],['visible','Sichtbar','checkbox'],['members','Mitglieder ISSI (Komma oder Zeilen)','textarea'],['notes','Notizen','textarea']
+  ]},
+  status_messages:{title:'Statusmeldungen',sub:'Statuscodes und Labels.',pk:'code',cols:['code','label','severity','description','visible'],fields:[
+    ['code','Code','number'],['label','Label','text'],['severity','Severity','text'],['description','Beschreibung','textarea'],['color','Farbe','text'],['visible','Sichtbar','checkbox']
+  ]}
+};
+let data={}, tab='devices', editing=null;
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function toast(t){let e=document.getElementById('toast');e.textContent=t;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),1800)}
+async function load(){
+  for(const k of Object.keys(API)){
+    const r=await fetch(API[k],{cache:'no-store'}); data[k]=await r.json();
+  }
+  renderCounts(); render();
+}
+function renderCounts(){for(const k of Object.keys(API)){let n=(data[k]||[]).length;document.getElementById('c-'+k).textContent=n;document.getElementById('s-'+k).textContent=n}}
+function render(){
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+  let api=tab==='api';document.getElementById('table-panel').style.display=api?'none':'';document.getElementById('api-panel').style.display=api?'':'none';document.getElementById('newBtn').style.display=api?'none':'';
+  if(api){document.getElementById('page-title').textContent='API Test';document.getElementById('page-sub').textContent='Lokale RadioID-kompatible Endpunkte.';return}
+  let m=meta[tab];document.getElementById('page-title').textContent=m.title;document.getElementById('page-sub').textContent=m.sub;document.getElementById('panel-title').textContent=m.title;
+  document.getElementById('thead').innerHTML='<tr>'+m.cols.map(c=>`<th>${esc(({issi:'ISSI',gssi:'GSSI',name:'Name',short:'Kurzname',type:'Typ',owner:'Owner',role:'Rolle',visible:'Sichtbar',location:'Standort',members:'Mitglieder',status_sync:'Status-Sync',group_id:'Gruppen-ID',opta:'OPTA',code:'Code',label:'Bezeichnung',severity:'Schweregrad',description:'Beschreibung'})[c]||c)}</th>`).join('')+'<th>Aktion</th></tr>';
+  let q=document.getElementById('search').value.toLowerCase().trim();
+  let rows=(data[tab]||[]).filter(x=>!q||JSON.stringify(x).toLowerCase().includes(q));
+  document.getElementById('tbody').innerHTML=rows.map(x=>'<tr>'+m.cols.map(c=>cell(c,x[c],x)).join('')+`<td><button class="btn" onclick='openModal(${JSON.stringify(x)})'>Bearbeiten</button> <button class="btn danger" onclick="delItem(${x[m.pk]})">Löschen</button></td></tr>`).join('');
+}
+function cell(c,v,row){
+  if(c==='issi'||c==='gssi'||c==='code')return `<td><code>${esc(v)}</code></td>`;
+  if(c==='visible')return `<td><span class="badge ${v?'ok':'warn'}">${v?'sichtbar':'ausgeblendet'}</span></td>`;
+  if(c==='status_sync')return `<td><span class="badge ${v?'ok':'warn'}">${v?'sync':'solo'}</span></td>`;
+  if(c==='members')return `<td>${Array.isArray(v)?v.map(x=>`<code>${esc(x)}</code>`).join(' '):esc(v)}</td>`;
+  if(c==='color')return `<td><span class="color-dot" style="background:${esc(v)}"></span>${esc(v)}</td>`;
+  return `<td>${esc(v)}</td>`;
+}
+function openModal(item=null){
+  editing=item; let m=meta[tab]; document.getElementById('modalTitle').textContent=item?'Eintrag bearbeiten':'Eintrag anlegen';
+  document.getElementById('form').innerHTML=m.fields.map(([k,l,t])=>{
+    let val=item?item[k]:'';
+    if(t==='checkbox')return `<label class="field check"><input id="f-${k}" type="checkbox" ${val===0||val===false?'':'checked'}> ${l}</label>`;
+    if(t==='textarea')return `<label class="field full"><span>${l}</span><textarea id="f-${k}">${esc(val)}</textarea></label>`;
+    return `<label class="field"><span>${l}</span><input id="f-${k}" type="${t}" value="${esc(val)}"></label>`;
+  }).join('');
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal(){document.getElementById('modal').classList.remove('open')}
+async function saveCurrent(){
+  let m=meta[tab], obj={}; for(const [k,l,t] of m.fields){let e=document.getElementById('f-'+k);obj[k]=t==='checkbox'?e.checked:e.value}
+  let pk=obj[m.pk]; let url=API[tab]+(editing?('/'+editing[m.pk]):'');
+  let method=editing?'PUT':'POST';
+  let r=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(obj)});
+  if(!r.ok){toast(await r.text());return}
+  closeModal();toast('Gespeichert');await load();
+}
+async function delItem(pk){
+  if(!confirm('Wirklich löschen?'))return;
+  let r=await fetch(API[tab]+'/'+pk,{method:'DELETE'});
+  if(!r.ok){toast(await r.text());return}
+  toast('Gelöscht');await load();
+}
+async function exportAll(){let r=await fetch('/api/export');let j=await r.json();let blob=new Blob([JSON.stringify(j,null,2)],{type:'application/json'});let a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='netcore-directory-export.json';a.click()}
+async function importAll(file){if(!file)return;let txt=await file.text();let r=await fetch('/api/import',{method:'POST',headers:{'Content-Type':'application/json'},body:txt});toast(r.ok?'Import OK':await r.text());await load()}
+async function testApi(){let id=document.getElementById('apiId').value.trim();let r=await fetch('/api/dmr/user/?id='+encodeURIComponent(id));document.getElementById('apiOut').textContent=JSON.stringify(await r.json(),null,2)}
+document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;render()});
+document.getElementById('newBtn').onclick=()=>openModal();
+document.getElementById('search').oninput=render;
+load();
+</script>
+</body>
+</html>

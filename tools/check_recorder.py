@@ -17,6 +17,7 @@ required = [
     'system-backend/recorder/src/state.rs',
     'system-backend/recorder/src/tar.rs',
     'system-backend/recorder/src/http.rs',
+    'system-backend/recorder/web-ui/index.html',
     'system-backend/recorder/config/recorder.example.toml',
     'system-backend/recorder/systemd/netcore-recorder.service',
     'system-backend/recorder/install/install.sh',
@@ -81,8 +82,12 @@ checks = {
     'storage guard': all(term in config_rs for term in ('minimum_free_space_mb', 'max_active_recordings', 'max_recordings')) and 'ensure_storage_space_locked' in state,
 }
 
-match = re.search(r'const INDEX_HTML: &str = r#"(.*)"#;\s*$', http, re.S)
-checks['embedded WebUI raw string'] = bool(match and '<script>' in match.group(1) and '</script>' in match.group(1) and 'OPEN LAB' in match.group(1))
+webui = (ROOT / 'system-backend/recorder/web-ui/index.html').read_text()
+checks['embedded WebUI template'] = (
+    'include_str!("../web-ui/index.html")' in http
+    and 'service_design::render' in http
+    and '<script>' in webui and '</script>' in webui and 'OPEN LAB' in webui
+)
 
 failed = [name for name, ok in checks.items() if not ok]
 if failed:

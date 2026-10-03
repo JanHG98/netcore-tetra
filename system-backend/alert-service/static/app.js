@@ -264,7 +264,7 @@ function refresh(afterMutation=false) {
     try {
       const result=await api('status');
       // A poll started before create/delete must never undo that change locally.
-      if(version===mutationVersion) { snapshot=result; $('login').hidden=true; render(); }
+      if(version===mutationVersion) { snapshot=result; $('login').hidden=true; map.invalidateSize?.(); render(); }
     } catch(e) {
       notice(e.message,true); $('connection').textContent='Nicht verbunden'; $('connection').className='pill bad';
       const state=$('device-check-state');

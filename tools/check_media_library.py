@@ -27,6 +27,7 @@ REQUIRED = [
     "system-backend/media-library/install/uninstall.sh",
     "system-backend/media-library/tests/media_library_reference.py",
     "Docs/SWMI_CORE_1_PACKAGE_O_MEDIA_LIBRARY.md",
+    "system-backend/media-library/web-ui/index.html",
 ]
 MARKERS = {
     "Cargo.toml": "system-backend/media-library",
@@ -37,12 +38,12 @@ MARKERS = {
     "system-backend/media-library/src/media.rs": "TETRA_FRAME_BYTES: usize = 35",
     "system-backend/media-library/src/media.rs#2": "inspect_wav",
     "system-backend/media-library/src/media.rs#3": "command_partial_path",
-    "system-backend/media-library/src/model.rs": "Deserialize, Default)]\npub struct ApprovalInput",
+    "system-backend/media-library/src/model.rs": "pub struct ApprovalInput",
     "system-backend/media-library/src/state.rs": 'approval != "approved"',
     "system-backend/media-library/src/state.rs#2": "claim_dispatch",
     "system-backend/media-library/src/worker.rs": "/api/v1/sessions/{}/inject",
     "system-backend/media-library/src/http.rs": "/api/v1/assets/import-url",
-    "system-backend/media-library/src/http.rs#2": "OPEN LAB",
+    "system-backend/media-library/web-ui/index.html": "OPEN LAB",
     "system-backend/recorder/src/http.rs": "audio.tacelp",
     "system-backend/application-gateway/config/application-gateway.example.toml": 'endpoint = "http://127.0.0.1:8230/api/v1/assets/import-url"',
     "system-backend/observability/config/observability.example.toml": 'target_id = "media-library"',
@@ -131,6 +132,12 @@ def main() -> int:
         if not path.is_file() or marker not in path.read_text(errors="replace"):
             errors.append(f"missing marker {marker!r} in {relative}")
 
+    # Documentation comments may appear between the derive and the struct.
+    model_source = (ROOT / "system-backend/media-library/src/model.rs").read_text()
+    model_source = re.sub(r"//[^\n]*", "", model_source)
+    if not re.search(r"#\[derive\([^)]*\bDeserialize\b[^)]*\bDefault\b[^)]*\)\]\s*pub struct ApprovalInput", model_source):
+        errors.append("ApprovalInput must derive Deserialize and Default")
+
     # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
     # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for relative in [
@@ -175,7 +182,7 @@ def main() -> int:
         error = rust_balanced(ROOT / relative)
         if error: errors.append(f"{relative}: {error}")
 
-    webui = (ROOT / "system-backend/media-library/src/http.rs").read_text()
+    webui = (ROOT / "system-backend/media-library/web-ui/index.html").read_text()
     match = re.search(r"<script>(.*)</script>", webui, flags=re.S)
     if not match:
         errors.append("Media Library WebUI JavaScript not found")

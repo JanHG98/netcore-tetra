@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NetCore Call Control</title>
+<style>
+/* Dienstansichten ergänzen die gemeinsame NetCore-Oberfläche. */
+.wrap{display:grid;gap:18px}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:14px;margin:18px 0}.toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:14px 0}.toolbar>h2{margin-right:auto}.toolbar>label{flex:1 1 200px}.toolbar>label input{width:100%}.panel{min-width:0}.btn{display:inline-flex;align-items:center;justify-content:center}label{display:grid;gap:5px}dialog{width:94%;max-width:800px}h1,h2,h3{margin:0 0 12px}.pill,.tag{display:inline-block}.core-editor form{min-width:0}
+
+.core-nav{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px 26px;background:var(--panel,#fff);border-bottom:1px solid var(--line,#dbe5f2)}
+.core-nav button{border:0;border-radius:0;background:transparent;color:var(--muted,#425779);padding:14px 12px;box-shadow:none}
+.core-nav button.active{color:var(--accent,#2463eb);border-bottom:2px solid var(--accent,#2463eb)}
+.core-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(300px,1fr);gap:18px;align-items:start}
+.core-layout>.panel{min-width:0;margin-top:0}.core-layout .core-wide{grid-column:1/-1}
+.core-stack{display:grid;gap:18px;min-width:0}.core-detail{align-self:start;position:sticky;top:160px}
+.core-detail dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:18px 0}.core-detail dt{font-size:12px;color:var(--muted,#425779);margin-bottom:5px}.core-detail dd{margin:0;overflow-wrap:anywhere;font-weight:650}.core-detail .wide{grid-column:1/-1}
+.core-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.core-selected{background:var(--selected,#e8f2ff)}
+.core-row-title{padding:0!important;border:0!important;background:transparent!important;color:var(--text,#0b1832)!important;box-shadow:none!important;font:inherit!important;font-weight:750!important;text-align:left;cursor:pointer}
+.core-empty{color:var(--muted,#425779);padding:18px 0}.core-note{color:var(--muted,#425779);font-size:13px;line-height:1.5}.core-info{border:1px solid var(--line,#dbe5f2);background:var(--panel2,#f3f7ff);border-radius:10px;padding:14px;margin:14px 0}
+[data-core-view][hidden]{display:none!important}.view{display:none}.view.active{display:block}.tablewrap{overflow:auto}.tablewrap>table{min-width:650px}.core-detail .tablewrap>table{min-width:380px}form.grid,.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.wide{grid-column:1/-1}.form{display:flex;flex-wrap:wrap;gap:10px}.form label{flex:1 1 160px;display:grid;gap:5px}.form button{align-self:end}
+label:has(input[type=checkbox]){display:flex;align-items:center;gap:9px}input[type=checkbox]{width:auto;min-width:16px}pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:420px;overflow:auto}.small{font-size:12px}.mode{display:inline-flex;padding:5px 10px;border-radius:99px;background:var(--panel2,#e9f1ff);font-size:13px}
+@media(max-width:1050px){.core-layout{grid-template-columns:1fr!important}.core-detail{position:static}.core-layout .core-wide{grid-column:auto}}
+@media(max-width:640px){.core-nav{padding:6px 12px}.core-nav button{padding:12px 8px}form.grid,.grid{grid-template-columns:1fr}.wide{grid-column:auto}.core-detail dl{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<nav class="core-nav" aria-label="Dienstansichten"><button type="button" data-core-nav="calls" class="active" aria-current="page">Rufe</button><button type="button" data-core-nav="start" class="" aria-current="false">Ruf starten</button><button type="button" data-core-nav="restore" class="" aria-current="false">Restore</button><button type="button" data-core-nav="participants" class="" aria-current="false">Teilnehmer</button><button type="button" data-core-nav="nodes" class="" aria-current="false">Basisstationen</button><button type="button" data-core-nav="events" class="" aria-current="false">Ereignisse</button></nav><div class="lab">⚠ OPEN LAB – keine Anmeldung, keine Tokens, kein TLS. Jeder erreichbare Client darf Rufe, Floor und Restore steuern.</div>
+<header><div>
+<h1>Call Control</h1>
+<div class="muted">Netzweite logische Rufe, TBS-Legs, Floor Control und Call Restore</div>
+</div>
+<div id="gateway">Gateway …</div></header><main class="wrap"><section class="cards" id="cards"></section><div class="core-layout">
+<section class="panel" data-core-view="calls"><h2>Logische Rufe</h2>
+<div class="tablewrap"><table>
+<thead><tr>
+<th>Call</th>
+<th>Typ / Ziel</th>
+<th>Status</th>
+<th>Floor</th>
+<th>Legs</th>
+<th>Aktionen</th>
+</tr></thead>
+<tbody id="callRows"></tbody>
+</table></div></section><aside class="panel core-detail" id="coreCallDetail" data-core-view="calls"><h2>Rufdetails</h2>
+<p class="core-empty">Eintrag auswählen, um Details anzuzeigen.</p></aside><section class="panel core-wide" data-core-view="calls restore"><h2>Call Restore</h2>
+<div class="toolbar">
+<label>Logical Call ID<input id="rlogical" placeholder="Logical Call ID"></label><label>Quell-Node<input id="rsource" placeholder="Quell-Node"></label><label>Ziel-Node<input id="rtarget" placeholder="Ziel-Node"></label><label>lokale Call-ID optional<input id="rcall" type="number" placeholder="lokale Call-ID optional"></label><button onclick="restoreCall()">Restore vorbereiten</button>
+</div>
+<div class="tablewrap"><table>
+<thead><tr>
+<th>Zeit</th>
+<th>Call</th>
+<th>Quelle → Ziel</th>
+<th>Status</th>
+<th>Meldung</th>
+<th>Aktion</th>
+</tr></thead>
+<tbody id="restoreRows"></tbody>
+</table></div></section><section class="panel" data-core-view="start"><h2>Gruppenruf starten</h2>
+<div class="toolbar">
+<label>GSSI<input id="ggssi" type="number" placeholder="GSSI"></label><label>Quell-ISSI<input id="gsource" type="number" placeholder="Quell-ISSI"></label><label>Priorität<input id="gprio" type="number" min="0" max="15" value="0" placeholder="Priorität"></label><label>Node-IDs, kommasepariert (optional)<input id="gnodes" placeholder="Node-IDs, kommasepariert (optional)"></label><button class="primary" onclick="groupCall()">Starten</button>
+</div></section><section class="panel" data-core-view="start"><h2>Individualruf starten</h2>
+<div class="toolbar">
+<label>Calling ISSI<input id="icalling" type="number" placeholder="Calling ISSI"></label><label>Called ISSI<input id="icalled" type="number" placeholder="Called ISSI"></label><select id="isimplex"><option value="true">Simplex</option>
+<option value="false">Duplex</option></select><input id="iprio" type="number" min="0" max="15" value="0"><label>Ziel-Node optional<input id="inode" placeholder="Ziel-Node optional"></label><button class="primary" onclick="individualCall()">Starten</button>
+</div></section><section class="panel core-wide" data-core-view="nodes"><h2>Basisstationen</h2>
+<div class="tablewrap"><table>
+<thead><tr>
+<th>Node</th>
+<th>Zelle</th>
+<th>Online</th>
+<th>Call Control</th>
+<th>Restore</th>
+</tr></thead>
+<tbody id="nodeRows"></tbody>
+</table></div></section><section class="panel core-wide" data-core-view="participants"><h2>Teilnehmerlage</h2>
+<div class="tablewrap"><table>
+<thead><tr>
+<th>Node</th>
+<th>ISSI</th>
+<th>registriert</th>
+<th>Gruppen</th>
+<th>zuletzt</th>
+</tr></thead>
+<tbody id="participantRows"></tbody>
+</table></div></section><section class="panel core-wide" data-core-view="events"><h2>Ereignisse</h2>
+<pre id="events" class="muted"></pre></section>
+</div></main><dialog id="coreFloorDialog" class="core-editor"><form id="coreFloorForm" class="grid" onsubmit="coreRequestFloor(event)"><h2 id="coreFloorTitle" class="wide">Floor anfordern</h2><label class="wide">Quell-ISSI<input name="source_issi" type="number" min="1" max="16777215" required></label><label class="wide"><input name="force" type="checkbox">Floor bei Bedarf erzwingen</label><div class="toolbar wide"><button type="submit" class="primary">Floor anfordern</button><button type="button" onclick="document.getElementById('coreFloorDialog').close()">Abbrechen</button></div></form></dialog><script>
+// Die Navigation schaltet ausschließlich vorhandene Dienstbereiche um.
+function coreView(view){document.querySelectorAll('[data-core-view]').forEach(p=>{p.hidden=!p.dataset.coreView.split(' ').includes(view)});document.querySelectorAll('[data-core-nav]').forEach(b=>{const active=b.dataset.coreNav===view;b.classList.toggle('active',active);b.setAttribute('aria-current',active?'page':'false')});}
+document.querySelectorAll('[data-core-nav]').forEach(b=>b.addEventListener('click',()=>coreView(b.dataset.coreNav)));
+function coreField(label,value,wide=false){return `<div${wide?' class="wide"':''}><dt>${esc(label)}</dt><dd>${esc(value??'–')}</dd></div>`}
+function coreButton(label,action,id,extra=''){return `<button type="button" data-core-action="${esc(action)}" data-core-id="${esc(id)}" ${extra}>${esc(label)}</button>`}
+document.addEventListener('click',event=>{const b=event.target.closest('[data-core-action]');if(!b)return;const handler=window.coreActions?.[b.dataset.coreAction];if(handler)handler(b.dataset.coreId,b);});
+window.coreActions={};
+let coreSelectedCall=null;
+let calls=[],restores=[],nodes=[],participants=[];async function api(path,opt){const r=await fetch(path,opt);if(!r.ok&&r.status!==204){let e={};try{e=await r.json()}catch{}throw new Error(e.error||r.statusText)}return r.status===204?null:r.json()}function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}function post(path,body){return api(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})})}async function refresh(){try{const[s,c,r,n,p,e]=await Promise.all([api('/api/v1/status'),api('/api/v1/calls'),api('/api/v1/restores'),api('/api/v1/nodes'),api('/api/v1/participants'),api('/api/v1/events?limit=40')]);calls=c;restores=r;nodes=n;participants=p;document.getElementById('gateway').innerHTML=s.node_gateway_connected?'<span class="ok">● Gateway verbunden</span>':'<span class="bad">● Gateway getrennt</span>';document.getElementById('cards').innerHTML=[['aktive Calls',s.calls_active],['aktive Legs',s.call_legs_active],['verwaltet',s.calls_managed],['TBS online',s.nodes_connected],['Teilnehmer',s.participants_registered],['Kommandos offen',s.pending_commands],['Restore offen',s.restores_pending],['Revision',s.database_revision]].map(x=>`<div class="card"><div class="muted">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');renderCalls();renderCallDetail();renderRestores();renderNodes();renderParticipants();document.getElementById('events').textContent=e.map(x=>`${x.timestamp} #${x.seq} ${x.kind} ${x.node_id||''} ${x.logical_call_id||''} ${x.local_call_id??''}`).join('\n')}catch(e){document.getElementById('gateway').innerHTML='<span class="bad">UI-Fehler: '+esc(e.message)+'</span>'}}function renderCalls(){document.getElementById('callRows').innerHTML=calls.map(c=>{const legs=Object.values(c.legs||{});return `<tr><td>${coreButton(c.logical_call_id,'call-select',c.logical_call_id,'class="core-row-title"')}<br><span class="muted">${esc(c.operation_id)}</span></td><td>${esc(c.kind)}<br>${c.gssi?'GSSI '+c.gssi:(c.calling_issi+' → '+c.called_issi)}</td><td>${esc(c.phase)}<br>Prio ${c.priority}${c.emergency?' / NOTRUF':''}</td><td>${c.floor_holder??'frei'}${c.floor_queue?.length?' / Queue '+c.floor_queue.join(', '):''}</td><td>${legs.map(l=>`${esc(l.node_id)}: ${esc(l.phase)} / ${l.local_call_id??'–'} / TS ${l.timeslot??'–'}`).join('<br>')}</td><td><button onclick="floorPrompt('${c.logical_call_id}')">Floor</button> <button onclick="releaseFloor('${c.logical_call_id}')">Floor frei</button> <button class="danger" onclick="releaseCall('${c.logical_call_id}')">Beenden</button></td></tr>`}).join('')}function renderRestores(){document.getElementById('restoreRows').innerHTML=restores.map(r=>`<tr><td>${esc(r.created_at)}</td><td>${esc(r.logical_call_id)}<br>${r.source_call_id} → ${r.target_call_id??'–'}</td><td>${esc(r.source_node)} → ${esc(r.target_node)}</td><td>${esc(r.phase)}</td><td>${esc(r.message)}</td><td>${['completed','cancelled','failed','timed_out'].includes(r.phase)?'':`<button class="danger" onclick="cancelRestore('${r.restore_id}')">Abbrechen</button>`}</td></tr>`).join('')}function renderNodes(){document.getElementById('nodeRows').innerHTML=nodes.map(n=>`<tr><td>${esc(n.node_id)}<br><span class="muted">${esc(n.station_name)}</span></td><td>${n.mcc}/${n.mnc} LA ${n.location_area} CC ${n.colour_code}</td><td>${n.connected&&!n.stale?'<span class="ok">online</span>':'<span class="bad">offline</span>'}</td><td>${n.call_control_capable?'ja':'nein'}</td><td>${n.call_restore_capable?'ja':'nein'}</td></tr>`).join('')}function renderParticipants(){document.getElementById('participantRows').innerHTML=participants.map(p=>`<tr><td>${esc(p.node_id)}</td><td>${p.issi}</td><td>${p.registered?'ja':'nein'}</td><td>${[...p.groups].join(', ')}</td><td>${esc(p.last_seen)}</td></tr>`).join('')}async function groupCall(){try{await post('/api/v1/calls/group',{gssi:Number(ggssi.value),source_issi:Number(gsource.value),priority:Number(gprio.value||0),target_nodes:gnodes.value.split(',').map(x=>x.trim()).filter(Boolean)});refresh()}catch(e){alert(e.message)}}async function individualCall(){try{await post('/api/v1/calls/individual',{calling_issi:Number(icalling.value),called_issi:Number(icalled.value),simplex:isimplex.value==='true',priority:Number(iprio.value||0),target_node:inode.value.trim()||null});refresh()}catch(e){alert(e.message)}}async function releaseCall(id){if(!confirm('Call beenden?'))return;try{await post(`/api/v1/calls/${id}/release`);refresh()}catch(e){alert(e.message)}}function floorPrompt(id){const form=document.getElementById('coreFloorForm');form.reset();form.dataset.call=id;document.getElementById('coreFloorTitle').textContent='Floor für '+id;document.getElementById('coreFloorDialog').showModal()}
+async function coreRequestFloor(event){event.preventDefault();const form=event.target;try{await post(`/api/v1/calls/${encodeURIComponent(form.dataset.call)}/floor`,{source_issi:Number(form.elements.source_issi.value),force:form.elements.force.checked});document.getElementById('coreFloorDialog').close();refresh()}catch(e){alert(e.message)}}async function releaseFloor(id){try{await post(`/api/v1/calls/${id}/floor/release`);refresh()}catch(e){alert(e.message)}}async function restoreCall(){try{await post('/api/v1/restores',{logical_call_id:rlogical.value.trim(),source_node:rsource.value.trim(),target_node:rtarget.value.trim(),source_call_id:rcall.value?Number(rcall.value):null});refresh()}catch(e){alert(e.message)}}async function cancelRestore(id){try{await post(`/api/v1/restores/${id}/cancel`);refresh()}catch(e){alert(e.message)}}
+function coreCallPhase(phase){return ({starting:'Aufbau',requested:'Angefordert',active:'Aktiv',partial:'Teilweise aktiv',releasing:'Wird beendet',ended:'Beendet',failed:'Fehlgeschlagen',interrupted:'Unterbrochen',timed_out:'Zeitüberschreitung',offline:'Offline'})[phase]||phase;}
+function renderCallDetail(){const c=calls.find(x=>x.logical_call_id===coreSelectedCall)||calls[0],el=document.getElementById('coreCallDetail');if(!c){el.innerHTML='<h2>Rufdetails</h2><p class="core-empty">Keine logischen Rufe. Unter Ruf starten kann ein Ruf angelegt werden.</p>';return}coreSelectedCall=c.logical_call_id;const legs=Object.values(c.legs||{});el.innerHTML=`<h2>${esc(c.logical_call_id)}</h2><p class="${c.phase==='active'?'ok':c.phase==='failed'?'bad':'muted'}">${esc(coreCallPhase(c.phase))}${c.emergency?' · NOTRUF':''}</p><dl>${coreField('Typ',c.kind==='group'?'Gruppenruf':'Individualruf')}${coreField('Priorität',c.priority)}${coreField('Ziel',c.gssi?'GSSI '+c.gssi:c.calling_issi+' → '+c.called_issi,true)}${coreField('Quell-ISSI',c.source_issi)}${coreField('Floorhalter',c.floor_holder??'Frei')}${coreField('Operation-ID',c.operation_id,true)}</dl><h3>Warteschlange (${c.floor_queue.length})</h3>${c.floor_queue.length?'<ol>'+c.floor_queue.map(i=>'<li>'+esc(i)+'</li>').join('')+'</ol>':'<p class="core-note">Keine Floor-Anforderungen.</p>'}<div class="core-actions">${coreButton('Floor anfordern','call-floor',c.logical_call_id,'class="primary"')}${coreButton('Floor freigeben','call-floor-release',c.logical_call_id)}${coreButton('Ruf beenden','call-release',c.logical_call_id,'class="danger"')}</div><h3>TBS-Legs (${legs.length})</h3><div class="tablewrap"><table><thead><tr><th>Node</th><th>Phase</th><th>Call-ID / TS</th></tr></thead><tbody>${legs.map(l=>`<tr><td>${esc(l.node_id)}</td><td>${esc(coreCallPhase(l.phase))}</td><td>${l.local_call_id??'–'} / ${l.timeslot??'–'}</td></tr>`).join('')}</tbody></table></div>`;document.querySelectorAll('#callRows tr').forEach(r=>r.classList.toggle('core-selected',r.querySelector('[data-core-id]')?.dataset.coreId===c.logical_call_id));}
+window.coreActions['call-select']=id=>{coreSelectedCall=id;renderCallDetail()};window.coreActions['call-floor']=floorPrompt;window.coreActions['call-floor-release']=releaseFloor;window.coreActions['call-release']=releaseCall;
+
+refresh();setInterval(refresh,4000)
+coreView('calls');
+</script>
+</body>
+</html>

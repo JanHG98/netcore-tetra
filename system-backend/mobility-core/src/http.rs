@@ -1,6 +1,9 @@
 // NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Registrierung, Aufenthaltsbereiche und Teilnehmermobilität.
 // NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
 
+#[path = "../../shared/web-ui/service-design.rs"]
+mod service_design;
+
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
@@ -90,7 +93,7 @@ fn route(
     // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
     // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match (request.method.as_str(), request.path.as_str()) {
-        ("GET", "/") => html(INDEX_HTML),
+        ("GET", "/") => html(&service_design::render(INDEX_HTML, "Mobility Core", "open-lab")),
         ("GET", "/health/live") => json_response(200, &json!({ "status": "live" })),
         ("GET", "/health/ready") => {
             let status = mobility.status();
@@ -355,37 +358,4 @@ fn reason_phrase(status: u16) -> &'static str {
 
 // Was: Legt den festen Wert `INDEX_HTML` für index html fest.
 // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
-const INDEX_HTML: &str = r#"<!doctype html>
-<html lang="de">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NetCore Mobility Core</title>
-<style>
-:root{color-scheme:dark;--bg:#0b1220;--panel:#121d31;--line:#2a3b58;--text:#e9f0fb;--muted:#91a4c2;--ok:#4ade80;--warn:#facc15;--bad:#fb7185;--accent:#60a5fa}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif}.wrap{max-width:1500px;margin:auto;padding:20px}.lab{background:#7f1d1d;border:2px solid var(--bad);padding:13px 18px;border-radius:12px;font-weight:800}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:18px 0}.card,.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}.value{font-size:2rem;font-weight:800}.label,.small{color:var(--muted)}.panel{margin-top:14px;overflow:auto}table{width:100%;border-collapse:collapse;min-width:900px}th,td{text-align:left;padding:9px;border-bottom:1px solid var(--line)}button{border:0;border-radius:8px;padding:8px 11px;background:var(--accent);font-weight:800;cursor:pointer}.danger{background:var(--bad)}input,select{background:#0f1a2d;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:9px;margin:3px}.form{display:flex;flex-wrap:wrap;gap:7px;align-items:center}.pill{padding:3px 8px;border-radius:99px;font-size:.8rem;font-weight:700}.online{background:#14532d}.offline{background:#4c0519}.phase{background:#1e3a5f}pre{white-space:pre-wrap;font-size:.8rem;color:#c9d7ed}</style>
-</head>
-<body><div class="wrap">
-<div class="lab">⚠ OFFENER TESTMODUS: KEINE TOKENS, KEIN LOGIN, KEIN TLS. Jeder erreichbare Client darf Migrationen auslösen.</div>
-<h1>NetCore Mobility Core</h1><div class="small">Zentrale Teilnehmerlage, Migrationen und Context Transfer zwischen TBS</div>
-<div id="cards" class="cards"></div>
-<div class="panel"><h2>Context Transfer starten</h2><div class="form">
-<input id="issi" type="number" placeholder="ISSI">
-<select id="source"></select><select id="target"></select>
-<input id="local" type="number" placeholder="Ziel-ISSI (optional)">
-<button onclick="startTransfer()">Transfer starten</button>
-</div></div>
-<div class="panel"><h2>Aktive und letzte Transfers</h2><table><thead><tr><th>Phase</th><th>ISSI</th><th>Quelle → Ziel</th><th>Ziel-ISSI</th><th>Zeit</th><th>Fehler</th><th>Aktion</th></tr></thead><tbody id="transfers"></tbody></table></div>
-<div class="panel"><h2>Teilnehmer</h2><table><thead><tr><th>ISSI</th><th>Serving Node</th><th>Status</th><th>Gruppen</th><th>EE</th><th>RSSI</th><th>Letztes Ereignis</th></tr></thead><tbody id="subs"></tbody></table></div>
-<div class="panel"><h2>Basisstationen</h2><table><thead><tr><th>Status</th><th>Node</th><th>Zelle</th><th>Carrier</th><th>Letzter Kontakt</th></tr></thead><tbody id="nodes"></tbody></table></div>
-<div class="panel"><h2>Ereignisse</h2><pre id="events"></pre></div>
-</div>
-<script>
-const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-async function getj(u){const r=await fetch(u);if(!r.ok)throw new Error(await r.text());return r.json()}
-async function post(u,b){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:b?JSON.stringify(b):''});const t=await r.text();if(!r.ok)throw new Error(t);return t?JSON.parse(t):{}}
-const card=(l,v)=>`<div class="card"><div class="value">${esc(v)}</div><div class="label">${esc(l)}</div></div>`;
-async function startTransfer(){try{const issi=Number(document.querySelector('#issi').value);const source_node=document.querySelector('#source').value;const target_node=document.querySelector('#target').value;const lv=document.querySelector('#local').value;await post('/api/v1/transfers',{issi,source_node,target_node,target_local_issi:lv?Number(lv):null});refresh()}catch(e){alert(e.message)}}
-async function cancelTransfer(id){if(!confirm('Transfer abbrechen?'))return;try{await post(`/api/v1/transfers/${id}/cancel`);refresh()}catch(e){alert(e.message)}}
-async function refresh(){try{const [s,n,u,t,e]=await Promise.all([getj('/api/v1/status'),getj('/api/v1/nodes'),getj('/api/v1/subscribers'),getj('/api/v1/transfers'),getj('/api/v1/events?limit=60')]);document.querySelector('#cards').innerHTML=[card('Gateway',s.node_gateway_connected?'ONLINE':'OFFLINE'),card('TBS online',s.nodes_connected),card('Teilnehmer',s.subscribers_known),card('Transfers aktiv',s.transfers_active),card('Erfolgreich',s.transfers_completed),card('Fehlgeschlagen',s.transfers_failed)].join('');const opts=n.filter(x=>x.connected&&!x.stale).map(x=>`<option value="${esc(x.node_id)}">${esc(x.station_name)} (${esc(x.node_id)})</option>`).join('');document.querySelector('#source').innerHTML=opts;document.querySelector('#target').innerHTML=opts;document.querySelector('#nodes').innerHTML=n.map(x=>`<tr><td><span class="pill ${x.connected&&!x.stale?'online':'offline'}">${x.connected&&!x.stale?'ONLINE':'OFFLINE'}</span></td><td><b>${esc(x.station_name)}</b><br><span class="small">${esc(x.node_id)}</span></td><td>${x.mcc}/${x.mnc} LA ${x.location_area}, CC ${x.colour_code}</td><td>${x.main_carrier}${x.secondary_carrier?' / '+x.secondary_carrier:''}</td><td>${esc(x.last_seen)}</td></tr>`).join('')||'<tr><td colspan="5">Keine TBS.</td></tr>';document.querySelector('#subs').innerHTML=u.map(x=>`<tr><td><b>${x.issi}</b></td><td>${esc(x.serving_node||'-')}</td><td>${x.registered?'registriert':'offline'}</td><td>${[...x.groups].join(', ')||'-'}</td><td>${x.energy_saving_mode??'-'}</td><td>${x.last_rssi_dbfs==null?'-':x.last_rssi_dbfs.toFixed(1)+' dBFS'}</td><td>${esc(x.last_seen)}</td></tr>`).join('')||'<tr><td colspan="7">Noch keine Teilnehmertelemetrie.</td></tr>';document.querySelector('#transfers').innerHTML=t.map(x=>`<tr><td><span class="pill phase">${esc(x.phase)}</span></td><td>${x.issi}</td><td>${esc(x.source_node)} → ${esc(x.target_node)}</td><td>${x.target_local_issi}</td><td>${esc(x.updated_at)}</td><td>${esc(x.error||'-')}</td><td>${['completed','failed','timed_out','cancelled','source_cleanup_queued','source_cleanup_requested'].includes(x.phase)?'':`<button class="danger" onclick="cancelTransfer('${x.transfer_id}')">Abbrechen</button>`}</td></tr>`).join('')||'<tr><td colspan="7">Noch keine Transfers.</td></tr>';document.querySelector('#events').textContent=e.map(x=>`${x.timestamp} #${x.seq} ${x.kind}${x.issi?' ISSI '+x.issi:''}${x.transfer_id?' ['+x.transfer_id+']':''} ${JSON.stringify(x.detail)}`).join('\n')}catch(e){document.querySelector('#events').textContent='Fehler: '+e.message}}
-refresh();setInterval(refresh,4000);
-</script></body></html>"#;
+const INDEX_HTML: &str = include_str!("../web-ui/index.html");
