@@ -191,6 +191,41 @@ const origin = 'http://127.0.0.1:' + server.address().port;
 await mkdir(output, { recursive: true });
 let browser;
 let checks = 0;
+
+// Read the computed foreground against the nearest painted surface. Ignore
+// deliberately disabled controls; they remain visually distinct in both modes.
+async function assertDarkContrast(page, label) {
+  const failures = await page.evaluate(() => {
+    const rgb = value => {
+      const parts = value.match(/[\d.]+/g)?.map(Number) || [];
+      return parts.length >= 3 ? [...parts.slice(0, 3), parts[3] ?? 1] : [0, 0, 0, 0];
+    };
+    const lum = color => color.slice(0, 3).map(v => v / 255).map(v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)
+      .reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
+    const effectiveBackground = node => {
+      let result = [0, 0, 0, 0];
+      for (let p = node; p; p = p.parentElement) {
+        const next = rgb(getComputedStyle(p).backgroundColor);
+        const alpha = result[3] + next[3] * (1 - result[3]);
+        if (alpha) result = [0, 1, 2].map(i => (result[i] * result[3] + next[i] * next[3] * (1 - result[3])) / alpha).concat(alpha);
+        if (result[3] >= 0.99) break;
+      }
+      return result[3] ? result : [16, 26, 45, 1];
+    };
+    const selector = '.service-summary, .card, .panel, th, td, .notice, pre, code, .pill, label, input:not([type="hidden"]):not(:disabled), select:not(:disabled), textarea:not(:disabled), button:not(:disabled), .matrix-group span, .matrix-device span, .detail-list dt, .detail-list dd';
+    return [...document.querySelectorAll(selector)].filter(node => {
+      const box = node.getBoundingClientRect();
+      return box.width > 0 && box.height > 0 && (node.textContent.trim() || /^(INPUT|SELECT|TEXTAREA)$/.test(node.tagName))
+        && !node.closest('[hidden], button:disabled, input:disabled, select:disabled') && getComputedStyle(node).opacity === '1';
+    }).map(node => {
+      const foreground = rgb(getComputedStyle(node).color), background = effectiveBackground(node);
+      const ratio = (Math.max(lum(foreground), lum(background)) + 0.05) / (Math.min(lum(foreground), lum(background)) + 0.05);
+      return { selector: node.id || node.className || node.tagName, text: node.textContent.trim().slice(0, 45), ratio: Number(ratio.toFixed(2)) };
+    }).filter(item => item.ratio < 4.5);
+  });
+  assert.deepEqual(failures, [], label + ' dark contrast below 4.5:1'); checks++;
+}
+
 try {
   browser = await playwright.chromium.launch({ headless: true,
     executablePath: process.env.CHROMIUM_EXECUTABLE_PATH || undefined, args: ['--no-sandbox'] });
@@ -309,8 +344,74 @@ try {
       await page.setViewportSize({ width, height: 900 });
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true, service + ' overflow at ' + width); checks++;
     }
+
+    await page.setViewportSize({ width: 1600, height: 1000 });
+    await page.locator('.nc-theme-toggle').click();
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.ncTheme), 'dark'); checks++;
+    assert.equal(await page.evaluate(() => localStorage.getItem('netcore-theme')), 'dark'); checks++;
+    await page.reload({ waitUntil: 'networkidle' });
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.ncTheme), 'dark'); checks++;
+    assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme), 'dark'); checks++;
+    assert.equal(await page.locator('.nc-theme-toggle').getAttribute('aria-pressed'), 'true'); checks++;
+    await assertDarkContrast(page, service + ' overview');
+    const darkTabs = page.locator('.nc-service-nav button[data-page], .nc-service-nav button[data-tab]');
+    const darkNav = await darkTabs.count() ? darkTabs : page.locator('.nc-service-nav button');
+    for (let i = 0; i < await darkNav.count(); i++) {
+      await darkNav.nth(i).click();
+      assert.equal(await page.locator('.page.active, .tab.active').count(), 1); checks++;
+      await assertDarkContrast(page, service + ' dark tab ' + i);
+    }
+    if (service === 'security-core') {
+      await page.locator('.nc-service-nav button').filter({ hasText: /^Security-Profile$|^Profile$/ }).click();
+      await page.locator('#profileRows button').filter({ hasText: 'Bearbeiten' }).click();
+      await assertDarkContrast(page, 'Security profile editor');
+    } else if (service === 'kmf') {
+      await page.locator('.nc-service-nav button').filter({ hasText: /^Schlüssel$/ }).click();
+      await page.locator('#keyRows button').filter({ hasText: key.label }).click();
+      await assertDarkContrast(page, 'KMF selected metadata');
+    } else if (service === 'application-gateway') {
+      await page.locator('.nc-service-nav button').filter({ hasText: /^Connectoren$/ }).click();
+      await page.locator('#connectorRows button').filter({ hasText: /^Edit$/ }).click();
+      await assertDarkContrast(page, 'Application connector dialog');
+      await page.screenshot({ path: path.join(output, 'application-gateway-dialog-dark.png'), fullPage: true });
+      await page.locator('#connectorDialog').evaluate(dialog => dialog.close());
+    } else if (service === 'media-library') {
+      await page.locator('.nc-service-nav button').filter({ hasText: /^TTS \/ Piper$/ }).click();
+      await page.locator('#ttsText').fill('Dies ist ein UI Test im dunklen Design.');
+      await assertDarkContrast(page, 'Media TTS editor');
+      await page.evaluate(() => scrollTo(0, 0));
+      await page.screenshot({ path: path.join(output, 'media-library-tts-dark.png'), fullPage: true });
+      await page.locator('.nc-service-nav button').filter({ hasText: /^Bibliothek$/ }).click();
+      await page.locator('#assetRows button').filter({ hasText: asset.title }).click();
+      assert.equal(await page.locator('#libraryPlayer').evaluate(node => getComputedStyle(node).colorScheme), 'dark'); checks++;
+      await assertDarkContrast(page, 'Media asset, preview and waveform');
+    } else if (service === 'observability') {
+      await page.locator('.nc-service-nav button').first().click();
+    } else if (service === 'provisioning-core') {
+      await page.locator('.nc-service-nav button[data-tab="devices"]').click();
+      await page.locator('#deviceRows button').filter({ hasText: 'Bearbeiten' }).click();
+      await assertDarkContrast(page, 'Provisioning device dialog');
+      await page.screenshot({ path: path.join(output, 'provisioning-core-dialog-dark.png'), fullPage: true });
+      await page.locator('#deviceDialog').evaluate(dialog => dialog.close());
+      await page.locator('.nc-service-nav button[data-tab="matrix"]').click();
+      await page.locator('#matrixBody button').filter({ hasText: 'Details' }).click();
+      await assertDarkContrast(page, 'Provisioning membership editor and matrix');
+    } else if (await darkNav.count()) {
+      await darkNav.first().click();
+    }
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: path.join(output, service + '-dark.png'), fullPage: true });
+    await page.setViewportSize({ width: 390, height: 900 });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true, service + ' dark mobile overflow'); checks++;
+    await assertDarkContrast(page, service + ' dark mobile');
+    await page.screenshot({ path: path.join(output, service + '-dark-mobile.png'), fullPage: true });
+    await page.locator('.nc-theme-toggle').click();
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.ncTheme), 'light'); checks++;
+    assert.equal(await page.evaluate(() => localStorage.getItem('netcore-theme')), 'light'); checks++;
+    await page.reload({ waitUntil: 'networkidle' });
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.ncTheme), 'light'); checks++;
     assert.deepEqual(errors, [], service + ' browser errors'); checks++;
-    console.log(service + ': tabs, layout and actions passed');
+    console.log(service + ': tabs, layout, actions and persisted light/dark themes passed');
     await context.close();
   }
   assert.deepEqual(unhandled, [], 'unhandled fixture API calls');

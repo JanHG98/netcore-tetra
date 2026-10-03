@@ -30,6 +30,25 @@ entsprechen der Basisstation. Das originale PNG wird ohne Neuzeichnung eingebett
 zwei CSS-Ausschnitte zeigen Symbol und Wortmarke nebeneinander. Ein optionales dunkles
 Design bleibt über den Knopf in der Kopfzeile erreichbar.
 
+Hell bleibt ohne gespeicherte Auswahl der Standard. Dunkel ist eine explizite
+Browserauswahl und umfasst Kopfzeile, Navigation, Karten, Tabellen, Formulare,
+Dialoge, Diagnosetexte, Statusfarben und die gemeinsamen Kartensteuerelemente.
+Das unveränderte Original-Logo behält in beiden Modi seine helle Markenfläche.
+
+`assets/service-theme-init.js` wird blockierend am Anfang des `<head>` eingebunden.
+Dadurch gilt die gespeicherte Palette schon beim ersten Anzeigen. Die Auswahl liegt
+unter `netcore-theme`; der bisherige Schlüssel `netcore-service-theme` dient als
+Fallback und wird beim Umschalten ebenfalls aktualisiert. Die dritte Auswahl `blue`
+der Basisstation entspricht bei Diensten dem hellen Design. Die Auswahl gilt je
+Browser und Web-Origin, also nicht automatisch über unterschiedliche LXC-Adressen
+oder Ports hinweg. Ohne verfügbaren Browser-Speicher funktioniert der Schalter
+weiter; beim erneuten Laden beginnt die Seite wieder hell.
+
+Beim Wechsel versendet die Shell auf `window` ein `netcore-theme-change`-Ereignis
+mit `event.detail.theme` (`light` oder `dark`). Dienstgrafiken können ihre Farben
+dann aus den CSS-Variablen lesen und neu zeichnen. Andere Tabs derselben Origin
+übernehmen Änderungen über das `storage`-Ereignis.
+
 Die Dienst-WebUIs bleiben fachlich eigenständig. Das Shell-Skript verschiebt vorhandene
 Navigationsknoten in die horizontale Kopfzeile; IDs, Listener und Aktionsfunktionen
 bleiben erhalten. Einseitige Oberflächen erhalten Anker zu ihren vorhandenen Bereichen.
@@ -92,3 +111,11 @@ node system-backend/shared/web-ui/tests/service-design.mjs
 Playwright und ein Chromium-Browser werden nur zum Testen benötigt. Ein vorhandener
 Browser kann über `CHROMIUM_EXECUTABLE_PATH` gewählt werden. Die Rust-Modultests prüfen
 idempotente Einbindung und eine gegen Script-Abschluss geschützte JSON-Konfiguration.
+Die Browserprüfung deckt zusätzlich gespeicherte Auswahl und frühe Theme-Anwendung,
+Reload, blockierten Browser-Speicher, die explizite Basisstationsauswahl `blue`,
+mehrere Tabs und Textkontrast der gemeinsamen Oberflächen in beiden Modi ab.
+
+Bei Diensten mit `script-src 'self'` (Warnzentrale) bleibt die Content Security Policy
+bestehen: Der Initializer wird als blockierende lokale Datei am Anfang des `<head>`
+geladen; die Shell als lokale Datei nach den Dienstskripten. Es wird kein ausführbares
+Inline-Skript freigeschaltet. Die Workflow-Generierung kopiert diese Dateien mit.

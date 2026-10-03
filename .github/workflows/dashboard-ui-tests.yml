@@ -24,7 +24,7 @@ jobs:
         run: |
           npm install --prefix "$RUNNER_TEMP/dashboard-ui" --no-save playwright@1.62.1
           "$RUNNER_TEMP/dashboard-ui/node_modules/.bin/playwright" install --with-deps chromium
-      - name: Test all dashboard views and access boundaries
+      - name: Test all dashboard views, light and dark modes, and access boundaries
         env:
           NODE_PATH: ${{ runner.temp }}/dashboard-ui/node_modules
         run: node tools/test_dashboard_ui.mjs

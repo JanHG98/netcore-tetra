@@ -3,17 +3,21 @@
 // Fixture data is never included in a production service.
 import assert from 'node:assert/strict';
 import http from 'node:http';
-import {readFile,mkdir} from 'node:fs/promises';
+import {mkdir} from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createRequire} from 'node:module';
+import {execFileSync} from 'node:child_process';
 const require=createRequire(import.meta.url);
 let chromium;try{({chromium}=require('playwright'))}catch(e){if(!process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES)throw e;({chromium}=require(path.join(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES,'playwright')))}
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'),output=path.join(root,'target/service-ui-preview/core');await mkdir(output,{recursive:true});
 const services=['node-gateway','subscriber-core','group-core','mobility-core','call-control','media-switch','sds-router','packet-core','ip-gateway'];
 const names=['Node Gateway','Subscriber Core','Group Core','Mobility Core','Call Control','Media Switch','SDS Router','Packet Core','IP Gateway'];
 const shared=path.join(root,'system-backend/shared/web-ui');
-const [css,shell,logo]=await Promise.all(['assets/service-design.css','assets/service-design.js','assets/netcore-logo.data-uri'].map(f=>readFile(path.join(shared,f),'utf8')));
+// Compile the actual dependency-free renderer, including its early theme restore.
+const rendererSource=path.join(output,'render-core.rs'),renderer=path.join(output,'render-core');
+await import('node:fs/promises').then(({writeFile})=>writeFile(rendererSource,`#[path=${JSON.stringify(path.join(shared,'service-design.rs'))}] mod service_design; fn main(){let a:Vec<String>=std::env::args().collect();let h=std::fs::read_to_string(&a[1]).unwrap();print!("{}",service_design::render(&h,&a[2],"open-lab"));}`));
+execFileSync(process.env.RUSTC||'rustc',['--edition=2024',rendererSource,'-o',renderer]);
 const time='2026-10-03T00:00:00Z';
 const node={node_id:'tbs-test-a',station_name:'Test-TBS A',connected:true,stale:false,last_seen:time,mcc:901,mnc:1510,location_area:1,colour_code:1,main_carrier:33440,secondary_carrier:null,stack_version:'0.4',group_policy_capable:true,call_control_capable:true,call_restore_capable:true,media_bridge:true,media_frame_count:25,sds_capable:true,packet_data_capable:true,multi_pdch_capable:true,gateway_running:true,interface_name:'ntc-pd0',gateway_address:'10.0.0.1',active_contexts:1,active_bearers:1,bearer_capacity:4,packets_from_mobile:4,packets_to_mobile:3,bytes_from_mobile:80,bytes_to_mobile:60};
 const gatewayNode={...node,identity:{...node},peer:'127.0.0.1:5000',last_message_kind:'telemetry',message_count:35,telemetry_count:12,control_ack_count:2,capabilities:{managed_calls:true,media_bridge:true}};
@@ -43,22 +47,59 @@ function data(service,p){
  if(p==='/api/v1/events')return [{seq:1,sequence:1,timestamp:time,kind:'test_event',detail:{}}];return [];
 }
 let activeService=services[0];const writes=[],documents=new Map();
-for(let i=0;i<services.length;i++){const source=await readFile(path.join(root,'system-backend',services[i],'web-ui/index.html'),'utf8'),config=JSON.stringify({name:names[i],access:'open-lab',logo:logo.trim()}).replace(/</g,'\\u003c');documents.set(services[i],source.replace('</head>',`<style id="netcore-service-design">${css}</style><script type="application/json" id="netcore-service-config">${config}</script><script>document.documentElement.dataset.netcoreUi='service';</script></head>`).replace('</body>',`<script id="netcore-service-shell">${shell}</script></body>`))}
+for(let i=0;i<services.length;i++)documents.set(services[i],execFileSync(renderer,[path.join(root,'system-backend',services[i],'web-ui/index.html'),names[i]],{encoding:'utf8',maxBuffer:4*1024*1024}));
 const server=http.createServer(async(req,res)=>{try{const url=new URL(req.url,'http://localhost');if(url.pathname==='/'){activeService=url.searchParams.get('service')||activeService;res.setHeader('Content-Type','text/html');return res.end(documents.get(activeService))}if(req.method!=='GET'){const chunks=[];for await(const c of req)chunks.push(c);const text=Buffer.concat(chunks).toString();writes.push({service:activeService,path:url.pathname,method:req.method,body:text?JSON.parse(text):null});res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({queued:1,ok:true}))}res.setHeader('Content-Type','application/json');res.end(JSON.stringify(data(activeService,url.pathname)))}catch(e){res.statusCode=500;res.end(JSON.stringify({error:e.message}))}});
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const base='http://127.0.0.1:'+server.address().port,browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_EXECUTABLE_PATH?{executablePath:process.env.CHROMIUM_EXECUTABLE_PATH}:{}),args:['--no-sandbox']});
 let checks=0;const errors=[];const check=(v,m)=>{assert.ok(v,m);checks++};
-async function assertWrite(page,action,p,validate){const before=writes.length;await action();await page.waitForFunction(()=>!document.querySelector('dialog[open]'),null,{timeout:1000}).catch(()=>{});await new Promise(r=>setTimeout(r,100));const w=writes.slice(before).find(x=>x.path===p);check(!!w,'Expected API write '+p);if(validate){validate(w.body);checks++}}
+
+// Check actual rendered colors, including translucent ancestor backgrounds.
+// Normal text, selected rows, muted labels and editable control values need 4.5:1.
+async function readable(page,description){
+ const result=await page.evaluate(()=>{
+  const rgba=value=>{const n=value.match(/[\d.]+/g)?.map(Number)||[];return n.length>=3?[n[0],n[1],n[2],n[3]??1]:[0,0,0,0]};
+  const over=(fg,bg)=>{const a=fg[3]+bg[3]*(1-fg[3]);return a?[0,1,2].map(i=>(fg[i]*fg[3]+bg[i]*bg[3]*(1-fg[3]))/a).concat(a):[0,0,0,0]};
+  const bgFor=el=>{const stack=[];for(let n=el;n;n=n.parentElement)stack.push(rgba(getComputedStyle(n).backgroundColor));return stack.reverse().reduce((bg,fg)=>over(fg,bg),[255,255,255,1])};
+  const lum=rgb=>rgb.slice(0,3).map(v=>v/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((a,v,i)=>a+v*[.2126,.7152,.0722][i],0);
+  const failures=[];let inspected=0;
+  const regions='.nc-service-header *, .panel *, .cards *, .lab, .warn, .core-note, .form *, dialog[open] *';
+  for(const el of document.querySelectorAll(regions)){
+   const style=getComputedStyle(el),rect=el.getBoundingClientRect();
+   if(!el.getClientRects().length||rect.width===0||rect.height===0||style.visibility!=='visible'||el.disabled||el.matches('script,style,img,canvas,svg,input[type=checkbox],input[type=radio],input[type=hidden]'))continue;
+   const text=[...el.childNodes].filter(n=>n.nodeType===Node.TEXT_NODE).map(n=>n.textContent).join('').trim();
+   if(!text&&!el.matches('input,select,textarea'))continue;
+   const bg=bgFor(el),fg=over(rgba(style.color),bg),a=lum(fg),b=lum(bg),ratio=(Math.max(a,b)+.05)/(Math.min(a,b)+.05);
+   const large=parseFloat(style.fontSize)>=24||(parseFloat(style.fontSize)>=18.66&&Number(style.fontWeight)>=700);inspected++;
+   if(ratio<(large?3:4.5)-.02)failures.push({tag:el.tagName,id:el.id,text:(text||el.value||el.placeholder||'').slice(0,70),ratio:Number(ratio.toFixed(2)),color:style.color,background:backgroundColor(el)});
+   function backgroundColor(el){return bgFor(el).slice(0,3).map(Math.round).join(',')}
+  }
+  return {inspected,failures};
+ });
+ check(result.inspected>0,description+' contains readable content');
+ check(result.failures.length===0,description+' contrast failures: '+JSON.stringify(result.failures));
+}
+async function theme(page,mode){const current=await page.evaluate(()=>document.documentElement.dataset.ncTheme);if(current!==mode)await page.locator('.nc-theme-toggle').click();await page.waitForFunction(mode=>document.documentElement.dataset.ncTheme===mode,mode);check(await page.locator('.nc-theme-toggle').getAttribute('aria-pressed')===(mode==='dark'?'true':'false'),'Theme button reports '+mode);check(await page.evaluate(()=>localStorage.getItem('netcore-theme'))===mode,'Canonical preference stores '+mode)}
+async function inspectDialogs(page,service){
+ if(service==='ip-gateway'){
+  for(const kind of ['routes','firewall','nat','dns','captures']){await page.evaluate(kind=>corePolicy(kind),kind);await readable(page,service+' dark '+kind+' form');await page.evaluate(()=>document.getElementById('corePolicyDialog').close())}
+ }else{
+  const ids=await page.locator('dialog').evaluateAll(ds=>ds.map(d=>d.id));
+  for(const id of ids){await page.evaluate(id=>document.getElementById(id).showModal(),id);await readable(page,service+' dark dialog '+id);await page.evaluate(id=>document.getElementById(id).close(),id)}
+ }
+}
+async function assertWrite(page,action,p,validate){const before=writes.length;if(await page.locator('dialog[open]').count())await readable(page,activeService+' populated dark form before submit');await action();await page.waitForFunction(()=>!document.querySelector('dialog[open]'),null,{timeout:1000}).catch(()=>{});await new Promise(r=>setTimeout(r,100));const w=writes.slice(before).find(x=>x.path===p);check(!!w,'Expected API write '+p);if(validate){validate(w.body);checks++}}
 try{
- const page=await browser.newPage({viewport:{width:1600,height:1000}});page.on('pageerror',e=>errors.push({service:activeService,error:e.message}));page.on('dialog',d=>d.accept(d.type()==='prompt'?'5102':undefined));
+ // Reduced motion removes intermediate transition colors from contrast measurements.
+ const page=await browser.newPage({viewport:{width:1600,height:1000},reducedMotion:'reduce'});page.on('pageerror',e=>errors.push({service:activeService,error:e.message}));page.on('dialog',d=>d.accept(d.type()==='prompt'?'5102':undefined));
+ await page.addInitScript(()=>{const observer=new MutationObserver(()=>{if(document.body){window.__coreFirstBodyTheme=document.documentElement.dataset.ncTheme;observer.disconnect()}});observer.observe(document,{childList:true,subtree:true})});
  for(const service of services){
   await page.goto(base+'/?service='+service);await page.waitForSelector('.nc-service-header');await page.waitForFunction(()=>document.querySelectorAll('#cards .card').length>0);
   check(!(await page.locator('body').innerText()).includes('UI-Fehler:'),service+' protocol shape renders');check((await page.locator('body').innerText()).includes('OPEN LAB'),service+' access mode visible');check(await page.locator('.nc-service-logo-wordmark img').count()===1,service+' logo');
-  const tabs=page.locator('.nc-service-nav button'),count=await tabs.count();check(count>=4,service+' navigation');for(let i=0;i<count;i++){await tabs.nth(i).click();check(await page.locator('.panel:visible').count()>0,service+' tab '+i+' has content')}await tabs.first().click();
+  const tabs=page.locator('.nc-service-nav button'),count=await tabs.count();check(count>=4,service+' navigation');for(let i=0;i<count;i++){await tabs.nth(i).click();check(await page.locator('.panel:visible').count()>0,service+' tab '+i+' has content')}await tabs.first().click();await theme(page,'dark');for(let i=0;i<count;i++){await tabs.nth(i).click();await readable(page,service+' dark tab '+i)}await tabs.first().click();
   if(service==='node-gateway'){await page.locator('#nodes [data-core-action="node-select"]').click();check((await page.locator('#coreNodeDetail').innerText()).includes('Mediaframes'),'Gateway media frame units');await assertWrite(page,()=>page.locator('#coreNodeDetail [data-core-action="node-ping"]').click(),'/api/v1/nodes/'+node.node_id+'/ping')}
   if(service==='subscriber-core'){
    await page.locator('#subscriberRows [data-core-action="subscriber-select"]').click();check((await page.locator('#coreSubscriberDetail').innerText()).includes('<script>unsafe</script>'),'Untrusted profile text stays text');check(await page.locator('#coreSubscriberDetail script').count()===0,'Profile cannot inject script');
-   await page.getByRole('button',{name:'Teilnehmer anlegen',exact:true}).click();await page.locator('#form [name="issi"]').fill('6001');await page.locator('#form [name="display_name"]').fill('Neues Testprofil');await assertWrite(page,()=>page.locator('#form button[type="submit"]').click(),'/api/v1/subscribers',p=>assert.equal(p.issi,6001));await page.locator('#coreSubscriberDetail [data-core-action="subscriber-edit"]').click();check(await page.locator('#form [name="issi"]').isDisabled(),'Existing ISSI immutable');await page.locator('#form button[type="button"]').click();
+   await page.getByRole('button',{name:'Teilnehmer anlegen',exact:true}).click();await page.locator('#form [name="issi"]').fill('6001');await page.locator('#form [name="display_name"]').fill('Neues Testprofil');await assertWrite(page,()=>page.locator('#form button[type="submit"]').click(),'/api/v1/subscribers',p=>assert.equal(p.issi,6001));await page.locator('#coreSubscriberDetail [data-core-action="subscriber-edit"]').click();check(await page.locator('#form [name="issi"]').isDisabled(),'Existing ISSI immutable');await readable(page,'Subscriber dark edit form');await page.locator('#form button[type="button"]').click();
   }
   if(service==='group-core'){
    await page.locator('#groupRows [data-core-action="group-select"]').click();check((await page.locator('#coreGroupDetail').innerText()).includes('Konfigurierte Mitgliedschaften'),'Policy distinct from registration');await page.getByRole('button',{name:'Gruppe anlegen',exact:true}).click();await page.locator('#groupForm [name="gssi"]').fill('15501');await assertWrite(page,()=>page.locator('#groupForm button[type="submit"]').click(),'/api/v1/groups',p=>assert.equal(p.gssi,15501));await page.getByRole('button',{name:'Mitgliedschaft hinzufügen',exact:true}).click();await page.locator('#membershipForm [name="issi"]').fill('6001');await page.locator('#membershipForm [name="gssi"]').fill('15201');await assertWrite(page,()=>page.locator('#membershipForm button[type="submit"]').click(),'/api/v1/memberships',p=>assert.equal(p.allowed,true));
@@ -77,7 +118,21 @@ try{
   if(service==='ip-gateway'){
    await tabs.nth(2).click();for(const [label,p] of [['Route hinzufügen','routes'],['Regel hinzufügen','firewall'],['NAT-Regel hinzufügen','nat'],['A-Record hinzufügen','dns']]){await page.getByRole('button',{name:label,exact:true}).click();check(await page.locator('#corePolicyDialog').isVisible(),'IP '+p+' styled form');await assertWrite(page,()=>page.locator('#corePolicyForm button[type="submit"]').click(),'/api/v1/'+p,payload=>assert.equal(typeof payload.name,'string'))}await tabs.nth(3).click();await page.getByRole('button',{name:'Capture starten',exact:true}).click();await assertWrite(page,()=>page.locator('#corePolicyForm button[type="submit"]').click(),'/api/v1/captures',p=>assert.equal(p.direction,'both'));await tabs.first().click();
   }
-  await page.evaluate(()=>scrollTo(0,0));await page.mouse.move(1590,980);await page.waitForTimeout(100);await page.screenshot({path:path.join(output,service+'.png'),fullPage:true});await page.setViewportSize({width:390,height:844});check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),service+' mobile viewport does not overflow');await page.evaluate(()=>scrollTo(0,0));await page.waitForTimeout(100);await page.screenshot({path:path.join(output,service+'-mobile.png'),fullPage:true});await page.setViewportSize({width:1600,height:1000});
+
+  await readable(page,service+' selected detail and rows in dark');
+  await inspectDialogs(page,service);
+  await page.evaluate(()=>scrollTo(0,0));await page.mouse.move(1590,980);await page.waitForTimeout(100);
+  await page.screenshot({path:path.join(output,service+'-dark.png'),fullPage:true});
+  await page.setViewportSize({width:390,height:844});check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),service+' dark mobile viewport does not overflow');await readable(page,service+' dark mobile');await page.evaluate(()=>scrollTo(0,0));await page.waitForTimeout(100);await page.screenshot({path:path.join(output,service+'-mobile-dark.png'),fullPage:true});
+  await page.setViewportSize({width:1600,height:1000});await page.reload();await page.waitForSelector('.nc-service-header');await page.waitForFunction(()=>document.querySelectorAll('#cards .card').length>0);
+  check(await page.evaluate(()=>document.documentElement.dataset.ncTheme==='dark'),service+' dark theme persists through reload');check(await page.evaluate(()=>window.__coreFirstBodyTheme==='dark'),service+' saved dark theme is restored before body renders');await readable(page,service+' restored dark theme');
+  await theme(page,'light');check(await page.evaluate(()=>document.documentElement.dataset.ncTheme==='light'),service+' returns to light');
+  // Keep the original light screenshots alongside the new dark variants.
+  if(service==='packet-core')await page.locator('.nc-service-nav button').nth(1).click();
+  if(service==='sds-router'){await page.locator('#messageRows button').first().click();await page.waitForFunction(()=>document.querySelector('#coreMessageDetail').textContent.includes('Message-ID'))}
+  await page.evaluate(()=>scrollTo(0,0));await page.mouse.move(1590,980);await page.waitForTimeout(100);await page.screenshot({path:path.join(output,service+'.png'),fullPage:true});
+  await page.setViewportSize({width:390,height:844});check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),service+' light mobile viewport does not overflow');await page.evaluate(()=>scrollTo(0,0));await page.waitForTimeout(100);await page.screenshot({path:path.join(output,service+'-mobile.png'),fullPage:true});await page.setViewportSize({width:1600,height:1000});
+
  }
  check(errors.length===0,'Browser runtime errors: '+JSON.stringify(errors));console.log(JSON.stringify({services:services.length,checks,writes:writes.length,errors,screenshots:path.relative(root,output)},null,2));
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve))}

@@ -25,7 +25,11 @@ def render(html: str, name: str, access: str = "open-lab") -> str:
     config = config.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
     style = (ASSETS / "service-design.css").read_text()
     script = (ASSETS / "service-design.js").read_text()
-    head = f'<style {MARKER}>{style}</style><script type="application/json" id="netcore-service-config">{config}</script><script id="netcore-service-init">document.documentElement.dataset.netcoreUi="service";</script>'
+    theme_init = (ASSETS / "service-theme-init.js").read_text()
+    init = f'<script id="netcore-service-init">{theme_init}</script>'
+    open_head = re.search(r"<head\b[^>]*>", html, re.IGNORECASE)
+    html = html[:open_head.end()] + init + html[open_head.end():] if open_head else init + html
+    head = f'<style {MARKER}>{style}</style><script type="application/json" id="netcore-service-config">{config}</script>'
     close_head = re.search(r"</head\s*>", html, re.IGNORECASE)
     html = html[:close_head.start()] + head + html[close_head.start():] if close_head else head + html
     shell = f'<script id="netcore-service-shell">{script}</script>'

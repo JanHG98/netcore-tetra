@@ -38,20 +38,34 @@
     tools.append(access);
     const theme = make("button", "nc-theme-toggle");
     theme.type = "button";
-    const themeKey = "netcore-service-theme";
+    const themeKey = "netcore-theme";
+    const legacyThemeKey = "netcore-service-theme";
+    const savedTheme = () => {
+      try {
+        const saved = localStorage.getItem(themeKey);
+        return (saved === null ? localStorage.getItem(legacyThemeKey) : saved) === "dark";
+      } catch { return root.dataset.ncTheme === "dark"; }
+    };
     const setTheme = dark => {
-      root.dataset.ncTheme = dark ? "dark" : "light";
+      const value = dark ? "dark" : "light";
+      const changed = root.dataset.ncTheme !== value;
+      root.dataset.ncTheme = value;
       theme.textContent = dark ? "Hell" : "Dunkel";
       theme.setAttribute("aria-label", dark ? "Helles Design aktivieren" : "Dunkles Design aktivieren");
       theme.setAttribute("aria-pressed", String(dark));
+      if (changed) window.dispatchEvent(new CustomEvent("netcore-theme-change", { detail: { theme: value } }));
     };
-    let saved;
-    try { saved = localStorage.getItem(themeKey); } catch { /* Storage may be blocked by the browser. */ }
-    setTheme(saved === "dark");
+    setTheme(savedTheme());
     theme.addEventListener("click", () => {
       const dark = root.dataset.ncTheme !== "dark";
       setTheme(dark);
-      try { localStorage.setItem(themeKey, dark ? "dark" : "light"); } catch { /* Theme still works without persistence. */ }
+      try {
+        localStorage.setItem(themeKey, dark ? "dark" : "light");
+        localStorage.setItem(legacyThemeKey, dark ? "dark" : "light");
+      } catch { /* Theme still works without persistence. */ }
+    });
+    window.addEventListener("storage", event => {
+      if (event.key === themeKey || event.key === legacyThemeKey || event.key === null) setTheme(savedTheme());
     });
     tools.append(theme);
     row.append(brand, tools);

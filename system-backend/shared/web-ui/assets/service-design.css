@@ -5,13 +5,17 @@ html[data-netcore-ui] {
   --nc-border: #d9e2ee; --nc-text: #0b1832; --nc-muted: #425779;
   --nc-accent: #2463eb; --nc-ok: #12734c; --nc-warn: #945b08; --nc-error: #b42335;
   --nc-ok-bg: #e6f5ed; --nc-warn-bg: #fff5dc; --nc-error-bg: #ffedf0;
+  --nc-border-strong: #b7c9e0; --nc-warn-border: #d8b45e; --nc-field-bg: #fff;
+  --nc-selected-bg: #e8f0ff; --nc-selected: var(--nc-selected-bg);
+  --nc-purple: #7050b0; --nc-purple-bg: #f0eafa; --nc-primary-bg: #2463eb;
+  --nc-overlay: rgba(11, 24, 50, .55);
   --nc-radius: 14px; --nc-shadow: 0 4px 18px rgba(25, 53, 94, .055);
   --bg: var(--nc-bg); --bg2: var(--nc-panel-2); --panel: var(--nc-panel);
   --panel2: var(--nc-panel-2); --card: var(--nc-panel); --line: var(--nc-border);
-  --border: var(--nc-border); --line-strong: #bfd0e5; --text: var(--nc-text); --fg: var(--nc-text);
+  --border: var(--nc-border); --line-strong: var(--nc-border-strong); --text: var(--nc-text); --fg: var(--nc-text);
   --muted: var(--nc-muted); --accent: var(--nc-accent); --blue: var(--nc-accent);
   --ok: var(--nc-ok); --good: var(--nc-ok); --green: var(--nc-ok); --warn: var(--nc-warn);
-  --accent-strong: #184fd0; --purple: #7154ae;
+  --accent-strong: var(--nc-primary-bg); --purple: var(--nc-purple);
   --bad: var(--nc-error); --danger: var(--nc-error); --red: var(--nc-error);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   background: var(--nc-bg); color: var(--nc-text); scroll-padding-top: 150px;
@@ -22,6 +26,9 @@ html[data-netcore-ui][data-nc-theme="dark"] {
   --nc-border: #354663; --nc-text: #f0f5ff; --nc-muted: #b5c4dc;
   --nc-accent: #7da8ff; --nc-ok: #76dda5; --nc-warn: #f4ca71; --nc-error: #ff9ba9;
   --nc-ok-bg: #153d31; --nc-warn-bg: #45371d; --nc-error-bg: #48232f;
+  --nc-border-strong: #526b90; --nc-warn-border: #9c7939; --nc-field-bg: #132037;
+  --nc-selected-bg: #253d62; --nc-purple: #bfabff; --nc-purple-bg: #32264c;
+  --nc-overlay: rgba(2, 8, 20, .72);
   --nc-shadow: 0 4px 18px rgba(0, 0, 0, .12);
 }
 html[data-netcore-ui] *, html[data-netcore-ui] *::before, html[data-netcore-ui] *::after { box-sizing: border-box; }
@@ -51,7 +58,7 @@ html[data-netcore-ui] .nc-service-logo-wordmark img { width: 192px; left: -22.5p
 html[data-netcore-ui] .nc-service-name { font-size: 17px; font-weight: 750; letter-spacing: -.02em; padding-left: 24px; border-left: 1px solid var(--nc-border); }
 html[data-netcore-ui] .nc-service-tools { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 html[data-netcore-ui] .nc-service-access { display: inline-flex; align-items: center; white-space: nowrap; font-size: 11px; font-weight: 750; letter-spacing: .04em; padding: 5px 10px; border-radius: 30px; color: var(--nc-muted); background: var(--nc-panel-2); border: 1px solid var(--nc-border); }
-html[data-netcore-ui] .nc-service-access[data-access="open-lab"] { color: var(--nc-warn); background: var(--nc-warn-bg); border-color: #e5c783; }
+html[data-netcore-ui] .nc-service-access[data-access="open-lab"] { color: var(--nc-warn); background: var(--nc-warn-bg); border-color: var(--nc-warn-border); }
 html[data-netcore-ui] .nc-theme-toggle { min-width: 42px; min-height: 40px; padding: 6px 12px; }
 html[data-netcore-ui] .nc-service-nav { position: static; display: flex; flex-direction: row; align-items: center; flex-wrap: wrap; gap: 5px; max-width: 1680px; margin: auto; padding: 0 30px 11px; border: 0; border-top: 1px solid var(--nc-border); background: transparent; overflow-x: auto; height: auto; }
 html[data-netcore-ui] .nc-service-nav :where(button, a) { width: auto; flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; min-height: 40px; margin: 6px 0 0; padding: 8px 14px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--nc-muted); font-size: 13px; font-weight: 650; text-decoration: none; text-align: center; white-space: nowrap; }
@@ -68,18 +75,18 @@ html[data-netcore-ui] :where(.muted, .sub, .label, .nc-muted, label, .hint) { co
 html[data-netcore-ui] :where(.ok, .green, .healthy, .online) { color: var(--nc-ok); }
 html[data-netcore-ui] :where(.bad, .red, .error, .offline) { color: var(--nc-error); }
 html[data-netcore-ui] :where(.warn, .stale) { color: var(--nc-warn); }
-html[data-netcore-ui] :where(.lab, [data-nc-lab], .openlab, .nc-open-lab) { background: var(--nc-warn-bg); color: var(--nc-warn); border-color: #e5c783; font-size: 12px; font-weight: 600; }
-html[data-netcore-ui] :where(body > .lab, body > .banner, .wrap > .lab, .wrap > .banner) { padding: 9px 22px; border-bottom: 1px solid #e5c783; text-align: left; }
+html[data-netcore-ui] :where(.lab, [data-nc-lab], .openlab, .nc-open-lab) { background: var(--nc-warn-bg); color: var(--nc-warn); border-color: var(--nc-warn-border); font-size: 12px; font-weight: 600; }
+html[data-netcore-ui] :where(body > .lab, body > .banner, .wrap > .lab, .wrap > .banner) { padding: 9px 22px; border-bottom: 1px solid var(--nc-warn-border); text-align: left; }
 html[data-netcore-ui] :where(.notice, .warning) { background: var(--nc-warn-bg); color: var(--nc-warn); border-color: var(--nc-warn); border-radius: 8px; padding: 12px 14px; }
 html[data-netcore-ui] .notice.secret { background: var(--nc-error-bg); color: var(--nc-error); border-color: var(--nc-error); }
 html[data-netcore-ui] :where(button, .btn, .button, .action, .nc-button) { min-height: 38px; padding: 8px 12px; border: 1px solid var(--nc-border); border-radius: 8px; background: var(--nc-panel); color: var(--nc-text); font-weight: 600; cursor: pointer; text-decoration: none; transition: background .12s, border-color .12s; }
 html[data-netcore-ui] :where(button, .btn, .button, .action, .nc-button):hover { background: var(--nc-panel-2); border-color: var(--nc-accent); }
-html[data-netcore-ui] :where(button, .btn, .button, .action).primary, html[data-netcore-ui] button.action:not(.secondary):not(.danger) { background: #2463eb; border-color: #2463eb; color: #fff; }
+html[data-netcore-ui] :where(button, .btn, .button, .action).primary, html[data-netcore-ui] button.action:not(.secondary):not(.danger) { background: var(--nc-primary-bg); border-color: var(--nc-primary-bg); color: #fff; }
 html[data-netcore-ui] :where(button, .btn, .button, .action).danger, html[data-netcore-ui] .nc-button[data-variant="danger"] { background: var(--nc-error-bg); border-color: var(--nc-error); color: var(--nc-error); }
 html[data-netcore-ui] :where(button, .btn, .button, .action).secondary { background: var(--nc-panel-2); color: var(--nc-text); }
 html[data-netcore-ui] button.hold { background: var(--nc-warn-bg); color: var(--nc-warn); }
 html[data-netcore-ui] button:disabled { opacity: .5; cursor: not-allowed; }
-html[data-netcore-ui] :where(input, select, textarea) { background: var(--nc-panel); color: var(--nc-text); border: 1px solid var(--nc-border); border-radius: 8px; min-height: 40px; padding: 9px 11px; max-width: 100%; }
+html[data-netcore-ui] :where(input, select, textarea) { background: var(--nc-field-bg); color: var(--nc-text); border: 1px solid var(--nc-border); border-radius: 8px; min-height: 40px; padding: 9px 11px; max-width: 100%; }
 html[data-netcore-ui] :where(input, textarea)::placeholder { color: var(--nc-muted); opacity: .85; }
 html[data-netcore-ui] :where(input[type="checkbox"], input[type="radio"]) { width: 18px; min-height: 18px; height: 18px; padding: 0; accent-color: #2463eb; }
 html[data-netcore-ui] :where(input[type="hidden"], [hidden]) { display: none !important; }
@@ -91,15 +98,22 @@ html[data-netcore-ui] th { background: var(--nc-panel-2); color: var(--nc-muted)
 html[data-netcore-ui] tbody tr:hover { background: var(--nc-panel-2); }
 html[data-netcore-ui] tbody tr:last-child td { border-bottom: 0; }
 html[data-netcore-ui] :where(.pill, .badge, .chip, .tag, .nc-status) { background: var(--nc-panel-2); color: var(--nc-muted); border: 1px solid var(--nc-border); padding: 4px 9px; border-radius: 999px; font-size: 11px; font-weight: 650; line-height: 1.4; }
-html[data-netcore-ui] :where(.pill, .badge, .chip):is(.ok, .ready, .healthy, .approved, .completed, .delivered, .published, .connected, .up) { background: var(--nc-ok-bg); color: var(--nc-ok); border-color: var(--nc-ok); }
-html[data-netcore-ui] :where(.pill, .badge, .chip):is(.warn, .queued, .pending, .processing, .retry, .importing, .degraded, .playing) { background: var(--nc-warn-bg); color: var(--nc-warn); border-color: var(--nc-warn); }
-html[data-netcore-ui] :where(.pill, .badge, .chip):is(.bad, .danger, .failed, .rejected, .dead_letter, .down, .offline, .error) { background: var(--nc-error-bg); color: var(--nc-error); border-color: var(--nc-error); }
+html[data-netcore-ui] :where(.pill, .badge, .chip, .tag, .nc-status):is(.ok, .ready, .healthy, .approved, .completed, .delivered, .published, .connected, .up, .online, .health-ok), html[data-netcore-ui] .nc-status:is([data-status="up"], [data-status="ready"], [data-status="active"]) { background: var(--nc-ok-bg); color: var(--nc-ok); border-color: var(--nc-ok); }
+html[data-netcore-ui] :where(.pill, .badge, .chip, .tag, .nc-status):is(.warn, .queued, .pending, .processing, .retry, .importing, .degraded, .playing, .stale, .warning, .health-warn), html[data-netcore-ui] .nc-status:is([data-status="degraded"], [data-status="warning"], [data-status="pending"]) { background: var(--nc-warn-bg); color: var(--nc-warn); border-color: var(--nc-warn); }
+html[data-netcore-ui] :where(.pill, .badge, .chip, .tag, .nc-status):is(.bad, .danger, .failed, .rejected, .dead_letter, .down, .offline, .error, .critical, .health-bad), html[data-netcore-ui] .nc-status:is([data-status="down"], [data-status="error"], [data-status="failed"]) { background: var(--nc-error-bg); color: var(--nc-error); border-color: var(--nc-error); }
+html[data-netcore-ui] :where(.pill, .badge, .chip, .tag):is(.shadowed, .draft) { background: var(--nc-purple-bg); color: var(--nc-purple); border-color: var(--nc-purple); }
+html[data-netcore-ui] :where(.pill, .badge, .chip, .tag):is(.unknown, .disabled, .health-unknown) { background: var(--nc-panel-2); color: var(--nc-muted); border-color: var(--nc-border-strong); }
 html[data-netcore-ui] :where(pre, code) { color: var(--nc-text); font-size: 12px; }
+html[data-netcore-ui] code { background: var(--nc-panel-2); border-radius: 4px; padding: 2px 4px; }
 html[data-netcore-ui] pre { background: var(--nc-panel-2); border: 1px solid var(--nc-border); border-radius: 9px; padding: 13px; white-space: pre-wrap; overflow-wrap: anywhere; }
 html[data-netcore-ui] :where(dialog, .modal .box, .modal .dialog, .nc-dialog) { background: var(--nc-panel); color: var(--nc-text); border: 1px solid var(--nc-border); border-radius: 16px; box-shadow: 0 20px 80px rgba(11, 24, 50, .25); }
 html[data-netcore-ui] dialog { max-width: min(960px, calc(100vw - 32px)); }
-html[data-netcore-ui] dialog::backdrop { background: rgba(11, 24, 50, .55); }
-html[data-netcore-ui] .modal { background: rgba(11, 24, 50, .55); }
+html[data-netcore-ui] dialog::backdrop { background: var(--nc-overlay); }
+html[data-netcore-ui] .modal { background: var(--nc-overlay); }
+html[data-netcore-ui] :where(.leaflet-popup-content-wrapper, .leaflet-popup-tip, .leaflet-control-layers, .leaflet-bar a) { background: var(--nc-panel); color: var(--nc-text); border-color: var(--nc-border); }
+html[data-netcore-ui] :where(.leaflet-popup-content, .leaflet-popup-close-button) { color: var(--nc-text); }
+html[data-netcore-ui] .leaflet-bar a:hover { background: var(--nc-panel-2); color: var(--nc-accent); }
+html[data-netcore-ui] .leaflet-control-attribution { background: var(--nc-panel); color: var(--nc-muted); }
 html[data-netcore-ui] :where(.wave, .events, .event, .item, .task, .alarm, .kanban-card) { background-color: var(--nc-panel); color: var(--nc-text); border-color: var(--nc-border); }
 html[data-netcore-ui] canvas { border-radius: 10px; }
 html[data-netcore-ui] :where(.grid2, .split) { gap: 18px; }

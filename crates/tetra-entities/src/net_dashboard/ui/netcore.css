@@ -1,5 +1,6 @@
 /* NetCore UI: shared semantic tokens for base stations and future service UIs. */
 :root,html[data-theme="light"]{
+  color-scheme:light;--on-accent:#fff;
   --bg:#f3f6fb;--bg2:#fff;--bg3:#edf2f9;--bg4:#e2eaf5;
   --text:#0b1832;--text2:#425779;--text3:#64748b;--muted:var(--text2);
   --accent:#2463eb;--accent2:#2463eb;--ok:#16834b;--info:#2463eb;
@@ -10,6 +11,7 @@
   --nc-header-height:80px;
 }
 html[data-theme=""],html[data-theme="dark"]{
+  color-scheme:dark;--on-accent:#0b1832;
   --bg:#101a2b;--bg2:#18253a;--bg3:#223149;--bg4:#2c3e59;
   --text:#edf3ff;--text2:#b0c0da;--text3:#94a7c4;--muted:var(--text2);
   --accent:#76a6ff;--accent2:#76a6ff;--ok:#68d49b;--info:#76a6ff;
@@ -18,6 +20,7 @@ html[data-theme=""],html[data-theme="dark"]{
   --card-shadow:none;--elev-1:none;
 }
 html[data-theme="blue"]{
+  color-scheme:dark;--on-accent:#0b1832;
   --bg:#102342;--bg2:#193253;--bg3:#254265;--bg4:#305078;
   --text:#f1f6ff;--text2:#bacfea;--text3:#9db7d8;--muted:var(--text2);
   --accent:#84b3ff;--accent2:#84b3ff;--ok:#78dab0;--info:#84b3ff;
@@ -93,9 +96,8 @@ button:disabled{cursor:wait;opacity:.6}
 .hero-metric-value{font-size:20px;font-family:var(--sans)}
 .btn,.btn-sm{font-family:var(--sans);font-size:12px;letter-spacing:0;font-weight:600;min-height:36px;padding:8px 12px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);border-radius:7px;box-shadow:none;text-transform:none;line-height:1.3}
 .btn:hover,.btn-sm:hover{background:var(--bg3);border-color:var(--accent);color:var(--accent)}
-.btn-primary{background:var(--accent);color:var(--bg2);border-color:var(--accent)}
-html[data-theme="light"] .btn-primary{color:#fff}
-.btn-primary:hover{background:var(--accent);color:#fff;filter:brightness(.95)}
+.btn-primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.btn-primary:hover{background:var(--accent);color:var(--on-accent);filter:brightness(.95)}
 .btn-danger{border-color:color-mix(in srgb,var(--danger) 35%,var(--border));color:var(--danger);background:color-mix(in srgb,var(--danger) 5%,var(--bg2))}
 .btn-warn{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 35%,var(--border))}
 .form-input,.field-input,input[type="search"],textarea,select{background:var(--bg2);border:1px solid var(--border2);color:var(--text);border-radius:7px;min-height:38px;padding:9px 11px;font-family:var(--sans);font-size:13px;max-width:100%}
@@ -227,4 +229,9 @@ body #content .bts-tile-value{font-size:14px}
 body #content .core-service-name{font-family:var(--sans);font-size:15px;letter-spacing:0}
 body .nc-footer .sidebar-copyright{font-family:var(--sans);font-size:10px;letter-spacing:0}
 body #nc-radio-filter{width:auto;flex:0 1 330px;min-width:180px}
+/* Local map controls and attribution follow the UI theme; external map imagery keeps its own colours. */
+.maps-tile-layer{background:var(--bg3)}
+.maps-attribution{background:var(--bg2);color:var(--text2);border:1px solid var(--border)}
+.modal,.sheet,.read-pop{color:var(--text);background:var(--bg2);border-color:var(--border2)}
+.modal-title{color:var(--text);font-family:var(--sans);letter-spacing:0;text-transform:none}
 @media(max-width:700px){body #nc-radio-filter{flex:1 1 100%;width:100%;font-size:16px}body #content thead th{font-size:12px}}

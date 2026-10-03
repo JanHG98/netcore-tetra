@@ -193,10 +193,19 @@ async function navigate(page, name) {
   assert.equal(await page.locator(`#page-${name}.active`).count(), 1, `${name}: requested page is active`);
   assert.equal(await page.locator('.nav-item.active').count(), 1, `${name}: exactly one active page navigation item`);
 }
-async function open(settings = {}, suffix = '/', viewport = { width: 1440, height: 1100 }) {
+async function open(settings = {}, suffix = '/', viewport = { width: 1440, height: 1100 }, storage = {}) {
   scenario = { authenticated: true, auth_required: true, public_overview: true, wifi: true, ...settings };
   requests = [];
   const context = await browser.newContext({ viewport });
+  await context.addInitScript(storage => {
+    if (storage.blocked) {
+      Object.defineProperty(window, 'localStorage', { configurable: true,
+        get() { throw new DOMException('Storage disabled for test', 'SecurityError'); } });
+    } else {
+      if (storage.theme) localStorage.setItem('netcore-theme', storage.theme);
+      if (storage.legacyTheme) localStorage.setItem('fs_theme', storage.legacyTheme);
+    }
+  }, storage);
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -215,6 +224,21 @@ async function open(settings = {}, suffix = '/', viewport = { width: 1440, heigh
   await page.goto(base + suffix);
   await page.waitForTimeout(450);
   return { context, page, errors };
+}
+async function darkSurfaces(page, selector = '.page.active') {
+  const problems = await page.evaluate(selector => {
+    const rgb = value => value.match(/[\d.]+/g)?.map(Number) || [];
+    const bright = value => { const values = rgb(value); return values.length >= 3 &&
+      (values.length < 4 || values[3] > .95) && Math.max(...values.slice(0, 3)) > 160; };
+    const visible = node => node.getBoundingClientRect().width > 0 && node.getBoundingClientRect().height > 0;
+    const scope = document.querySelector(selector);
+    if (!scope) return ['Missing scope ' + selector];
+    return [...scope.querySelectorAll('.card,.stat-card,.hero,.modal,.sheet,.read-pop,input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea')]
+      .filter(visible).filter(node => bright(getComputedStyle(node).backgroundColor))
+      .map(node => node.id || node.className || node.tagName);
+  }, selector);
+  assert.deepEqual(problems, [], 'Dark surfaces and form fields must not keep light backgrounds');
+  assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
 }
 function assertNoPrivilegedRequests() {
   const privileged = requests.filter(r => (r.path.startsWith('/api/') && !['/api/session', '/api/public', '/api/login'].includes(r.path)) || r.method === 'WS');
@@ -342,17 +366,81 @@ try {
   await check('dark theme and larger text persist', async () => {
     const before = await admin.page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     const fontBefore = await admin.page.evaluate(() => parseFloat(getComputedStyle(document.body).fontSize));
-    await admin.page.evaluate(() => { setTheme('dark'); setUiSize('h'); });
+    await admin.page.locator('.theme-btn[data-t="dark"]').click();
+    await admin.page.evaluate(() => setUiSize('h'));
     assert.equal(await admin.page.evaluate(() => localStorage.getItem('fs_theme')), 'dark');
+    assert.equal(await admin.page.evaluate(() => localStorage.getItem('netcore-theme')), 'dark');
+    assert.equal(await admin.page.locator('.theme-btn[data-t="dark"]').getAttribute('aria-pressed'), 'true');
     assert.equal(await admin.page.locator('html').getAttribute('data-uisize'), 'h');
     assert.ok(await admin.page.evaluate(() => parseFloat(getComputedStyle(document.body).fontSize)) > fontBefore,
       'the supported high-readability setting must increase actual rendered text');
     assert.notEqual(await admin.page.evaluate(() => getComputedStyle(document.body).backgroundColor), before);
     await navigate(admin.page, 'system');
     await admin.page.screenshot({ path: path.join(output, 'system-dark.png') });
-    await admin.page.evaluate(() => { setTheme('light'); setUiSize('m'); });
+    await admin.page.evaluate(() => setUiSize('m'));
+  });
+  for (const name of dashboardPages) {
+    await check(`desktop dark view ${name}`, async () => {
+      await navigate(admin.page, name); await darkSurfaces(admin.page); await noOverflow(admin.page, name);
+      await admin.page.screenshot({ path: path.join(output, `${name}-dark.png`) });
+      assert.deepEqual(admin.errors, []);
+    });
+  }
+  await check('RF spectrum and waterfall recolour immediately after a theme click', async () => {
+    await navigate(admin.page, 'rf');
+    await admin.page.locator('.theme-btn[data-t="light"]').click();
+    await admin.page.waitForFunction(() => document.getElementById('rf-spectrum').getContext('2d').getImageData(0,0,1,1).data[0] > 200);
+    await admin.page.locator('.theme-btn[data-t="dark"]').click();
+    await admin.page.waitForFunction(() => ['rf-spectrum','rf-waterfall'].every(id => {
+      const pixel = document.getElementById(id).getContext('2d').getImageData(0,0,1,1).data;
+      return pixel[0] < 50 && pixel[1] < 60 && pixel[3] === 255;
+    }));
+  });
+  await check('all station dialogs and readability settings inherit dark surfaces', async () => {
+    const overlays = await admin.page.locator('.modal-overlay,.sheet-overlay').evaluateAll(nodes => nodes.map(node => node.id));
+    for (const id of overlays) {
+      await admin.page.evaluate(id => document.getElementById(id).classList.add('open'), id);
+      await darkSurfaces(admin.page, '#' + id);
+      await admin.page.evaluate(id => document.getElementById(id).classList.remove('open'), id);
+    }
+    await admin.page.locator('#read-btn').click();
+    assert.ok(await admin.page.locator('#read-pop').isVisible());
+    await darkSurfaces(admin.page, '.eye-wrap');
+    await admin.page.evaluate(() => closeReadPop());
+  });
+  await check('Blue remains available and restores from the shared preference', async () => {
+    await admin.page.locator('.theme-btn[data-t="blue"]').click();
+    assert.equal(await admin.page.evaluate(() => localStorage.getItem('netcore-theme')), 'blue');
+    await admin.page.reload();
+    await admin.page.waitForFunction(() => typeof showPage === 'function');
+    assert.equal(await admin.page.locator('html').getAttribute('data-theme'), 'blue');
+    assert.equal(await admin.page.locator('.theme-btn[data-t="blue"]').getAttribute('aria-pressed'), 'true');
+    await admin.page.locator('.theme-btn[data-t="light"]').click();
   });
   await admin.context.close();
+
+  const legacyDark = await open({}, '/?intern=netcore', undefined, { legacyTheme: 'dark' });
+  await check('legacy station theme migrates to the shared preference', async () => {
+    await darkSurfaces(legacyDark.page);
+    assert.equal(await legacyDark.page.evaluate(() => localStorage.getItem('netcore-theme')), 'dark');
+    assert.deepEqual(legacyDark.errors, []);
+  });
+  await legacyDark.context.close();
+  const canonicalDark = await open({}, '/?intern=netcore', undefined, { theme: 'dark', legacyTheme: 'light' });
+  await check('canonical theme takes precedence over older station preference', async () => {
+    await darkSurfaces(canonicalDark.page);
+    assert.equal(await canonicalDark.page.locator('.theme-btn[data-t="dark"]').getAttribute('aria-pressed'), 'true');
+    assert.deepEqual(canonicalDark.errors, []);
+  });
+  await canonicalDark.context.close();
+  const blockedDashboard = await open({}, '/?intern=netcore', undefined, { blocked: true });
+  await check('blocked storage does not prevent station boot or theme switching', async () => {
+    await blockedDashboard.page.waitForFunction(() => document.getElementById('ms-tbody')?.textContent.includes('990001'));
+    await blockedDashboard.page.locator('.theme-btn[data-t="dark"]').click();
+    await darkSurfaces(blockedDashboard.page);
+    assert.deepEqual(blockedDashboard.errors, []);
+  });
+  await blockedDashboard.context.close();
 
   const normal = await open({ wifi: false });
   await check('laboratory integrations stay hidden by default', async () => {
@@ -377,6 +465,16 @@ try {
   }
   await navigate(mobile.page, 'rf');
   await mobile.page.screenshot({ path: path.join(output, 'rf-mobile.png') });
+  await mobile.page.locator('.theme-btn[data-t="dark"]').click();
+  for (const name of dashboardPages) {
+    await check(`mobile dark width 390 ${name}`, async () => {
+      await navigate(mobile.page, name); await darkSurfaces(mobile.page); await noOverflow(mobile.page, name);
+      assert.deepEqual(mobile.errors, []);
+    });
+  }
+  await navigate(mobile.page, 'rf');
+  await mobile.page.screenshot({ path: path.join(output, 'rf-mobile-dark.png'), fullPage: true });
+  await mobile.page.locator('.theme-btn[data-t="light"]').click();
   await check('ultra readability fits mobile navigation and key workspaces', async () => {
     const fontBefore = await mobile.page.evaluate(() => parseFloat(getComputedStyle(document.body).fontSize));
     await mobile.page.evaluate(() => setUiSize('u'));
@@ -405,6 +503,13 @@ try {
     await anonymous.page.evaluate(() => showPage('config', document.getElementById('nav-config')));
     assert.equal(await anonymous.page.locator('#page-config.active').count(), 0);
     assertNoPrivilegedRequests();
+  });
+  await check('anonymous public overview supports dark mode without privileged traffic', async () => {
+    await anonymous.page.locator('.theme-btn[data-t="dark"]').click();
+    await darkSurfaces(anonymous.page, '#page-public');
+    assertNoPrivilegedRequests();
+    await anonymous.page.screenshot({ path: path.join(output, 'public-dark.png') });
+    assert.deepEqual(anonymous.errors, []);
   });
   await anonymous.context.close();
 
@@ -473,6 +578,32 @@ try {
       assert.ok(await login.page.locator('#submit-btn').isEnabled());
       assertNoPrivilegedRequests();
     });
+    await check(`login dark toggle and persistence public=${publicOverview}`, async () => {
+      await login.page.locator('#login-theme-toggle').focus();
+      await login.page.locator('#login-theme-toggle').press('Enter');
+      await darkSurfaces(login.page, '.login-card');
+      assert.equal(await login.page.locator('#login-theme-toggle').getAttribute('aria-pressed'), 'true');
+      assert.equal(await login.page.evaluate(() => localStorage.getItem('netcore-theme')), 'dark');
+      await login.page.reload();
+      await login.page.waitForSelector('#login-form');
+      assert.equal(await login.page.locator('html').getAttribute('data-theme'), 'dark');
+      await login.page.screenshot({ path: path.join(output, publicOverview ? 'login-dark.png' : 'login-private-dark.png') });
+      assert.deepEqual(login.errors, []);
+    });
+    if (publicOverview) await check('login and authenticated station reuse the same dark/light preference', async () => {
+      scenario.authenticated = true;
+      await login.page.goto(base + '/?intern=netcore');
+      await login.page.waitForFunction(() => document.getElementById('ms-tbody')?.textContent.includes('990001'));
+      await darkSurfaces(login.page);
+      await login.page.locator('.theme-btn[data-t="light"]').click();
+      scenario.authenticated = false; requests = [];
+      await login.page.goto(base + '/login');
+      await login.page.waitForSelector('#login-theme-toggle');
+      assert.equal(await login.page.locator('html').getAttribute('data-theme'), 'light');
+      assert.equal(await login.page.locator('#login-theme-toggle').getAttribute('aria-pressed'), 'false');
+      assertNoPrivilegedRequests();
+      assert.deepEqual(login.errors, []);
+    });
     await login.context.close();
   }
   const mobileLogin = await open({ authenticated: false }, '/login', { width: 390, height: 844 });
@@ -483,7 +614,29 @@ try {
     await mobileLogin.page.screenshot({ path: path.join(output, 'login-mobile.png') });
     assert.deepEqual(mobileLogin.errors, []);
   });
+  await check('mobile dark login retains readable inputs and complete logo', async () => {
+    await mobileLogin.page.locator('#login-theme-toggle').click();
+    await darkSurfaces(mobileLogin.page, '.login-card');
+    await noOverflow(mobileLogin.page, 'mobile dark login');
+    // Let the existing 150 ms button transition finish before capturing its final theme.
+    await mobileLogin.page.waitForFunction(() => {
+      const color = getComputedStyle(document.getElementById('submit-btn')).backgroundColor.match(/[\d.]+/g)?.map(Number);
+      return color && color[0] > 100;
+    });
+    await mobileLogin.page.screenshot({ path: path.join(output, 'login-mobile-dark.png'), fullPage: true });
+  });
   await mobileLogin.context.close();
+  const blockedLogin = await open({ authenticated: false }, '/login', undefined, { blocked: true });
+  await check('blocked storage keeps login submission and theme toggle usable', async () => {
+    await blockedLogin.page.locator('#login-theme-toggle').click();
+    await darkSurfaces(blockedLogin.page, '.login-card');
+    await blockedLogin.page.locator('#username').fill('ui-test');
+    await blockedLogin.page.locator('#password').fill('test-only-invalid-password');
+    await blockedLogin.page.locator('#submit-btn').click();
+    await blockedLogin.page.waitForFunction(() => document.getElementById('err').textContent.length > 0);
+    assert.deepEqual(blockedLogin.errors, []);
+  });
+  await blockedLogin.context.close();
 } finally {
   if (browser) await browser.close();
   await new Promise(resolve => server.close(resolve));

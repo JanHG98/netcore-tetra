@@ -3,6 +3,7 @@
 
 const STYLE: &str = include_str!("assets/service-design.css");
 const SCRIPT: &str = include_str!("assets/service-design.js");
+const THEME_INIT: &str = include_str!("assets/service-theme-init.js");
 const LOGO: &str = include_str!("assets/netcore-logo.data-uri");
 
 fn json_string(value: &str) -> String {
@@ -33,12 +34,22 @@ pub fn render(html: &str, service: &str, access: &str) -> String {
     }
     let config = format!("{{\"name\":{},\"access\":{},\"logo\":{}}}", json_string(service), json_string(access), json_string(LOGO.trim()));
     let head = format!("<style id=\"netcore-service-design\">{STYLE}</style><script type=\"application/json\" id=\"netcore-service-config\">{config}</script>");
-    // Apply the light palette before service scripts begin, avoiding a dark first paint.
-    let init = "<script id=\"netcore-service-init\">document.documentElement.dataset.netcoreUi='service';</script>";
-    let html = if html.contains("</head>") {
-        html.replacen("</head>", &format!("{head}{init}</head>"), 1)
+    // Apply the saved palette before styles or service scripts begin.
+    let init = format!("<script id=\"netcore-service-init\">{THEME_INIT}</script>");
+    let html = if let Some(start) = html.find("<head") {
+        if let Some(offset) = html[start..].find('>') {
+            let end = start + offset + 1;
+            format!("{}{init}{}", &html[..end], &html[end..])
+        } else {
+            format!("{init}{html}")
+        }
     } else {
-        format!("{head}{init}{html}")
+        format!("{init}{html}")
+    };
+    let html = if html.contains("</head>") {
+        html.replacen("</head>", &format!("{head}</head>"), 1)
+    } else {
+        format!("{head}{html}")
     };
     let script = format!("<script id=\"netcore-service-shell\">{SCRIPT}</script>");
     if html.contains("</body>") {

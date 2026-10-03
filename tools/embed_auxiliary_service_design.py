@@ -37,7 +37,7 @@ def synchronize(check: bool = False) -> list[str]:
             planned[path] = text
     # Rust Brew's Docker context is deliberately self-contained.
     rust = REPO_ROOT / "misc/brew-server/web-ui"
-    for filename in ("service-design.css", "service-design.js", "netcore-logo.data-uri"):
+    for filename in ("service-design.css", "service-design.js", "service-theme-init.js", "netcore-logo.data-uri"):
         planned[rust / "assets" / filename] = (ASSETS / filename).read_text()
     planned[rust / "service-design.rs"] = (ASSETS.parent / "service-design.rs").read_text()
     for path, text in planned.items():

@@ -42,6 +42,12 @@ Die Ports sind die Vorgaben im Repository. Die tatsächlich installierte Konfigu
 
 Die Basisstation wird separat nach [BASISSTATION-DESIGN-UPDATE.md](BASISSTATION-DESIGN-UPDATE.md) aktualisiert. Das Auschecken des Branches allein ersetzt keine bereits installierten Dienst-Binaries oder Python-Dateien.
 
+## Helles und dunkles Design
+
+Jede Dienstoberfläche besitzt in der Kopfzeile einen **Dunkel-/Hell-Umschalter**, auch die vorhandenen Anmeldeseiten. Der Dark Mode umfasst Navigation, Tabellen, Formulare, Dialoge, Statusanzeigen und Diagramme. Die Auswahl bleibt beim Neuladen erhalten und gilt für die jeweilige Webadresse im verwendeten Browser; Dienste auf unterschiedlichen Hosts oder Ports werden jeweils separat eingestellt. Das helle Design bleibt die Voreinstellung.
+
+Nach dem Update beide Modi prüfen, einschließlich einer Detailansicht, eines Formulars und eines schmalen Browserfensters. Ein Neuladen im gewählten Dark Mode soll diesen bereits beim Seitenaufbau zeigen. Die Theme-Auswahl verändert keine Anmeldung oder Dienstfunktion.
+
 ## 1. Den bestehenden Checkout aktualisieren
 
 Diese Befehle im vorhandenen NetCore-Checkout auf dem jeweiligen Diensthost ausführen. Lokale Änderungen zuerst sichern und bewusst committen oder stashen.

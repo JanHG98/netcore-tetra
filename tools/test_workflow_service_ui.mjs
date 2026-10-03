@@ -37,7 +37,7 @@ before(async()=>{
  server=http.createServer((req,res)=>{
   const pathname=new URL(req.url,'http://localhost').pathname;
   if(pages[pathname]) {if(pathname==='/alert')res.setHeader('Content-Security-Policy',csp);res.setHeader('Content-Type','text/html');res.end(pages[pathname]);return;}
-  const files={'/app.js':'app.js','/style.css':'style.css','/service-design.js':'service-design.js','/vendor/leaflet.js':'vendor/leaflet.js','/vendor/leaflet.css':'vendor/leaflet.css'};
+  const files={'/app.js':'app.js','/style.css':'style.css','/service-design.js':'service-design.js','/service-theme-init.js':'service-theme-init.js','/vendor/leaflet.js':'vendor/leaflet.js','/vendor/leaflet.css':'vendor/leaflet.css'};
   if(files[pathname]) {res.setHeader('Content-Type',pathname.endsWith('.js')?'text/javascript':'text/css');res.end(content('system-backend/alert-service/static/'+files[pathname]));return;}
   res.writeHead(404);res.end();
  });
@@ -47,7 +47,12 @@ before(async()=>{
 });
 after(async()=>{await browser?.close();await new Promise(resolve=>server?server.close(resolve):resolve());rmSync(tmp,{recursive:true,force:true});});
 async function pageFor(service,options={}){
- const page=await browser.newPage({viewport:{width:1600,height:1000}}),errors=[],requests=[];
+ const context=options.context||await browser.newContext({viewport:{width:1600,height:1000}});
+ const page=await context.newPage(),errors=[],requests=[];
+ await page.setViewportSize({width:1600,height:1000});
+ let releaseApp=()=>{};
+ if(options.deferApp){const held=new Promise(resolve=>{releaseApp=resolve;});await page.route('**/app.js',async route=>{await held;await route.continue();});}
+ if(options.theme||options.legacyTheme)await page.addInitScript(({theme,legacyTheme})=>{if(theme&&!localStorage.getItem('netcore-theme'))localStorage.setItem('netcore-theme',theme);if(legacyTheme&&!localStorage.getItem('netcore-service-theme'))localStorage.setItem('netcore-service-theme',legacyTheme);},{theme:options.theme,legacyTheme:options.legacyTheme});
  page.on('pageerror',error=>errors.push(error.message));
  // Capture CSP failures while ignoring intentionally unavailable map tiles.
  page.on('console',msg=>{if(msg.type()==='error'&&/Content Security Policy|Refused to execute/.test(msg.text()))errors.push(msg.text());});
@@ -78,9 +83,9 @@ async function pageFor(service,options={}){
   await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(data)});
  });
  if(options.authorized)await page.addInitScript(()=>sessionStorage.setItem('netcore-alert-token','fixture-key'));
- await page.goto(origin+'/'+service);await page.waitForSelector('.nc-service-header');
- const capture=async name=>{if(process.env.NETCORE_WORKFLOW_SCREENSHOT_DIR){mkdirSync(process.env.NETCORE_WORKFLOW_SCREENSHOT_DIR,{recursive:true});await page.screenshot({path:join(process.env.NETCORE_WORKFLOW_SCREENSHOT_DIR,service+'-'+name+'.png'),fullPage:true});}};
- return {page,errors,requests,capture,close:async()=>{assert.deepEqual(errors,[],'Browser errors');await capture(String(screenshotIndex++));await page.close();}};
+ await page.goto(origin+'/'+service,{waitUntil:options.deferApp?'commit':'load'});await page.waitForSelector(options.deferApp?'body':'.nc-service-header');
+ const capture=async name=>{if(process.env.NETCORE_WORKFLOW_SCREENSHOT_DIR){mkdirSync(process.env.NETCORE_WORKFLOW_SCREENSHOT_DIR,{recursive:true});await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:join(process.env.NETCORE_WORKFLOW_SCREENSHOT_DIR,service+'-'+name+'.png'),fullPage:true});}};
+ return {page,errors,requests,capture,releaseApp,close:async()=>{assert.deepEqual(errors,[],'Browser errors');await capture(String(screenshotIndex++));await page.close();if(!options.context)await context.close();}};
 }
 
 test('Control Room renders live readiness and excludes resolved incident actions',async()=>{
@@ -144,4 +149,53 @@ test('workflow desktop themes and narrow screens keep forms, tables and cards re
   if(service==='alarm'||service==='task'){await v.page.locator(service==='alarm'?'.alarm':'.task').first().click();assert.equal(await v.page.locator('#detail-title').isVisible(),true);}
   await v.close();
  }
+});
+
+
+async function readable(page,selectors){
+ const result=await page.evaluate(selectors=>{
+  const rgb=s=>{const a=s.match(/[\d.]+/g)?.map(Number)||[];return a.length>=3?a.slice(0,3):[0,0,0];};
+  const lum=c=>c.map(x=>{x/=255;return x<=.04045?x/12.92:((x+.055)/1.055)**2.4;}).reduce((s,x,i)=>s+x*[.2126,.7152,.0722][i],0);
+  const report=[];
+  for(const selector of selectors)for(const node of document.querySelectorAll(selector)){
+   if(!node.getClientRects().length||!node.textContent.trim()&&!node.matches('input,textarea,select'))continue;
+   const style=getComputedStyle(node);if(+style.opacity<1||node.matches(':disabled'))continue;
+   let surface=node,bg=getComputedStyle(surface).backgroundColor;
+   while(surface.parentElement&&(bg==='transparent'||bg.endsWith(', 0)'))){surface=surface.parentElement;bg=getComputedStyle(surface).backgroundColor;}
+   const a=lum(rgb(style.color)),b=lum(rgb(bg)),contrast=(Math.max(a,b)+.05)/(Math.min(a,b)+.05);
+   if(contrast<4.45)report.push({selector,text:node.textContent.trim().slice(0,45),color:style.color,background:bg,contrast});
+  }return report;
+ },selectors);assert.deepEqual(result,[],'Visible text contrast: '+JSON.stringify(result));
+}
+
+test('Dark theme persists across all four service views and survives switching back to light',async()=>{
+ for(const service of ['control','alarm','task','alert']){
+  const v=await pageFor(service,{authorized:service==='alert',theme:'dark'});
+  assert.equal(await v.page.locator('html').getAttribute('data-nc-theme'),'dark');
+  await readable(v.page,['h1','h2','.muted','input','textarea','select','button','.kpi span','.pill','.tag','.task h3','.alarm h3','.status-tag','.device-alert-title','#send-mode']);
+  if(service==='control'){await v.page.locator('details').first().locator('summary').click();await v.page.locator('#incident-form').locator('xpath=..').locator('summary').click();await readable(v.page,['#command-form input','#incident-form input','#shift-form textarea','#services td','.service-meta']);}
+  if(service==='alarm'){await v.page.locator('.alarm h3').first().click();await readable(v.page,['#detail-body .kpi span','#detail-body .kpi b','#detail-body button']);await v.page.getByRole('button',{name:'＋ Alarm',exact:true}).click();await readable(v.page,['#modalTitle','#modalBody label','#modalBody input','#modalBody select','#modalBody button']);await v.capture('dark-create');await v.page.locator('#modal').getByRole('button',{name:'Abbrechen',exact:true}).click();}
+  if(service==='task'){await v.page.locator('.task').first().click();await readable(v.page,['#detail-body .kpi span','#detail-body .kpi b','#detail-body button','.timeline b','.timeline span']);await v.page.getByRole('button',{name:'＋ Neuer Auftrag',exact:true}).click();await readable(v.page,['#mt','#mb label','#mb input','#mb select','#mb button']);await v.capture('dark-create');await v.page.locator('#modal').getByRole('button',{name:'Abbrechen',exact:true}).click();}
+  if(service==='alert'){await v.page.waitForFunction(()=>document.querySelector('#login').hidden);await v.page.locator('#device-check-list button').first().click();await readable(v.page,['.leaflet-popup-content strong','.leaflet-popup-content span','.leaflet-control-attribution','.leaflet-control-zoom a']);assert.match(await v.page.locator('.leaflet-tile-pane').evaluate(n=>getComputedStyle(n).filter),/brightness/);await v.capture('dark-map');await v.page.locator('#new-alert').click();await readable(v.page,['#composer h2','#composer label','#composer input','#composer textarea','#composer select','#composer button']);await v.capture('dark-compose');await v.page.locator('#close-composer').click();await v.page.locator('#manual-list .danger').click();await readable(v.page,['#delete-dialog h2','#delete-dialog p','#delete-dialog button']);await v.capture('dark-delete');await v.page.locator('#cancel-delete').click();}
+  await v.capture('dark');await v.page.reload();await v.page.waitForSelector('.nc-service-header');assert.equal(await v.page.locator('html').getAttribute('data-nc-theme'),'dark');
+  await v.page.locator('.nc-theme-toggle').click();assert.equal(await v.page.evaluate(()=>localStorage.getItem('netcore-theme')),'light');await v.page.reload();await v.page.waitForSelector('.nc-service-header');assert.equal(await v.page.locator('html').getAttribute('data-nc-theme'),'light');
+  await v.capture('light-return');await v.page.locator('.nc-theme-toggle').click();await v.page.setViewportSize({width:420,height:900});assert.ok(await v.page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));await v.capture('dark-mobile');await v.close();
+ }
+});
+
+test('shared theme preference is canonical across services and old service-only preference still loads',async()=>{
+ const first=await pageFor('control',{theme:'dark'}),second=await pageFor('task',{context:first.page.context()});
+ assert.equal(await second.page.locator('html').getAttribute('data-nc-theme'),'dark');await second.page.locator('.nc-theme-toggle').click();assert.equal(await second.page.evaluate(()=>localStorage.getItem('netcore-theme')),'light');
+ await first.page.waitForFunction(()=>document.documentElement.dataset.ncTheme==='light');await second.close();await first.close();
+ const legacy=await pageFor('alarm',{legacyTheme:'dark'});assert.equal(await legacy.page.locator('html').getAttribute('data-nc-theme'),'dark');await legacy.close();
+});
+
+test('Warnzentrale applies saved Dark before its deferred app under the unchanged CSP',async()=>{
+ const v=await pageFor('alert',{theme:'dark',deferApp:true});
+ try{await v.page.waitForFunction(()=>document.documentElement.dataset.ncTheme==='dark');assert.equal(await v.page.locator('#netcore-service-init').getAttribute('src'),'/service-theme-init.js');assert.equal(await v.page.locator('#netcore-service-init').getAttribute('defer'),null);
+  assert.ok(await v.page.evaluate(()=>{const c=getComputedStyle(document.body).backgroundColor.match(/\d+/g).map(Number);return Math.max(...c.slice(0,3))<80;}),'Saved dark colors before app load');
+  await readable(v.page,['#login h1','#login p','#login input','#login button']);await v.capture('dark-login-before-app');
+ }finally{v.releaseApp();}
+ await v.page.waitForSelector('.nc-service-header');await v.page.waitForFunction(()=>document.querySelector('#connection').textContent==='Nicht verbunden');await readable(v.page,['#login label','#login input','#login button','#notice']);await v.capture('dark-login');
+ await v.page.setViewportSize({width:420,height:900});await v.capture('dark-login-mobile');await v.close();
 });

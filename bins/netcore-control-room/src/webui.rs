@@ -16,36 +16,36 @@ pub fn index_html(node_path: &str, ui_path: &str, auth_enabled: bool) -> String 
   <title>NetCore Control Room</title>
   <style>
 
-    :root {{ color-scheme:light; --bg:#f3f6fb; --panel:#fff; --panel2:#f4f7fc; --line:#dce4ef; --text:#0b1832; --muted:#425779; --ok:#168452; --warn:#a86713; --bad:#c33545; --info:#2463eb; }}
+    :root {{ color-scheme:light; --bg:#f3f6fb; --panel:#fff; --panel2:#f4f7fc; --line:#dce4ef; --text:#0b1832; --muted:#425779; --ok:#168452; --warn:#a86713; --bad:#c33545; --info:var(--nc-accent,#2463eb); }}
     * {{ box-sizing:border-box; }}
     body {{ margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }}
-    header {{ position:sticky; top:0; z-index:5; background:#fff; border-bottom:1px solid var(--line); padding:16px 28px; display:flex; align-items:center; gap:18px; flex-wrap:wrap; }}
+    header {{ position:sticky; top:0; z-index:5; background:var(--panel); border-bottom:1px solid var(--line); padding:16px 28px; display:flex; align-items:center; gap:18px; flex-wrap:wrap; }}
     .brand {{ font-size:18px; font-weight:800; }} .sub {{ color:var(--muted); font-size:12px; margin-top:4px; }}
-    .warning {{ color:#a86713; background:#fff5e5; border:1px solid #efddb5; padding:6px 10px; border-radius:999px; font-size:11px; font-weight:700; }}
+    .warning {{ color:var(--warn); background:var(--nc-warn-bg); border:1px solid var(--nc-warn-border,var(--line)); padding:6px 10px; border-radius:999px; font-size:11px; font-weight:700; }}
     .actions {{ display:flex; gap:8px; flex-wrap:wrap; margin-left:auto; }}
-    button,a.button {{ border:1px solid var(--line); background:#fff; color:var(--text); padding:9px 12px; border-radius:8px; cursor:pointer; text-decoration:none; font-weight:600; }}
+    button,a.button {{ border:1px solid var(--line); background:var(--panel); color:var(--text); padding:9px 12px; border-radius:8px; cursor:pointer; text-decoration:none; font-weight:600; }}
     button:hover,a.button:hover {{ border-color:var(--info); color:var(--info); }}
-    button[type=submit],#poll {{ background:var(--info); color:#fff; border-color:var(--info); }}
-    .section-nav {{ display:flex; gap:7px; flex-wrap:wrap; padding:0 28px; background:#fff; border-bottom:1px solid var(--line); }}
+    button[type=submit],#poll {{ background:#2463eb; color:#fff; border-color:#2463eb; }}
+    .section-nav {{ display:flex; gap:7px; flex-wrap:wrap; padding:0 28px; background:var(--panel); border-bottom:1px solid var(--line); }}
     .section-nav a {{ padding:13px 15px; text-decoration:none; font-size:13px; font-weight:650; color:var(--muted); border-bottom:3px solid transparent; }}
-    .section-nav a:hover,.section-nav a:focus {{ color:var(--info); background:#f3f6fb; border-bottom-color:var(--info); }}
+    .section-nav a:hover,.section-nav a:focus {{ color:var(--info); background:var(--bg); border-bottom-color:var(--info); }}
     main {{ padding:28px; max-width:1700px; margin:auto; }} .page-heading {{ margin-bottom:22px; }} h1 {{ margin:0 0 7px; font-size:28px; letter-spacing:-.6px; }}
     section[id] {{ scroll-margin-top:130px; }} .grid {{ display:grid; gap:16px; }} .kpis {{ grid-template-columns:repeat(4,minmax(0,1fr)); margin-bottom:20px; }}
     .domains {{ grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); }} .metric-list {{ display:grid; grid-template-columns:1fr auto; gap:6px 12px; margin-top:12px; font-size:12px; }}
     .metric-list span:nth-child(odd) {{ color:var(--muted); overflow-wrap:anywhere; }} .metric-list span:nth-child(even) {{ font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-weight:700; text-align:right; }}
-    .two {{ grid-template-columns:repeat(2,minmax(0,1fr)); margin-top:20px; }} .card {{ background:#fff; border:1px solid var(--line); border-radius:12px; padding:20px; box-shadow:0 3px 12px #122c5510; min-width:0; }}
+    .two {{ grid-template-columns:repeat(2,minmax(0,1fr)); margin-top:20px; }} .card {{ background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:20px; box-shadow:0 3px 12px #122c5510; min-width:0; }}
     .kpi .value {{ font-size:30px; font-weight:750; margin-bottom:8px; }} .kpi .label {{ color:var(--muted); font-size:12px; }} .secondary-kpis {{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:16px 0 20px; }}
     .secondary-kpis .card {{ padding:13px 16px; box-shadow:none; }} .secondary-kpis .value {{ font-size:22px; }}
     h2 {{ margin:0 0 16px; font-size:17px; }} h3 {{ margin:0; font-size:15px; }} .service-head {{ display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }}
     .pill {{ display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:4px 9px; font-size:11px; font-weight:650; border:1px solid currentColor; }}
     .healthy {{ color:var(--ok); }} .degraded,.unknown {{ color:var(--warn); }} .offline,.critical {{ color:var(--bad); }} .disabled,.muted {{ color:var(--muted); }} .critical {{ font-weight:700; }} .warning-text {{ color:var(--warn); font-weight:650; }}
     .service-meta {{ color:var(--muted); font-size:12px; margin-top:5px; line-height:1.55; overflow-wrap:anywhere; }} .service-actions {{ display:flex; gap:8px; flex-wrap:wrap; }}
-    table {{ width:100%; border-collapse:collapse; font-size:13px; }} th,td {{ text-align:left; padding:12px 10px; border-bottom:1px solid var(--line); vertical-align:top; }} th {{ color:var(--muted); font-size:11px; font-weight:650; background:#f6f8fc; }}
-    tbody tr:hover {{ background:#f7faff; }} .scroll {{ max-height:440px; overflow:auto; }} .service-table {{ min-width:680px; }} form {{ display:grid; gap:10px; margin-top:14px; }}
-    input,textarea,select {{ width:100%; background:#fff; border:1px solid var(--line); color:var(--text); border-radius:8px; padding:10px; font:inherit; }} textarea {{ min-height:78px; resize:vertical; }}
+    table {{ width:100%; border-collapse:collapse; font-size:13px; }} th,td {{ text-align:left; padding:12px 10px; border-bottom:1px solid var(--line); vertical-align:top; }} th {{ color:var(--muted); font-size:11px; font-weight:650; background:var(--panel2); }}
+    tbody tr:hover {{ background:var(--panel2); }} .scroll {{ max-height:440px; overflow:auto; }} .service-table {{ min-width:680px; }} form {{ display:grid; gap:10px; margin-top:14px; }}
+    input,textarea,select {{ width:100%; background:var(--panel); border:1px solid var(--line); color:var(--text); border-radius:8px; padding:10px; font:inherit; }} textarea {{ min-height:78px; resize:vertical; }}
     .row {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; }} .empty {{ color:var(--muted); padding:22px 8px; text-align:center; }}
-    details {{ margin-top:15px; }} summary {{ cursor:pointer; color:var(--muted); }} code {{ font-family:ui-monospace,SFMono-Regular,Consolas,monospace; background:#f2f5fa; padding:2px 5px; border-radius:5px; }}
-    footer {{ color:var(--muted); font-size:11px; padding:24px; text-align:center; }} :focus-visible {{ outline:3px solid #a7c0ff; outline-offset:3px; }}
+    details {{ margin-top:15px; }} summary {{ cursor:pointer; color:var(--muted); }} code {{ font-family:ui-monospace,SFMono-Regular,Consolas,monospace; background:var(--panel2); padding:2px 5px; border-radius:5px; }}
+    footer {{ color:var(--muted); font-size:11px; padding:24px; text-align:center; }} :focus-visible {{ outline:3px solid var(--info); outline-offset:3px; }}
     @media(max-width:850px) {{ .two {{ grid-template-columns:1fr; }} .kpis,.secondary-kpis {{ grid-template-columns:repeat(2,minmax(0,1fr)); }} header,main {{ padding:16px; }} .section-nav {{ padding:0 12px; }} .actions {{ margin-left:0; }} }}
   </style>
 </head>

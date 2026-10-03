@@ -317,7 +317,7 @@ async function loadBts(){{
     const seen=new Set();
     bts.forEach(b=>{{
       seen.add(b.username);
-      const html=`<b>${{esc(b.name||b.username)}}</b> (Basestation)<br>${{b.lat.toFixed(5)}}, ${{b.lon.toFixed(5)}}<br>IP: ${{esc(b.ip||'not connected')}}<br>${{b.connected?'<span style="color:#2a7">connected</span>':'<span style="color:#a55">offline</span>'}}`;
+      const html=`<b>${{esc(b.name||b.username)}}</b> (Basestation)<br>${{b.lat.toFixed(5)}}, ${{b.lon.toFixed(5)}}<br>IP: ${{esc(b.ip||'not connected')}}<br>${{b.connected?'<span style="color:var(--nc-ok)">connected</span>':'<span style="color:var(--nc-error)">offline</span>'}}`;
       if(btsMarkers[b.username]){{btsMarkers[b.username].setLatLng([b.lat,b.lon]).setPopupContent(html);}}
       else{{btsMarkers[b.username]=L.marker([b.lat,b.lon],{{icon:btsIcon}}).addTo(map).bindPopup(html);}}
     }});
@@ -332,7 +332,7 @@ async function load(){{
     fixes.forEach(f=>{{
       seen.add(f.issi);
       const when=new Date(f.at_ms).toLocaleString();
-      const html=`<b>ISSI ${{f.issi}}</b><br>${{f.lat.toFixed(5)}}, ${{f.lon.toFixed(5)}}<br>Station: ${{f.bts}}<br>${{when}}<br><span style="color:#555">${{(f.source_text||'').replace(/[<>&]/g,'')}}</span>`;
+      const html=`<b>ISSI ${{f.issi}}</b><br>${{f.lat.toFixed(5)}}, ${{f.lon.toFixed(5)}}<br>Station: ${{f.bts}}<br>${{when}}<br><span style="color:var(--nc-muted)">${{(f.source_text||'').replace(/[<>&]/g,'')}}</span>`;
       if(markers[f.issi]){{markers[f.issi].setLatLng([f.lat,f.lon]).setPopupContent(html);}}
       else{{markers[f.issi]=L.marker([f.lat,f.lon]).addTo(map).bindPopup(html);}}
     }});

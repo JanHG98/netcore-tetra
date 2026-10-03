@@ -2,6 +2,8 @@
 
 Das freigegebene Design liegt auf `feat/netcore-dashboard-design`. Dieser Branch enthält auch die neuen Dienstoberflächen. Diese Anleitung aktualisiert eine **bereits installierte Basisstation** aus einem Git-Checkout; für die zentralen Dienste gilt [DIENST-WEBUI-DESIGN-UPDATE.md](DIENST-WEBUI-DESIGN-UPDATE.md). Das Dashboard wird in `bluestation-bs` eingebettet; ein zusätzlicher Webserver oder ein Node-/npm-Build ist nicht erforderlich.
 
+**Hell und Dunkel** stehen sowohl auf der Anmeldeseite als auch im Dashboard zur Verfügung. Das Dashboard behält zusätzlich sein blaues Theme. Die Auswahl bleibt im jeweiligen Browser für diese Webadresse gespeichert und wird beim Neuladen wiederhergestellt. Nach dem Update auch Tabellen, Dialoge, öffentliche Übersicht und RF-Anzeigen im dunklen Design prüfen.
+
 Die folgenden Befehle in einer Bash-Sitzung auf der Basisstation als bisheriger Build-Benutzer ausführen. Für den Dienstneustart entsteht eine kurze Unterbrechung. Den bestehenden Quellcodeordner verwenden, beispielsweise `/opt/netcore-tetra`, falls dort tatsächlich dein Checkout liegt.
 
 ## 1. Dienst, Konfiguration und bisherigen Stand feststellen

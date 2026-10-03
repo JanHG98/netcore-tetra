@@ -41,7 +41,7 @@ const tbsLogs = [{ level: 'INFO', timestamp: new Date(now).toISOString(), issi: 
 const brewStatus = { connected_basestations: 1, subscribers: 1, groups: 1, active_calls: [{ kind: 'group', source: 990001, destination: 990100, priority: 1, started_at_ms: now - 1000, voice_frames: 20, uuid: 'test-call' }], total_calls: 5, total_sds: 10, recent_calls: [{ kind: 'group', source: 990001, destination: 990100, started_at_ms: now - 5000, ended_at_ms: now, voice_frames: 90 }], recent_sds: [{ at_ms: now, source: 990001, destination: 990100, reports: 1, uuid: 'test-sds' }] };
 const sip = { enabled: true, listen: '127.0.0.1:5060', realm: 'test', registrations: [], trunks: [], active_calls: [], total_calls: 0 };
 const sipConfig = { enabled: true, listen: '127.0.0.1:5060', advertised_host: '127.0.0.1', realm: 'test', rtp_port_min: 16000, rtp_port_max: 17000, registration_ttl_seconds: 300, extensions: [], trunks: [], routes: [] };
-const brewFixtures = { '/api/status': brewStatus, '/api/telemetry': [], '/api/rssi': {}, '/api/control': ['TBS-TEST'], '/api/registrations': [{ at_ms: now, bts: 'TBS-TEST', issi: 990001, kind: 'register' }], '/api/connections': { brew_clients: [], mobile_stations: [], sip: { enabled: true, registrations: [], trunks: [] } }, '/api/positions': [], '/api/bts-locations': [], '/api/sip': sip, '/api/sip/config': sipConfig, '/api/config/sip/full': { extensions: {}, trunks: {}, routes: [] } };
+const brewFixtures = { '/api/status': brewStatus, '/api/telemetry': [], '/api/rssi': {}, '/api/control': ['TBS-TEST'], '/api/registrations': [{ at_ms: now, bts: 'TBS-TEST', issi: 990001, kind: 'register' }], '/api/connections': { brew_clients: [], mobile_stations: [], sip: { enabled: true, registrations: [], trunks: [] } }, '/api/positions': [{ issi: 990001, lat: 52.1, lon: 9.1, bts: 'TBS-TEST', at_ms: now, source_text: 'Testposition' }], '/api/bts-locations': [{ username: '990002', name: 'Teststation', lat: 52.2, lon: 9.2, ip: '192.0.2.1', connected: true }], '/api/sip': sip, '/api/sip/config': sipConfig, '/api/config/sip/full': { extensions: {}, trunks: {}, routes: [] } };
 function api(url) {
  const p = url.pathname;
  if (current === 'assets') return ({ '/api/v1/status': { assets_total: assets.length, persons_total: people.length, active_assignments: 0, maintenance_total: 1, maintenance_due: 0, mqtt_connected: true, external_last_sync_at: new Date(now).toISOString(), upstreams: { subscriber_core: { healthy: true }, mobility_core: { healthy: true } } }, '/api/v1/assets': assets, '/api/v1/persons': people, '/api/v1/assignments': [], '/api/v1/maintenance': [{ record_id: 'test-maint', asset_id: 'test-radio', title: 'Testwartung', kind: 'inspection', status: 'planned', due_at: new Date(now).toISOString() }], '/api/v1/events': [] })[p] ?? {};
@@ -72,7 +72,8 @@ const server = http.createServer(async (req, res) => {
   res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(api(url))); return;
  }
  const key = current === 'brew' ? 'brew' + url.pathname : (url.pathname === '/login' ? 'tbs-connect-login' : current === 'tbs-connect-login' && url.pathname === '/dashboard' ? 'tbs-connect' : current);
- const html = pages[key]; if (!html) { res.writeHead(404); res.end('Not found'); return; }
+ let html = pages[key]; if (!html) { res.writeHead(404); res.end('Not found'); return; }
+ html = html.replace(/(<script id="netcore-service-init">[\s\S]*?<\/script>)/, '$1<script>window.__netcoreEarlyTheme=document.documentElement.dataset.ncTheme;</script>');
  res.setHeader('Content-Type', 'text/html; charset=utf-8'); res.end(html);
 });
 const sockets = new Set();
@@ -88,10 +89,10 @@ try {
  // Serve the repository's real Leaflet distribution and a blank map tile entirely locally.
  await context.route('https://unpkg.com/leaflet@1.9.4/dist/**', async route => {
   const filename = new URL(route.request().url()).pathname.split('/').pop();
-  if (!['leaflet.js', 'leaflet.css'].includes(filename)) return route.fulfill({ status: 404, body: '' });
+  if (!['leaflet.js', 'leaflet.css'].includes(filename)) return route.fulfill({ contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABpfZFQAAAAABJRU5ErkJggg==', 'base64') });
   await route.fulfill({ contentType: filename.endsWith('.js') ? 'text/javascript' : 'text/css', body: await readFile(path.join(root, 'system-backend/alert-service/static/vendor', filename)) });
  });
- await context.route('https://*.tile.openstreetmap.org/**', route => route.fulfill({ contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==', 'base64') }));
+ await context.route('https://*.tile.openstreetmap.org/**', route => route.fulfill({ contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABpfZFQAAAAABJRU5ErkJggg==', 'base64') }));
  const page = await context.newPage();
  let errors = [];
  page.on('pageerror', error => errors.push(error.message));
@@ -118,6 +119,60 @@ try {
   await screenshot(label + '-mobile');
   await page.setViewportSize({ width: 1600, height: 1000 });
  };
+ const contrast = async label => {
+  const results = await page.evaluate(() => {
+   const rgba = value => {
+    const match = value.match(/rgba?\(([^)]+)\)/); if (!match) return [0,0,0,0];
+    const parts = match[1].split(/[,\s/]+/).filter(Boolean).map(Number); return [parts[0],parts[1],parts[2],parts[3] ?? 1];
+   };
+   const composite = (fg,bg) => { const a=fg[3]+bg[3]*(1-fg[3]);return a ? [0,1,2].map(i=>(fg[i]*fg[3]+bg[i]*bg[3]*(1-fg[3]))/a).concat(a) : [0,0,0,0]; };
+   const luminance = rgb => rgb.slice(0,3).map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4}).reduce((v,n,i)=>v+n*[.2126,.7152,.0722][i],0);
+   const selectors = ['h1','h2','.nc-service-nav .active','.nc-service-nav a','.nc-service-nav button','label','input:not([type=checkbox])','select','textarea','th','tbody td','.muted','.stat-label','.stat-value','.nc-login-items strong','.nc-login-items span','.log .info','.group-call .source','.group-call .dest','.group-call .frames','.nc-sync-row span','pre','.leaflet-popup-content','.leaflet-popup-content span','.modal.open .field span','dialog[open] h2'];
+   const found = [];
+   for (const selector of selectors) {
+    const element = [...document.querySelectorAll(selector)].find(e=>e.getBoundingClientRect().width>0 && e.getBoundingClientRect().height>0 && getComputedStyle(e).visibility!=='hidden');
+    if (!element) continue;
+    const style=getComputedStyle(element), chain=[];for(let e=element;e;e=e.parentElement)chain.push(e);
+    let background=[255,255,255,1];for(const e of chain.reverse())background=composite(rgba(getComputedStyle(e).backgroundColor),background);
+    const foreground=composite(rgba(style.color),background), l1=luminance(foreground),l2=luminance(background);
+    const ratio=(Math.max(l1,l2)+.05)/(Math.min(l1,l2)+.05);
+    const large=parseFloat(style.fontSize)>=24 || (parseFloat(style.fontSize)>=18.66 && Number(style.fontWeight)>=700);
+    found.push({selector,ratio,minimum:large?3:4.5,color:style.color,background:background.slice(0,3)});
+   }
+   return found;
+  });
+  check(results.length >= 4, label + ': representative contrast samples');
+  for (const item of results) check(item.ratio + .03 >= item.minimum, label + ': ' + JSON.stringify(item));
+ };
+ const darkMode = async label => {
+  const toggle=page.locator('.nc-theme-toggle');
+  await toggle.click();
+  await page.waitForFunction(() => document.documentElement.dataset.ncTheme === 'dark');
+  await page.evaluate(() => Promise.all(document.getAnimations().map(animation => animation.finished.catch(() => {}))));
+  check(await toggle.getAttribute('aria-pressed') === 'true', label + ': dark control state');
+  check(await page.evaluate(() => localStorage.getItem('netcore-theme')) === 'dark', label + ': canonical preference saved');
+  check(await page.evaluate(() => getComputedStyle(document.body).backgroundColor !== 'rgb(243, 246, 251)'), label + ': dark surface');
+  await contrast(label + '-dark');
+  if (current === 'assets') {
+   await page.getByRole('button',{name:'Asset anlegen',exact:true}).click();await contrast(label+'-dark-editor');await screenshot(label+'-dark-editor');await page.locator('#assetDlg').getByRole('button',{name:'Abbrechen'}).click();
+  }
+  if (current === 'directory') {
+   await page.locator('#newBtn').click();await contrast(label+'-dark-editor');await screenshot(label+'-dark-editor');await page.locator('.box-actions').getByRole('button',{name:'Abbrechen'}).click();
+  }
+  if (current === 'brew' && label === 'brew-map') {
+   await page.locator('.leaflet-marker-icon').first().click();await page.locator('.leaflet-popup-content').waitFor();await page.evaluate(() => Promise.all(document.getAnimations().map(animation => animation.finished.catch(() => {}))));await contrast(label+'-dark-popup');
+  }
+  await screenshot(label+'-dark');
+  await mobile(label+'-dark');
+  await page.reload();await page.locator('.nc-service-header').waitFor();
+  check(await page.evaluate(() => document.documentElement.dataset.ncTheme) === 'dark', label + ': reload retains dark');
+  check(await page.evaluate(() => window.__netcoreEarlyTheme) === 'dark', label + ': preference applied before service markup/styles');
+  check(await page.locator('.nc-theme-toggle').getAttribute('aria-pressed') === 'true', label + ': reloaded toggle');
+  await page.locator('.nc-theme-toggle').click();await page.waitForFunction(() => document.documentElement.dataset.ncTheme === 'light');
+  await page.evaluate(() => Promise.all(document.getAnimations().map(animation => animation.finished.catch(() => {}))));
+  check(await page.evaluate(() => localStorage.getItem('netcore-theme')) === 'light', label + ': light preference saved');
+  check(await page.evaluate(() => getComputedStyle(document.body).backgroundColor) === 'rgb(243, 246, 251)', label + ': light palette restored');
+ };
  await load('assets');
  await page.locator('#assetRows').getByText('HRT-TEST').waitFor();
  check((await page.locator('#assetRows').innerText()).includes('Verfügbar'), 'Assets: supported status displayed');
@@ -134,7 +189,7 @@ try {
  await page.getByRole('button', { name: 'Wartung planen', exact: true }).click();
  check(await page.locator('#maintDlg').isVisible(), 'Assets: maintenance editor retained');
  await page.locator('#maintDlg').getByRole('button', { name: 'Abbrechen' }).click();
- await screenshot('asset-management'); await mobile('asset-management'); noErrors('Assets');
+ await screenshot('asset-management'); await mobile('asset-management'); await darkMode('asset-management'); noErrors('Assets');
  await load('directory'); await page.locator('#tbody').getByText('Testfunkgerät').waitFor();
  for (const [tab, expected] of [['basestations', 'Teststation'], ['groups', 'Testgruppe'], ['device_groups', 'Testgruppe'], ['status_messages', 'Teststatus']]) {
   await page.locator(`[data-tab="${tab}"]`).click();
@@ -145,7 +200,7 @@ try {
  await page.locator('.box-actions').getByRole('button', { name: 'Speichern' }).click();
  await page.locator('#tbody').getByText('Neues Testfunkgerät').waitFor();
  check(requests.some(x => x.method === 'POST' && x.path === '/api/devices'), 'Directory: create retained');
- await screenshot('directory'); await mobile('directory'); noErrors('Directory');
+ await screenshot('directory'); await mobile('directory'); await darkMode('directory'); noErrors('Directory');
  await load('sip-switch'); await page.locator('#tbsRows tr td').first().waitFor();
  await page.locator('#number').fill('990001'); await page.getByRole('button', { name: 'Auflösen', exact: true }).click();
  await page.waitForFunction(() => document.getElementById('routeResult').textContent.includes('implicit_issi'));
@@ -154,11 +209,11 @@ try {
  await page.getByRole('button', { name: 'Asterisk neu rendern' }).click();
  await renderResponse;
  check(requests.some(x => x.method === 'POST' && x.path === '/api/v1/actions/render-asterisk'), 'SIP: original render action');
- await screenshot('sip-switch'); await mobile('sip-switch'); noErrors('SIP Switch');
+ await screenshot('sip-switch'); await mobile('sip-switch'); await darkMode('sip-switch'); noErrors('SIP Switch');
  await load('tbs-connect-login', '/login');
  check(await page.locator('form input').count() === 2, 'TBS Login: exactly two genuine fields');
  check(!(await page.locator('body').innerText()).includes('OPEN LAB'), 'TBS Login: real session mode');
- await screenshot('tbs-connect-login'); await mobile('tbs-connect-login');
+ await screenshot('tbs-connect-login'); await mobile('tbs-connect-login'); await darkMode('tbs-connect-login');
  await page.locator('[name=username]').fill('test-user'); await page.locator('[name=password]').fill('test-password');
  await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
  await page.waitForURL(base + '/dashboard');
@@ -168,7 +223,7 @@ try {
  await page.locator('#sse-status').getByText('Live verbunden').waitFor();
  check((await page.locator('#group-calls').innerText()).includes('GSSI 990100'), 'TBS: live group data');
  check(!(await page.locator('body').innerText()).includes('OPEN LAB'), 'TBS Dashboard: session access');
- await screenshot('tbs-connect'); await mobile('tbs-connect'); noErrors('TBS Connect');
+ await screenshot('tbs-connect'); await mobile('tbs-connect'); await darkMode('tbs-connect'); noErrors('TBS Connect');
  for (const route of brewRoutes) {
   await load('brew', route);
   check(await page.locator('.nc-service-nav a').count() === 10, 'Rust Brew' + route + ': ten routes');
@@ -191,11 +246,17 @@ try {
    check(requests.some(x => x.method === 'POST' && x.path === '/api/config/sip/extensions/1001'), 'Rust Brew: extension editor POST preserved');
   }
   const label = 'brew-' + (route === '/' ? 'index' : route.slice(1));
-  await screenshot(label); await mobile(label); noErrors(label);
+  await screenshot(label); await mobile(label); await darkMode(label); noErrors(label);
  }
  admin = false; await load('brew', '/');
  await page.waitForFunction(() => document.querySelector('[data-nc-admin-link]').hidden);
  check(!(await page.locator('[data-nc-admin-link]').isVisible()), 'Rust Brew: settings navigation follows whoami admin');
+ await page.evaluate(() => {localStorage.removeItem('netcore-theme');localStorage.setItem('netcore-service-theme','dark')});
+ await page.reload();await page.locator('.nc-service-header').waitFor();
+ check(await page.evaluate(() => window.__netcoreEarlyTheme) === 'dark', 'Rust Brew: legacy theme preference preserved');
+ await page.evaluate(() => {localStorage.setItem('netcore-theme','blue');localStorage.setItem('netcore-service-theme','dark')});
+ await page.reload();await page.locator('.nc-service-header').waitFor();
+ check(await page.evaluate(() => window.__netcoreEarlyTheme) === 'light', 'Rust Brew: explicit base blue preference wins over legacy dark');
  console.log(`${assertions} auxiliary WebUI checks passed across5services/15views. Screenshots: ${output}`);
 } finally {
  await browser.close();

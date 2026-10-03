@@ -4,6 +4,10 @@ Die Basisstation verwendet eine gemeinsame helle Oberfläche mit weißen Arbeits
 
 Die semantischen Farben, Abstände und Komponenten liegen in `crates/tetra-entities/src/net_dashboard/ui/netcore.css`. Das gemeinsame Grundprinzip gilt auch für die Dienstoberflächen in `system-backend/shared/web-ui/`. Dieser Branch enthält Basisstation und alle vorhandenen Dienst-WebUIs; der Dienst-Rollout steht in [DIENST-WEBUI-DESIGN-UPDATE.md](DIENST-WEBUI-DESIGN-UPDATE.md). Die vorhandenen dunklen und blauen Themes sowie Lesbarkeit und Touchbedienung bleiben verfügbar.
 
+## Helles und dunkles Design
+
+Anmeldung und Dashboard bieten eine gespeicherte Hell-/Dunkel-Auswahl; das Dashboard bietet zusätzlich das vorhandene blaue Theme. Der Dark Mode verwendet dieselbe Navigation und dieselben Fachansichten mit dunklen Arbeitsflächen, heller Schrift und angepassten Statusfarben. RF-Diagramme zeichnen ihre Beschriftungen und Hintergründe nach einem Theme-Wechsel neu. Die Auswahl gilt für die jeweilige Webadresse im Browser.
+
 ## Ansichten
 
 | Bereich | Ansichten | Daten und Verhalten |

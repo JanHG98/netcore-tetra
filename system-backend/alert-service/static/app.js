@@ -213,7 +213,7 @@ function render() {
   $('count-devices').textContent=snapshot.devices.length;
   $('count-deliveries').textContent=snapshot.deliveries.filter(d=>d.state==='accepted').length;
   $('send-mode').textContent=snapshot.delivery_enabled?'Aktiv':'Pausiert';
-  $('send-mode').style.color=snapshot.delivery_enabled?'#228c60':'#a77427';
+  $('send-mode').style.color=snapshot.delivery_enabled?'var(--nc-ok)':'var(--nc-warn)';
   $('poll-time').textContent='Geprüft: '+date(snapshot.last_cycle);
   const errors=Object.entries(snapshot.errors).map(([key,value])=>key+': '+value);
   const waiting=snapshot.last_cycle==null;

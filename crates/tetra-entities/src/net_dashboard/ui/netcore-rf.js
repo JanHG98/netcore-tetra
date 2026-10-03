@@ -157,5 +157,6 @@
   if (typeof ResizeObserver === 'function') new ResizeObserver(scheduleRefresh).observe(plots);
   constellationDetails.addEventListener('toggle', scheduleRefresh);
   window.addEventListener('resize', scheduleRefresh);
+  window.addEventListener('netcore-theme-change', scheduleRefresh);
   syncCarriers();
 })();

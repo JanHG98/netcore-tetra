@@ -94,12 +94,27 @@ try {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   const url = `http://127.0.0.1:${server.address().port}`;
-  const screenshot = async (name, mobile = false) => {
+  const screenshot = async (name, mobile = false, dark = false) => {
     await page.setViewportSize(mobile ? { width: 390, height: 844 } : { width: 1680, height: 1000 });
     await page.evaluate(() => window.scrollTo(0, 0));
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true,
       `${name}: content must remain inside viewport`);
-    await page.screenshot({ path: path.join(output, `${name}-${mobile ? 'mobile' : 'desktop'}.png`), fullPage: true });
+    await page.screenshot({ path: path.join(output, `${name}-${mobile ? 'mobile' : 'desktop'}${dark ? '-dark' : ''}.png`), fullPage: true });
+  };
+  const assertDark = async () => {
+    assert.equal(await page.locator('html').getAttribute('data-nc-theme'), 'dark');
+    assert.equal(await page.locator('.nc-theme-toggle').getAttribute('aria-pressed'), 'true');
+    await page.waitForFunction(() => {
+      const values = getComputedStyle(document.querySelector('.nc-theme-toggle')).backgroundColor.match(/[\d.]+/g)?.map(Number) || [];
+      return values.length >= 3 && Math.min(...values.slice(0,3)) < 160;
+    });
+    const brightSurfaces = await page.evaluate(() => [...document.querySelectorAll('main,.panel,.card,pre,button')]
+      .filter(node => node.getBoundingClientRect().width > 0)
+      .filter(node => {
+        const color = getComputedStyle(node).backgroundColor.match(/[\d.]+/g)?.map(Number) || [];
+        return color.length >= 3 && (color.length < 4 || color[3] > .95) && Math.min(...color.slice(0,3)) > 160;
+      }).map(node => (node.id || node.className || node.tagName) + ' ' + getComputedStyle(node).backgroundColor));
+    assert.deepEqual(brightSurfaces, [], 'Hardware/RF dark surfaces must use shared tokens');
   };
   await page.goto(url);
   await page.waitForSelector('#d tr:nth-child(3)');
@@ -113,6 +128,15 @@ try {
   assert.equal(await page.locator('.nc-service-access').innerText(), 'OPEN LAB');
   await screenshot('hardware-gateway');
   await screenshot('hardware-gateway', true);
+  await page.locator('.nc-theme-toggle').focus();
+  await page.locator('.nc-theme-toggle').press('Enter');
+  await assertDark();
+  assert.equal(await page.evaluate(() => localStorage.getItem('netcore-theme')), 'dark');
+  await screenshot('hardware-gateway', false, true);
+  await screenshot('hardware-gateway', true, true);
+  await page.reload();
+  await page.waitForSelector('#d tr:nth-child(3)');
+  await assertDark();
   failed = true;
   await page.evaluate(() => r());
   assert.match(await page.locator('#refresh-state').innerText(), /Daten können veraltet sein/);
@@ -122,6 +146,7 @@ try {
   await page.evaluate(() => r());
   assert.match(await page.locator('#d').innerText(), /Noch keine Geräte registriert/);
   empty = false;
+  await page.locator('.nc-theme-toggle').click();
 
   service = 'rf-monitor';
   await page.setViewportSize({ width: 1680, height: 1000 });
@@ -136,6 +161,16 @@ try {
   assert.match(await page.locator('#stations tr:nth-child(2)').innerText(), /Keine externe HF-Messwerte/);
   await screenshot('rf-monitor');
   await screenshot('rf-monitor', true);
+  assert(await page.evaluate(() => document.getElementById('spectrum').getContext('2d').getImageData(0,0,1,1).data[0] > 200));
+  await page.locator('.nc-theme-toggle').click();
+  await assertDark();
+  await page.waitForFunction(() => {
+    const pixel = document.getElementById('spectrum').getContext('2d').getImageData(0,0,1,1).data;
+    return pixel[0] < 50 && pixel[1] < 60 && pixel[3] === 255;
+  });
+  assert.match(await page.locator('#telemetry').innerText(), /-18,4 dBFS/, 'Theme switch preserves actual telemetry');
+  await screenshot('rf-monitor', false, true);
+  await screenshot('rf-monitor', true, true);
   await page.locator('button[data-station="ost"]').click();
   assert.match(await page.locator('#telemetry').innerText(), /Keine Messwerte einer externen HF-Probe verfügbar/);
   assert.equal(await page.locator('#stations tr.selected-row').getAttribute('data-station-id'), 'ost');
@@ -154,7 +189,7 @@ try {
   assert.match(await page.locator('#alarms').innerText(), /Keine aktiven Alarme/);
   assert.deepEqual(errors, [], 'No browser script errors');
   assert(requests.every(request => request.method === 'GET'), 'Monitoring UI must not issue write requests');
-  console.log('PASS Hardware/RF: live-field fixtures, escaped names, null metrics, probe/bin fallbacks, selection, alarms, empty states, stale-data errors, desktop/mobile');
+  console.log('PASS Hardware/RF: live-field fixtures, escaped names, null metrics, probe/bin fallbacks, selection, alarms, empty states, stale-data errors, persisted dark toggle, immediate canvas theme, desktop/mobile');
   console.log(`Screenshots: ${path.relative(root, output)}`);
 } finally {
   if (browser) await browser.close();

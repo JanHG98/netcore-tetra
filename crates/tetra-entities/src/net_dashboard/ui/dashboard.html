@@ -4,6 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NetCore-Basisstation</title>
+<script>
+// Restore before first paint; blocked browser storage never prevents dashboard boot.
+window.netcoreStorage={
+  getItem(key){try{return window.localStorage.getItem(key);}catch{return null;}},
+  setItem(key,value){try{window.localStorage.setItem(key,value);}catch{}},
+  removeItem(key){try{window.localStorage.removeItem(key);}catch{}}
+};
+(()=>{
+  const valid=value=>['light','dark','blue'].includes(value);
+  const saved=netcoreStorage.getItem('netcore-theme'),legacy=netcoreStorage.getItem('fs_theme');
+  document.documentElement.dataset.theme=valid(saved)?saved:valid(legacy)?legacy:'light';
+})();
+</script>
 <style>
 /* ── Reset ── */
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -2610,7 +2623,7 @@ tbody tr:hover td{background:color-mix(in srgb,var(--bg3) 70%, transparent);}
           </button>
         </div>
       </div>
-      <div class="theme-picker">
+      <div class="theme-picker" role="group" aria-label="Farbschema">
         <button class="theme-btn" data-t="dark" onclick="setTheme('dark',this)">Dunkel</button>
         <button class="theme-btn active" data-t="light" onclick="setTheme('light',this)">Hell</button>
         <button class="theme-btn" data-t="blue" onclick="setTheme('blue',this)">Blau</button>
@@ -5257,7 +5270,7 @@ const LANGS={
 };
 
 const currentLang='de';
-localStorage.removeItem('fs_lang');
+netcoreStorage.removeItem('fs_lang');
 document.documentElement.lang='de';
 // German-only dashboard: the former English table intentionally mirrors German.
 function t(k,v){let s=LANGS.de[k]||k;if(v)Object.keys(v).forEach(x=>{s=s.replace('{'+x+'}',v[x]);});return s;}
@@ -5277,26 +5290,35 @@ function setLang(){
   applyLang();
 }
 
-let currentTheme=localStorage.getItem('fs_theme')||'light';
-function setTheme(theme,btn){
-  currentTheme=theme;localStorage.setItem('fs_theme',theme);
-  document.documentElement.setAttribute('data-theme',theme==='dark'?'':theme);
-  document.querySelectorAll('.theme-btn').forEach(d=>d.classList.remove('active'));
-  if(btn)btn.classList.add('active');
-  else document.querySelectorAll('.theme-btn').forEach(d=>{if(d.dataset.t===theme)d.classList.add('active');});
+let currentTheme=document.documentElement.dataset.theme||'light';
+function setTheme(theme,btn,persist=true){
+  currentTheme=['light','dark','blue'].includes(theme)?theme:'light';
+  if(persist){netcoreStorage.setItem('netcore-theme',currentTheme);netcoreStorage.setItem('fs_theme',currentTheme);}
+  document.documentElement.setAttribute('data-theme',currentTheme);
+  document.querySelectorAll('.theme-btn').forEach(d=>{
+    const active=d.dataset.t===currentTheme;
+    d.classList.toggle('active',active);d.setAttribute('aria-pressed',String(active));
+  });
+  window.dispatchEvent(new CustomEvent('netcore-theme-change',{detail:{theme:currentTheme}}));
 }
+window.addEventListener('storage',event=>{
+  if(event.key==='netcore-theme'){
+    const theme=['light','dark','blue'].includes(event.newValue)?event.newValue:'light';
+    setTheme(theme,null,false);
+  }
+});
 
 // ── Readability (text size + contrast) ───────────────────────────────────────
 // One multiplier --ts on <html data-uisize>, consumed by the curated readability
 // block via calc(). Default = Medium (bigger out of the box). Persisted: fs_uisize.
-let currentUiSize=localStorage.getItem('fs_uisize')||'m';
+let currentUiSize=netcoreStorage.getItem('fs_uisize')||'m';
 function applyUiSize(){
   document.documentElement.setAttribute('data-uisize',currentUiSize);
   document.querySelectorAll('.read-opt').forEach(o=>
     o.classList.toggle('active',o.dataset.size===currentUiSize));
 }
 function setUiSize(s){
-  currentUiSize=s;localStorage.setItem('fs_uisize',s);
+  currentUiSize=s;netcoreStorage.setItem('fs_uisize',s);
   applyUiSize();closeReadPop();
 }
 function toggleReadPop(e){
@@ -5319,7 +5341,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeReadPop();});
 
 // ── Touch mode (FH-FEAT-008) ─────────────────────────────────────────────────
 // '1' = forced on, '0' = forced off, null = auto (on for coarse pointers).
-let touchMode=localStorage.getItem('fs_touch');
+let touchMode=netcoreStorage.getItem('fs_touch');
 function applyTouchMode(){
   const coarse=window.matchMedia&&window.matchMedia('(pointer:coarse)').matches;
   const on=touchMode==='1'||(touchMode===null&&coarse);
@@ -5331,15 +5353,15 @@ function toggleTouchMode(){
   const coarse=window.matchMedia&&window.matchMedia('(pointer:coarse)').matches;
   const currentlyOn=touchMode==='1'||(touchMode===null&&coarse);
   touchMode=currentlyOn?'0':'1';
-  localStorage.setItem('fs_touch',touchMode);
+  netcoreStorage.setItem('fs_touch',touchMode);
   applyTouchMode();
 }
 
 // ── Sidebar ───────────────────────────────────────────────────────────────
-let sidebarCollapsed=localStorage.getItem('sb_collapsed')==='1';
+let sidebarCollapsed=netcoreStorage.getItem('sb_collapsed')==='1';
 function toggleSidebar(){
   sidebarCollapsed=!sidebarCollapsed;
-  localStorage.setItem('sb_collapsed',sidebarCollapsed?'1':'0');
+  netcoreStorage.setItem('sb_collapsed',sidebarCollapsed?'1':'0');
   document.getElementById('sidebar').classList.toggle('collapsed',sidebarCollapsed);
 }
 function openMobileSidebar(){
@@ -6809,12 +6831,12 @@ const MAP_SOURCE_LABELS={sds:'SDS/LIP',meshcom:'MeshCom',geoalarm:'GeoAlarm',sta
 function mapsLoadSourceFilters(){
   const defaults={sds:true,meshcom:true,geoalarm:true,station:true};
   try{
-    const raw=JSON.parse(localStorage.getItem('maps_source_filters')||'{}');
+    const raw=JSON.parse(netcoreStorage.getItem('maps_source_filters')||'{}');
     MAP_SOURCE_KEYS.forEach(k=>{if(typeof raw[k]==='boolean')defaults[k]=raw[k];});
   }catch{}
   return defaults;
 }
-let mapsCurrentMarkers=[],mapsSelectedIndex=-1,mapsCurrentBounds=null,mapsCurrentView=null,mapsFocus=null,mapsFocusMarker=null,mapsUserCenter=null,mapsUserZoom=null,mapsDrag=null,mapsWheelDelta=0,mapsLatestOnly=localStorage.getItem('maps_latest_only')==='1',mapsSourceFilters=mapsLoadSourceFilters();
+let mapsCurrentMarkers=[],mapsSelectedIndex=-1,mapsCurrentBounds=null,mapsCurrentView=null,mapsFocus=null,mapsFocusMarker=null,mapsUserCenter=null,mapsUserZoom=null,mapsDrag=null,mapsWheelDelta=0,mapsLatestOnly=netcoreStorage.getItem('maps_latest_only')==='1',mapsSourceFilters=mapsLoadSourceFilters();
 function mapsNumber(v){
   if(v===null||v===undefined||v==='')return NaN;
   if(typeof v==='string'){
@@ -6972,7 +6994,7 @@ function mapsAnySourceEnabled(){
   return MAP_SOURCE_KEYS.some(k=>mapsSourceFilters[k]!==false);
 }
 function mapsSaveSourceFilters(){
-  localStorage.setItem('maps_source_filters',JSON.stringify(mapsSourceFilters));
+  netcoreStorage.setItem('maps_source_filters',JSON.stringify(mapsSourceFilters));
 }
 function toggleMapsSource(source){
   if(!MAP_SOURCE_KEYS.includes(source))return;
@@ -7243,7 +7265,7 @@ function bindMapsControls(){
 }
 function toggleMapsLatestOnly(){
   mapsLatestOnly=!mapsLatestOnly;
-  localStorage.setItem('maps_latest_only',mapsLatestOnly?'1':'0');
+  netcoreStorage.setItem('maps_latest_only',mapsLatestOnly?'1':'0');
   mapsUserCenter=null;
   mapsUserZoom=null;
   updateMapsLatestButton();

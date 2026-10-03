@@ -30,7 +30,7 @@ def refreshed(source: str, name: str, access: str) -> str:
     source = re.sub(r'<script>document.documentElement.dataset.netcoreUi=[\'\"]service[\'\"];?</script>', "", source, count=1)
     page = refresh(source, name, access)
     if access == "access-key":
-        page = re.sub(r'<script id="netcore-service-init">.*?</script>', "", page, flags=re.DOTALL)
+        page = re.sub(r'<script id="netcore-service-init">.*?</script>', '<script id="netcore-service-init" src="/service-theme-init.js"></script>', page, flags=re.DOTALL)
         page = re.sub(r'<script id="netcore-service-shell">.*?</script>', '<script id="netcore-service-shell" src="/service-design.js" defer></script>', page, flags=re.DOTALL)
         if 'data-netcore-ui="service"' not in page[:page.index('<head>')]:
             page = page.replace('<html lang="de">', '<html lang="de" data-netcore-ui="service">', 1)
@@ -57,7 +57,8 @@ def main() -> None:
         page = refreshed(path.read_text(), name, access)
         outputs = [(path, page)]
         if service == "alert-service":
-            outputs.append((directory / "static/service-design.js", (REPO_ROOT / "system-backend/shared/web-ui/assets/service-design.js").read_text()))
+            for asset in ("service-design.js", "service-theme-init.js"):
+                outputs.append((directory / "static" / asset, (REPO_ROOT / "system-backend/shared/web-ui/assets" / asset).read_text()))
         if service != "alert-service":
             core = directory / "src" / ("netcore_" + service.replace("-", "_") + ".py")
             outputs.append((core, fallback(core.read_text(), page)))

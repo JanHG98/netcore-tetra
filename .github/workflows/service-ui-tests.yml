@@ -35,9 +35,10 @@ jobs:
           python3 tools/embed_auxiliary_service_design.py --check
           python3 tools/embed_edge_service_design.py --check
           python3 tools/embed_workflow_service_design.py --check
-      - name: Test shared shell and all service surfaces
+      - name: Test light and dark modes across all service surfaces
         env:
           NODE_PATH: ${{ runner.temp }}/service-ui/node_modules
+          NETCORE_WORKFLOW_SCREENSHOT_DIR: target/service-ui-preview/workflow
         run: |
           node system-backend/shared/web-ui/tests/service-design.mjs
           node tools/test_core_service_ui.mjs
