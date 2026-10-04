@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1760" viewBox="0 0 1200 1760">
+  <rect width="1200" height="1760" fill="#f5f6f8"/>
+  <style>
+    .title{font:700 24px Arial,sans-serif;fill:#111}.cap{font:700 18px Arial,sans-serif;fill:#222}
+    .h{font:700 15px Arial,sans-serif;fill:#111}.t{font:14px Arial,sans-serif;fill:#111}
+    .v{font:14px Arial,sans-serif;fill:#174fc2}.box{fill:white;stroke:#8c9299;stroke-width:1.2}
+    .line{stroke:#b6bbc1;stroke-width:1}.note{font:13px Arial,sans-serif;fill:#555}
+  </style>
+  <text x="40" y="46" class="title">Motorola CPS – WAP/Packet-Data Screenshots aus dem Chat</text>
+  <text x="40" y="72" class="note">Vektorielle Archivtranskription der sechs sichtbaren Chat-Screenshots; Original-PNG-Prüfsummen stehen in der Abschlussdokumentation.</text>
+
+  <!-- 1 -->
+  <text x="40" y="120" class="cap">1 · Paketdaten / IP</text>
+  <rect x="40" y="140" width="1120" height="360" class="box"/>
+  <text x="65" y="174" class="h">Feldname</text><text x="560" y="174" class="h">Feldwert</text><text x="850" y="174" class="h">Standardeinstellung</text>
+  <g class="t">
+    <text x="65" y="210">1  Benutzerauthentisierung</text><text x="560" y="210">☑</text>
+    <text x="65" y="242">2  Authentifikatorname</text><text x="560" y="242" class="v">DIMETRA_P</text>
+    <text x="65" y="274">3  Nur Daten</text><text x="560" y="274">☐</text>
+    <text x="65" y="306">4  Sprache &amp; Daten</text><text x="560" y="306">☑</text>
+    <text x="65" y="338">5  Nur Sprache</text><text x="560" y="338">☐</text>
+    <text x="65" y="370">6  Standard-Paketdatenmodus</text><text x="560" y="370" class="v">Sprache &amp; Daten</text>
+    <text x="65" y="402">7  PD-Seitenperioden-Aktualisierungen, ms</text><text x="560" y="402" class="v">1000</text>
+    <text x="65" y="434">8  IP-Warteschlangen-Timeout</text><text x="560" y="434">☐</text>
+    <text x="65" y="466">9  Max. IP-Warteschlangenzeit, Sek.</text><text x="560" y="466">5</text>
+    <text x="65" y="498">10 Dynamische IP-Adresse anfordern</text><text x="560" y="498">☑</text>
+    <text x="65" y="530">11 Statische IP-Adresse</text><text x="560" y="530" class="v">0.0.0.0</text>
+  </g>
+
+  <!-- 2 -->
+  <text x="40" y="585" class="cap">2 · Interne Benutzerauthentisierung</text>
+  <rect x="40" y="605" width="540" height="155" class="box"/>
+  <text x="65" y="637" class="h">Feldname</text><text x="330" y="637" class="h">Feldwert</text>
+  <text x="65" y="672" class="t">1  Protokolltyp</text><text x="330" y="672" class="v">CHAP</text>
+  <text x="65" y="707" class="t">2  Benutzername</text>
+  <text x="65" y="742" class="t">3  Kennwort</text>
+
+  <!-- 3 -->
+  <text x="620" y="585" class="cap">3 · WAP Allgemein</text>
+  <rect x="620" y="605" width="540" height="260" class="box"/>
+  <text x="645" y="637" class="h">Feldname</text><text x="965" y="637" class="h">Feldwert</text>
+  <text x="645" y="672" class="t">1  Cache aktiviert</text><text x="965" y="672">☑</text>
+  <text x="645" y="707" class="t">2  Max. Zeit ununterbrochene WAP-Datensitzung</text><text x="965" y="707" class="v">0</text>
+  <text x="645" y="742" class="t">3  Homepage-Adresse</text>
+  <text x="645" y="777" class="t">4  UAProf-Adresse</text>
+  <text x="645" y="812" class="t">5  URL für vertrauenswürdige Domäne</text>
+  <text x="645" y="847" class="t">6  Initiator Client ID</text>
+  <text x="645" y="882" class="t">7  Client-ID-Stil</text><text x="965" y="882" class="v">OpenWave</text>
+
+  <!-- 4 -->
+  <text x="40" y="925" class="cap">4 · WAP Proxy</text>
+  <rect x="40" y="945" width="540" height="220" class="box"/>
+  <text x="65" y="977" class="h">Feldname</text><text x="360" y="977" class="h">Feldwert</text>
+  <text x="65" y="1012" class="t">1  Proxy-IP-Adresse</text><text x="360" y="1012" class="v">0.0.0.0</text>
+  <text x="65" y="1047" class="t">2  Remote-Anschluss</text><text x="360" y="1047" class="v">0</text>
+  <text x="65" y="1082" class="t">3  SAR erzwingen</text><text x="360" y="1082">☑</text>
+  <text x="65" y="1117" class="t">4  SAR-Gruppengröße</text><text x="360" y="1117" class="v">3</text>
+  <text x="65" y="1152" class="t">5  Trägerindex</text><text x="360" y="1152" class="v">0</text>
+
+  <!-- 5 -->
+  <text x="620" y="925" class="cap">5 · WAP Träger</text>
+  <rect x="620" y="945" width="540" height="190" class="box"/>
+  <text x="645" y="977" class="h">Feldname</text><text x="945" y="977" class="h">Feldwert</text>
+  <text x="645" y="1012" class="t">1  Trägername</text><text x="945" y="1012" class="v">TETRA_PACKET</text>
+  <text x="645" y="1047" class="t">2  B-Typ</text><text x="945" y="1047" class="v">1</text>
+  <text x="645" y="1082" class="t">3  WDP B-Typ</text><text x="945" y="1082" class="v">0</text>
+  <text x="645" y="1117" class="t">4  Max. Anforderungszeit, Sek.</text><text x="945" y="1117" class="v">45</text>
+
+  <!-- 6 -->
+  <text x="40" y="1225" class="cap">6 · Access Point</text>
+  <rect x="40" y="1245" width="1120" height="290" class="box"/>
+  <text x="65" y="1277" class="h">Feldname</text><text x="560" y="1277" class="h">Feldwert</text><text x="850" y="1277" class="h">Standardeinstellung</text>
+  <text x="65" y="1312" class="t">1  AP-Zugriffstyp</text>
+  <text x="65" y="1347" class="t">2  AP-Adresse</text>
+  <text x="65" y="1382" class="t">3  AP-Authentisierungstyp</text>
+  <text x="65" y="1417" class="t">4  AP-Benutzername</text>
+  <text x="65" y="1452" class="t">5  AP-Kennwort</text>
+  <text x="65" y="1487" class="t">6  AP-Skript</text>
+
+  <text x="40" y="1600" class="note">Hinweis: Dieses SVG ist eine manuell erzeugte, textnative Archivdarstellung der sichtbaren Screenshots.</text>
+  <text x="40" y="1623" class="note">Die Original-PNG-Dateien waren im Chat sichtbar, konnten über die verfügbare GitHub-UTF-8-Dateischnittstelle jedoch nicht binär übernommen werden.</text>
+</svg>
