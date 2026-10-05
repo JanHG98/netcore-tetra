@@ -1,0 +1,33 @@
+{
+  "source_chat_id": "6aa54239-3fa0-83ed-b3e2-0744529f9e27",
+  "source_chat_title": "Installationsanleitung ab 0",
+  "source_filename": "Eingefügter Text(20260912-143852).txt",
+  "archive_date": "2026-10-05",
+  "original_bytes": 244548,
+  "original_sha256": "d45e214803fc796801b700df174ea953c230b6377bfedbd20112c470c570644b",
+  "original_line_count": 1146,
+  "archived_filename": "laufzeit-20260912-bereinigt.txt",
+  "archived_bytes": 235981,
+  "archived_sha256": "3b909deb3e0c41e05ba626b536b8a1db5c526668a0b25438f8fcc4c8d42514c5",
+  "archived_line_count": 1146,
+  "encoding": "UTF-8, LF, final newline",
+  "redactions": {
+    "opaque_binary_blobs": 187,
+    "sds_decimal_payloads": 1,
+    "sds_hex_payloads": 1
+  },
+  "redaction_note": "Opaque PDU/SDU bit dumps and the one SDS payload were removed in all directly identified representations. Line order, line count, timestamps, event types, identifiers and diagnostic parameters are retained. This is a sanitized derivative, not the byte-identical original. No original binary log is published.",
+  "event_counts": {
+    "RX buffer overrun": 2,
+    "Too late to produce TX block": 65,
+    "entity Recorder not found": 389,
+    "SNDCP: packet gateway startup failed": 6,
+    "ControlRoom transport connection failed": 10,
+    "edge fallback transition": 10,
+    "SDS: U-SDS-DATA": 1,
+    "Version:": 2,
+    "Shutting down gracefully": 2
+  },
+  "repository_archive_base": "45c13959b0e030e4162344fbf2b5d29fbcd820d3",
+  "repository_main_checked": "9116c15d645458f99e236712b67a1ad970432791"
+}
