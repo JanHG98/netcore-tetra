@@ -1,0 +1,223 @@
+Keine Basisstation aktiv
+jan@SRV-M-TBS-01:/opt/netcore-tetra $ timeout \
+  --foreground \
+  --signal=INT \
+  12s \
+  sudo -u jan \
+  SoapySDRUtil \
+    --args="driver=sx" \
+    --rate=600000 \
+    --format=CF32 \
+    --channels="0" \
+    --direction=RX
+SoapySDRUtil: unrecognized option '--format=CF32'
+######################################################
+##     Soapy SDR -- the SDR abstraction library     ##
+######################################################
+
+[INFO] SoapySX version 9705147 9705147dd8c189625071f3f163ea56119bda4a05
+[INFO] Hardware version 1.2
+[INFO] Initializing SoapySX
+[INFO] Detected clock as 38.4 MHz
+Stream format: CF32
+Num channels: 1
+Element size: 8 bytes
+Begin RX rate test at 0.6 Msps
+Starting stream loop, press Ctrl+C to exit...
+Unexpected stream error STREAM_ERROR
+[INFO] Stopping and resetting streams
+[ERROR]
+ALSA error in alsa_tx.reset(): Input/output error
+
+[INFO] Uninitializing SoapySX
+jan@SRV-M-TBS-01:/opt/netcore-tetra $ sudo dmesg -T \
+  | grep -Ei \
+    'alsa|snd|i2s|sx1255|xrun|overrun|underrun|dma|error|failed' \
+  | tail -n 100
+[Sun Aug  2 18:54:51 2026] OF: reserved mem: initialized node linux,cma, compatible id shared-dma-pool
+[Sun Aug  2 18:54:51 2026]   DMA      [mem 0x0000000000000000-0x00000000ffffffff]
+[Sun Aug  2 18:54:51 2026]   DMA32    empty
+[Sun Aug  2 18:54:51 2026] On node 1, zone DMA: 256 pages in unavailable ranges
+[Sun Aug  2 18:54:51 2026] DMA: preallocated 1024 KiB GFP_KERNEL pool for atomic allocations
+[Sun Aug  2 18:54:51 2026] DMA: preallocated 1024 KiB GFP_KERNEL|GFP_DMA pool for atomic allocations
+[Sun Aug  2 18:54:51 2026] DMA: preallocated 1024 KiB GFP_KERNEL|GFP_DMA32 pool for atomic allocations
+[Sun Aug  2 18:54:51 2026] bcm2835-dma 1000010000.dma: DMA legacy API manager, dmachans=0x1
+[Sun Aug  2 18:54:51 2026] iommu: DMA domain TLB invalidation policy: strict mode
+[Sun Aug  2 18:54:51 2026] bcm2712-iommu 1000005100.iommu: IOVA aperture 0xa00000000..0xb00000000 including DMA offset 0x0
+[Sun Aug  2 18:54:51 2026] bcm2712-iommu 1000005200.iommu: IOVA aperture 0xa00000000..0xa80000000 including DMA offset 0x0
+[Sun Aug  2 18:54:51 2026] bcm2712-iommu 1000005280.iommu: IOVA aperture 0x1a00000000..0x1a80000000 including DMA offset 0x1000000000
+[Sun Aug  2 18:54:51 2026] dw_axi_dmac_platform 1f00188000.dma: DesignWare AXI DMA Controller, 8 channels
+[Sun Aug  2 18:54:51 2026] mmc0: SDHCI controller on 1000fff000.mmc [1000fff000.mmc] using ADMA 64-bit
+[Sun Aug  2 18:54:51 2026] mmc1: SDHCI controller on 1001100000.mmc [1001100000.mmc] using ADMA 64-bit
+[Sun Aug  2 19:16:27 2026] dma dma2chan4: dma2chan4 failed to stop
+[Sun Aug  2 19:24:04 2026] dma dma2chan4: dma2chan4 failed to stop
+jan@SRV-M-TBS-01:/opt/netcore-tetra $ sudo journalctl \
+  -k \
+  --since '-2 minutes' \
+  --no-pager \
+  | grep -Ei \
+    'alsa|snd|i2s|sx1255|xrun|overrun|underrun|dma|error|failed'
+jan@SRV-M-TBS-01:/opt/netcore-tetra $ systemctl --user mask --now \
+  pipewire.service \
+  pipewire.socket \
+  pipewire-pulse.service \
+  pipewire-pulse.socket \
+  wireplumber.service
+Created symlink '/home/jan/.config/systemd/user/pipewire.service' → '/dev/null'.
+Created symlink '/home/jan/.config/systemd/user/pipewire.socket' → '/dev/null'.
+Created symlink '/home/jan/.config/systemd/user/pipewire-pulse.service' → '/dev/null'.
+Created symlink '/home/jan/.config/systemd/user/pipewire-pulse.socket' → '/dev/null'.
+Created symlink '/home/jan/.config/systemd/user/wireplumber.service' → '/dev/null'.
+jan@SRV-M-TBS-01:/opt/netcore-tetra $ pkill -u jan -f 'pipewire -c filter-chain.conf' || true
+jan@SRV-M-TBS-01:/opt/netcore-tetra $ ps aux \
+  | grep -Ei 'pipewire|wireplumber' \
+  | grep -v grep \
+  || echo "PipeWire vollständig gestoppt"
+PipeWire vollständig gestoppt
+jan@SRV-M-TBS-01:/opt/netcore-tetra $ tr -d '\0' </proc/device-tree/model
+echo
+uname -a
+uname -r
+Raspberry Pi 5 Model B Rev 1.0
+Linux SRV-M-TBS-01 6.18.39+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.39-1+rpt1 (2026-07-29) aarch64 GNU/Linux
+6.18.39+rpt-rpi-2712
+jan@SRV-M-TBS-01:/opt/netcore-tetra $ systemctl --user is-active \
+  pipewire.service \
+  wireplumber.service \
+  pipewire-pulse.service
+inactive
+inactive
+inactive
+jan@SRV-M-TBS-01:/opt/netcore-tetra $ systemctl is-active tetra.service
+inactive
+jan@SRV-M-TBS-01:/opt/netcore-tetra $
+jan@SRV-M-TBS-01:/opt/netcore-tetra $ timeout \
+  --foreground \
+  --signal=INT \
+  12s \
+  sudo -u jan \
+  SoapySDRUtil \
+    --args="driver=sx" \
+    --rate=600000 \
+    --direction=RX
+######################################################
+##     Soapy SDR -- the SDR abstraction library     ##
+######################################################
+
+[INFO] SoapySX version 9705147 9705147dd8c189625071f3f163ea56119bda4a05
+[INFO] Hardware version 1.2
+[INFO] Initializing SoapySX
+[INFO] Detected clock as 38.4 MHz
+Stream format: CF32
+Num channels: 1
+Element size: 8 bytes
+Begin RX rate test at 0.6 Msps
+Starting stream loop, press Ctrl+C to exit...
+Unexpected stream error STREAM_ERROR
+[INFO] Stopping and resetting streams
+[ERROR]
+ALSA error in alsa_tx.reset(): Input/output error
+
+[INFO] Uninitializing SoapySX
+jan@SRV-M-TBS-01:/opt/netcore-tetra $ sudo dmesg -T | tail -n 100
+[Sun Aug  2 18:54:53 2026] systemd[1]: Starting systemd-sysctl.service - Apply Kernel Variables...
+[Sun Aug  2 18:54:53 2026] systemd[1]: Started systemd-journald.service - Journal Service.
+[Sun Aug  2 18:54:53 2026] systemd-journald[330]: Received client request to flush runtime journal.
+[Sun Aug  2 18:54:53 2026] loop0: detected capacity change from 0 to 4194304
+[Sun Aug  2 18:54:53 2026] zram: setup backing device /dev/disk/by-backingfile/var-swap
+[Sun Aug  2 18:54:53 2026] zram0: detected capacity change from 0 to 4194304
+[Sun Aug  2 18:54:53 2026] Adding 2097136k swap on /dev/zram0.  Priority:100 extents:1 across:2097136k SS
+[Sun Aug  2 18:54:53 2026] rp1-firmware rp1_firmware: RP1 Firmware version eb39cfd516f8c90628aa9d91f52370aade5d0a55
+[Sun Aug  2 18:54:53 2026] rpi-gpiomem 107d508500.gpiomem: window base 0x107d508500 size 0x00000040
+[Sun Aug  2 18:54:53 2026] rp1-pio 1f00178000.pio: Created instance as pio0 (op count 33, 0 interrupts)
+[Sun Aug  2 18:54:53 2026] rpi-gpiomem 107d508500.gpiomem: initialised 1 regions as /dev/gpiomem1
+[Sun Aug  2 18:54:53 2026] rpi-gpiomem 107d517c00.gpiomem: window base 0x107d517c00 size 0x00000040
+[Sun Aug  2 18:54:53 2026] rpi-gpiomem 107d517c00.gpiomem: initialised 1 regions as /dev/gpiomem2
+[Sun Aug  2 18:54:53 2026] rpi-gpiomem 107d504100.gpiomem: window base 0x107d504100 size 0x00000020
+[Sun Aug  2 18:54:53 2026] rpi-gpiomem 107d504100.gpiomem: initialised 1 regions as /dev/gpiomem3
+[Sun Aug  2 18:54:53 2026] rpi-gpiomem 107d510700.gpiomem: window base 0x107d510700 size 0x00000020
+[Sun Aug  2 18:54:53 2026] mc: Linux media interface: v0.10
+[Sun Aug  2 18:54:53 2026] rpi-gpiomem 107d510700.gpiomem: initialised 1 regions as /dev/gpiomem4
+[Sun Aug  2 18:54:53 2026] rpi-gpiomem 1f000d0000.gpiomem: window base 0x1f000d0000 size 0x00030000
+[Sun Aug  2 18:54:53 2026] rpi-gpiomem 1f000d0000.gpiomem: initialised 1 regions as /dev/gpiomem0
+[Sun Aug  2 18:54:53 2026] input: pwr_button as /devices/platform/pwr_button/input/input4
+[Sun Aug  2 18:54:53 2026] videodev: Linux video capture interface: v2.00
+[Sun Aug  2 18:54:54 2026] rpi-hevc-dec 1000800000.codec: Device registered as /dev/video19
+[Sun Aug  2 18:54:54 2026] Bluetooth: Core ver 2.22
+[Sun Aug  2 18:54:54 2026] NET: Registered PF_BLUETOOTH protocol family
+[Sun Aug  2 18:54:54 2026] Bluetooth: HCI device and connection manager initialized
+[Sun Aug  2 18:54:54 2026] Bluetooth: HCI socket layer initialized
+[Sun Aug  2 18:54:54 2026] Bluetooth: L2CAP socket layer initialized
+[Sun Aug  2 18:54:54 2026] Bluetooth: SCO socket layer initialized
+[Sun Aug  2 18:54:54 2026] cfg80211: Loading compiled-in X.509 certificates for regulatory database
+[Sun Aug  2 18:54:54 2026] Loaded X.509 cert 'benh@debian.org: 577e021cb980e0e820821ba7b54b4961b8b4fadf'
+[Sun Aug  2 18:54:54 2026] Loaded X.509 cert 'romain.perier@gmail.com: 3abbc6ec146e09d1b6016ab9d6cf71dd233f0328'
+[Sun Aug  2 18:54:54 2026] Loaded X.509 cert 'sforshee: 00b28ddf47aef9cea7'
+[Sun Aug  2 18:54:54 2026] Loaded X.509 cert 'wens: 61c038651aabdcf94bd0ac7ff06c7248db18c600'
+[Sun Aug  2 18:54:54 2026] Bluetooth: HCI UART driver ver 2.3
+[Sun Aug  2 18:54:54 2026] Bluetooth: HCI UART protocol H4 registered
+[Sun Aug  2 18:54:54 2026] Bluetooth: HCI UART protocol Three-wire (H5) registered
+[Sun Aug  2 18:54:54 2026] Bluetooth: HCI UART protocol Broadcom registered
+[Sun Aug  2 18:54:54 2026] hci_uart_bcm serial0-0: supply vbat not found, using dummy regulator
+[Sun Aug  2 18:54:54 2026] hci_uart_bcm serial0-0: supply vddio not found, using dummy regulator
+[Sun Aug  2 18:54:54 2026] brcmfmac: F1 signature read @0x18000000=0x15264345
+[Sun Aug  2 18:54:54 2026] brcmfmac: brcmf_fw_alloc_request: using brcm/brcmfmac43455-sdio for chip BCM4345/6
+[Sun Aug  2 18:54:54 2026] usbcore: registered new interface driver brcmfmac
+[Sun Aug  2 18:54:54 2026] brcmfmac: brcmf_c_process_txcap_blob: no txcap_blob available (err=-2)
+[Sun Aug  2 18:54:54 2026] brcmfmac: brcmf_c_preinit_dcmds: Firmware: BCM4345/6 wl0: Aug 29 2023 01:47:08 version 7.45.265 (28bca26 CY) FWID 01-b677b91b
+[Sun Aug  2 18:54:54 2026] Bluetooth: hci0: BCM: chip id 107
+[Sun Aug  2 18:54:54 2026] Bluetooth: hci0: BCM: features 0x2f
+[Sun Aug  2 18:54:54 2026] Bluetooth: hci0: BCM4345C0
+[Sun Aug  2 18:54:54 2026] Bluetooth: hci0: BCM4345C0 (003.001.025) build 0000
+[Sun Aug  2 18:54:54 2026] Bluetooth: hci0: BCM4345C0 'brcm/BCM4345C0.raspberrypi,5-model-b.hcd' Patch
+[Sun Aug  2 18:54:55 2026] Bluetooth: hci0: BCM: features 0x2f
+[Sun Aug  2 18:54:55 2026] Bluetooth: hci0: BCM43455 37.4MHz Raspberry Pi 3+-0190
+[Sun Aug  2 18:54:55 2026] Bluetooth: hci0: BCM4345C0 (003.001.025) build 0382
+[Sun Aug  2 18:54:55 2026] Bluetooth: hci0: BCM: Using default device address (43:45:c0:00:1f:ac)
+[Sun Aug  2 18:54:55 2026] raspberrypi-firmware soc@107c000000:firmware: Request 0x00030097 returned status 0x80000001
+[Sun Aug  2 18:54:55 2026] Bluetooth: BNEP (Ethernet Emulation) ver 1.3
+[Sun Aug  2 18:54:55 2026] Bluetooth: BNEP filters: protocol multicast
+[Sun Aug  2 18:54:55 2026] Bluetooth: BNEP socket layer initialized
+[Sun Aug  2 18:54:55 2026] Bluetooth: MGMT ver 1.23
+[Sun Aug  2 18:54:55 2026] NET: Registered PF_ALG protocol family
+[Sun Aug  2 18:54:55 2026] Bluetooth: RFCOMM TTY layer initialized
+[Sun Aug  2 18:54:55 2026] Bluetooth: RFCOMM socket layer initialized
+[Sun Aug  2 18:54:55 2026] Bluetooth: RFCOMM ver 1.11
+[Sun Aug  2 18:54:55 2026] hwmon hwmon3: Undervoltage detected!
+[Sun Aug  2 18:54:56 2026] macb 1f00100000.ethernet eth0: PHY [1f00100000.ethernet-ffffffff:01] driver [Broadcom BCM54213PE] (irq=POLL)
+[Sun Aug  2 18:54:56 2026] macb 1f00100000.ethernet eth0: configuring for phy/rgmii-id link mode
+[Sun Aug  2 18:54:56 2026] macb 1f00100000.ethernet: gem-ptp-timer ptp clock registered.
+[Sun Aug  2 18:55:01 2026] macb 1f00100000.ethernet eth0: Link is Up - 1Gbps/Full - flow control off
+[Sun Aug  2 18:55:10 2026] hwmon hwmon3: Voltage normalised
+[Sun Aug  2 18:55:22 2026] hwmon hwmon3: Undervoltage detected!
+[Sun Aug  2 18:55:24 2026] hwmon hwmon3: Voltage normalised
+[Sun Aug  2 18:55:28 2026] hwmon hwmon3: Undervoltage detected!
+[Sun Aug  2 18:55:30 2026] hwmon hwmon3: Voltage normalised
+[Sun Aug  2 18:56:06 2026] hwmon hwmon3: Undervoltage detected!
+[Sun Aug  2 18:56:14 2026] hwmon hwmon3: Voltage normalised
+[Sun Aug  2 18:56:16 2026] hwmon hwmon3: Undervoltage detected!
+[Sun Aug  2 18:56:24 2026] hwmon hwmon3: Voltage normalised
+[Sun Aug  2 18:56:26 2026] hwmon hwmon3: Undervoltage detected!
+[Sun Aug  2 18:56:38 2026] hwmon hwmon3: Voltage normalised
+[Sun Aug  2 18:58:31 2026] hwmon hwmon3: Undervoltage detected!
+[Sun Aug  2 18:58:33 2026] hwmon hwmon3: Voltage normalised
+[Sun Aug  2 18:59:44 2026] hwmon hwmon3: Undervoltage detected!
+[Sun Aug  2 18:59:46 2026] hwmon hwmon3: Voltage normalised
+[Sun Aug  2 19:00:16 2026] hwmon hwmon3: Undervoltage detected!
+[Sun Aug  2 19:00:18 2026] hwmon hwmon3: Voltage normalised
+[Sun Aug  2 19:04:04 2026] hwmon hwmon3: Undervoltage detected!
+[Sun Aug  2 19:04:06 2026] hwmon hwmon3: Voltage normalised
+[Sun Aug  2 19:08:24 2026] hwmon hwmon3: Undervoltage detected!
+[Sun Aug  2 19:08:26 2026] hwmon hwmon3: Voltage normalised
+[Sun Aug  2 19:10:13 2026] hwmon hwmon3: Undervoltage detected!
+[Sun Aug  2 19:10:15 2026] hwmon hwmon3: Voltage normalised
+[Sun Aug  2 19:10:59 2026] hwmon hwmon3: Undervoltage detected!
+[Sun Aug  2 19:11:01 2026] hwmon hwmon3: Voltage normalised
+[Sun Aug  2 19:12:16 2026] hwmon hwmon3: Undervoltage detected!
+[Sun Aug  2 19:12:18 2026] hwmon hwmon3: Voltage normalised
+[Sun Aug  2 19:16:27 2026] dma dma2chan4: dma2chan4 failed to stop
+[Sun Aug  2 19:16:28 2026] hwmon hwmon3: Undervoltage detected!
+[Sun Aug  2 19:16:30 2026] hwmon hwmon3: Voltage normalised
+[Sun Aug  2 19:24:03 2026] tun: Universal TUN/TAP device driver, 1.6
+[Sun Aug  2 19:24:04 2026] dma dma2chan4: dma2chan4 failed to stop
+jan@SRV-M-TBS-01:/opt/netcore-tetra $
