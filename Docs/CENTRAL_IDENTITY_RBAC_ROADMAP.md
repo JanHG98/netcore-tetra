@@ -97,6 +97,16 @@ Mit der Erweiterung vom 2026-10-05 wird [NETCORE-DRIVE-01](NETCORE_DRIVE_ROADMAP
 
 Die laufende Funkvermittlung bleibt von Drive und der Erreichbarkeit des Web-IAM unabhängig. Freigaben, Suchtreffer, Vorschau, Downloads, ZIP, Versionen, Papierkorb und Sync verwenden dieselbe fachliche Berechtigungsgrundlage. Details zum Produktumfang, zur externen Ordnervererbung und zur noch offenen Dateicloud-Backend-Auswahl stehen in [NETCORE-DRIVE-01](NETCORE_DRIVE_ROADMAP.md).
 
+### 4.2 Drive-Übergang ohne zentralen IAM-Dienst
+
+NetCore Drive darf vor dem zentralen IAM-Dienst in einem ausdrücklich gewählten lokalen Betriebsmodus starten. Lokale Benutzer, Gruppen, Verwaltungsrollen und getrennte Dienstkonten erhalten vollständig durchgesetzte Datei- / Ordnerrechte; bestätigte Gäste, Personen- / Linkfreigaben und Uploadbriefkästen funktionieren mit denselben Ablauf- und Widerrufsregeln. Die Drive-Meilensteine D0–D5 warten nicht auf M1–M3; die gemeinsame Anmeldung und Migration folgen separat in D6. Lokale Konten direkt in Drive sind von lokalen Konten im späteren zentralen Identity-Dienst zu unterscheiden.
+
+Bei der Migration bleiben interne Drive-Identitäts- / Objekt-IDs die Referenz für Eigentum und Freigaben. Eine bestätigte Zuordnung verbindet bestehende Konten mit zentralen `issuer` / `subject`-Identitäten; Namen oder E-Mail-Adressen allein berechtigen nicht zur Kontenverknüpfung. Gruppen / Rollen werden geprüft, bestehende Freigaben erhalten und reguläre lokale Passwortlogins migrierter Konten deaktiviert. Abnahme, Sicherung und Rückweg stehen in D6 der Drive-Roadmap.
+
+Der lokale Anfangsbetrieb ist keine automatische Ausfallumschaltung: Nach zentraler Anbindung führt ein nicht erreichbarer Identity-Dienst weder zu offenem Zugriff noch zur Reaktivierung regulärer lokaler Logins. Bestehende Zugänge unterliegen den definierten Gültigkeits- / Sperrfristen; ein separat eingerichteter lokaler Notfallzugang bleibt begrenzt und protokolliert. Die bestehenden IAM-Ausfallregeln für Basisstationen und Zentraldienste gelten weiterhin.
+
+Die geplanten Browser-Plugins in Drive verwenden denselben Ressourcenvertrag im lokalen und zentralen Betrieb. Viewer, Editoren, Konverter und Player erhalten nur begrenzte Dateizugriffe und keine allgemeinen IAM-Sitzungstokens; ihre D7–D9-Meilensteine warten nicht auf die zentrale Migration D6.
+
 ## 5. Meilensteine und Abnahme
 
 Prioritäten P0/P1/P2 sind Empfehlungen für die Reihenfolge. Alle technischen Meilensteine sind derzeit geplant.
@@ -220,6 +230,7 @@ Diese Datei ist die kanonische Planung für NETCORE-IAM-01. Beim nächsten und b
 | --- | --- | --- |
 | 2026-10-03 | Nutzeridee in Roadmap überführt; Zielarchitektur als Empfehlung, Meilensteine, Rechte-, Ausfall- und Prüfkriterien dokumentiert | Dokumentation; keine technische Umsetzung |
 | 2026-10-05 | Ökosystemweite Anbindung um NetCore Drive ergänzt; zentrale Dienstrollen, fachliche Datei- / Ordnerrechte, Gäste, Linkfreigaben und begrenzte Dienstidentitäten konkretisiert | Dokumentation; keine technische Umsetzung |
+| 2026-10-05 | Lokalen Drive-Anfangsbetrieb ohne zentralen IAM-Dienst eingeplant; spätere geprüfte Migration in D6 von automatischer Ausfallumschaltung getrennt | Dokumentation; keine technische Umsetzung |
 
 ## 10. Technische Referenzen
 

@@ -49,6 +49,10 @@ Diese Vorhaben ergänzen die bestehenden Funk- und Core-Phasen. Sie sind Planung
 
 Drive umfasst als geplante Anforderungen Dateiverwaltung, große wiederaufnehmbare Uploads, Suche / Vorschau, Versionen, Papierkorb, Synchronisation und serverseitig geprüfte Freigaben. Für externe Ordner werden personenbezogener Gastzugang oder ein weitergebbarer Link sowie die Rechte **Ansehen**, **Bearbeiten** und **Nur hochladen**, Ablauf und Widerruf vorgesehen. Einzelheiten, Vererbung, Abnahme und offene Entscheidungen stehen in der Drive-Roadmap. Regelmäßige Projektstatusläufe sollen beide Vorhaben berücksichtigen, ohne Dokumentation als Implementierung auszugeben.
 
+Drive startet bei noch fehlendem zentralen RBAC mit lokalen Benutzern, Gruppen, Dienstkonten und vollständigen Datei- / Ordnerrechten; auch externe Freigaben funktionieren in diesem geplanten lokalen Betrieb. D0–D5 benötigen keinen fertiggestellten IAM-Dienst. D6 führt später den gemeinsamen Login mit geprüfter Konten- / Gruppenzuordnung unter Erhalt von Eigentum und Freigaben ein. Ein anschließender IAM-Ausfall aktiviert keine regulären lokalen Logins automatisch; die Ausfallregeln und ein gesonderter Notfallzugang bleiben ausdrücklich geregelt.
+
+Eine geplante Plugin-Plattform ergänzt Browser-Viewer / Player und geeignete Editoren für PDF, Word / Excel / Präsentationen, 3D / CAD, Schaltpläne, Vektorgrafiken, Bilder, Video und Audio. D7–D9 umfassen Plugin-Verwaltung, Format- / Fähigkeitsabnahme, geschützte Verarbeitung und dieselben Datei- / Freigaberechte; diese Meilensteine sind unabhängig von der zentralen Anmeldung in D6.
+
 ---
 
 ## MQTT-Branch – aktuelle Integrationsreihenfolge
