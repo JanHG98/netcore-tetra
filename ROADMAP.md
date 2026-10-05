@@ -6,6 +6,7 @@
 | Erstellt / aktualisiert | 2026-10-05, Europe/Berlin |
 | Geltungsbereich | Gesamtes NetCore-Tetra-Repository: TBS / Funkstack, Core, Deployment, Betrieb, IAM, Drive, Plugins und weitere Integrationen |
 | Geprüfter Ausgangsstand | `main@e5d825b33db2e1fce14bcb2cc23e73c241873a18`; `Archiving@9af2de92b120dc612d83a17f78eeee9a97f2f775` |
+| Ergänzende Gruppenprüfung | `main@07609fb56f412ebe6e36655323e8fc6359cf90ec`, 2026-10-05; statischer Befund für Z02.5 |
 | Planungsstand | Reihenfolge vom Nutzer zur zentralen Ablage freigegeben; technische Aufgaben bleiben offen, soweit kein eigener Nachweis vorliegt |
 | Aktueller erster Schritt | **Z01.1: fehlende Deployment- / Syslog-Arbeit gegen aktuelles main abgleichen und den Integrationsplan vorbereiten** |
 | Zeitplanung | Arbeitsblöcke und Abnahmebedingungen; keine zugesagten Kalendertermine |
@@ -31,7 +32,7 @@ Eine Frage nach dem nächsten Schritt verlangt zunächst diese Empfehlung. Die t
 
 ## 2. Belegter Ausgangsstand und seine Grenzen
 
-Die folgenden Befunde beziehen sich auf die oben genannten Quellstände. Sie sind vor späteren Statusmeldungen gegen neue Änderungen zu prüfen.
+Die folgenden Befunde beziehen sich auf die oben genannten Quellstände; die Gruppensteuerung wurde am ergänzend genannten main-Stand geprüft. Sie sind vor späteren Statusmeldungen gegen neue Änderungen zu prüfen.
 
 | Bereich | Belegter Stand am 2026-10-05 | Konsequenz |
 | --- | --- | --- |
@@ -39,6 +40,7 @@ Die folgenden Befunde beziehen sich auf die oben genannten Quellstände. Sie sin
 | Deployment / Discovery / Syslog | Historischer Feature-Stand enthält `system-backend/deployment-core/`, Image- / VPN-Bausteine, neuere Observability-Discovery und rsyslog- / Archivpakete; diese fehlen im geprüften main | Z01 zuerst; es handelt sich um vorhandene Entwicklungsarbeit mit fehlender Übernahme |
 | Bestandsdrift | [Inventory](deploy/open-lab/inventory.example.toml): 25 Dienste; [generierter Katalog](deploy/open-lab/generated/service-catalog.json) und [statischer Audit](Docs/generated/full-system-integration-audit.md): 24; älterer Text nennt 17 / 18 | Inventory, Generatoren, Endpunkt- / Fallbackmatrix und Texte konsistent machen; keine Live-Dienstzahl daraus behaupten |
 | TBS / Core | Funkstack und zahlreiche zentrale Dienste vorhanden; Mock- / statische Prüfungen und echte Endgeräteabnahme sind getrennte Nachweisstufen | Aktive Runtimepfade, Service-Matrix, Fachfunktionen und Ausfälle abnehmen |
+| Zentrale Gruppenzuweisungen | Group Core sendet `GroupAccessPolicyApply` / `GroupDgnaApply`; der TBS-Worker routet beide an MM. Der aktive [MM-Dispatcher](crates/tetra-entities/src/mm/mm_bs.rs) verarbeitet für die Gruppensteuerung jedoch nur das lokale `Dgna` und ignoriert die zentralen Typen als nicht unterstützt. `group_policy=false` wird weiterhin angekündigt | Z02.5 P0: vorhandene zentrale Befehle tatsächlich umsetzen, Fähigkeiten korrekt melden und Ergebnisse bis zum Endgerät nachvollziehen; Codebefund, keine neue Live-Abnahme |
 | Restore-Stabilität | [Aktiver Restorehandler](crates/tetra-entities/src/cmce/subentities/cc_bs/procedures/restoration.rs) benötigt weiterhin beide Korrekturen aus Abschnitt 4 | Z02.1 / Z02.2 vor weiterem Restore- / Handover-Ausbau |
 | IP Gateway | [Routenvalidierung](system-backend/ip-gateway/src/state.rs) und [Kernel-Anwendung](system-backend/ip-gateway/src/kernel.rs) schützen Management- / Packet-Core-Ziele nicht vor überlappenden TUN-Routen | Z02.3; aktueller Codebefund, keine Behauptung einer aktuellen Anlagenstörung |
 | Dienst-WebUIs / Dark Mode | [PR #59](https://github.com/JanHG98/netcore-tetra/pull/59) ist integriert | Ausrollen und Funktionen prüfen; keine erneute komplette Designrunde als Startaufgabe |
@@ -55,7 +57,7 @@ Alle folgenden technischen Arbeitsblöcke sind **offen / geplant**, soweit die S
 | ID | Priorität / Zeitpunkt | Arbeitsblock | Abhängigkeit | Abschluss / nächster Übergang |
 | --- | --- | --- | --- | --- |
 | Z01 | P0 · sofort, erster Block | Repository und Installation konsolidieren: Deployment / Discovery / Imagebuilder / VPN / Syslog übernehmen; Bestandsdrift, Ready-Schranke und CI schließen | Keine; Vorprüfung vorhanden | Quellen / Konfigurationen zugeordnet; Integration geprüft; Installation und Upgrade reproduzierbar; Schritte Z01.1–Z01.4 dokumentiert |
-| Z02 | P0 · sofort, gezielt parallel zu Z01 | Beide Restore-Fixes und Schutz von Management- / Packet-Core-Netzen umsetzen; aktive SAP- / Downlinkwege prüfen | Aktueller Funk- / Gateway-Code; technische Änderungen getrennt integrierbar | Gezielte positive / negative Regressionen; keine doppelte Sprechfreigabe, Uplink-Watchdog aktiv, keine schädliche TUN-Route |
+| Z02 | P0 · sofort, gezielt parallel zu Z01 | Beide Restore-Fixes, Schutz von Management- / Packet-Core-Netzen und tatsächliche Ausführung zentraler Gruppenzuweisungen auf der TBS umsetzen; aktive SAP- / Downlinkwege prüfen | Aktueller Funk- / Gateway-Code; technische Änderungen getrennt integrierbar | Gezielte positive / negative Regressionen; keine doppelte Sprechfreigabe, Uplink-Watchdog aktiv, keine schädliche TUN-Route; Gruppenaufträge mit fachlichem Ergebnis statt stillem Ignorieren |
 | Z03 | P0 · erstes Systemgate nach Z01 / Z02 | Einzelzelle und Core-Anbindung abnehmen; lokale Funkfunktionen, Dual Carrier, Matrix und Edge-Fallback | Z01 / Z02 für den gemeinsamen geprüften Stand | Reproduzierbare Labor- und On-Air-Nachweise mit Motorola / Sepura; Build, Konfiguration, Gerätefirmware und Logs festgehalten |
 | Z04 | P1 · Architektur ab jetzt, anschließend Pilot | Zentralen IAM- / RBAC-Plan umsetzen: Inventur / Rollenvertrag, Identity-Pilot, eine TBS und Control Room, danach Dienste | M0 / M1 können parallel beginnen; Pilot auf isolierter, prüfbarer Baseline; breite Migration nach Pilotabnahme | Anmeldung, Ressourcenrechte, Sperren, Maschinenidentitäten, Ausfall und Rückweg funktionieren; Details IAM M0–M8 |
 | Z05 | P1 · Alltagspfade nach Grundabnahme | SDS / Status / GPS, HA / MQTT, Warnzentrale, SIP / RTP, Recording, TTS / Media Library und Paketdaten durchgehend schließen | Z03 für belastbare Systemabnahme; einzelne Diagnosen können vorher erfolgen | Tatsächliches Ziel erreicht; Rückmeldung nachvollziehbar; Neustart, Deduplizierung und Abhängigkeitenausfall geprüft |
@@ -87,10 +89,36 @@ Historische Tests des Imagebuilders belegen Teile der Image-Personalisierung und
 - **Z02.2 Gruppenruf-Restore:** Nach Floor-Grant die untere Funksteuerung benachrichtigen, damit ausbleibende Uplink-Sprachframes überwacht werden. Stummen Restoreteilnehmer, Timer, Release und sofortige Wiederverwendung prüfen.
 - **Z02.3 IP-Routenschutz:** Managementadresse / -netz und Packet-Core-Abhängigkeiten vor unzulässigen TUN-Routen schützen: beim Schreiben, vor Kernel-Reconcile und beim Wiederherstellen gespeicherter Regeln. Historisch gespeicherte Konflikte mit behandeln; daraus keine aktuelle Live-Störung ableiten.
 - **Z02.4 aktive Runtimepfade:** Tatsächlich verwendete SAP- / SNDCP- / MLE-Downlinkpfade und Capability-Anzeigen mit dem Codebestand abgleichen. Isolierte Restore- / Two-Cell-Bausteine erst nach Laufzeitintegration als Funktionsfortschritt melden.
+- **Z02.5 zentrale Gruppenzuweisungen:** Gruppenprofile, Mitgliedschaften und zentrale DGNA-Aufträge auf der Basisstation vollständig verarbeiten und die nötigen Attach- / Detach-Aktionen ausführen; Details und Abnahme im folgenden Arbeitspaket. Offen / geplant, P0; unabhängig vom Z01-Quellvergleich bearbeitbar.
+
+### Z02.5 – zentrale Gruppenzuweisungen auf der TBS umsetzen
+
+**Ziel:** Alle unterstützten Gruppenaufträge vom Group Core werden auf der zuständigen Basisstation fachlich umgesetzt und mit einem korrelierten Ergebnis beantwortet. Sie dürfen nicht im allgemeinen Zweig für unbekannte / nicht unterstützte Befehle verschwinden. Dieser Auftrag ergänzt die Planung; die technische Behebung ist noch offen. **Z01.1 bleibt der erste Gesamtschritt**, Z02.5 kann als gezielte P0-Arbeit parallel erfolgen.
+
+**Belegter Anschlussbedarf an `main@07609fb56f412ebe6e36655323e8fc6359cf90ec`:** [Group Core](system-backend/group-core/src/state.rs), [Befehlsvertrag](crates/tetra-entities/src/net_control/commands.rs) und [TBS-Worker](crates/tetra-entities/src/net_control_room/worker.rs) kennen `GroupAccessPolicyApply` und `GroupDgnaApply` bereits. Im [MM-Dispatcher](crates/tetra-entities/src/mm/mm_bs.rs) fehlen beide Handler. Der vorhandene lokale `do_dgna`-Pfad aktualisiert Gruppenstände und reiht eine Funknachricht ein; Terminalantworten werden bisher nur protokolliert. Die [Capability-Ankündigung](crates/tetra-entities/src/net_control_room/protocol.rs) meldet `dgna=true`, aber `group_policy=false`. Das ist eine statische Quellprüfung, kein Nachweis einer aktuell laufenden Installation.
+
+- **Dispatcher und Rückweg schließen:** Beide zentralen Typen validieren, ausführen und mit `GroupAccessPolicyApplied` / `GroupDgnaApplied` beantworten. Vorhandenen lokalen DGNA-Pfad weiterverwenden und erhalten. Capability-Ankündigung, Schema / Version und Backend-Auswahl müssen zur tatsächlich implementierten Unterstützung passen. Ein an MM verteilter Auftrag allein ist kein fachlicher Erfolg.
+- **Gruppenregeln und Mitgliedschaften übernehmen:** Revisionierte Gruppenprofile und Teilnehmerzuweisungen einschließlich `class_of_usage`, `auto_attach`, `locked`, Mitgliedschaftsprüfung und `reconcile_registered` nach dem vorhandenen Vertrag anwenden. Entzogene Mitgliedschaften wirksam entfernen; andere bestehende Gruppen erhalten. Gruppenruf- und SDS-Zustand in MM, Subscriberzustand und CMCE konsistent halten.
+- **Am richtigen Funkgerät ausführen:** Zentrale DGNA-Zuweisung und Entziehung über den vorhandenen Attach- / Detach-Funkpfad an den registrierten Teilnehmer der zuständigen TBS bringen. Gültige ISSI / GSSI, Gerätefähigkeit und statische versus dynamische Gruppen unterscheiden. `force` bleibt ein bewusster Operator-Override gemäß Vertrag und ersetzt weder Registrierung noch gültige Gruppenadressen. Ein Wechsel der Serving-TBS darf keinen falschen Abschluss erzeugen.
+- **Fehler und Wiederkehr behandeln:** Unbekannte / nicht unterstützte Befehlsarten, ungültige Gruppen, unzulässige Mitgliedschaften, Offline-Teilnehmer, Serialisierungs- / Sendefehler, Terminalablehnung und Timeout liefern ausdrückliche korrelierte Fehler oder einen klaren ausstehenden Zustand. Keine stillschweigende Ignorierung und kein positiver Abschluss ohne passende Wirkung. Doppelte Aufträge, veraltete Policyrevisionen, konkurrierende Zuweisung / Entziehung, Reconnect und erneute Registrierung dürfen entzogene Rechte nicht wiederherstellen; Abgleich und begrenzte Wiederholungen auf den aktuellen Sollzustand beziehen.
+
+Die Ergebnisführung unterscheidet diese Nachweisstufen:
+
+| Stufe | Erforderlicher Nachweis |
+| --- | --- |
+| Im Core gespeichert / von TBS angenommen | Auftrag und Ziel sind bekannt; Annahme oder Worker-ACK belegt noch keine Umsetzung |
+| Lokal auf TBS angewendet | Gruppenregeln und lokale Mitgliedschaften sind tatsächlich übernommen; fachliche Antwort nennt Ergebnis und gegebenenfalls Teilfehler |
+| Funkaktion eingereiht / ausgesendet | Erfolgreiches Einreihen und tatsächliches Aussenden getrennt belegen; Queueing bestätigt keine Endgerätewirkung |
+| Am Endgerät bestätigt | Terminalantwort dem Auftrag zuordnen, soweit Protokoll / Gerätefähigkeit dies ermöglichen; andernfalls Wirkung ausdrücklich als unbestätigt führen und bei der On-Air-Abnahme prüfen |
+
+Jeder Auftrag bleibt über Core, Node Gateway, TBS und Rückmeldung mit Korrelations-ID, ISSI / GSSI, zuständiger TBS und relevanter Policyrevision nachvollziehbar. Mehrere gleichzeitige Gruppenänderungen und Teilfehler brauchen eindeutige Reihenfolge und Abschlusszustände.
+
+**Abnahme Z02.5:** Reproduzierbarer zentraler Auftrag → Node Gateway → MM → lokale Gruppenstände → Funkgerät → korrelierte Rückmeldung. Zuweisung und Entziehung am realen Endgerät prüfen; lokale Gruppenrufe / Gruppen-SDS müssen den wirksamen Stand verwenden. Bestehendes lokales DGNA bleibt funktionsfähig. Negative Fälle und Wiederkehr aus den obigen Punkten prüfen; Core-Sollzustand, TBS-Zustand und tatsächliche Endgerätewirkung getrennt dokumentieren. Gezielte Handler- / Vertragsprüfungen ersetzen die On-Air-Abnahme nicht.
 
 ### Z03 / Z05 – vorhandene Funktionen als Abläufe abnehmen
 
 - Eine TBS meldet sich am richtigen Gateway; Serving-TBS, Gruppen und aktuelle Service-Matrix stimmen. Ausfall / Isolation und kontrollierte Wiederkehr erhalten die dokumentierten lokalen Funktionen.
+- Zentrale Gruppenprofile / Mitgliedschaften und DGNA aus Z02.5 durchgehend abnehmen: Zuweisung und Entziehung am richtigen Endgerät, korrelierte Ergebnisse, Gruppenruf / SDS danach, andere Gruppen unverändert. Wiederholung, veraltete Policy, Offline / erneute Registrierung, Zuständigkeitswechsel, Terminalablehnung und unbekannter Befehl dürfen keinen falschen Erfolg erzeugen.
 - Registrierung, Einzel- / Gruppenruf, Simplex-Floor, Hangtime / Release und freie Timeslots funktionieren. Dual Carrier mit tatsächlicher Belegung prüfen; Carrierzahl ist kein Nachweis zusätzlicher eigenständiger Kontrollkanäle.
 - SDS / Status vom Endgerät über TBS / Router bis Control Room und den vorgesehenen HA-Pfad verfolgen; einen nachvollziehbaren Rückweg prüfen. Verbundene MQTT-Clients allein beweisen diesen Ablauf nicht.
 - Warnungen, Alarm- und Taskaufträge auf Neustart / Timeout / Wiederholung prüfen. TBS-Annahme, Endgerätzustellung und Lesebestätigung unterscheiden.
@@ -141,3 +169,4 @@ Regelmäßige NetCore-Projektstatusläufe verwenden diese Gesamtroadmap als Eins
 | Datum | Änderung | Nachweisgrenze |
 | --- | --- | --- |
 | 2026-10-05 | Nutzerfreigegebene Gesamtfolge zentral abgelegt; geprüfte Übernahmelücke / Stabilitätsaufgaben, parallele IAM- / Drive-Stränge, Abnahmegates und Fortsetzungsregeln dokumentiert | Dokumentation; keine technische Umsetzung oder neue Live-Abnahme durch diesen Auftrag |
+| 2026-10-05 | Auf Nutzerwunsch Z02.5 als P0 ergänzt: zentrale Gruppenzuweisungen / DGNA auf der TBS umsetzen; fehlende MM-Handler an `main@07609fb` belegt; Rückweg, Fähigkeiten, Fehler / Wiederkehr und Endgeräteabnahme festgelegt | Roadmap-Ergänzung und statische Quellprüfung; Handler noch nicht implementiert, keine neue Lab- / On-Air-Abnahme; Z01.1 bleibt erster Gesamtschritt |

@@ -2,6 +2,8 @@
 
 **Zentrale Priorisierung:** [NETCORE-MASTER-01 – Gesamtroadmap](../ROADMAP.md) ist der Einstieg für den aktuellen nächsten Schritt. Dieses Dokument bewahrt technische Phasen und deren Historie; ältere Reihenfolge- oder Dienstzahlangaben sind vor Statusmeldungen gegen den aktuellen Gesamtstand zu prüfen.
 
+**Offene P0-Ergänzung vom 2026-10-05 – Z02.5:** Zentrale Gruppenzuweisungen auf der TBS tatsächlich ausführen. An `main@07609fb56f412ebe6e36655323e8fc6359cf90ec` sendet Group Core `GroupAccessPolicyApply` / `GroupDgnaApply`, und der TBS-Worker routet beide an MM; dessen Dispatcher verarbeitet für die Gruppensteuerung bislang nur lokales `Dgna` und ignoriert die zentralen Typen als nicht unterstützt. Gruppenprofile / Mitgliedschaften, Attach / Detach, Capability-Ankündigung und korrelierte fachliche Antworten schließen; Wiederholung, Offline / Reconnect und Fehler behandeln. Annahme, lokale Anwendung, Funkaussendung und bestätigte Endgerätewirkung getrennt nachweisen. Umfang und Abnahme stehen unter **Z02.5 in der [Gesamtroadmap](../ROADMAP.md)**. Dies ist eine geplante Behebung, keine bereits erledigte Runtime-Integration oder neue On-Air-Abnahme; Z01.1 bleibt der erste Gesamtschritt.
+
 ## 1. Strategische Leitlinie
 
 NetCore-Tetra wird nicht sofort in 15 einzelne Dienste zerlegt. Zuerst wird der vorhandene Air-Interface-Stack vollständig genug gemacht, um eine Basisstation später zuverlässig als **TBS Edge** an einen zentralen Core anzubinden.
