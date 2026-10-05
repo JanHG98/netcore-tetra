@@ -1,5 +1,7 @@
 # NetCore-TETRA
 
+**Projektplanung / nächster Schritt:** [Zentrale Gesamtroadmap](ROADMAP.md). Sie führt die aktuelle Reihenfolge für Funk, Core, Deployment, IAM, Drive und Plugins sowie die Abnahmebedingungen. Bei „Was machen wir als Nächstes?“ zuerst diese Roadmap und den aktuellen Stand prüfen.
+
 **v1.9.0 · NINA/KATWARN, eigene Warnmeldungen und Funk-/SDS-Korrekturen**
 
 Die Warnfunktionen aus `katwarn/nina` sind in `main` integriert. Eigene Meldungen bleiben nach dem Senden auffindbar und können vor Ablauf gelöscht werden. Die neuere separate Brew-Server-Version bleibt enthalten; bestehende Python-Brew-Installationen können weiterverwendet werden.

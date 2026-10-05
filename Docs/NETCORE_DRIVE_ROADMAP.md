@@ -1,5 +1,7 @@
 # Roadmap: NetCore Drive – Dateicloud und externe Ordnerfreigaben
 
+**Gesamtpriorität / nächster Schritt:** [NETCORE-MASTER-01](../ROADMAP.md). Diese Fachroadmap führt Drive-Umfang und Abnahme; lokaler Betrieb D0–D5 und Plugins D7–D9 bleiben unabhängig von einem fertiggestellten zentralen IAM-Dienst. Die spätere zentrale Anbindung erfolgt in D6.
+
 | Feld | Wert |
 | --- | --- |
 | Roadmap-ID | NETCORE-DRIVE-01 |

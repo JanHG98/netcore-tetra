@@ -1,5 +1,7 @@
 # Roadmap: Zentrale Anmeldung und RBAC für NetCore-Tetra
 
+**Gesamtpriorität / nächster Schritt:** [NETCORE-MASTER-01](../ROADMAP.md). Diese Fachroadmap führt IAM-Umfang und Abnahme; für die aktuelle Reihenfolge im gesamten Projekt zuerst die zentrale Gesamtroadmap prüfen.
+
 | Feld | Wert |
 | --- | --- |
 | Roadmap-ID | NETCORE-IAM-01 |

@@ -1,5 +1,7 @@
 # NetCore-Tetra SwMI-Roadmap
 
+**Zentrale Priorisierung:** [NETCORE-MASTER-01 – Gesamtroadmap](../ROADMAP.md) ist der Einstieg für den aktuellen nächsten Schritt. Dieses Dokument bewahrt technische Phasen und deren Historie; ältere Reihenfolge- oder Dienstzahlangaben sind vor Statusmeldungen gegen den aktuellen Gesamtstand zu prüfen.
+
 ## 1. Strategische Leitlinie
 
 NetCore-Tetra wird nicht sofort in 15 einzelne Dienste zerlegt. Zuerst wird der vorhandene Air-Interface-Stack vollständig genug gemacht, um eine Basisstation später zuverlässig als **TBS Edge** an einen zentralen Core anzubinden.

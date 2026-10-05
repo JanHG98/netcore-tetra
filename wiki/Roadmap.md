@@ -1,5 +1,7 @@
 # Ausbauziele und offene Entscheidungen
 
+**Aktuelle Gesamtfolge / nächster Schritt:** [Zentrale Roadmap NETCORE-MASTER-01](https://github.com/JanHG98/netcore-tetra/blob/main/ROADMAP.md). Sie führt die Prioritäten und Abnahmebedingungen; diese Seite ergänzt die Vorhaben und offenen Entscheidungen. Für neue Status- / Fortsetzungsfragen zuerst die zentrale Roadmap mit dem aktuellen Repositorystand abgleichen.
+
 Hier stehen Vorhaben, die aus Projektplanung und Gesprächen hervorgehen. **Ein Ziel in dieser Liste ist keine zugesicherte Funktion des aktuellen Builds.** Für vorhandene Dienste und Tests siehe [[Projektstand]] und [[Dienstkatalog]].
 
 | Vorhaben | Geplanter Nutzen | Vor einer Zusage zu klären |
