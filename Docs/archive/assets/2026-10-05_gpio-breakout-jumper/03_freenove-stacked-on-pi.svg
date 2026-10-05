@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" role="img" aria-label="Chatbild 3: Freenove Breakout auf Raspberry Pi">
+  <rect width="1200" height="900" fill="#f7f7f7"/>
+  
+  <rect x="150" y="430" width="900" height="300" rx="25" fill="#2d7f45" stroke="#17492c" stroke-width="8"/>
+  <rect x="170" y="610" width="170" height="100" rx="8" fill="#aeb7b7" stroke="#555" stroke-width="5"/><rect x="360" y="610" width="170" height="100" rx="8" fill="#aeb7b7" stroke="#555" stroke-width="5"/><rect x="550" y="605" width="190" height="110" rx="8" fill="#aeb7b7" stroke="#555" stroke-width="5"/>
+  <rect x="205" y="115" width="790" height="460" rx="25" fill="#147b42" stroke="#184d35" stroke-width="8"/>
+  <rect x="235" y="180" width="105" height="315" rx="10" fill="#48a84e"/><rect x="860" y="180" width="105" height="315" rx="10" fill="#48a84e"/><rect x="500" y="155" width="200" height="370" fill="#111"/>
+  <line x1="250" y1="570" x2="250" y2="630" stroke="#333" stroke-width="5"/><line x1="950" y1="570" x2="950" y2="630" stroke="#333" stroke-width="5"/>
+  <text x="330" y="90" font-family="sans-serif" font-size="52" font-style="italic" fill="#2b73b9">Easy to Use</text><text x="340" y="135" font-family="sans-serif" font-size="28" fill="#111">Just tighten a few screws and standoffs.</text>
+  <text x="120" y="790" font-family="sans-serif" font-size="22" fill="#111">Herstellerdarstellung: Stack-Einsatz vorgesehen; SXceiver-Bauhöhe separat prüfen.</text>
+
+  <rect x="40" y="820" width="1120" height="50" rx="8" fill="#ffffff" stroke="#555"/>
+  <text x="60" y="852" font-family="sans-serif" font-size="24" fill="#111">Chatbild 3: Freenove Breakout auf Raspberry Pi — SVG-Archivtranskription, nicht bitidentisches Original</text>
+</svg>
