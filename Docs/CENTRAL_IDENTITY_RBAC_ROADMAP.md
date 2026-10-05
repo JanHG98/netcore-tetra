@@ -3,10 +3,10 @@
 | Feld | Wert |
 | --- | --- |
 | Roadmap-ID | NETCORE-IAM-01 |
-| Erstellt / aktualisiert | 2026-10-03, Europe/Berlin |
+| Erstellt / aktualisiert | Erstellt 2026-10-03; aktualisiert 2026-10-05, Europe/Berlin |
 | Gesamtstatus | **Geplant; bisher nur dokumentiert, keine zentrale IAM-Implementierung durch diesen Auftrag** |
 | Nutzerauftrag | Zentrale Anmeldung und Rechteverwaltung statt regulärer Basisstations-Zugangsdaten in config.toml; Roadmap im Docs-Ordner für die Projektstatusläufe |
-| Geltungsbereich | Basisstations-Dashboard, Control Room und Verwaltungsoberflächen / Management-APIs der Zentraldienste |
+| Geltungsbereich | Basisstations-Dashboard, Control Room, Verwaltungsoberflächen / Management-APIs der Zentraldienste und NetCore Drive einschließlich begrenzter Gastzugänge |
 | Architekturstand | **Empfehlung:** eigener Identity-LXC, Keycloak als Identity Provider, gemeinsame Rust-Integration; technische Festlegung noch offen |
 | Geprüfter Code-Ausgangsstand | main, Commit f4fd490f577c1315279ecc89f0c6b1808ee7733d |
 | Nächster Schritt | Zugänge vollständig inventarisieren und Architekturentscheidung dokumentieren |
@@ -83,6 +83,19 @@ Beispiele für einzelne Berechtigungen: Station ansehen, Station konfigurieren, 
 Beispielzuweisung: Ein Techniker kann TBS-A konfigurieren und TBS-B ausschließlich ansehen. Ein Operator darf nur für bestimmte Gruppen Durchsagen auslösen. Die Zielressource muss bei jeder Aktion aus serverseitig verifizierten Daten geprüft werden.
 
 Menschliche Konten, Dienste-/Stationsidentitäten und TETRA-Teilnehmeridentitäten sind getrennte Identitätsklassen. Rollen im Web-IAM ändern nicht automatisch TETRA-Authentisierung oder Schlüsselmaterial.
+
+### 4.1 Ökosystemweite Anbindung und NetCore Drive
+
+Mit der Erweiterung vom 2026-10-05 wird [NETCORE-DRIVE-01](NETCORE_DRIVE_ROADMAP.md) in die zentrale Anmeldung und Dienstrollenplanung aufgenommen. Gemeinsame Identitäten, Gruppen und anwendungsspezifische Rollen gelten für die angebundenen NetCore-Oberflächen; Datei- und Ordnerrechte bleiben fachliche Ressourcenrechte des Drive-Backends.
+
+- Ein Recht zum Nutzen oder Administrieren eines Dienstes vermittelt keinen pauschalen Zugriff auf Dateien, Aufnahmen oder andere Dienste. Gemeinsame Rollen / Gruppen werden ausdrücklich auf die jeweilige fachliche Autorisierung abgebildet.
+- Personenbezogene externe Freigaben verwenden eine bestätigte Gastidentität mit ausschließlich zugewiesenem Datei- / Ordnerzugang. Gäste benötigen kein Konto im internen AD und erhalten keine internen Dienstrollen. E-Mail-Codes sind ein Vorschlag für die Gastanmeldung, kein bereits vorhandener Bestandteil der OIDC-Integration.
+- Linkfreigaben sind eigene begrenzte Zugangsberechtigungen; Linkbesitz ist kein Nachweis einer benannten Benutzeridentität. Passwort, Ablauf und Widerruf sind in Drive durchzusetzen.
+- Dienste wie Recording, TBS und Discovery erhalten getrennte Maschinenidentitäten mit passenden Aufgaben und Zielordnern. Dateispeicher und IAM dürfen keine konkurrierenden Rechteautoritäten erzeugen.
+- Stabile Identitäts- / Objekt-IDs, Gruppenänderungen und Entzug von Rechten müssen im Drive-Backend nachvollziehbar ankommen. OIDC-Gruppenprovisionierung bei Anmeldung allein belegt keine sofortige Sperre aller bereits laufenden Zugriffe.
+- Drive, Gäste und Freigaben werden in M0 inventarisiert und in M1 bei Identitätsklassen, Rollen, Ressourcenrechten und Sperrfristen berücksichtigt. Ihre konkrete Implementierung / Abnahme wird in der Drive-Roadmap geführt; bestehende Funk- und IAM-Meilensteine werden nicht als erledigt umgestuft.
+
+Die laufende Funkvermittlung bleibt von Drive und der Erreichbarkeit des Web-IAM unabhängig. Freigaben, Suchtreffer, Vorschau, Downloads, ZIP, Versionen, Papierkorb und Sync verwenden dieselbe fachliche Berechtigungsgrundlage. Details zum Produktumfang, zur externen Ordnervererbung und zur noch offenen Dateicloud-Backend-Auswahl stehen in [NETCORE-DRIVE-01](NETCORE_DRIVE_ROADMAP.md).
 
 ## 5. Meilensteine und Abnahme
 
@@ -206,6 +219,7 @@ Diese Datei ist die kanonische Planung für NETCORE-IAM-01. Beim nächsten und b
 | Datum | Änderung | Implementierungsnachweis |
 | --- | --- | --- |
 | 2026-10-03 | Nutzeridee in Roadmap überführt; Zielarchitektur als Empfehlung, Meilensteine, Rechte-, Ausfall- und Prüfkriterien dokumentiert | Dokumentation; keine technische Umsetzung |
+| 2026-10-05 | Ökosystemweite Anbindung um NetCore Drive ergänzt; zentrale Dienstrollen, fachliche Datei- / Ordnerrechte, Gäste, Linkfreigaben und begrenzte Dienstidentitäten konkretisiert | Dokumentation; keine technische Umsetzung |
 
 ## 10. Technische Referenzen
 
@@ -215,3 +229,4 @@ Die folgenden Primärquellen begründen die empfohlenen Integrationsmöglichkeit
 - [Keycloak OpenID Connect](https://www.keycloak.org/securing-apps/oidc-layers): Authorization Code, Client Credentials, JWKS und lokale Tokenprüfung.
 - [OpenID Connect Discovery 1.0](https://openid.net/specs/openid-connect-discovery-1_0.html): vertrauenswürdiger Issuer und Metadaten.
 - [NetCore Backend-WebUI-Standard](BACKEND_WEBUI_STANDARD.md) und [Dienstmatrix](BACKEND_WEBUI_SERVICE_MATRIX.md): vorhandene Projektvorgaben.
+

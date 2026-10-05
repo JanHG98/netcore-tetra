@@ -38,6 +38,19 @@ Die bisher umgesetzten LXC-Dienste starten im ausdrücklich markierten `open_lab
 
 ---
 
+## Geplante Plattform-Erweiterungen – Stand 2026-10-05
+
+Diese Vorhaben ergänzen die bestehenden Funk- und Core-Phasen. Sie sind Planungsziele und keine bereits implementierten Dienste; die aktuelle Open-Lab-Installation wird durch ihre Dokumentation nicht verändert.
+
+| Vorhaben | Ziel / Festlegung | Status und nächste Entscheidung |
+| --- | --- | --- |
+| [NETCORE-IAM-01: zentrale Anmeldung und RBAC](../Docs/CENTRAL_IDENTITY_RBAC_ROADMAP.md) | Gemeinsame Identitäten, Gruppen und Dienstrollen für das NetCore-Ökosystem einschließlich Drive; fachliche Ressourcenrechte im jeweiligen Backend; getrennte Gäste und Maschinenidentitäten | Geplant; Identity-Pilot / Architekturentscheidung offen; Funkbetrieb bleibt unabhängig von Web-IAM |
+| [NETCORE-DRIVE-01: eigene Dateicloud](../Docs/NETCORE_DRIVE_ROADMAP.md) | Eigenes NetCore-Design: Core Console, Workspace und Archive Studio; Nextcloud-ähnlicher Datei-Funktionsumfang bei einfacher OneDrive-Bedienung; ganze Ordner intern / extern freigeben | Designrichtung bestätigt, Umsetzung geplant; Dateien auf Dateispeicher / NAS, MariaDB nicht erforderlich; Nextcloud Files + PostgreSQL als bevorzugte Empfehlung, Backend-Auswahl offen |
+
+Drive umfasst als geplante Anforderungen Dateiverwaltung, große wiederaufnehmbare Uploads, Suche / Vorschau, Versionen, Papierkorb, Synchronisation und serverseitig geprüfte Freigaben. Für externe Ordner werden personenbezogener Gastzugang oder ein weitergebbarer Link sowie die Rechte **Ansehen**, **Bearbeiten** und **Nur hochladen**, Ablauf und Widerruf vorgesehen. Einzelheiten, Vererbung, Abnahme und offene Entscheidungen stehen in der Drive-Roadmap. Regelmäßige Projektstatusläufe sollen beide Vorhaben berücksichtigen, ohne Dokumentation als Implementierung auszugeben.
+
+---
+
 ## MQTT-Branch – aktuelle Integrationsreihenfolge
 
 1. Mobility Core als Routing-Wahrheit – umgesetzt
@@ -1507,3 +1520,4 @@ Der Task Workflow läuft als eigener LXC-Dienst auf Port `8280`. Er verwaltet `n
 - TBS→PBX über den einen PBX-Trunk
 - WebUI, Route-Test, Registrierungsstatus, Call-Lifecycle, MQTT und `sip.*`-Ereignisse
 - aktuelle Medienphase: `edge_media`; unterbrechungsfreies Mid-Call-Handover folgt mit zentralem Call-Control-/Media-Switch-Leg
+

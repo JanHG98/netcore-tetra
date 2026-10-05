@@ -11,6 +11,9 @@ Hier stehen Vorhaben, die aus Projektplanung und Gesprächen hervorgehen. **Ein 
 | GPIO-/Rack-Platine | Sensorik, Lüfter, Statusanzeigen, Watchdog, Stromversorgung | echte HAT-Pinbelegung, EMV, 230-V-Sicherheit, Footprints und PCB-Abnahme |
 | Control-Room-Arbeitsplatz | Audio, skalierbare Oberfläche, Rollen, NFC/AD | Sicherheitsmodell, Operator-Identität, Ruf-Autorität und E2E-Tests |
 | HA-/Homematic-Aktionspfad | gezielte, quittierte Aktionen aus Funkereignissen | Topic-Vertrag, Default-Deny-Policy, Automation, Rückmeldung und Fehlerschutz |
+| [Zentrale Anmeldung / RBAC (NETCORE-IAM-01)](https://github.com/JanHG98/netcore-tetra/blob/main/Docs/CENTRAL_IDENTITY_RBAC_ROADMAP.md) | Gemeinsamer Login, Gruppen und Dienstrollen für das NetCore-Ökosystem einschließlich Drive; Ressourcenrechte im jeweiligen Backend | Identity-Produkt / Pilot, optionale AD-Anbindung, Gast- und Dienstidentitäten, Sperrfristen und Ausfallverhalten; weiterhin geplant |
+| [NetCore Drive (NETCORE-DRIVE-01)](https://github.com/JanHG98/netcore-tetra/blob/main/Docs/NETCORE_DRIVE_ROADMAP.md) | Eigene Dateicloud: Core Console, Workspace, Archive Studio; Nextcloud-ähnlicher Datei-Funktionsumfang und OneDrive-einfache Bedienung; externe Ordnerfreigaben | Designrichtung bestätigt; Backend offen, Nextcloud Files + PostgreSQL empfohlen; NAS / Dateispeicher ohne MariaDB-Pflicht; Gastverifikation, Rechtevererbung, Widerruf und echte Sync-Tests |
+
 
 ## Reihenfolge für eine belastbare Erweiterung
 
@@ -19,3 +22,4 @@ Hier stehen Vorhaben, die aus Projektplanung und Gesprächen hervorgehen. **Ein 
 3. Statische Tests, mutierende Labortests und bei Funkfunktionen On-Air-Test ergänzen.
 4. Betreiberverfahren für Installation, Sicherung, Rückweg, Monitoring und Fehlersuche dokumentieren.
 5. Erst mit Messdaten die Funktion von „geplant“ nach [[Projektstand]] übernehmen.
+
