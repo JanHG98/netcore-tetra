@@ -1056,7 +1056,7 @@ Für NetCore ist in diesem Chat kein realer Multi-Cell-Handover im Funkbetrieb b
 
 Der risikoärmste nächste Schritt ist **nicht** der komplette SiteSwitch-Port.
 
-Zuerst sollte ein kleiner Feature-Branch vom aktuellen NetCore-main entstehen, der ausschließlich die beiden c71c9ad-Restore-Fixes übernimmt und mit Unit-Tests absichert. Danach kann als zweite klar abgegrenzte Stufe die MLE-/Neighbor-R行efinition mit Cell-Re-Select-Parametern sowie U-PREPARE/U-RESTORE umgesetzt werden.
+Zuerst sollte ein kleiner Feature-Branch vom aktuellen NetCore-main entstehen, der ausschließlich die beiden c71c9ad-Restore-Fixes übernimmt und mit Unit-Tests absichert. Danach kann als zweite klar abgegrenzte Stufe die MLE-/Neighbor-Definition mit Cell-Re-Select-Parametern sowie U-PREPARE/U-RESTORE umgesetzt werden.
 
 Erst wenn diese Protokollgrundlagen stabil sind, sollte entschieden werden, wie Bosts in-process SiteSwitch-Semantik auf NetCores tatsächliche verteilte TBS-/Core-Struktur abgebildet wird.
 
