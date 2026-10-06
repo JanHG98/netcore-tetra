@@ -1,0 +1,265 @@
+{
+  "date": "2026-10-06",
+  "origin": "Reconstructed from the unchanged final 135-page PDF; original preview PNG bytes were not recoverable.",
+  "pdf_sha256": "73244a8716d4abb80afb2dfe557e7c156c0f823ed11c6ff1bcd2cfa12622b992",
+  "images": [
+    {
+      "file": "kontakt-01.png",
+      "pages": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "kind": "reconstructed_contact_sheet",
+      "size_bytes": 813728,
+      "sha256": "a12f0a76bde84cfb242270aa122c103215661f1dbb990920aa7502b622eb5ad8"
+    },
+    {
+      "file": "kontakt-02.png",
+      "pages": [
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24
+      ],
+      "kind": "reconstructed_contact_sheet",
+      "size_bytes": 758822,
+      "sha256": "dd043ef072cc4be5d924f0f1a6319bfd29f4631cb193a2f0f75eb68d1c1e24be"
+    },
+    {
+      "file": "kontakt-03.png",
+      "pages": [
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36
+      ],
+      "kind": "reconstructed_contact_sheet",
+      "size_bytes": 785402,
+      "sha256": "1013a26803531d824b5b0ff709c95c7753ef0953e17326d345be2027ff0fd05a"
+    },
+    {
+      "file": "kontakt-04.png",
+      "pages": [
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48
+      ],
+      "kind": "reconstructed_contact_sheet",
+      "size_bytes": 774108,
+      "sha256": "a9bb2a65cf40ec3e7a4b14b7151053bf2c97e8ff03b680668ca32fa046c47a61"
+    },
+    {
+      "file": "kontakt-05.png",
+      "pages": [
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60
+      ],
+      "kind": "reconstructed_contact_sheet",
+      "size_bytes": 766326,
+      "sha256": "f6329aaa347c54f83a68303faa0c91a125c5419308984cf955f74cbdf198a856"
+    },
+    {
+      "file": "kontakt-06.png",
+      "pages": [
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72
+      ],
+      "kind": "reconstructed_contact_sheet",
+      "size_bytes": 736440,
+      "sha256": "4971a7079317a90dbff5573e2026ad83950a430fc11f7e8c7d306fc64bc0b2c5"
+    },
+    {
+      "file": "kontakt-07.png",
+      "pages": [
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84
+      ],
+      "kind": "reconstructed_contact_sheet",
+      "size_bytes": 757711,
+      "sha256": "55edfaaaf2be441f3e4e0395fcfab49fc589b49f31e0610539895461ffb55fcb"
+    },
+    {
+      "file": "kontakt-08.png",
+      "pages": [
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93,
+        94,
+        95,
+        96
+      ],
+      "kind": "reconstructed_contact_sheet",
+      "size_bytes": 766049,
+      "sha256": "57ce7e43a17b3d1902833ecd913b1d4b6f9e3021e9c9880b8e3504a563126ee6"
+    },
+    {
+      "file": "kontakt-09.png",
+      "pages": [
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108
+      ],
+      "kind": "reconstructed_contact_sheet",
+      "size_bytes": 755617,
+      "sha256": "7b2431c4b8d1c588d822d6f8128661f8c7f2b5a64fc56a9398dd672138abc2bb"
+    },
+    {
+      "file": "kontakt-10.png",
+      "pages": [
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118,
+        119,
+        120
+      ],
+      "kind": "reconstructed_contact_sheet",
+      "size_bytes": 712313,
+      "sha256": "1ab04c5e1de0b01605526f42a33780fe8bdca48711dea6a6cbd52e70fc45034a"
+    },
+    {
+      "file": "kontakt-11.png",
+      "pages": [
+        121,
+        122,
+        123,
+        124,
+        125,
+        126,
+        127,
+        128,
+        129,
+        130,
+        131,
+        132
+      ],
+      "kind": "reconstructed_contact_sheet",
+      "size_bytes": 688905,
+      "sha256": "6e4cf903a6948c8ccb69e24a70a344d6c59ab95cfc98f5f8f3748342b20b4fe1"
+    },
+    {
+      "file": "kontakt-12.png",
+      "pages": [
+        133,
+        134,
+        135
+      ],
+      "kind": "reconstructed_contact_sheet",
+      "size_bytes": 244798,
+      "sha256": "1481f61f3539ce242603cd73262231e2f5afbbe33fa37060723a9f4c10824593"
+    },
+    {
+      "file": "detail-117.png",
+      "pages": [
+        117
+      ],
+      "kind": "reconstructed_pdf_page",
+      "size_bytes": 172360,
+      "sha256": "c2da1f5d82894ef93b3ffdbc5807f75a80760574c26358beab7f454f33fbbb0a"
+    },
+    {
+      "file": "detail-128.png",
+      "pages": [
+        128
+      ],
+      "kind": "reconstructed_pdf_page",
+      "size_bytes": 92485,
+      "sha256": "154cc13cb0128974987348bdf0a7d8252629ca8096d2788066790201b0271e75"
+    },
+    {
+      "file": "detail-129.png",
+      "pages": [
+        129
+      ],
+      "kind": "reconstructed_pdf_page",
+      "size_bytes": 90534,
+      "sha256": "b9ba7245d1ea2e11a8cd4d5d1fb7ba1e951e09e60a15355405335a91e4a1ebda"
+    }
+  ]
+}

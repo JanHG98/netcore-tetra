@@ -1,0 +1,516 @@
+{
+  "bits": {
+    "fields": [
+      {
+        "name": "first",
+        "start": 0,
+        "end": 3,
+        "bits": "101",
+        "value": 5
+      },
+      {
+        "name": "second",
+        "start": 3,
+        "end": 6,
+        "bits": "101",
+        "value": 5
+      }
+    ],
+    "error": "third: Offset 6, benoetigt 1, Rest 0",
+    "position_after_error": 6
+  },
+  "sync": {
+    "bits": "001100000100100010001110000000011100001010001011110011001101",
+    "packed_msb": {
+      "hex": "30488E01C28BCCD0",
+      "valid_bits": 60,
+      "right_padding_bits": 4
+    },
+    "decoded": {
+      "system_code": 3,
+      "colour_code": 1,
+      "timeslot_raw": 0,
+      "frame": 17,
+      "multiframe": 7,
+      "sharing_mode": 0,
+      "ts_reserved_frames_raw": 0,
+      "u_plane_dtx": 0,
+      "frame18_extension": 0,
+      "reserved": 0,
+      "mcc": 901,
+      "mnc": 1510,
+      "neighbour_broadcast": 1,
+      "cell_load_ca": 2,
+      "late_entry": 1,
+      "timeslot": 1
+    },
+    "fields": [
+      {
+        "name": "system_code",
+        "start": 0,
+        "end": 4,
+        "bits": "0011",
+        "value": 3
+      },
+      {
+        "name": "colour_code",
+        "start": 4,
+        "end": 10,
+        "bits": "000001",
+        "value": 1
+      },
+      {
+        "name": "timeslot_raw",
+        "start": 10,
+        "end": 12,
+        "bits": "00",
+        "value": 0
+      },
+      {
+        "name": "frame",
+        "start": 12,
+        "end": 17,
+        "bits": "10001",
+        "value": 17
+      },
+      {
+        "name": "multiframe",
+        "start": 17,
+        "end": 23,
+        "bits": "000111",
+        "value": 7
+      },
+      {
+        "name": "sharing_mode",
+        "start": 23,
+        "end": 25,
+        "bits": "00",
+        "value": 0
+      },
+      {
+        "name": "ts_reserved_frames_raw",
+        "start": 25,
+        "end": 28,
+        "bits": "000",
+        "value": 0
+      },
+      {
+        "name": "u_plane_dtx",
+        "start": 28,
+        "end": 29,
+        "bits": "0",
+        "value": 0
+      },
+      {
+        "name": "frame18_extension",
+        "start": 29,
+        "end": 30,
+        "bits": "0",
+        "value": 0
+      },
+      {
+        "name": "reserved",
+        "start": 30,
+        "end": 31,
+        "bits": "0",
+        "value": 0
+      },
+      {
+        "name": "mcc",
+        "start": 31,
+        "end": 41,
+        "bits": "1110000101",
+        "value": 901
+      },
+      {
+        "name": "mnc",
+        "start": 41,
+        "end": 55,
+        "bits": "00010111100110",
+        "value": 1510
+      },
+      {
+        "name": "neighbour_broadcast",
+        "start": 55,
+        "end": 57,
+        "bits": "01",
+        "value": 1
+      },
+      {
+        "name": "cell_load_ca",
+        "start": 57,
+        "end": 59,
+        "bits": "10",
+        "value": 2
+      },
+      {
+        "name": "late_entry",
+        "start": 59,
+        "end": 60,
+        "bits": "1",
+        "value": 1
+      }
+    ],
+    "negative_cases": [
+      "SYNC erwartet genau 60 Bits, bekommen: 59",
+      "Frame ist in dieser Ausgabe reserviert",
+      "Reserviertes Feld muss in dieser Ausgabe 0 sein"
+    ]
+  },
+  "mac": {
+    "scope": "Headerpraefix ohne TM-SDU und Laengenvalidierung der vollen PDU",
+    "ssi": {
+      "bits": "0000000000111001001111010011000000010001000",
+      "decoded": {
+        "pdu_type": 0,
+        "fill": 0,
+        "grant_position": 0,
+        "encryption_mode": 0,
+        "random_access": 0,
+        "length_raw": 7,
+        "address_type": 1,
+        "ssi": 4010001,
+        "power_control": 0,
+        "slot_grant": 0,
+        "channel_allocation": 0,
+        "prefix_bits": 43
+      },
+      "fields": [
+        {
+          "name": "pdu_type",
+          "start": 0,
+          "end": 2,
+          "bits": "00",
+          "value": 0
+        },
+        {
+          "name": "fill",
+          "start": 2,
+          "end": 3,
+          "bits": "0",
+          "value": 0
+        },
+        {
+          "name": "grant_position",
+          "start": 3,
+          "end": 4,
+          "bits": "0",
+          "value": 0
+        },
+        {
+          "name": "encryption_mode",
+          "start": 4,
+          "end": 6,
+          "bits": "00",
+          "value": 0
+        },
+        {
+          "name": "random_access",
+          "start": 6,
+          "end": 7,
+          "bits": "0",
+          "value": 0
+        },
+        {
+          "name": "length_raw",
+          "start": 7,
+          "end": 13,
+          "bits": "000111",
+          "value": 7
+        },
+        {
+          "name": "address_type",
+          "start": 13,
+          "end": 16,
+          "bits": "001",
+          "value": 1
+        },
+        {
+          "name": "ssi",
+          "start": 16,
+          "end": 40,
+          "bits": "001111010011000000010001",
+          "value": 4010001
+        },
+        {
+          "name": "power_control",
+          "start": 40,
+          "end": 41,
+          "bits": "0",
+          "value": 0
+        },
+        {
+          "name": "slot_grant",
+          "start": 41,
+          "end": 42,
+          "bits": "0",
+          "value": 0
+        },
+        {
+          "name": "channel_allocation",
+          "start": 42,
+          "end": 43,
+          "bits": "0",
+          "value": 0
+        }
+      ]
+    },
+    "event_label": {
+      "bits": "00000000001110100000010001000",
+      "decoded": {
+        "pdu_type": 0,
+        "fill": 0,
+        "grant_position": 0,
+        "encryption_mode": 0,
+        "random_access": 0,
+        "length_raw": 7,
+        "address_type": 2,
+        "event_label": 17,
+        "power_control": 0,
+        "slot_grant": 0,
+        "channel_allocation": 0,
+        "prefix_bits": 29
+      },
+      "fields": [
+        {
+          "name": "pdu_type",
+          "start": 0,
+          "end": 2,
+          "bits": "00",
+          "value": 0
+        },
+        {
+          "name": "fill",
+          "start": 2,
+          "end": 3,
+          "bits": "0",
+          "value": 0
+        },
+        {
+          "name": "grant_position",
+          "start": 3,
+          "end": 4,
+          "bits": "0",
+          "value": 0
+        },
+        {
+          "name": "encryption_mode",
+          "start": 4,
+          "end": 6,
+          "bits": "00",
+          "value": 0
+        },
+        {
+          "name": "random_access",
+          "start": 6,
+          "end": 7,
+          "bits": "0",
+          "value": 0
+        },
+        {
+          "name": "length_raw",
+          "start": 7,
+          "end": 13,
+          "bits": "000111",
+          "value": 7
+        },
+        {
+          "name": "address_type",
+          "start": 13,
+          "end": 16,
+          "bits": "010",
+          "value": 2
+        },
+        {
+          "name": "event_label",
+          "start": 16,
+          "end": 26,
+          "bits": "0000010001",
+          "value": 17
+        },
+        {
+          "name": "power_control",
+          "start": 26,
+          "end": 27,
+          "bits": "0",
+          "value": 0
+        },
+        {
+          "name": "slot_grant",
+          "start": 27,
+          "end": 28,
+          "bits": "0",
+          "value": 0
+        },
+        {
+          "name": "channel_allocation",
+          "start": 28,
+          "end": 29,
+          "bits": "0",
+          "value": 0
+        }
+      ]
+    },
+    "negative_cases": [
+      "channel_allocation: Offset 42, benoetigt 1, Rest 0",
+      "Dieser Lehrparser unterstuetzt ausschliesslich pi/4-DQPSK",
+      "Optionaler Zweig power_control wird im Lehrparser nicht verarbeitet"
+    ]
+  },
+  "sds": {
+    "scope": "D-SDS-DATA-Kernpraefix; keine optionalen Schlussfelder und kein aeusserer Protokolldiskriminator",
+    "bits": "0111101001111010011000000010001000001001000110100",
+    "packed_msb": {
+      "hex": "7A7A6022091A00",
+      "valid_bits": 49,
+      "right_padding_bits": 7
+    },
+    "decoded": {
+      "pdu_type": 15,
+      "calling_party_type": 1,
+      "calling_ssi": 4010001,
+      "sdti": 0,
+      "user_data": 4660
+    },
+    "fields": [
+      {
+        "name": "pdu_type",
+        "start": 0,
+        "end": 5,
+        "bits": "01111",
+        "value": 15
+      },
+      {
+        "name": "calling_party_type",
+        "start": 5,
+        "end": 7,
+        "bits": "01",
+        "value": 1
+      },
+      {
+        "name": "calling_ssi",
+        "start": 7,
+        "end": 31,
+        "bits": "001111010011000000010001",
+        "value": 4010001
+      },
+      {
+        "name": "sdti",
+        "start": 31,
+        "end": 33,
+        "bits": "00",
+        "value": 0
+      },
+      {
+        "name": "user_data",
+        "start": 33,
+        "end": 49,
+        "bits": "0001001000110100",
+        "value": 4660
+      }
+    ],
+    "negative_cases": [
+      "user_data: Offset 33, benoetigt 16, Rest 15",
+      "Dieser Lehrparser erwartet den Downlinkkontext"
+    ]
+  },
+  "dqpsk": {
+    "scope": "Ideale bereits symbolgetaktete Werte; keine komplette IQ-Decoderkette",
+    "input": [
+      "00",
+      "01",
+      "10",
+      "11"
+    ],
+    "output": [
+      "00",
+      "01",
+      "10",
+      "11"
+    ],
+    "phases_degrees": [
+      45,
+      135,
+      -45,
+      -135
+    ],
+    "symbols": [
+      {
+        "real": 1.0,
+        "imag": 0.0
+      },
+      {
+        "real": 0.70710678,
+        "imag": 0.70710678
+      },
+      {
+        "real": -1.0,
+        "imag": 0.0
+      },
+      {
+        "real": -0.70710678,
+        "imag": 0.70710678
+      },
+      {
+        "real": 1.0,
+        "imag": 0.0
+      }
+    ]
+  },
+  "floor": {
+    "individual": "B erhaelt bei Floor A keinen Grant",
+    "group": "Uplinkueberwachung aktiv; alter Timer ignoriert; aktueller Timeout gibt frei; C kann uebernehmen",
+    "final_owner": "C",
+    "generation": 3
+  },
+  "rf": {
+    "downlink_dbm": -69,
+    "downlink_margin_db": 26,
+    "uplink_dbm": -82,
+    "uplink_margin_db": 13,
+    "quarter_wave_m": 0.17930170933014353,
+    "vswr": 2,
+    "reflected_percent": 11.11111111111111,
+    "return_loss_db": 9.54242509439325,
+    "samples_per_symbol": 8.0,
+    "fft_bin_hz": 70.3125,
+    "ber_percent": 0.25
+  },
+  "coding": {
+    "scope": "Eigene Interleaving- und CRC-Lehrverfahren; keine TETRA-Kanalkette",
+    "original": [
+      1,
+      0,
+      1,
+      1
+    ],
+    "permutation": [
+      2,
+      0,
+      3,
+      1
+    ],
+    "transmitted": [
+      1,
+      1,
+      1,
+      0
+    ],
+    "restored": [
+      1,
+      0,
+      1,
+      1
+    ],
+    "crc_input": "123456789",
+    "crc_hex": "29B1",
+    "crc_parameters": {
+      "width": 16,
+      "poly": "1021",
+      "init": "FFFF",
+      "refin": false,
+      "refout": false,
+      "xorout": "0000"
+    }
+  }
+}
