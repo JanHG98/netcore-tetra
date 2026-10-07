@@ -1,0 +1,80 @@
+{
+  "created_at": "2026-10-06",
+  "scope": "Originalbilder dieses Chats, visuell abgeglichen; keine Zugangsdaten in den gezeigten Feldern festgestellt.",
+  "images": [
+    {
+      "file": "01-sip-switch-dashboard.png",
+      "original_filename": "971900ce-035c-4d5a-b75b-14e3e1d7640f.png",
+      "caption": "Zentraler SIP-Switch vor erfolgreicher Route",
+      "status": "recovered_original_unmodified",
+      "bytes": 120858,
+      "width": 1919,
+      "height": 1257,
+      "sha256": "cf32f370901cd9d1897b7ff91822ebfbe888862e25b5079973d9ab396ef57f61"
+    },
+    {
+      "file": "02-tbs-sip-integration.png",
+      "original_filename": "6329e668-f10d-4d6e-abbb-863e5b3302c2.png",
+      "caption": "TBS SIP 5062 / lokaler Asterisk 5060",
+      "status": "recovered_original_unmodified",
+      "bytes": 80992,
+      "width": 1700,
+      "height": 886,
+      "sha256": "760b713afda3b59dbec02600266f97591f9b3e60ccdd56982f2ba85e2649b575"
+    },
+    {
+      "file": "03-tbs-node-gateway-fallback.png",
+      "original_filename": "ef451359-6215-44ae-b6a2-f088269ff27f.png",
+      "caption": "Node Gateway getrennt, lokaler Fallback",
+      "status": "recovered_original_unmodified",
+      "bytes": 185743,
+      "width": 1700,
+      "height": 886,
+      "sha256": "e646dbe9a8743e0ddfc60a3385f676c9e9aa4e277790b385d30472aa167c8356"
+    },
+    {
+      "file": "04-sepura-pabx-crop.png",
+      "original_filename": "0b239c79-b798-4441-bd2d-d071efae0236.png",
+      "caption": "Erster abgeschnittener PABX-Codeplug-Ausschnitt",
+      "status": "recovered_original_unmodified",
+      "bytes": 6968,
+      "width": 1586,
+      "height": 36,
+      "sha256": "49e7d063a24fbc28229455e247092b8ba86b1fc9c95b0ff52a7c8f87572fbf12"
+    },
+    {
+      "file": "05-sepura-pabx-readable.png",
+      "original_filename": "2ee4a7be-c78c-499f-accb-d6c0bee834a1.png",
+      "caption": "Lesbarer PABX-Codeplug-Ausschnitt",
+      "status": "recovered_original_unmodified",
+      "bytes": 9660,
+      "width": 1583,
+      "height": 43,
+      "sha256": "404f91edb0a870bb8d6d5e85205d5f732149bda18d270267dad0725b61196080"
+    },
+    {
+      "file": "06-sepura-dial-modes.png",
+      "original_filename": "91a994c0-4bbf-4a6a-8c83-0be482ac629d.png",
+      "caption": "Dial Modes / Algorithm Configuration",
+      "status": "recovered_original_unmodified",
+      "bytes": 96998,
+      "width": 1743,
+      "height": 601,
+      "sha256": "9723123e3d8255f801c61bea88dd5b3ef4d22fe03e5be71231f9395d54e2ab75"
+    }
+  ],
+  "duplicates": [
+    {
+      "original_filename": "0e6dcdf9-a377-440b-b3bc-f22be6208727.png",
+      "same_as": "05-sepura-pabx-readable.png",
+      "sha256": "404f91edb0a870bb8d6d5e85205d5f732149bda18d270267dad0725b61196080",
+      "note": "Byteidentisch; genaue historische Turnzuordnung des zusätzlichen Dateinamens unklar."
+    }
+  ],
+  "unavailable": [
+    {
+      "original_filename": "01-image.png",
+      "reason": "Nur fehlgeschlagener historischer Ladepfad vorhanden; exakte Dateisuche ohne eindeutig zuordenbaren Treffer."
+    }
+  ]
+}

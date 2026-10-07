@@ -1,0 +1,620 @@
+{
+  "conversation_id": "6aa5e838-753c-83eb-9dad-723340ede061",
+  "conversation_title": "Eigenes IDECS entwickeln",
+  "conversation_url": "https://chatgpt.com/c/6aa5e838-753c-83eb-9dad-723340ede061",
+  "archived_date": "2026-10-05",
+  "timezone": "Europe/Berlin",
+  "original_files_downloaded": false,
+  "method": "Vollständige Browser-Bildvorschau als JPEG-Screenshot erfasst; auf sichtbaren Bildinhalt zugeschnitten und als PNG gespeichert. Keine inhaltliche Retusche.",
+  "limitation": "Ansichtsreproduktionen mit reduzierter Auflösung und bereits vorhandenen JPEG-Verlusten; keine bytegleichen Originaluploads. SHA-256 gilt nur für die archivierten PNGs.",
+  "images": [
+    {
+      "number": 1,
+      "file": "01-idecs-referenz-ansicht.png",
+      "title": "Globaler Rahmen und Telefonkurzwahl",
+      "description": "Funkressourcen links, Telefonkurzwahlen und Rufannahme in der Mitte, Warteschlange und aktive Rufe rechts; feste Navigation, Telefonaktionen und PTT.",
+      "source": "Nutzerupload 1, Bild 1",
+      "source_kind": "uploaded_reference",
+      "reported_source_dimensions": [
+        1366,
+        768
+      ],
+      "stored_dimensions": [
+        924,
+        520
+      ],
+      "bytes": 393559,
+      "sha256": "0d75fa56a8b5ce40b147189eca846c0463e2efb54a7a9955cd72423563e093a9",
+      "original_sha256": null
+    },
+    {
+      "number": 2,
+      "file": "02-idecs-referenz-ansicht.png",
+      "title": "Audio-Einstellungen",
+      "description": "Getrennte Lautstärken für Betriebslautsprecher, Abhörlautsprecher, Handapparat, Headset und Klingellautsprecher; wählbare Audio-Setups und Basiswerte.",
+      "source": "Nutzerupload 1, Bild 2",
+      "source_kind": "uploaded_reference",
+      "reported_source_dimensions": [
+        1366,
+        768
+      ],
+      "stored_dimensions": [
+        924,
+        520
+      ],
+      "bytes": 229928,
+      "sha256": "882d5574c65c32c26be9ad72840476c8520445f00dbb7efbdd25a678bc959340",
+      "original_sha256": null
+    },
+    {
+      "number": 3,
+      "file": "03-idecs-referenz-ansicht.png",
+      "title": "Sprachaufzeichnung",
+      "description": "Leere Mitschnittliste mit Funkgerät, Datum/Uhrzeit, Dauer, Quelle und Ziel; Transporttasten und Löschaktion. Kein NetCore-Aufzeichnungsnachweis.",
+      "source": "Nutzerupload 1, Bild 3",
+      "source_kind": "uploaded_reference",
+      "reported_source_dimensions": [
+        1366,
+        768
+      ],
+      "stored_dimensions": [
+        924,
+        520
+      ],
+      "bytes": 198414,
+      "sha256": "1690c0f4263dc46ac77f5acb476c869e1f262c178dd16377aba7d031ebc00920",
+      "original_sha256": null
+    },
+    {
+      "number": 4,
+      "file": "04-idecs-referenz-ansicht.png",
+      "title": "Durchsagen, ELA und Gebäudesteuerung",
+      "description": "ELA-Warteschlange, Lautstärke/PTT, vorbereitete Durchsagen, BMA/Störung, Licht, Schranke sowie Tor-Steuerungen.",
+      "source": "Nutzerupload 1, Bild 4",
+      "source_kind": "uploaded_reference",
+      "reported_source_dimensions": [
+        1366,
+        768
+      ],
+      "stored_dimensions": [
+        924,
+        520
+      ],
+      "bytes": 282658,
+      "sha256": "9d216609d97e6a30b6f3cfa8be26f5baee9935c2e6c023330b3ff7db0ca9bb8b",
+      "original_sha256": null
+    },
+    {
+      "number": 5,
+      "file": "05-idecs-referenz-ansicht.png",
+      "title": "Zieladresse für Nachrichten suchen",
+      "description": "Namens-/Ortssuche, mehrere Adressbücher und Bildschirmtastatur im Nachrichtenbereich.",
+      "source": "Nutzerupload 1, Bild 5",
+      "source_kind": "uploaded_reference",
+      "reported_source_dimensions": [
+        1366,
+        768
+      ],
+      "stored_dimensions": [
+        924,
+        520
+      ],
+      "bytes": 305404,
+      "sha256": "d3661caa52bdcab210a9da8e1cf376c9a01557bf9c199e36c75a9c11350a524d",
+      "original_sha256": null
+    },
+    {
+      "number": 6,
+      "file": "06-idecs-referenz-ansicht.png",
+      "title": "Nachrichtenkurzwahlen",
+      "description": "64 nummerierte Zielwahltasten als separate Nachrichtenansicht.",
+      "source": "Nutzerupload 1, Bild 6",
+      "source_kind": "uploaded_reference",
+      "reported_source_dimensions": [
+        1366,
+        768
+      ],
+      "stored_dimensions": [
+        924,
+        520
+      ],
+      "bytes": 388798,
+      "sha256": "004a212c0b9555de7b8038ea0acd2c968ecac09af895e3cf23bcabca71e710fa",
+      "original_sha256": null
+    },
+    {
+      "number": 7,
+      "file": "07-idecs-referenz-ansicht.png",
+      "title": "Nachricht erstellen",
+      "description": "Empfänger, Text, Bildschirmtastatur und Aktionen für Versand, Flash-SDS, Quittungen, CallOut, Speichern und Löschen.",
+      "source": "Nutzerupload 1, Bild 7",
+      "source_kind": "uploaded_reference",
+      "reported_source_dimensions": [
+        1366,
+        768
+      ],
+      "stored_dimensions": [
+        924,
+        520
+      ],
+      "bytes": 308335,
+      "sha256": "0546543e8d45a2df0eb67b60d6a9353db244cf2e0b8636d840d1de583e50999f",
+      "original_sha256": null
+    },
+    {
+      "number": 8,
+      "file": "08-idecs-referenz-ansicht.png",
+      "title": "Nachrichtenausgang",
+      "description": "Versandhistorie mit Zeit, Funkgerät, Zieladresse, Inhalt und Status; sichtbare Positionseinträge gehören zur historischen Referenz.",
+      "source": "Nutzerupload 1, Bild 8",
+      "source_kind": "uploaded_reference",
+      "reported_source_dimensions": [
+        1366,
+        768
+      ],
+      "stored_dimensions": [
+        924,
+        520
+      ],
+      "bytes": 294095,
+      "sha256": "b7efc97c4a7d6f0c984b6cdadb45e6bb68cf2d9829744a46622533c248ea1424",
+      "original_sha256": null
+    },
+    {
+      "number": 9,
+      "file": "09-idecs-referenz-ansicht.png",
+      "title": "Nachrichteneingang und Positionsrohtext",
+      "description": "Eingangsverlauf mit Absender und als LIP bezeichnetem Rohtext; keine hier nachgewiesene Dekodierung in Kartenkoordinaten.",
+      "source": "Nutzerupload 1, Bild 9",
+      "source_kind": "uploaded_reference",
+      "reported_source_dimensions": [
+        1366,
+        768
+      ],
+      "stored_dimensions": [
+        924,
+        520
+      ],
+      "bytes": 295914,
+      "sha256": "26adf2638086fdb91b967f78fd35dacb37bc1faca9360cf6c720eb4e061f9fee",
+      "original_sha256": null
+    },
+    {
+      "number": 10,
+      "file": "10-idecs-referenz-ansicht.png",
+      "title": "Status, Sprechwünsche und Arbeitsplätze",
+      "description": "Parallele Eingangs-/Sprechwunsch-/Arbeitsplatzlisten, farbige Statuswerte, Quick Groups und frei belegbare Aktionen.",
+      "source": "Nutzerupload 1, Bild 10",
+      "source_kind": "uploaded_reference",
+      "reported_source_dimensions": [
+        1366,
+        768
+      ],
+      "stored_dimensions": [
+        924,
+        520
+      ],
+      "bytes": 351945,
+      "sha256": "09b2f598833265d1bce39294fe99ee65f5d97373f51a1533c10b75d5ef4c3f64",
+      "original_sha256": null
+    },
+    {
+      "number": 11,
+      "file": "11-idecs-referenz-ansicht.png",
+      "title": "Nachbararbeitsplätze und Notrufe",
+      "description": "Arbeitsplatzliste mit Zuständen sowie Notrufbereich und direkten Besprechungs-/Telefonaktionen.",
+      "source": "Nutzerupload 1, Bild 11",
+      "source_kind": "uploaded_reference",
+      "reported_source_dimensions": [
+        1366,
+        768
+      ],
+      "stored_dimensions": [
+        924,
+        520
+      ],
+      "bytes": 246805,
+      "sha256": "4a5981dc3221c64878d835ace3afd98fae6543a9f4ceb7aef49ce7e95034a03e",
+      "original_sha256": null
+    },
+    {
+      "number": 12,
+      "file": "12-idecs-referenz-ansicht.png",
+      "title": "Telefonkonferenzen",
+      "description": "Kurzwahlen, Konferenzliste und Teilnehmerbereich in einer Ansicht.",
+      "source": "Nutzerupload 1, Bild 12",
+      "source_kind": "uploaded_reference",
+      "reported_source_dimensions": [
+        1366,
+        768
+      ],
+      "stored_dimensions": [
+        924,
+        520
+      ],
+      "bytes": 303383,
+      "sha256": "5de74bcfc97b94c83ded0a11ac70a6a2e2b79e5b40f7c7756db8c54292121c21",
+      "original_sha256": null
+    },
+    {
+      "number": 13,
+      "file": "13-idecs-referenz-ansicht.png",
+      "title": "Telefonteilnehmer suchen",
+      "description": "Telefonbuchsuche nach Name/Ort, getrennte Bücher und Bildschirmtastatur.",
+      "source": "Nutzerupload 1, Bild 13",
+      "source_kind": "uploaded_reference",
+      "reported_source_dimensions": [
+        1366,
+        768
+      ],
+      "stored_dimensions": [
+        924,
+        520
+      ],
+      "bytes": 304150,
+      "sha256": "f20870a0b0813ca8f54eef07e5ea28daed8a5af133e2b3285e653a2c6b55f487",
+      "original_sha256": null
+    },
+    {
+      "number": 14,
+      "file": "14-idecs-referenz-ansicht.png",
+      "title": "Telefonkurzwahlen",
+      "description": "64 nummerierte Kurzwahltasten im Telefonbereich.",
+      "source": "Nutzerupload 1, Bild 14",
+      "source_kind": "uploaded_reference",
+      "reported_source_dimensions": [
+        1366,
+        768
+      ],
+      "stored_dimensions": [
+        924,
+        520
+      ],
+      "bytes": 390293,
+      "sha256": "27155559a721784b17585db880287884998456f2e286d40f8916056a528a6d05",
+      "original_sha256": null
+    },
+    {
+      "number": 15,
+      "file": "15-idecs-referenz-ansicht.png",
+      "title": "Telefonnummer wählen",
+      "description": "Eigenständige manuelle Rufnummernwahl mit Ziffernblock.",
+      "source": "Nutzerupload 1, Bild 15",
+      "source_kind": "uploaded_reference",
+      "reported_source_dimensions": [
+        1366,
+        768
+      ],
+      "stored_dimensions": [
+        924,
+        520
+      ],
+      "bytes": 213676,
+      "sha256": "50feb71a459f79acc71d2f294bd64e563daf86576771b7b38ef91e1fce397f9f",
+      "original_sha256": null
+    },
+    {
+      "number": 16,
+      "file": "16-idecs-referenz-ansicht.png",
+      "title": "Telefonrufliste und Rufannahme",
+      "description": "Rufliste, Rufdetails und Annahmefelder mit dauerhaftem Queue-/Aktive-Rufe-Bereich.",
+      "source": "Nutzerupload 1, Bild 16",
+      "source_kind": "uploaded_reference",
+      "reported_source_dimensions": [
+        1366,
+        768
+      ],
+      "stored_dimensions": [
+        924,
+        520
+      ],
+      "bytes": 228271,
+      "sha256": "728e4890e66f7eced6abc64b24dae4d9248cfca5b82da69f96b8c480394e43d3",
+      "original_sha256": null
+    },
+    {
+      "number": 17,
+      "file": "17-idecs-referenz-ansicht.png",
+      "title": "IDECS-Hilfe als Modulübersicht",
+      "description": "Kontextstruktur für Übersicht, Funk, Telefon, Nachrichten, Haustechnik, Dokumentation und Einstellungen.",
+      "source": "Nutzerupload 1, Bild 17",
+      "source_kind": "uploaded_reference",
+      "reported_source_dimensions": [
+        1366,
+        768
+      ],
+      "stored_dimensions": [
+        924,
+        520
+      ],
+      "bytes": 213651,
+      "sha256": "574346e73a9eb19d82d83c7295c81eed76aeb8745f302f4883913a4397adf3c4",
+      "original_sha256": null
+    },
+    {
+      "number": 18,
+      "file": "18-idecs-referenz-ansicht.png",
+      "title": "Symbole der Übersicht",
+      "description": "Erklärungen für Favoriten, Dashboard, Hilfe, Notruf, Funkrufhistorie, Aufnahme, Telefonaktionen und getrennte Audio-/Mute-Funktionen.",
+      "source": "Nutzerupload 1, Bild 18",
+      "source_kind": "uploaded_reference",
+      "reported_source_dimensions": [
+        1366,
+        768
+      ],
+      "stored_dimensions": [
+        924,
+        520
+      ],
+      "bytes": 268541,
+      "sha256": "219dc27c2a3efb63c87b1cc3c2bc6a9ad0f69dc3346d21976e47da1b56c5e971",
+      "original_sha256": null
+    },
+    {
+      "number": 19,
+      "file": "19-idecs-referenz-ansicht.png",
+      "title": "Funksymbole und Konferenzarten",
+      "description": "Leitstelle, ELW, Gleichwelle, Ortung, Funkkonferenz, 5-Ton-Alarm; Multi-PTT- und DFS-Konferenz sowie eingehende/ausgehende Funkrufe.",
+      "source": "Nutzerupload 1, Bild 19",
+      "source_kind": "uploaded_reference",
+      "reported_source_dimensions": [
+        1366,
+        768
+      ],
+      "stored_dimensions": [
+        924,
+        520
+      ],
+      "bytes": 282132,
+      "sha256": "f2a6370135acbb94872734229f9d5de5237666c41f4dc90c6900b13550f8a601",
+      "original_sha256": null
+    },
+    {
+      "number": 20,
+      "file": "20-idecs-referenz-ansicht.png",
+      "title": "Telefonsymbole und Nachbarplatz",
+      "description": "Rufliste, Wählen, Zielwahl, Telefonbuch, Konferenz und Nachbarplatz-Besprechung; Rufaufbau, Halten, Ende, Abbruch und Konferenzzustände.",
+      "source": "Nutzerupload 1, Bild 20",
+      "source_kind": "uploaded_reference",
+      "reported_source_dimensions": [
+        1366,
+        768
+      ],
+      "stored_dimensions": [
+        924,
+        520
+      ],
+      "bytes": 363650,
+      "sha256": "37b4618eaff266752421ed7d1a5252d9e85d1edee6647e1ef546a812a0f1e8e3",
+      "original_sha256": null
+    },
+    {
+      "number": 21,
+      "file": "21-idecs-referenz-ansicht.png",
+      "title": "Nachrichtensymbole und Quittungen",
+      "description": "Eingang/Ausgang, Editieren, Zielwahl/Telefonbuch, Versand; Lesebestätigung und Empfangsquittung getrennt, Flash-SDS, CallOut und Gelesen-Markierung.",
+      "source": "Nutzerupload 2, Bild 1",
+      "source_kind": "uploaded_reference",
+      "reported_source_dimensions": [
+        1366,
+        768
+      ],
+      "stored_dimensions": [
+        924,
+        520
+      ],
+      "bytes": 307308,
+      "sha256": "f6ca1492f7154cce4211a232f5ddacf0d8b8620e203722281f97e5e480d86b62",
+      "original_sha256": null
+    },
+    {
+      "number": 22,
+      "file": "22-idecs-referenz-ansicht.png",
+      "title": "Haustechnik-Symbole",
+      "description": "Haustechnik und SELECTRIC Falcon als sichtbare Referenzkopplung. Keine bestätigte NetCore-Falcon-Integration.",
+      "source": "Nutzerupload 2, Bild 2",
+      "source_kind": "uploaded_reference",
+      "reported_source_dimensions": [
+        1366,
+        768
+      ],
+      "stored_dimensions": [
+        924,
+        520
+      ],
+      "bytes": 209366,
+      "sha256": "2a0bd41da3df5d88adb2d3f515793633209d60ee7a7e71bc13a78af5c3520215",
+      "original_sha256": null
+    },
+    {
+      "number": 23,
+      "file": "23-idecs-referenz-ansicht.png",
+      "title": "Dokumentation und Audioaufzeichnung",
+      "description": "Zwei getrennte Funktionsbereiche; fachliche Dokumente nicht mit Sprachmitschnitten gleichsetzen.",
+      "source": "Nutzerupload 2, Bild 3",
+      "source_kind": "uploaded_reference",
+      "reported_source_dimensions": [
+        1366,
+        768
+      ],
+      "stored_dimensions": [
+        924,
+        520
+      ],
+      "bytes": 213689,
+      "sha256": "acb0b100d5dad0d5e289a2c21d86cec654f6e8d608345b2ef5d45723caec0064",
+      "original_sha256": null
+    },
+    {
+      "number": 24,
+      "file": "24-idecs-referenz-ansicht.png",
+      "title": "Einstellungen und Zuordnungen",
+      "description": "Audio, Rollenwechsel, Besprechungseinrichtungen, Kombinationsbuttons, weitere Einstellungen und Systemlog.",
+      "source": "Nutzerupload 2, Bild 4",
+      "source_kind": "uploaded_reference",
+      "reported_source_dimensions": [
+        1366,
+        768
+      ],
+      "stored_dimensions": [
+        924,
+        520
+      ],
+      "bytes": 249456,
+      "sha256": "1d48b2eda1adeb86bbaa6193ef6c782cdac9e0cbc3fe679750262e5aa2f293b0",
+      "original_sha256": null
+    },
+    {
+      "number": 25,
+      "file": "25-idecs-referenz-ansicht.png",
+      "title": "Funkgeräteauswahl mit virtuellem Bedienteil",
+      "description": "Mehrere Funkressourcen, teilweise ohne Verbindung, und eingeblendetes Gerätebedienteil mit Display, Navigation und Zifferntasten.",
+      "source": "Nutzerupload 2, Bild 5",
+      "source_kind": "uploaded_reference",
+      "reported_source_dimensions": [
+        1366,
+        768
+      ],
+      "stored_dimensions": [
+        924,
+        520
+      ],
+      "bytes": 414982,
+      "sha256": "a576a995bc6a4967e63ce37808d13ae49e970c25d002cf79fa4f6aa05ecd36ba",
+      "original_sha256": null
+    },
+    {
+      "number": 26,
+      "file": "26-idecs-referenz-ansicht.png",
+      "title": "5-Ton-Alarm versenden",
+      "description": "Zieladresse, Ziffern-/Funktionsblock, Aktiv-/FLG-Anzeige und vorbereitete Ziele; eigener Workflow neben TETRA-SDS.",
+      "source": "Nutzerupload 2, Bild 6",
+      "source_kind": "uploaded_reference",
+      "reported_source_dimensions": [
+        1366,
+        768
+      ],
+      "stored_dimensions": [
+        924,
+        520
+      ],
+      "bytes": 367280,
+      "sha256": "e869406f4b718c2f8b77446ad1cdf48823f96e3bb8553a0d4337d61b00561b82",
+      "original_sha256": null
+    },
+    {
+      "number": 27,
+      "file": "27-idecs-referenz-ansicht.png",
+      "title": "Funkkonferenzen verwalten",
+      "description": "Konferenz anlegen, laufende Konferenzen, Konferenzteilnehmer und freie Teilnehmer; Start/Stop/Löschen und Hinzufügen/Entfernen.",
+      "source": "Nutzerupload 2, Bild 7",
+      "source_kind": "uploaded_reference",
+      "reported_source_dimensions": [
+        1366,
+        768
+      ],
+      "stored_dimensions": [
+        924,
+        520
+      ],
+      "bytes": 252269,
+      "sha256": "8f1e7b34317fa41fcd3a8a2e51be217fc06bed6beb472b6a67515fbaa8ef1231",
+      "original_sha256": null
+    },
+    {
+      "number": 28,
+      "file": "28-idecs-referenz-ansicht.png",
+      "title": "Karte mit Filtern und Layern",
+      "description": "Kartenansicht mit Filterrücksetzung, KML-Layer, Image-Layer, Zoom und Orts-/Koordinatenanzeige.",
+      "source": "Nutzerupload 2, Bild 8",
+      "source_kind": "uploaded_reference",
+      "reported_source_dimensions": [
+        1366,
+        768
+      ],
+      "stored_dimensions": [
+        924,
+        520
+      ],
+      "bytes": 501627,
+      "sha256": "c715fff9a452661068d445201503f0716fc8fab8fd7abbc90f082760a6a77c2e",
+      "original_sha256": null
+    },
+    {
+      "number": 29,
+      "file": "29-idecs-referenz-ansicht.png",
+      "title": "Weitere Funkressourcen",
+      "description": "Weitere nummerierte Funkmittel im gleichen Bedienrahmen und dasselbe virtuelle Gerätebedienteil.",
+      "source": "Nutzerupload 2, Bild 9",
+      "source_kind": "uploaded_reference",
+      "reported_source_dimensions": [
+        1366,
+        768
+      ],
+      "stored_dimensions": [
+        924,
+        520
+      ],
+      "bytes": 430848,
+      "sha256": "4107e48dd582db999ecdfac006ecd8d94d99e7472d71948c00a2d1cbf143b3f8",
+      "original_sha256": null
+    },
+    {
+      "number": 30,
+      "file": "30-idecs-referenz-ansicht.png",
+      "title": "ELW- und weitere Funkressourcen",
+      "description": "ELW-/weitere Ressourcen, darunter unterschiedliche Funkanbindungen; aktive Auswahl und Gerätebedienteil.",
+      "source": "Nutzerupload 2, Bild 10",
+      "source_kind": "uploaded_reference",
+      "reported_source_dimensions": [
+        1366,
+        768
+      ],
+      "stored_dimensions": [
+        924,
+        520
+      ],
+      "bytes": 417185,
+      "sha256": "b7b61eba099274b2d603b7448cfe63b25b0715b742b8ec6784aff6bbe6e602a7",
+      "original_sha256": null
+    },
+    {
+      "number": 31,
+      "file": "31-netcore-dashboard-entwurf-ansicht.png",
+      "title": "Erzeugter NetCore-Dashboardentwurf",
+      "description": "Dunkles Dashboard mit Ressourcen, Modul-Kacheln, Einsatz-/Kartenfeld, Queue, aktiven Rufen, Audio und PTT. Sämtliche Betriebsanzeigen sind Mockup-Inhalt.",
+      "source": "Generierter Dashboardentwurf",
+      "source_kind": "generated_design",
+      "reported_source_dimensions": [
+        1672,
+        941
+      ],
+      "stored_dimensions": [
+        924,
+        520
+      ],
+      "bytes": 493400,
+      "sha256": "0c3926e1cd31ef7213fe66c049006f65feaad9b1f12e28d41dee8be1178e2c2f",
+      "original_sha256": null
+    },
+    {
+      "number": 32,
+      "file": "32-netcore-funk-entwurf-ansicht.png",
+      "title": "Erzeugter NetCore-Funkentwurf",
+      "description": "Gewählte Gruppe, Sprecheraktivität, Ruf-/Scan-/Mithör-/SDS-/Status-/Alarm-/Konferenzaktionen, aktive Funklage und persistente Queue/Audio/PTT. Kein implementiertes Programm.",
+      "source": "Generierter Funkentwurf",
+      "source_kind": "generated_design",
+      "reported_source_dimensions": [
+        1672,
+        941
+      ],
+      "stored_dimensions": [
+        924,
+        520
+      ],
+      "bytes": 483001,
+      "sha256": "290118cce091747fd8d103f8a527721c20ed6ed68d34a6aa0a59992333700b72",
+      "original_sha256": null
+    }
+  ]
+}

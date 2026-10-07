@@ -1,0 +1,41 @@
+{
+  "date": "2026-10-06",
+  "status": "PASS",
+  "counts": {
+    "levels": 12,
+    "courses": 60,
+    "lessons": 240,
+    "practice_cases": 60,
+    "single_choice": 120,
+    "essay": 60,
+    "capstones": 12,
+    "labs": 8,
+    "book_packages": 60,
+    "book_chapters_each": 6,
+    "zip_entries": 187,
+    "pdf_pages": 135,
+    "planned_course_hours": 278
+  },
+  "checks": [
+    "course_and_lesson_id_uniqueness",
+    "valid_acyclic_prerequisites",
+    "nonempty_lessons_outcomes_practice_solutions_rubrics",
+    "question_counts_unique_ids_and_answers_match_json",
+    "individual_xml_files",
+    "book_zip_crc_six_html_chapters_titles_no_scripts",
+    "main_zip_crc",
+    "course_csv_hidden_and_category_paths",
+    "offline_html_course_lesson_counts_no_external_script",
+    "pdf_page_count_no_empty_pages_all_course_titles",
+    "all_eight_labs_executed",
+    "lab_results_equal_original_json"
+  ],
+  "limits": [
+    "no_live_moodle_import",
+    "no_moodle_browser_or_user_acceptance_test",
+    "no_tetra_radio_or_sdr_hardware_access",
+    "no_full_rf_receiver",
+    "no_production_runtime_build_or_tests",
+    "no_live_backend_or_handover_test"
+  ]
+}

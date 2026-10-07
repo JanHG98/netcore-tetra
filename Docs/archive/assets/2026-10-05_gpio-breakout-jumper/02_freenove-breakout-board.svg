@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" role="img" aria-label="Chatbild 2: Freenove Raspberry Pi GPIO Breakout">
+  <rect width="1200" height="900" fill="#f7f7f7"/>
+  
+  <g transform="translate(165 100) rotate(-4 435 330)">
+    <rect x="0" y="0" width="870" height="660" rx="24" fill="#147b42" stroke="#184d35" stroke-width="8"/>
+    <rect x="35" y="70" width="105" height="515" rx="10" fill="#48a84e"/><rect x="730" y="70" width="105" height="515" rx="10" fill="#48a84e"/>
+    <rect x="330" y="55" width="70" height="550" fill="#111"/><rect x="470" y="55" width="70" height="550" fill="#111"/>
+    <g fill="#f4d43f"><circle cx="290" cy="100" r="8"/><circle cx="290" cy="140" r="8"/><circle cx="290" cy="180" r="8"/><circle cx="580" cy="100" r="8"/><circle cx="580" cy="140" r="8"/><circle cx="580" cy="180" r="8"/></g>
+    <text x="180" y="40" font-family="sans-serif" font-size="28" fill="#fff">Breakout Board Raspberry Pi</text><text x="550" y="40" font-family="sans-serif" font-size="26" fill="#fff">BCM Number</text>
+    <text x="150" y="630" font-family="monospace" font-size="22" fill="#fff">GPIO / GND / +3V3 / +5V über Schraubklemmen</text>
+  </g>
+  <text x="120" y="790" font-family="sans-serif" font-size="22" fill="#111">Zentraler 40-Pin-Pass-Through bleibt für das SXceiver-HAT verfügbar.</text>
+
+  <rect x="40" y="820" width="1120" height="50" rx="8" fill="#ffffff" stroke="#555"/>
+  <text x="60" y="852" font-family="sans-serif" font-size="24" fill="#111">Chatbild 2: Freenove Raspberry Pi GPIO Breakout — SVG-Archivtranskription, nicht bitidentisches Original</text>
+</svg>

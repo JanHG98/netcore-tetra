@@ -1,0 +1,168 @@
+{
+  "created_at": "2026-10-06",
+  "note": "Inventar zugänglicher Original-PDFs; PDF-Binärdateien nicht Bestandteil dieses Archivcommits. Nur gezielte CLI-relevante Fundstellen geprüft.",
+  "files": [
+    {
+      "filename": "01-en_3003920308v010401p.pdf",
+      "bytes": 144412,
+      "sha256": "4d993a25e35da7b1f2291ae281cb3ea5b3a7b702ab7eb3233bdf430a2c70909d",
+      "pages": 22
+    },
+    {
+      "filename": "02-en_30039209v010701p.pdf",
+      "bytes": 280079,
+      "sha256": "cad45938bcdf2fa4e8063d4aa9e7d7c06c45f729d3c55dc033e00c27af9f2e06",
+      "pages": 46
+    },
+    {
+      "filename": "03-ts_10081201v020205p.pdf",
+      "bytes": 35992,
+      "sha256": "96df75f5ddf1c3ae4ac75f796ee97babca68fa81aca22f39ba0e0658bd57eed1",
+      "pages": 8
+    },
+    {
+      "filename": "04-en_3003921201v010202p.pdf",
+      "bytes": 312356,
+      "sha256": "4d5b56a188fb73c417d67b27da619cad2e49efb3b57306fd4ae51e140c018018",
+      "pages": 56
+    },
+    {
+      "filename": "05-en_3003920304v010301p.pdf",
+      "bytes": 143749,
+      "sha256": "8a38cc6238c6da726e4f07d7d377b2c827447a1448a60ee5ef2a126cb3a0ef9d",
+      "pages": 28
+    },
+    {
+      "filename": "06-en_3003921117v010102p.pdf",
+      "bytes": 105978,
+      "sha256": "69ce800e352b1ecfc337416fd7b54c1bdf2d9270171af519ac2f5acc1ba85ca6",
+      "pages": 18
+    },
+    {
+      "filename": "07-en_3003921114v010101p.pdf",
+      "bytes": 166316,
+      "sha256": "ba1882df71dbb84a0c4f0f7dcea1dc8df968044457da03df9290a50e8821df32",
+      "pages": 23
+    },
+    {
+      "filename": "08-es_20081202v020401m.pdf",
+      "bytes": 713476,
+      "sha256": "330f045a908eefd249fd7450e5b71bd08e8a7b20ce5b86dc9b87c9138a5c7268",
+      "pages": 139
+    },
+    {
+      "filename": "09-es_20081201v020205p.pdf",
+      "bytes": 36094,
+      "sha256": "346dc545049a7397ca86831731bbc05e96f61ff047d6e7f6b7de56da3aa408e9",
+      "pages": 8
+    },
+    {
+      "filename": "10-en_300812v020101p.pdf",
+      "bytes": 844058,
+      "sha256": "196effeaae473a98244c89538e1562daa58bb1d74cbfe7de78e58ceeafbad18b",
+      "pages": 156
+    },
+    {
+      "filename": "11-en_3003921101v010201p.pdf",
+      "bytes": 420520,
+      "sha256": "852c17ea566757e80ecf0d2718ae7839d9e218aa4384b63d1277ed7e25d86c69",
+      "pages": 44
+    },
+    {
+      "filename": "12-en_3003921006v010401p.pdf",
+      "bytes": 92414,
+      "sha256": "32b6ee43602ef88a0b5c209b1c69ad35ba8b2e660502257c2dfaa6205a346523",
+      "pages": 20
+    },
+    {
+      "filename": "13-en_3003921018v010301p.pdf",
+      "bytes": 78091,
+      "sha256": "4cc10bcd94d39201538639cefb529809729563f13f87cfe6ae52b44c253b0b8a",
+      "pages": 17
+    },
+    {
+      "filename": "14-en_3003921216v010400a.pdf",
+      "bytes": 402602,
+      "sha256": "c0ee7859f448c4072befc25905c29b751b5151d3590a880a2d654309a3ba6c02",
+      "pages": 67
+    },
+    {
+      "filename": "15-en_30039201v010601p.pdf",
+      "bytes": 956828,
+      "sha256": "788722e566098957bea1a9a5096e9dae1eace1da9f5d38c530c80230e5b9b9cb",
+      "pages": 182
+    },
+    {
+      "filename": "16-ets_30039214e01v.pdf",
+      "bytes": 223101,
+      "sha256": "2b703f3ebb883c90dab40e1b3d1a634a6acf9c9a20d468fd108ea02226c2bf2c",
+      "pages": 61
+    },
+    {
+      "filename": "17-en_30039207v030501p.pdf",
+      "bytes": 1357803,
+      "sha256": "df47af9a642b6eba7d7d5cf5fb7aa3f961e9e03bb912316bd2d189ce47344e08",
+      "pages": 216
+    },
+    {
+      "filename": "18-en_30039401v030301p.pdf",
+      "bytes": 937094,
+      "sha256": "2d9c327e5ccf1476335e1b7a4f58a0ca7afc93911c30e8aad5ed7dc9ccf3276a",
+      "pages": 169
+    },
+    {
+      "filename": "19-en_3003920313v010201p.pdf",
+      "bytes": 2803974,
+      "sha256": "b47d63853f83a6a4adda08c0e325c8ca13d358e2f8840bfba4bce430e600b1bd",
+      "pages": 191
+    },
+    {
+      "filename": "20-en_30039502v010303p.pdf",
+      "bytes": 624837,
+      "sha256": "ac716ca18082cc0fd2ee768a14f03deb48fa78a77e83751b1a6b319c7fc2106a",
+      "pages": 94
+    },
+    {
+      "filename": "21-en_3003920303v010301p.pdf",
+      "bytes": 1301402,
+      "sha256": "94ca61038b3ff826e6adcfde56e00473dd996e1a47f9f84e7b9d2aa6c3133fd2",
+      "pages": 251
+    },
+    {
+      "filename": "22-en_30039205v020701p.pdf",
+      "bytes": 1546669,
+      "sha256": "10aaf78988ae4080c3dfe90165ee7f4f3fe8eda402e09fc1e6fa0a0ad890758d",
+      "pages": 320
+    },
+    {
+      "filename": "23-en_3003920315v010500a.pdf",
+      "bytes": 6351328,
+      "sha256": "e959709667192e22d2dfeea51b48f9a579a4c107d952999056b7fad93a6d2100",
+      "pages": 380
+    },
+    {
+      "filename": "24-en_30039202v030801p.pdf",
+      "bytes": 7517442,
+      "sha256": "3f07b1e4ad73fabc16277a900006fc19844b3a882bbc2bc1d74d78f6156daf28",
+      "pages": 1445
+    },
+    {
+      "filename": "25-ETSI.pdf",
+      "bytes": 27868858,
+      "sha256": "9434dad1e7bc80ca39b0edadd8e3b9995fda5ae5f5c3dd565af05708d5059e38",
+      "pages": 4100
+    },
+    {
+      "filename": "17_04_2024_SELECTRIC-Netzwerk-VO-6.pdf",
+      "bytes": 2461491,
+      "sha256": "5ba8b26a0075aca828221d9180b5b51a47bf663b77fbacd56027d3dec1490cd6",
+      "pages": 30
+    },
+    {
+      "filename": "Sepura Software V 10.24-SC 2.0-SALT 2.pdf",
+      "bytes": 823257,
+      "sha256": "a6f5d3e6240d648c104822f475086c2555a8706c5530254213ae12392286e7b6",
+      "pages": 11
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "archive_date": "2026-10-04",
+  "source": "Sichtbare Projektreferenzen und gezielt wiedergefundene Chatdateien",
+  "notice": "Bilder sind historische KI-Konzepte. Druckmodelle sind ungesliced; physische Passung und Betrieb nicht belegt. Vorhandene Prüflogs sind Quellartefakte; heutige eigene Prüfung umfasst Datei-/ZIP-/XML-/Hashintegrität.",
+  "files": [
+    {
+      "original_name": "NetCore-TETRA RF-Patchpanel technische Zeichnung.png",
+      "archive_name": "01_rf-patchpanel-konzept-alte-masse.png",
+      "size_bytes": 1648484,
+      "sha256": "33d8d338e3c4722844176ee930979e06a8dd90431fade406432c69f3a18cb51d",
+      "dimensions_px": [
+        1942,
+        809
+      ],
+      "role": "Historisches generiertes Konzeptbild; keine Fertigungszeichnung"
+    },
+    {
+      "original_name": "Technische Zeichnung eines TETRA-RF-Patchpanels.png",
+      "archive_name": "02_rf-patchpanel-alternative-konzeptzeichnung.png",
+      "size_bytes": 1665194,
+      "sha256": "e853b43379b730b6e9a54d943a1ed59d75ffa9c26a2f6b09ebe8ff901f6df295",
+      "dimensions_px": [
+        1536,
+        1024
+      ],
+      "role": "Historisches generiertes Konzeptbild; keine Fertigungszeichnung"
+    },
+    {
+      "original_name": "NetCore TETRA Rackpanel mit Anschlüssen.png",
+      "archive_name": "03_rf-io-patchpanel-layoutkonzept.png",
+      "size_bytes": 1751961,
+      "sha256": "29776f347eae91127b775c839299f04f45c7ce2cf7cb3902f13fcef7085c42ee",
+      "dimensions_px": [
+        2172,
+        724
+      ],
+      "role": "Historisches generiertes Konzeptbild; keine Fertigungszeichnung"
+    },
+    {
+      "original_name": "NetCore_Tetra_Patchpanel_3MF_Paket.zip",
+      "archive_name": "NetCore_Tetra_Patchpanel_3MF_Paket.zip",
+      "size_bytes": 3995909,
+      "sha256": "821606d45e00a04c654b515f78c1ee0655a6844851f9b5642c0acbe1c58ed474",
+      "role": "Originales bereitgestelltes CAD-/3MF-Artefakt; kein Hardware- oder Drucknachweis"
+    },
+    {
+      "original_name": "NetCore_Tetra_Patchpanel_A1_Mehrfarbig.3mf",
+      "archive_name": "NetCore_Tetra_Patchpanel_A1_Mehrfarbig.3mf",
+      "size_bytes": 875662,
+      "sha256": "1a1ed07b01c41176227d60cd7e42d7123dd09bd1203fc13b7b4bf2e7b943c47e",
+      "role": "Originales bereitgestelltes CAD-/3MF-Artefakt; kein Hardware- oder Drucknachweis"
+    },
+    {
+      "original_name": "ZUERST_DRUCKEN_Neutrik_Passformtest.3mf",
+      "archive_name": "ZUERST_DRUCKEN_Neutrik_Passformtest.3mf",
+      "size_bytes": 304539,
+      "sha256": "864c66a2eebee3dfbd5a695ef39819521d3b2d6b0635ccc09428526845697683",
+      "role": "Originales bereitgestelltes CAD-/3MF-Artefakt; kein Hardware- oder Drucknachweis"
+    },
+    {
+      "original_name": "NetCore_Tetra_Patchpanel_v1/README_Druck_und_Montage.md",
+      "archive_name": "README_Druck_und_Montage.md",
+      "size_bytes": 14262,
+      "sha256": "a31ea8113802dfa9de510fb52357f39f432675dea514f88af13ee99d76238959",
+      "role": "Unveränderter Auszug aus Originalpaket"
+    },
+    {
+      "original_name": "NetCore_Tetra_Patchpanel_v1/3MF_Validierung.json",
+      "archive_name": "3MF_Validierung.json",
+      "size_bytes": 6882,
+      "sha256": "12a821e4c971bbd4f4ec93a3112cda80615cb9b8a082fb7a7cc8c835034f3b34",
+      "role": "Unveränderter Auszug aus Originalpaket"
+    },
+    {
+      "original_name": "NetCore_Tetra_Patchpanel_v1/Geometriepruefung.json",
+      "archive_name": "Geometriepruefung.json",
+      "size_bytes": 9360,
+      "sha256": "efe390f97dd9e2fe4816ef75c27d2a8873b0d7fc88da03cccf9335a1b2447093",
+      "role": "Unveränderter Auszug aus Originalpaket"
+    },
+    {
+      "original_name": "NetCore_Tetra_Patchpanel_v1/Lochkoordinaten_mm.csv",
+      "archive_name": "Lochkoordinaten_mm.csv",
+      "size_bytes": 3355,
+      "sha256": "98298ac9ff02163fe190173c0ef0aed86d410d40301344c5abdfe11e77b90312",
+      "role": "Unveränderter Auszug aus Originalpaket"
+    }
+  ]
+}
