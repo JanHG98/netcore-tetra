@@ -3,40 +3,37 @@
 | Feld | Wert |
 | --- | --- |
 | Roadmap-ID | NETCORE-MASTER-01 |
-| Erstellt / aktualisiert | 2026-10-05, Europe/Berlin |
+| Erstellt / aktualisiert | 2026-10-05 / 2026-10-07, Europe/Berlin |
 | Geltungsbereich | Gesamtes NetCore-Tetra-Repository: TBS / Funkstack, Core, Deployment, Betrieb, IAM, Drive, Plugins und weitere Integrationen |
-| Geprüfter Ausgangsstand | `main@e5d825b33db2e1fce14bcb2cc23e73c241873a18`; `Archiving@9af2de92b120dc612d83a17f78eeee9a97f2f775` |
+| Geprüfter Ausgangsstand | Z01: `main@dae9363062a1442664a083e1fc32e6944b3be9a6`, historische Quelle `bbf039729b9b05f8d623b11195ca24a124f68d16`; Integration `67b2f0d6e2fbcbf7013ee9b0dae9b2a25c2d9315` auf `feature/z01-deployment-consolidation` |
 | Ergänzende Gruppenprüfung | `main@07609fb56f412ebe6e36655323e8fc6359cf90ec`, 2026-10-05; statischer Befund für Z02.5 |
 | Planungsstand | Reihenfolge vom Nutzer zur zentralen Ablage freigegeben; technische Aufgaben bleiben offen, soweit kein eigener Nachweis vorliegt |
-| Aktueller erster Schritt | **Z01.1: fehlende Deployment- / Syslog-Arbeit gegen aktuelles main abgleichen und den Integrationsplan vorbereiten** |
+| Aktueller erster Schritt | **Z01.4: Installation, Upgrade und Recovery vorbereiten; zuvor den geprüften Z01.1–Z01.3-Stand per PR übernehmen und native CI-Ergebnisse prüfen** |
 | Zeitplanung | Arbeitsblöcke und Abnahmebedingungen; keine zugesagten Kalendertermine |
 
 **Dies ist der zentrale Einstieg für „Was machen wir als Nächstes?“.** Die Gesamtpriorität steht hier. Fachroadmaps beschreiben den jeweiligen Umfang und die technische Abnahme. Ältere Phasenlisten oder archivierte Gesprächsstände ersetzen diese Reihenfolge nicht. Vor einer Empfehlung den aktuellen Repositorystand und die zuletzt dokumentierten Ergebnisse prüfen; spätere ausdrückliche Nutzerentscheidungen haben Vorrang.
 
 ## 1. Aktueller nächster Schritt
 
-**Z01.1 – kontrollierte Wiederaufnahme der fehlenden Deployment- und Syslog-Entwicklung.**
+**Z01.4 – Installation, Upgrade und Recovery auf dem gemeinsamen Stand abnehmen.**
 
-Die Vorprüfung vom 2026-10-05 belegt eine Übernahmelücke: Discovery, Imagebuilder, Pi-VPN-Policy und die neuere Syslog-Pipeline liegen im historischen Feature-Stand `bbf039729b9b05f8d623b11195ca24a124f68d16`, fehlen aber im geprüften `main`. [PR #57](https://github.com/JanHG98/netcore-tetra/pull/57) wurde in `feature/openlab-discovery-deployment` integriert. Eine Integration dieser Entwicklung in den heutigen Hauptzweig ist damit nicht belegt.
+Z01.1 ist abgeschlossen: die vollständigen Bäume `main@dae9363` und `bbf0397` wurden direkt verglichen (2.655 Pfade, 75 historisch fehlende Dateien, 72 unterschiedliche gemeinsame Dateien). Übernahmepakete, Inhaltskonflikte, konkrete Konfigurationsentscheidungen, Tests und Rückwege stehen im [Z01-Integrationsbericht](Docs/integration/Z01-2026-10-07/README.md), einschließlich vollständiger Datei-/SHA-Tabellen.
 
-Die nächste Aufgabe ist ein vollständiger, inhaltlicher Abgleich mit einem konkreten Integrationsplan:
+Z01.2 ist auf `feature/z01-deployment-consolidation` implementiert und lokal geprüft: Deployment/Discovery/Imagebuilder/Pi-VPN sowie Syslog aufgenommen, aktuelle UI/Fachänderungen erhalten. Z01.3 vereinheitlicht 26 Inventardienste, Katalog/Registry/Health/Fallback, erzwingt semantische Readiness vor Folgepaketen und bewahrt vorhandene Konfigurationen. Gemeinsames Quellgate und isolierte Unit-/HTTP-/Wire-/Native-/Browserprüfungen bestehen. Die [Nachweise](Docs/integration/Z01-2026-10-07/validation.json) nennen Umfang, übersprungenen Unix-Workertransport und offene Grenzen.
 
-1. Aktuelles `main` und den historischen Feature-Commit festhalten. **Die beiden vollständigen Tip-Bäume und erforderlichen Dateiinhalte direkt vergleichen.** Der [GitHub-Vergleich](https://github.com/JanHG98/netcore-tetra/compare/e5d825b33db2e1fce14bcb2cc23e73c241873a18...bbf039729b9b05f8d623b11195ca24a124f68d16) zeigt Änderungen seit der gemeinsamen Basis und ist allein kein vollständiger Vergleich mit dem heutigen main.
-2. Fehlende Dateien, überlappende Änderungen und Integrationskonflikte für Deployment / Discovery, Imagebuilder, VPN-Policy, Observability und deren Tests erfassen. Neuere UI- und sonstige main-Änderungen erhalten; keinen ganzen historischen Commitstapel ungeprüft übernehmen.
-3. Repository-Inventar, generierten Katalog und zugängliche Installationsnachweise mit Hostrolle, Quell-SHA, Binaryversion und Konfiguration abgleichen. Nicht zugängliche Live-Daten als unbekannt markieren; keine aktuelle Flotte aus alten Betreiberangaben ableiten.
-4. Einen prüfbaren Integrationsplan mit betroffenen Dateien, Reihenfolge, Konfigurationsübernahme, benötigten Tests und Rückweg erstellen. Vorhandene gültige Befunde wiederverwenden; noch offene Inhalte gezielt prüfen.
+**Vor einer Anlageninstallation:** PR-Übernahme und GitHub-CI am tatsächlichen Commit prüfen. Quell-/Branchabschluss bedeutet keine bereits erfolgte main-Übernahme, keine installierte 26-Dienst-Flotte und keinen vollständigen ARM64-/Pi-/NAS-/On-Air-Nachweis. Native Ubuntu-VM-/Image-Personalisierungssmokes und Unix-Workertransport sind gesondert in CI vorgesehen; tatsächlicher ARM64-NetCore-Imagebuild und physischer Pi/SXceiver bleiben Z01.4.
 
-**Abnahme Z01.1:** Eine Vergleichstabelle und ein Integrationsplan mit Quellen-SHAs, Konflikten, bekannten Abnahmen und klar benannten Lücken liegen vor. Fehlender Live-Zugriff blockiert den Quellvergleich nicht. Danach folgt **Z01.2: die geplante Integration umsetzen und prüfen**. Die abgeschlossene Analyse allein bedeutet nicht, dass Discovery oder Syslog schon in main integriert sind.
+**Nächster ausführbarer Betriebsauftrag:** tatsächliche Hostrollen, Quell-SHAs, Binaryversionen, Units/ExecStart und Konfigurationen erfassen; Standort-Gateway-Zuordnung (`10.0.1.179` versus Backend-Beispielnetz `10.0.20.*`) prüfen; geeignete Deployment-VM, NAS-Freigabe und Pi/SXceiver für kontrollierte Neu-/Wiederholungsinstallation, Upgrade, Ausfall und Rückweg bereitstellen. Der aktuelle Auftrag hat keine Betreiberhosts geändert.
 
-Eine Frage nach dem nächsten Schritt verlangt zunächst diese Empfehlung. Die tatsächliche Umsetzung richtet sich nach dem aktuellen Auftrag und bereits erteilten Freigaben; diese Roadmap ist keine pauschale Erlaubnis für Installationen oder Änderungen an laufenden Anlagen.
+Gezielte Z02-P0-Fixes bleiben parallel möglich. Die Implementierung von Z01.1–Z01.3 behebt keine Restore-/Gruppenhandler-/IP-Routenschutz-Lücken automatisch.
 
 ## 2. Belegter Ausgangsstand und seine Grenzen
 
-Die folgenden Befunde beziehen sich auf die oben genannten Quellstände; die Gruppensteuerung wurde am ergänzend genannten main-Stand geprüft. Sie sind vor späteren Statusmeldungen gegen neue Änderungen zu prüfen.
+Historischer Ausgangsbefund vom 05.10.2026: `main@e5d825b33db2e1fce14bcb2cc23e73c241873a18`, Archiv `9af2de92b120dc612d83a17f78eeee9a97f2f775`; Gruppenprüfung zusätzlich an `07609fb56f412ebe6e36655323e8fc6359cf90ec`. Die Tabelle bewahrt diesen Befund. Der aktuelle Z01-Abschluss und seine Grenzen stehen in Abschnitt 1 und im Integrationsbericht; die alte Übernahmelücke/25-24-Drift ist auf dem Z01-Arbeitsbranch behoben.
 
 | Bereich | Belegter Stand am 2026-10-05 | Konsequenz |
 | --- | --- | --- |
-| Branches / Archiv | Aktuelle Branchliste: `main` und `Archiving`; Archivzweig ergänzt Gesprächsdokumentation / Assets, keinen fehlenden Deployment-Dienst | Archiv als Wissensquelle nutzen; alte Vorschläge von späteren Festlegungen unterscheiden |
+| Branches / Archiv | Branchliste am 05.10.: `main` und `Archiving`; Archivzweig ergänzt Gesprächsdokumentation / Assets, keinen fehlenden Deployment-Dienst | Archiv als Wissensquelle nutzen; alte Vorschläge von späteren Festlegungen unterscheiden |
 | Deployment / Discovery / Syslog | Historischer Feature-Stand enthält `system-backend/deployment-core/`, Image- / VPN-Bausteine, neuere Observability-Discovery und rsyslog- / Archivpakete; diese fehlen im geprüften main | Z01 zuerst; es handelt sich um vorhandene Entwicklungsarbeit mit fehlender Übernahme |
 | Bestandsdrift | [Inventory](deploy/open-lab/inventory.example.toml): 25 Dienste; [generierter Katalog](deploy/open-lab/generated/service-catalog.json) und [statischer Audit](Docs/generated/full-system-integration-audit.md): 24; älterer Text nennt 17 / 18 | Inventory, Generatoren, Endpunkt- / Fallbackmatrix und Texte konsistent machen; keine Live-Dienstzahl daraus behaupten |
 | TBS / Core | Funkstack und zahlreiche zentrale Dienste vorhanden; Mock- / statische Prüfungen und echte Endgeräteabnahme sind getrennte Nachweisstufen | Aktive Runtimepfade, Service-Matrix, Fachfunktionen und Ausfälle abnehmen |
@@ -56,7 +53,7 @@ Alle folgenden technischen Arbeitsblöcke sind **offen / geplant**, soweit die S
 
 | ID | Priorität / Zeitpunkt | Arbeitsblock | Abhängigkeit | Abschluss / nächster Übergang |
 | --- | --- | --- | --- | --- |
-| Z01 | P0 · sofort, erster Block | Repository und Installation konsolidieren: Deployment / Discovery / Imagebuilder / VPN / Syslog übernehmen; Bestandsdrift, Ready-Schranke und CI schließen | Keine; Vorprüfung vorhanden | Quellen / Konfigurationen zugeordnet; Integration geprüft; Installation und Upgrade reproduzierbar; Schritte Z01.1–Z01.4 dokumentiert |
+| Z01 | P0 · aktueller erster Block | Z01.1 Quellenvergleich abgeschlossen; Z01.2/01.3 implementiert und lokal geprüft; Z01.4 Installation / Upgrade / Recovery offen | PR-Übernahme / native CI vor Anlagenrollen; tatsächliche Host-/Konfigurationsnachweise erforderlich | [Z01-Bericht](Docs/integration/Z01-2026-10-07/README.md); Quellgate und lokale Tests PASS; reale Betriebsabnahme bleibt offen |
 | Z02 | P0 · sofort, gezielt parallel zu Z01 | Beide Restore-Fixes, Schutz von Management- / Packet-Core-Netzen und tatsächliche Ausführung zentraler Gruppenzuweisungen auf der TBS umsetzen; aktive SAP- / Downlinkwege prüfen | Aktueller Funk- / Gateway-Code; technische Änderungen getrennt integrierbar | Gezielte positive / negative Regressionen; keine doppelte Sprechfreigabe, Uplink-Watchdog aktiv, keine schädliche TUN-Route; Gruppenaufträge mit fachlichem Ergebnis statt stillem Ignorieren |
 | Z03 | P0 · erstes Systemgate nach Z01 / Z02 | Einzelzelle und Core-Anbindung abnehmen; lokale Funkfunktionen, Dual Carrier, Matrix und Edge-Fallback | Z01 / Z02 für den gemeinsamen geprüften Stand | Reproduzierbare Labor- und On-Air-Nachweise mit Motorola / Sepura; Build, Konfiguration, Gerätefirmware und Logs festgehalten |
 | Z04 | P1 · Architektur ab jetzt, anschließend Pilot | Zentralen IAM- / RBAC-Plan umsetzen: Inventur / Rollenvertrag, Identity-Pilot, eine TBS und Control Room, danach Dienste | M0 / M1 können parallel beginnen; Pilot auf isolierter, prüfbarer Baseline; breite Migration nach Pilotabnahme | Anmeldung, Ressourcenrechte, Sperren, Maschinenidentitäten, Ausfall und Rückweg funktionieren; Details IAM M0–M8 |
@@ -76,9 +73,9 @@ Arbeitsorganisation: Z01 / Z02 zuerst fokussiert abschließen; IAM-Inventur und 
 
 | Aufgabe | Status am 2026-10-05 | Ergebnis / Abnahme |
 | --- | --- | --- |
-| Z01.1 · vollständiger Quellvergleich und Integrationsplan | Offen; Übernahmelücke und Inventardrift in der Vorprüfung belegt | Direkter Tip-Vergleich und Integrationsplan nach Abschnitt 1; vorhandene gültige Quellenprüfung nicht wiederholen |
-| Z01.2 · fehlende Entwicklung kontrolliert übernehmen | Offen | Deployment / Discovery, Imagebuilder / VPN und Syslog integriert; aktuelle UI, Fachänderungen und lokale Konfigurationen erhalten; passende Tests bestanden |
-| Z01.3 · Inventory, Ready-Schranke und CI vereinheitlichen | Offen; 25 / 24-Drift und verworfene Ready-Rückgabe im [Deploy-Runner](deploy/open-lab/netcore-deploy.py) belegt | Generatoren / Katalog / Health- und Fallbackmatrix konsistent; negatives Ready-Ergebnis beendet fehlgeschlagenes Deployment; gemeinsame Prüfungen erreichbar |
+| Z01.1 · vollständiger Quellvergleich und Integrationsplan | Erledigt gemäß Quellabnahme 2026-10-07 | [Vollständiger Vergleich, Entscheidungen und Plan](Docs/integration/Z01-2026-10-07/README.md) mit beiden SHAs und Grenzen; gültigen Vergleich nicht erneut durchführen |
+| Z01.2 · fehlende Entwicklung kontrolliert übernehmen | Implementiert / lokal geprüft auf Z01-Arbeitsbranch; PR-/native CI-Abnahme separat | Deployment / Discovery, Imagebuilder / VPN und Syslog aufgenommen; aktuelle UI und Standortwerte erhalten; lokale Tests bestanden, Anlageninstallation offen |
+| Z01.3 · Inventory, Ready-Schranke und CI vereinheitlichen | Implementiert / gemeinsames Quellgate PASS 2026-10-07; CI-Lauf je PR-SHA prüfen | 26er Registry / Inventory / Katalog / Matrix konsistent; semantisch negatives Ready beendet Deployment; Config-Erhalt und Drift-/Negativfälle geprüft; gemeinsame CI erreichbar |
 | Z01.4 · Installation, Upgrade und Recovery abnehmen | Offen | Neu- / Wiederholungsinstallation, Controller- und NAS-Ausfall, begrenzte Logpuffer / Archivprüfung; vollständiger ARM64-Build und echter Pi-/SXceiver-Boot mit VPN-Wechsel; dokumentierter Rückweg |
 
 Historische Tests des Imagebuilders belegen Teile der Image-Personalisierung und VM-Installation. Sie ersetzen keinen vollständigen NetCore-Image-Build und keinen physischen Pi-/SXceiver-Test. Quellarchive, Binärartefakte und OS-Images erhalten jeweils passende Versions- / Prüfsummennachweise; nach gemeinsamer Abnahme einen konsolidierten Release festlegen.
@@ -93,7 +90,7 @@ Historische Tests des Imagebuilders belegen Teile der Image-Personalisierung und
 
 ### Z02.5 – zentrale Gruppenzuweisungen auf der TBS umsetzen
 
-**Ziel:** Alle unterstützten Gruppenaufträge vom Group Core werden auf der zuständigen Basisstation fachlich umgesetzt und mit einem korrelierten Ergebnis beantwortet. Sie dürfen nicht im allgemeinen Zweig für unbekannte / nicht unterstützte Befehle verschwinden. Dieser Auftrag ergänzt die Planung; die technische Behebung ist noch offen. **Z01.1 bleibt der erste Gesamtschritt**, Z02.5 kann als gezielte P0-Arbeit parallel erfolgen.
+**Ziel:** Alle unterstützten Gruppenaufträge vom Group Core werden auf der zuständigen Basisstation fachlich umgesetzt und mit einem korrelierten Ergebnis beantwortet. Sie dürfen nicht im allgemeinen Zweig für unbekannte / nicht unterstützte Befehle verschwinden. Dieser Auftrag ergänzt die Planung; die technische Behebung ist noch offen. **Z01.4 ist nach der Quellenkonsolidierung der nächste Z01-Schritt**, Z02.5 kann als gezielte P0-Arbeit parallel erfolgen.
 
 **Belegter Anschlussbedarf an `main@07609fb56f412ebe6e36655323e8fc6359cf90ec`:** [Group Core](system-backend/group-core/src/state.rs), [Befehlsvertrag](crates/tetra-entities/src/net_control/commands.rs) und [TBS-Worker](crates/tetra-entities/src/net_control_room/worker.rs) kennen `GroupAccessPolicyApply` und `GroupDgnaApply` bereits. Im [MM-Dispatcher](crates/tetra-entities/src/mm/mm_bs.rs) fehlen beide Handler. Der vorhandene lokale `do_dgna`-Pfad aktualisiert Gruppenstände und reiht eine Funknachricht ein; Terminalantworten werden bisher nur protokolliert. Die [Capability-Ankündigung](crates/tetra-entities/src/net_control_room/protocol.rs) meldet `dgna=true`, aber `group_policy=false`. Das ist eine statische Quellprüfung, kein Nachweis einer aktuell laufenden Installation.
 
@@ -170,3 +167,4 @@ Regelmäßige NetCore-Projektstatusläufe verwenden diese Gesamtroadmap als Eins
 | --- | --- | --- |
 | 2026-10-05 | Nutzerfreigegebene Gesamtfolge zentral abgelegt; geprüfte Übernahmelücke / Stabilitätsaufgaben, parallele IAM- / Drive-Stränge, Abnahmegates und Fortsetzungsregeln dokumentiert | Dokumentation; keine technische Umsetzung oder neue Live-Abnahme durch diesen Auftrag |
 | 2026-10-05 | Auf Nutzerwunsch Z02.5 als P0 ergänzt: zentrale Gruppenzuweisungen / DGNA auf der TBS umsetzen; fehlende MM-Handler an `main@07609fb` belegt; Rückweg, Fähigkeiten, Fehler / Wiederkehr und Endgeräteabnahme festgelegt | Roadmap-Ergänzung und statische Quellprüfung; Handler noch nicht implementiert, keine neue Lab- / On-Air-Abnahme; Z01.1 bleibt erster Gesamtschritt |
+| 2026-10-07 | Z01.1 vollständiger Tipvergleich abgeschlossen; Z01.2 Deployment/Discovery/Imagebuilder/VPN/Syslog kontrolliert aufgenommen; Z01.3 26er Inventory, semantische Ready-Gates, Config-Erhalt, Audit und CI integriert; nächste Aufgabe Z01.4 | Baseline main dae9363 / historisch bbf0397, Implementierung auf feature/z01-deployment-consolidation; Quellgate und isolierte lokale Tests PASS; PR-/native CI-/Anlagen-/On-Air-Abnahme getrennt und offen |

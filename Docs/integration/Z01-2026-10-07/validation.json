@@ -1,0 +1,52 @@
+{
+  "reviewed_main": "dae9363062a1442664a083e1fc32e6944b3be9a6",
+  "historical": "bbf039729b9b05f8d623b11195ca24a124f68d16",
+  "branch": "feature/z01-deployment-consolidation",
+  "level": "source and isolated local automated runtime/browser; no operator fleet access",
+  "results": {
+    "z01_gate": "PASS",
+    "inventory_services": 26,
+    "node_gateway_targets": 25,
+    "fallback_modes": 26,
+    "e2e_scenario_declarations": 13,
+    "deployment": {
+      "total": 50,
+      "passed": 49,
+      "skipped": 1,
+      "skip_reason": "AF_UNIX worker transport unavailable in this execution environment"
+    },
+    "e2e_units_passed": 22,
+    "alert_tests_passed": 77,
+    "hardware_shutdown_passed": 1,
+    "syslog_unit_passed": 18,
+    "syslog_real_wire_passed": 2,
+    "observability_rust_passed": 7,
+    "observability_native_and_browser": "PASS",
+    "deployment_browser_simulated_installer_imagebuild": "PASS",
+    "browser_checks": {
+      "shared": 93,
+      "dashboard": 137,
+      "core": 405,
+      "media": 390,
+      "workflow": 15,
+      "auxiliary": 431,
+      "edge": "PASS",
+      "brew_rust_renderer": 1
+    }
+  },
+  "pending": [
+    "GitHub CI results at the published PR commit",
+    "native Unix-socket/VM/ARM64-personalization smoke in suitable environment",
+    "Z01.4 operator installations, actual network mapping, NAS, full ARM64 image and physical Pi/SXceiver boot",
+    "radio end-to-end and on-air acceptance"
+  ],
+  "implementation_commit": "67b2f0d6e2fbcbf7013ee9b0dae9b2a25c2d9315",
+  "runtime_test_commit": "e996e008a56d00ccab153a39f6c203ac05223358",
+  "implementation_tree": "27149d425213c6a0ca0e21f4f85b3fe18c2f4928",
+  "runtime_test_commit_scope": "Local test commit; published implementation has identical runtime source. Subsequent source-comparison tool change only normalizes CSV line endings.",
+  "publication": {
+    "date": "2026-10-08",
+    "method": "connected GitHub Git-data API",
+    "tree_matches_reviewed_local_commit": "fa04962a799882df75214edfc2f9ee2ca3e069a2"
+  }
+}

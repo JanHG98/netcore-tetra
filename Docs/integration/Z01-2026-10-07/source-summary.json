@@ -1,0 +1,23 @@
+{
+  "commits": {
+    "main": "dae9363062a1442664a083e1fc32e6944b3be9a6",
+    "historical": "bbf039729b9b05f8d623b11195ca24a124f68d16"
+  },
+  "trees": {
+    "main": "9a057c9350d664d2fca4fee2c6ca3ef485cf4133",
+    "historical": "8a0df1cd062c4001070e4aece546d7dbd19ecb41"
+  },
+  "entries": {
+    "main": 2580,
+    "historical": 2234,
+    "union": 2655
+  },
+  "counts": {
+    "different": 72,
+    "historical_only": 75,
+    "identical": 2087,
+    "main_only": 421
+  },
+  "method": "Direct recursive tip-tree comparison; file modes, types and content object IDs; no merge-base diff",
+  "scope": "Repository source evidence only; no live installation, binary or radio acceptance"
+}
