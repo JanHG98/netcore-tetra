@@ -1,0 +1,27 @@
+[Unit]
+Description=NetCore syslog receiver (TCP/UDP 514, RELP 20514)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=netcore-observability
+Group=netcore-observability
+ExecStartPre=/usr/bin/python3 /opt/netcore-observability/logging/log_store.py check
+ExecStartPre=/usr/sbin/rsyslogd -N1 -f /etc/netcore/receiver.rsyslog.conf
+ExecStart=/usr/sbin/rsyslogd -n -i /run/netcore-syslog/rsyslog.pid -f /etc/netcore/receiver.rsyslog.conf
+Restart=on-failure
+RestartSec=5
+RuntimeDirectory=netcore-syslog
+UMask=0027
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/netcore-observability/logs
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target

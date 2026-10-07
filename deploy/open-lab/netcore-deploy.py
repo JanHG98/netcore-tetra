@@ -61,6 +61,7 @@ class Service:
     config_template: Path
     config_target: str
     depends_on: tuple[str, ...]
+    security_mode: str = "open_lab"
 
     # Was: Führt den Arbeitsschritt `base_url` für base url aus.
     # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
@@ -82,6 +83,7 @@ class Inventory:
     remote_source_root: str
     health_timeout_secs: int
     services: tuple[Service, ...]
+    ready_timeout_secs: int = 60
 
     # Was: Führt den Arbeitsschritt `by_name` für by name aus.
     # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
@@ -112,6 +114,7 @@ def load_inventory(path: Path) -> Inventory:
             config_template=Path(item["config_template"]),
             config_target=item["config_target"],
             depends_on=tuple(item.get("depends_on", [])),
+            security_mode=str(item.get("security_mode", "open_lab")),
         )
         for item in raw.get("services", [])
     )
@@ -125,6 +128,7 @@ def load_inventory(path: Path) -> Inventory:
         remote_source_root=str(raw.get("remote_source_root", "/opt/netcore-tetra-src")),
         health_timeout_secs=int(raw.get("health_timeout_secs", 8)),
         services=services,
+        ready_timeout_secs=int(raw.get("ready_timeout_secs", 60)),
     )
 
 
@@ -140,15 +144,22 @@ def validate(inventory: Inventory) -> list[str]:
         errors.append("this deployer only supports the explicitly isolated open_lab mode")
     if not inventory.services:
         errors.append("inventory contains no services")
+    if not 1 <= inventory.health_timeout_secs <= 300:
+        errors.append("health_timeout_secs must be between 1 and 300")
+    if not 1 <= inventory.ready_timeout_secs <= 3600:
+        errors.append("ready_timeout_secs must be between 1 and 3600")
 
     names: set[str] = set()
     sockets: set[tuple[str, int]] = set()
+    ports: set[int] = set()
     by_name = inventory.by_name
     # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
     # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for service in inventory.services:
         if not SERVICE_NAME_RE.fullmatch(service.name):
             errors.append(f"invalid service name: {service.name!r}")
+        if service.security_mode not in {"open_lab", "token"}:
+            errors.append(f"{service.name}: unsupported security_mode")
         if service.name in names:
             errors.append(f"duplicate service name: {service.name}")
         names.add(service.name)
@@ -156,6 +167,9 @@ def validate(inventory: Inventory) -> list[str]:
         if socket in sockets:
             errors.append(f"duplicate management socket: {service.host}:{service.port}")
         sockets.add(socket)
+        if service.port in ports:
+            errors.append(f"duplicate management port: {service.port}; URL rendering requires unique ports")
+        ports.add(service.port)
         if not 1 <= service.port <= 65535:
             errors.append(f"invalid port for {service.name}: {service.port}")
         # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
@@ -207,6 +221,8 @@ def topological_order(inventory: Inventory, selected: Iterable[str] | None = Non
         # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
         # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for dependency in current.depends_on:
+            if dependency not in by_name:
+                raise DeployError(f"{current.name}: unknown dependency {dependency}")
             if dependency not in closure:
                 closure.add(dependency)
                 pending.append(dependency)
@@ -261,9 +277,9 @@ def render_config(template: str, inventory: Inventory) -> str:
 
 # Was: Diese Funktion schreibt generated.
 # Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
-def write_generated(inventory: Inventory) -> None:
-    GENERATED.mkdir(parents=True, exist_ok=True)
-    configs = GENERATED / "configs"
+def write_generated(inventory: Inventory, output_dir: Path = GENERATED) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    configs = output_dir / "configs"
     configs.mkdir(parents=True, exist_ok=True)
     # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
     # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
@@ -291,20 +307,21 @@ def write_generated(inventory: Inventory) -> None:
                 "metrics": service.base_url + "/metrics",
                 "unit": service.unit,
                 "depends_on": list(service.depends_on),
+                "security_mode": service.security_mode,
             }
             for service in inventory.services
         ],
     }
-    (GENERATED / "service-catalog.json").write_text(json.dumps(catalog, indent=2) + "\n", encoding="utf-8")
-    with (GENERATED / "ports.csv").open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.writer(handle)
+    (output_dir / "service-catalog.json").write_text(json.dumps(catalog, indent=2) + "\n", encoding="utf-8")
+    with (output_dir / "ports.csv").open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle, lineterminator="\n")
         writer.writerow(["service", "host", "port", "webui", "unit"])
         # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
         # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
         for service in inventory.services:
             writer.writerow([service.name, service.host, service.port, service.base_url + "/", service.unit])
     hosts = [f"{service.host}\tnetcore-{service.name}" for service in inventory.services]
-    (GENERATED / "hosts.example").write_text("\n".join(hosts) + "\n", encoding="utf-8")
+    (output_dir / "hosts.example").write_text("\n".join(hosts) + "\n", encoding="utf-8")
     dot = ["digraph netcore_open_lab {", "  rankdir=LR;"]
     # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
     # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
@@ -315,7 +332,23 @@ def write_generated(inventory: Inventory) -> None:
         for dependency in service.depends_on:
             dot.append(f'  "{dependency}" -> "{service.name}";')
     dot.append("}")
-    (GENERATED / "dependency-graph.dot").write_text("\n".join(dot) + "\n", encoding="utf-8")
+    (output_dir / "dependency-graph.dot").write_text("\n".join(dot) + "\n", encoding="utf-8")
+
+
+def check_generated(inventory: Inventory, output_dir: Path = GENERATED) -> list[str]:
+    """Compare deterministic assets without repairing drift during a check."""
+    with tempfile.TemporaryDirectory(prefix="netcore-generated-") as temporary:
+        expected = Path(temporary)
+        write_generated(inventory, expected)
+        required = {path.relative_to(expected) for path in expected.rglob("*") if path.is_file()}
+        actual = {path.relative_to(output_dir) for path in output_dir.rglob("*")
+                  if path.is_file() and not path.name.endswith((".tar.gz", ".tar.gz.sha256"))}
+        errors = [f"obsolete generated asset: {path}" for path in sorted(actual - required)]
+        for relative in sorted(required):
+            candidate = output_dir / relative
+            if not candidate.is_file() or candidate.read_bytes() != (expected / relative).read_bytes():
+                errors.append(f"missing or stale generated asset: {relative}")
+        return errors
 
 
 # Was: Führt den Arbeitsschritt `bundle` für bundle aus.
@@ -375,7 +408,7 @@ def run(command: list[str], *, dry_run: bool) -> None:
 
 # Was: Diese Funktion wendet den vorgesehenen Arbeitsschritt.
 # Warum: Die Änderung wird dadurch nur über einen definierten und prüfbaren Weg wirksam.
-def apply(inventory: Inventory, selected: list[str], *, dry_run: bool) -> None:
+def apply(inventory: Inventory, selected: list[str], *, dry_run: bool, replace_config: bool = False) -> None:
     write_generated(inventory)
     order = topological_order(inventory, selected or None)
     with tempfile.TemporaryDirectory(prefix="netcore-deploy-") as temp:
@@ -391,12 +424,17 @@ def apply(inventory: Inventory, selected: list[str], *, dry_run: bool) -> None:
             remote = " && ".join(
                 [
                     "set -euo pipefail",
+                    (f"{{ netcore_had_config=0; netcore_config_backup=''; "
+                     f"if test -f {shlex.quote(service.config_target)}; then netcore_had_config=1; "
+                     f"netcore_config_backup=$(mktemp /tmp/netcore-config.XXXXXXXX); "
+                     f"cp -p -- {shlex.quote(service.config_target)} \"$netcore_config_backup\"; fi; }}"),
+                    "trap " + shlex.quote(f'if test -n "$netcore_config_backup" && test -f "$netcore_config_backup"; then cp -p -- "$netcore_config_backup" {shlex.quote(service.config_target)}; rm -f -- "$netcore_config_backup"; fi') + " EXIT",
                     f"rm -rf {shlex.quote(inventory.remote_source_root)}",
                     f"mkdir -p {shlex.quote(inventory.remote_source_root)}",
                     f"tar -xzf {shlex.quote(remote_bundle)} -C {shlex.quote(inventory.remote_source_root)} --strip-components=1",
                     f"cd {shlex.quote(inventory.remote_source_root)}",
                     f"bash {shlex.quote(str(service.install))}",
-                    f"install -o root -g {shlex.quote(service.user)} -m 0640 {shlex.quote(rendered)} {shlex.quote(service.config_target)}",
+                    config_install_command(service, rendered, replace_config=replace_config),
                     f"systemctl restart {shlex.quote(service.unit)}",
                     f"systemctl is-active --quiet {shlex.quote(service.unit)}",
                     f"rm -f {shlex.quote(remote_bundle)}",
@@ -404,7 +442,40 @@ def apply(inventory: Inventory, selected: list[str], *, dry_run: bool) -> None:
             )
             run(ssh_command(inventory, service, remote), dry_run=dry_run)
             if not dry_run:
-                check_health(service, inventory.health_timeout_secs, ready=True)
+                wait_ready(service, inventory.health_timeout_secs, inventory.ready_timeout_secs)
+
+
+def config_install_command(service: Service, rendered: str, *, replace_config: bool) -> str:
+    """Keep host settings on update; explicit replacement keeps a dated rollback copy."""
+    target = shlex.quote(service.config_target)
+    install = (f"install -o root -g {shlex.quote(service.user)} -m 0640 "
+               f"{shlex.quote(rendered)} {target}")
+    if replace_config:
+        backup = (f'if test "$netcore_had_config" = 1; then cp -p -- "$netcore_config_backup" '
+                  f"{target}.pre-netcore-$(date -u +%Y%m%dT%H%M%S)-$$; "
+                  'rm -f -- "$netcore_config_backup"; fi')
+        return backup + " && " + install
+    # A service installer can create its initial file. Remember whether the host
+    # already had one so new installations receive rendered endpoints. Alert's
+    # generated local token remains in its separate EnvironmentFile.
+    fresh_install = install
+    return (f'if test "$netcore_had_config" = 1; then cp -p -- "$netcore_config_backup" {target}; '
+            f'rm -f -- "$netcore_config_backup"; else {fresh_install}; fi')
+
+
+def wait_ready(service: Service, request_timeout: int, ready_timeout: int) -> None:
+    """Bounded gate: no dependent installer runs before its prerequisite is ready."""
+    deadline = time.monotonic() + ready_timeout
+    detail = "readiness deadline expired"
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise DeployError(f"{service.name}: readiness failed after {ready_timeout}s: {detail[:160]}")
+        ok, detail = check_health(service, min(request_timeout, remaining), ready=True)
+        if ok:
+            print(f"READY {service.name} {service.base_url}")
+            return
+        time.sleep(min(1.0, max(0.0, deadline - time.monotonic())))
 
 
 # Was: Diese Funktion prüft health.
@@ -417,8 +488,28 @@ def check_health(service: Service, timeout: int, *, ready: bool) -> tuple[bool, 
     # Warum: Ein einzelner Fehler soll kontrolliert gemeldet oder aufgefangen werden, statt den gesamten Dienst unverständlich abzubrechen.
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
-            body = response.read(4096).decode("utf-8", errors="replace")
-            return 200 <= response.status < 300, body
+            # Several backend routes return their full status object rather than
+            # a common ready flag. Keep those contracts, while rejecting an
+            # explicit negative readiness even if the route uses HTTP 200.
+            limit = 1024 * 1024 if ready else 4096
+            raw = response.read(limit + 1)
+            body = raw.decode("utf-8", errors="replace")
+            ok = 200 <= response.status < 300
+            if ready and ok:
+                if len(raw) > limit:
+                    return False, "readiness JSON exceeds 1 MiB"
+                try:
+                    payload = json.loads(body)
+                except json.JSONDecodeError:
+                    return False, "readiness response is not valid JSON"
+                if not isinstance(payload, dict):
+                    return False, "readiness response is not a JSON object"
+                status = str(payload.get("status", "")).strip().lower().replace("-", "_").replace(" ", "_")
+                if payload.get("ready") is False or status in {
+                    "degraded", "failed", "unavailable", "not_ready", "error", "unhealthy", "down",
+                }:
+                    return False, body
+            return ok, body
     except (urllib.error.URLError, TimeoutError, OSError) as error:
         return False, str(error)
 
@@ -447,11 +538,13 @@ def main() -> int:
     plan_parser = sub.add_parser("plan", help="print dependency-resolved deployment order")
     plan_parser.add_argument("services", nargs="*")
     sub.add_parser("render", help="render service configs, catalog, hosts and graph")
+    sub.add_parser("check-generated", help="fail on stale generated assets without writing them")
     bundle_parser = sub.add_parser("bundle", help="create deterministic no-PDF source bundle")
     bundle_parser.add_argument("--output", type=Path, default=GENERATED / "netcore-open-lab.tar.gz")
     apply_parser = sub.add_parser("apply", help="deploy through SSH in dependency order")
     apply_parser.add_argument("services", nargs="*")
     apply_parser.add_argument("--dry-run", action="store_true")
+    apply_parser.add_argument("--replace-config", action="store_true", help="replace existing host configuration with a dated backup")
     status_parser = sub.add_parser("status", help="check readiness endpoints")
     status_parser.add_argument("services", nargs="*")
     test_parser = sub.add_parser("test", help="run cross-LXC Open-Lab E2E scenarios")
@@ -493,13 +586,24 @@ def main() -> int:
         write_generated(inventory)
         print(f"Rendered deployment assets into {GENERATED.relative_to(ROOT)}")
         return 0
+    if args.command == "check-generated":
+        errors = check_generated(inventory)
+        if errors:
+            print("\n".join(errors), file=sys.stderr)
+            return 1
+        print(f"Generated deployment assets are current ({len(inventory.services)} services)")
+        return 0
     if args.command == "bundle":
         args.output.parent.mkdir(parents=True, exist_ok=True)
         digest = bundle(args.output)
         print(f"{digest}  {args.output}")
         return 0
     if args.command == "apply":
-        apply(inventory, args.services, dry_run=args.dry_run)
+        try:
+            apply(inventory, args.services, dry_run=args.dry_run, replace_config=args.replace_config)
+        except (DeployError, subprocess.CalledProcessError) as error:
+            print(f"ERROR: deployment stopped: {error}", file=sys.stderr)
+            return 1
         return 0
     if args.command == "status":
         return status(inventory, args.services)

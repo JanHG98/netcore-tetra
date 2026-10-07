@@ -1,0 +1,8 @@
+[Unit]
+Description=Refresh the NetCore syslog destination from deployment discovery
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/netcore-log-client/log_client.py
+TimeoutStartSec=50

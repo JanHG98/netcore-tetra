@@ -22,9 +22,13 @@ const original = await readFile(path.resolve(assets, '../../../../crates/tetra-e
 assert.deepEqual(Buffer.from(logo.slice('data:image/png;base64,'.length), 'base64'), original);
 const shell = (content, access = 'open-lab') => `<!doctype html><html data-netcore-ui="service"><head><script id="netcore-service-init">${init}</script><script>window.earlyTheme=document.documentElement.dataset.ncTheme;</script><style>:root{--bg:#000;--text:#fff}body{background:var(--bg);color:var(--text)}.layout{display:grid;grid-template-columns:240px 1fr}.page{display:none}.page.active{display:block}</style><style>${css}</style><script type="application/json" id="netcore-service-config">${JSON.stringify({name:'Subscriber Core',access,logo})}</script></head><body>${content}<script>${js}</script></body></html>`;
 const surfaces = `<main><section class="panel" id="surfaces"><h2>Theme surfaces</h2><label>Input<input id="surface-input" value="Test"></label><select id="surface-select"><option>Test</option></select><textarea id="surface-textarea">Test</textarea><button class="primary" id="surface-primary">Speichern</button><button class="danger" id="surface-danger">Löschen</button><pre id="surface-pre">Diagnose</pre><code id="surface-code">node-1</code><table><thead><tr><th id="surface-th">ISSI</th></tr></thead><tbody><tr><td>100001</td></tr></tbody></table><span class="pill online" id="surface-online">ONLINE</span><span class="pill stale" id="surface-stale">STALE</span><span class="pill offline" id="surface-offline">OFFLINE</span><span class="pill draft" id="surface-draft">DRAFT</span><span class="pill disabled" id="surface-disabled">Monitoring aus</span><span class="nc-status" data-status="warning" id="surface-status">Warnung</span><div class="notice" id="surface-notice">Hinweis</div><div class="leaflet-popup-content-wrapper" id="surface-popup"><div class="leaflet-popup-content">Kartendetails</div></div><div class="leaflet-bar"><a id="surface-zoom">+</a></div><dialog id="surface-dialog"><h2>Bestätigen</h2><input value="Test"></dialog></section><section class="panel"><h2>Zweiter Bereich</h2></section></main>`;
-const server = http.createServer((_request, response) => {
+const server = http.createServer((request, response) => {
   response.writeHead(200, {'Content-Type':'text/html; charset=utf-8'});
-  response.end(shell(surfaces));
+  let html = shell(surfaces);
+  if (new URL(request.url, 'http://localhost').pathname === '/login') {
+    html = html.replace('<body>', '<body data-nc-discovery="disabled">');
+  }
+  response.end(html);
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const base = `http://127.0.0.1:${server.address().port}`;
@@ -69,13 +73,49 @@ try {
   await page.addScriptTag({content:js});
   assert.equal(await page.locator('.nc-service-header').count(), 1); checks++;
 
+  // Discovery is a normal, origin-aware link. No management requests occur
+  // while loading, changing theme, or resizing; only a deliberate click opens it.
+  const discoveryContext = await browser.newContext();
+  const discoveryRequests = [];
+  discoveryContext.on('request', request => {
+    if (new URL(request.url()).port === '8321') discoveryRequests.push(request.url());
+  });
+  await discoveryContext.route('http://127.0.0.1:8321/**', route => route.fulfill({body:'Discovery fixture'}));
+  const discoveryPage = await discoveryContext.newPage();
+  await discoveryPage.goto(base + '/diagnostics?view=logs#events');
+  const discovery = discoveryPage.locator('[data-netcore-discovery]');
+  assert.equal(await discovery.count(), 1); checks++;
+  assert.equal(await discovery.getAttribute('href'), 'http://127.0.0.1:8321/?scan=1'); checks++;
+  assert.equal(await discovery.getAttribute('target'), '_blank'); checks++;
+  assert.equal(await discovery.getAttribute('rel'), 'noopener'); checks++;
+  await discoveryPage.click('.nc-theme-toggle');
+  assert.equal(await discoveryPage.getAttribute('html','data-nc-theme'), 'dark'); checks++;
+  assert.equal(await discovery.isVisible(), true); checks++;
+  await discoveryPage.setViewportSize({width:390,height:844});
+  assert.equal(await discovery.isVisible(), true); checks++;
+  assert.equal(await discoveryPage.evaluate(() => document.documentElement.scrollWidth <= 391), true); checks++;
+  assert.deepEqual(discoveryRequests, []); checks++;
+  const [discoveryWindow] = await Promise.all([
+    discoveryContext.waitForEvent('page'), discovery.click(),
+  ]);
+  await discoveryWindow.waitForLoadState();
+  assert.deepEqual(discoveryRequests, ['http://127.0.0.1:8321/?scan=1']); checks++;
+  assert.equal(await discoveryWindow.evaluate(() => window.opener), null); checks++;
+  await discoveryWindow.close();
+  await discoveryPage.goto(base + '/login');
+  assert.equal(await discoveryPage.locator('[data-netcore-discovery]').count(), 0); checks++;
+  await discoveryContext.route('https://[::1]:8443/**', route => route.fulfill({contentType:'text/html',body:shell(surfaces)}));
+  await discoveryPage.goto('https://[::1]:8443/service?private=1#details');
+  assert.equal(await discoveryPage.locator('[data-netcore-discovery]').getAttribute('href'), 'http://[::1]:8321/?scan=1'); checks++;
+  await discoveryContext.close();
+
   const context = await browser.newContext({colorScheme:'dark'});
   const themePage = await context.newPage();
   await themePage.goto(base);
   assert.equal(await themePage.evaluate(() => window.earlyTheme), 'light'); checks++;
   assert.equal(await themePage.getAttribute('html', 'data-nc-theme'), 'light'); checks++;
   await themePage.evaluate(() => { window.themeEvents=[];window.addEventListener('netcore-theme-change',e=>window.themeEvents.push(e.detail.theme)); });
-  const surfaceSelectors = ['#surfaces','#surface-input','#surface-select','#surface-textarea','#surface-primary','#surface-danger','#surface-pre','#surface-code','#surface-th','#surface-online','#surface-stale','#surface-offline','#surface-draft','#surface-disabled','#surface-status','#surface-notice','#surface-popup','#surface-zoom','#surface-dialog'];
+  const surfaceSelectors = ['#surfaces','#surface-input','#surface-select','#surface-textarea','#surface-primary','#surface-danger','#surface-pre','#surface-code','#surface-th','#surface-online','#surface-stale','#surface-offline','#surface-draft','#surface-disabled','#surface-status','#surface-notice','#surface-popup','#surface-zoom','#surface-dialog','.nc-discovery-link'];
   const checkContrasts = async () => {
     await themePage.evaluate(() => document.querySelector('#surface-dialog').showModal());
     const values = await themePage.evaluate(selectors => {

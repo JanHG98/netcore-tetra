@@ -23,3 +23,5 @@ alarm-workflow,10.0.20.30,8270,http://10.0.20.30:8270/,netcore-alarm-workflow.se
 task-workflow,10.0.20.31,8280,http://10.0.20.31:8280/,netcore-task-workflow.service
 asset-management,10.0.20.32,8290,http://10.0.20.32:8290/,netcore-asset-management.service
 sip-switch,10.0.20.33,8300,http://10.0.20.33:8300/,netcore-sip-switch.service
+alert-service,10.0.20.34,8310,http://10.0.20.34:8310/,netcore-alert-service.service
+deployment-core,10.0.20.35,8320,http://10.0.20.35:8320/,netcore-deployment.service

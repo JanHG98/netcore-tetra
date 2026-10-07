@@ -1,0 +1,454 @@
+[
+  {
+    "name": "node-gateway",
+    "port": 8080,
+    "unit": "netcore-node-gateway.service",
+    "user": "netcore",
+    "install": "system-backend/node-gateway/install/install.sh",
+    "config_template": "system-backend/node-gateway/config/node-gateway.example.toml",
+    "config_target": "/etc/netcore/node-gateway.toml",
+    "depends_on": [],
+    "command": "/usr/local/bin/netcore-node-gateway --config /etc/netcore/node-gateway.toml",
+    "health": "/health/ready"
+  },
+  {
+    "name": "mobility-core",
+    "port": 8090,
+    "unit": "netcore-mobility-core.service",
+    "user": "netcore",
+    "install": "system-backend/mobility-core/install/install.sh",
+    "config_template": "system-backend/mobility-core/config/mobility-core.example.toml",
+    "config_target": "/etc/netcore/mobility-core.toml",
+    "depends_on": [
+      "node-gateway"
+    ],
+    "command": "/usr/local/bin/netcore-mobility-core --config /etc/netcore/mobility-core.toml",
+    "health": "/health/ready"
+  },
+  {
+    "name": "subscriber-core",
+    "port": 8100,
+    "unit": "netcore-subscriber-core.service",
+    "user": "netcore",
+    "install": "system-backend/subscriber-core/install/install.sh",
+    "config_template": "system-backend/subscriber-core/config/subscriber-core.example.toml",
+    "config_target": "/etc/netcore/subscriber-core.toml",
+    "depends_on": [
+      "node-gateway"
+    ],
+    "command": "/usr/local/bin/netcore-subscriber-core --config /etc/netcore/subscriber-core.toml",
+    "health": "/health/ready"
+  },
+  {
+    "name": "group-core",
+    "port": 8110,
+    "unit": "netcore-group-core.service",
+    "user": "netcore",
+    "install": "system-backend/group-core/install/install.sh",
+    "config_template": "system-backend/group-core/config/group-core.example.toml",
+    "config_target": "/etc/netcore/group-core.toml",
+    "depends_on": [
+      "node-gateway",
+      "subscriber-core"
+    ],
+    "command": "/usr/local/bin/netcore-group-core --config /etc/netcore/group-core.toml",
+    "health": "/health/ready"
+  },
+  {
+    "name": "call-control",
+    "port": 8120,
+    "unit": "netcore-call-control.service",
+    "user": "netcore",
+    "install": "system-backend/call-control/install/install.sh",
+    "config_template": "system-backend/call-control/config/call-control.example.toml",
+    "config_target": "/etc/netcore/call-control.toml",
+    "depends_on": [
+      "node-gateway",
+      "subscriber-core",
+      "group-core",
+      "mobility-core"
+    ],
+    "command": "/usr/local/bin/netcore-call-control --config /etc/netcore/call-control.toml",
+    "health": "/health/ready"
+  },
+  {
+    "name": "media-switch",
+    "port": 8130,
+    "unit": "netcore-media-switch.service",
+    "user": "netcore",
+    "install": "system-backend/media-switch/install/install.sh",
+    "config_template": "system-backend/media-switch/config/media-switch.example.toml",
+    "config_target": "/etc/netcore/media-switch.toml",
+    "depends_on": [
+      "node-gateway",
+      "call-control"
+    ],
+    "command": "/usr/local/bin/netcore-media-switch --config /etc/netcore/media-switch.toml",
+    "health": "/health/ready"
+  },
+  {
+    "name": "recorder",
+    "port": 8140,
+    "unit": "netcore-recorder.service",
+    "user": "netcore",
+    "install": "system-backend/recorder/install/install.sh",
+    "config_template": "system-backend/recorder/config/recorder.example.toml",
+    "config_target": "/etc/netcore/recorder.toml",
+    "depends_on": [
+      "media-switch"
+    ],
+    "command": "/usr/local/bin/netcore-recorder --config /etc/netcore/recorder.toml",
+    "health": "/health/ready"
+  },
+  {
+    "name": "sds-router",
+    "port": 8150,
+    "unit": "netcore-sds-router.service",
+    "user": "netcore",
+    "install": "system-backend/sds-router/install/install.sh",
+    "config_template": "system-backend/sds-router/config/sds-router.example.toml",
+    "config_target": "/etc/netcore/sds-router.toml",
+    "depends_on": [
+      "node-gateway",
+      "subscriber-core",
+      "group-core",
+      "mobility-core"
+    ],
+    "command": "/usr/local/bin/netcore-sds-router --config /etc/netcore/sds-router.toml",
+    "health": "/health/ready"
+  },
+  {
+    "name": "packet-core",
+    "port": 8160,
+    "unit": "netcore-packet-core.service",
+    "user": "netcore",
+    "install": "system-backend/packet-core/install/install.sh",
+    "config_template": "system-backend/packet-core/config/packet-core.example.toml",
+    "config_target": "/etc/netcore/packet-core.toml",
+    "depends_on": [
+      "node-gateway",
+      "subscriber-core",
+      "mobility-core"
+    ],
+    "command": "/usr/local/bin/netcore-packet-core --config /etc/netcore/packet-core.toml",
+    "health": "/health/ready"
+  },
+  {
+    "name": "ip-gateway",
+    "port": 8170,
+    "unit": "netcore-ip-gateway.service",
+    "user": "netcore",
+    "install": "system-backend/ip-gateway/install/install.sh",
+    "config_template": "system-backend/ip-gateway/config/ip-gateway.example.toml",
+    "config_target": "/etc/netcore/ip-gateway.toml",
+    "depends_on": [
+      "packet-core"
+    ],
+    "command": "/usr/local/bin/netcore-ip-gateway --config /etc/netcore/ip-gateway.toml",
+    "health": "/health/ready"
+  },
+  {
+    "name": "security-core",
+    "port": 8180,
+    "unit": "netcore-security-core.service",
+    "user": "netcore-security",
+    "install": "system-backend/security-core/install/install.sh",
+    "config_template": "system-backend/security-core/config/security-core.example.toml",
+    "config_target": "/etc/netcore/security-core.toml",
+    "depends_on": [
+      "node-gateway",
+      "subscriber-core"
+    ],
+    "command": "/usr/local/bin/netcore-security-core --config /etc/netcore/security-core.toml",
+    "health": "/health/ready"
+  },
+  {
+    "name": "kmf",
+    "port": 8190,
+    "unit": "netcore-kmf.service",
+    "user": "netcore-kmf",
+    "install": "system-backend/kmf/install/install.sh",
+    "config_template": "system-backend/kmf/config/kmf.example.toml",
+    "config_target": "/etc/netcore/kmf.toml",
+    "depends_on": [
+      "security-core"
+    ],
+    "command": "/usr/local/bin/netcore-kmf --config /etc/netcore/kmf.toml",
+    "health": "/health/ready"
+  },
+  {
+    "name": "transit",
+    "port": 8200,
+    "unit": "netcore-transit.service",
+    "user": "netcore-transit",
+    "install": "system-backend/transit/install/install.sh",
+    "config_template": "system-backend/transit/config/transit.example.toml",
+    "config_target": "/etc/netcore/transit.toml",
+    "depends_on": [
+      "mobility-core",
+      "call-control",
+      "media-switch",
+      "sds-router"
+    ],
+    "command": "/opt/netcore-transit/bin/netcore-transit --config /etc/netcore/transit.toml",
+    "health": "/health/ready"
+  },
+  {
+    "name": "application-gateway",
+    "port": 8220,
+    "unit": "netcore-application-gateway.service",
+    "user": "netcore-app-gateway",
+    "install": "system-backend/application-gateway/install/install.sh",
+    "config_template": "system-backend/application-gateway/config/application-gateway.example.toml",
+    "config_target": "/etc/netcore/application-gateway.toml",
+    "depends_on": [
+      "sds-router"
+    ],
+    "command": "/opt/netcore-application-gateway/bin/netcore-application-gateway --config /etc/netcore/application-gateway.toml",
+    "health": "/health/ready"
+  },
+  {
+    "name": "media-library",
+    "port": 8230,
+    "unit": "netcore-media-library.service",
+    "user": "netcore-media-library",
+    "install": "system-backend/media-library/install/install.sh",
+    "config_template": "system-backend/media-library/config/media-library.example.toml",
+    "config_target": "/etc/netcore/media-library.toml",
+    "depends_on": [
+      "media-switch",
+      "recorder",
+      "application-gateway"
+    ],
+    "command": "/opt/netcore-media-library/bin/netcore-media-library --config /etc/netcore/media-library.toml",
+    "health": "/health/ready"
+  },
+  {
+    "name": "control-room",
+    "port": 9010,
+    "unit": "netcore-control-room.service",
+    "user": "netcore",
+    "install": "system-backend/control-room/install/install.sh",
+    "config_template": "system-backend/control-room/config/control-room.example.toml",
+    "config_target": "/etc/netcore-control-room/control-room.toml",
+    "depends_on": [
+      "node-gateway",
+      "subscriber-core",
+      "group-core",
+      "mobility-core",
+      "call-control",
+      "media-switch",
+      "recorder",
+      "sds-router",
+      "packet-core",
+      "ip-gateway",
+      "security-core",
+      "kmf",
+      "transit",
+      "application-gateway",
+      "media-library",
+      "iot-gateway",
+      "hardware-gateway",
+      "rf-monitor",
+      "alarm-workflow",
+      "task-workflow",
+      "asset-management",
+      "sip-switch"
+    ],
+    "command": "/usr/local/bin/netcore-control-room --config /etc/netcore-control-room/control-room.toml --no-auth",
+    "health": "/health/ready"
+  },
+  {
+    "name": "observability",
+    "port": 8210,
+    "unit": "netcore-observability.service",
+    "user": "netcore-observability",
+    "install": "system-backend/observability/install/install.sh",
+    "config_template": "system-backend/observability/config/observability.example.toml",
+    "config_target": "/etc/netcore/observability.toml",
+    "depends_on": [
+      "node-gateway",
+      "subscriber-core",
+      "group-core",
+      "mobility-core",
+      "call-control",
+      "media-switch",
+      "recorder",
+      "sds-router",
+      "packet-core",
+      "ip-gateway",
+      "security-core",
+      "kmf",
+      "transit",
+      "application-gateway",
+      "media-library",
+      "iot-gateway",
+      "hardware-gateway",
+      "rf-monitor",
+      "alarm-workflow",
+      "task-workflow",
+      "asset-management",
+      "sip-switch",
+      "control-room"
+    ],
+    "command": "/opt/netcore-observability/bin/netcore-observability --config /etc/netcore/observability.toml",
+    "health": "/health/ready"
+  },
+  {
+    "name": "iot-gateway",
+    "port": 8240,
+    "unit": "netcore-iot-gateway.service",
+    "user": "netcore-iot-gateway",
+    "install": "system-backend/iot-gateway/install/install.sh",
+    "config_template": "system-backend/iot-gateway/config/iot-gateway.example.toml",
+    "config_target": "/etc/netcore/iot-gateway.toml",
+    "depends_on": [
+      "node-gateway",
+      "mobility-core",
+      "call-control",
+      "sds-router"
+    ],
+    "command": "/usr/local/bin/netcore-iot-gateway --config /etc/netcore/iot-gateway.toml",
+    "health": "/health/ready"
+  },
+  {
+    "name": "hardware-gateway",
+    "port": 8250,
+    "unit": "netcore-hardware-gateway.service",
+    "user": "root",
+    "install": "system-backend/hardware-gateway/install/install.sh",
+    "config_template": "system-backend/hardware-gateway/config/hardware-gateway.example.toml",
+    "config_target": "/etc/netcore/hardware-gateway.toml",
+    "depends_on": [
+      "iot-gateway"
+    ],
+    "command": "/usr/local/bin/netcore-hardware-gateway --config /etc/netcore/hardware-gateway.toml",
+    "health": "/health/ready"
+  },
+  {
+    "name": "rf-monitor",
+    "port": 8260,
+    "unit": "netcore-rf-monitor.service",
+    "user": "root",
+    "install": "system-backend/rf-monitor/install/install.sh",
+    "config_template": "system-backend/rf-monitor/config/rf-monitor.example.toml",
+    "config_target": "/etc/netcore/rf-monitor.toml",
+    "depends_on": [
+      "iot-gateway"
+    ],
+    "command": "/usr/local/bin/netcore-rf-monitor --config /etc/netcore/rf-monitor.toml",
+    "health": "/health/ready"
+  },
+  {
+    "name": "alarm-workflow",
+    "port": 8270,
+    "unit": "netcore-alarm-workflow.service",
+    "user": "root",
+    "install": "system-backend/alarm-workflow/install/install.sh",
+    "config_template": "system-backend/alarm-workflow/config/alarm-workflow.example.toml",
+    "config_target": "/etc/netcore/alarm-workflow.toml",
+    "depends_on": [
+      "iot-gateway",
+      "sds-router",
+      "hardware-gateway",
+      "rf-monitor"
+    ],
+    "command": "/usr/local/bin/netcore-alarm-workflow --config /etc/netcore/alarm-workflow.toml",
+    "health": "/health/ready"
+  },
+  {
+    "name": "task-workflow",
+    "port": 8280,
+    "unit": "netcore-task-workflow.service",
+    "user": "root",
+    "install": "system-backend/task-workflow/install/install.sh",
+    "config_template": "system-backend/task-workflow/config/task-workflow.example.toml",
+    "config_target": "/etc/netcore/task-workflow.toml",
+    "depends_on": [
+      "iot-gateway",
+      "sds-router"
+    ],
+    "health_path": "/health/ready",
+    "command": "/usr/local/bin/netcore-task-workflow --config /etc/netcore/task-workflow.toml",
+    "health": "/health/ready"
+  },
+  {
+    "name": "asset-management",
+    "port": 8290,
+    "unit": "netcore-asset-management.service",
+    "user": "root",
+    "install": "system-backend/asset-management/install/install.sh",
+    "config_template": "system-backend/asset-management/config/asset-management.example.toml",
+    "config_target": "/etc/netcore/asset-management.toml",
+    "depends_on": [
+      "iot-gateway",
+      "subscriber-core",
+      "mobility-core",
+      "task-workflow"
+    ],
+    "health_path": "/health/ready",
+    "command": "/usr/local/bin/netcore-asset-management --config /etc/netcore/asset-management.toml",
+    "health": "/health/ready"
+  },
+  {
+    "name": "sip-switch",
+    "port": 8300,
+    "unit": "netcore-sip-switch.service",
+    "user": "root",
+    "install": "system-backend/sip-switch/install/install.sh",
+    "config_template": "system-backend/sip-switch/config/sip-switch.example.toml",
+    "config_target": "/etc/netcore/sip-switch.toml",
+    "depends_on": [
+      "iot-gateway",
+      "mobility-core"
+    ],
+    "health_path": "/health/ready",
+    "command": "/usr/local/bin/netcore-sip-switch --config /etc/netcore/sip-switch.toml",
+    "health": "/health/ready"
+  },
+  {
+    "name": "alert-service",
+    "port": 8310,
+    "unit": "netcore-alert-service.service",
+    "user": "netcore-alert",
+    "install": "system-backend/alert-service/install/install.sh",
+    "config_template": "system-backend/alert-service/config/alert-service.example.toml",
+    "config_target": "/etc/netcore/alert-service.toml",
+    "depends_on": [
+      "control-room",
+      "sds-router"
+    ],
+    "health_path": "/health/ready",
+    "command": "/usr/bin/python3 /usr/local/lib/netcore-alert-service/main.py --config /etc/netcore/alert-service.toml",
+    "health": "/health/ready"
+  },
+  {
+    "name": "provisioning-core",
+    "port": 8125,
+    "unit": "netcore-provisioning-core.service",
+    "user": "netcore",
+    "install": "system-backend/provisioning-core/install/install.sh",
+    "config_template": "system-backend/provisioning-core/config/provisioning-core.example.toml",
+    "config_target": "/etc/netcore/provisioning-core.toml",
+    "depends_on": [
+      "subscriber-core",
+      "group-core"
+    ],
+    "command": "/usr/local/bin/netcore-provisioning-core --config /etc/netcore/provisioning-core.toml",
+    "health": "/health/ready"
+  },
+  {
+    "name": "tbs",
+    "port": 8080,
+    "unit": "netcore-tbs.service",
+    "user": "root",
+    "install": "system-backend/deployment-core/install/install-tbs.sh",
+    "config_template": "Docs/basisstation.config.sanitized.example.toml",
+    "config_target": "/etc/netcore/config.toml",
+    "depends_on": [
+      "node-gateway"
+    ],
+    "command": "/usr/local/bin/bluestation-bs /etc/netcore/config.toml",
+    "health": "/api/btsinfo"
+  }
+]

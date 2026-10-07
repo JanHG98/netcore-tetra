@@ -135,7 +135,7 @@ html[data-netcore-ui] :where(.core-main, .core-side, .core-detail) { min-width: 
   html[data-netcore-ui] .nc-service-logo-wordmark { width: 108px; height: 16px; }
   html[data-netcore-ui] .nc-service-logo-wordmark img { width: 142px; left: -16.6px; top: -92.5px; }
   html[data-netcore-ui] .nc-service-name { font-size: 14px; padding-left: 10px; }
-  html[data-netcore-ui] .nc-service-tools { margin-left: 0; width: 100%; justify-content: flex-end; }
+  html[data-netcore-ui] .nc-service-tools { margin-left: 0; width: 100%; justify-content: flex-end; flex-wrap: wrap; }
   html[data-netcore-ui] .nc-service-access { margin-right: auto; }
   html[data-netcore-ui] .nc-service-nav { padding: 0 14px 8px; }
   html[data-netcore-ui] :where(body > main, body > .wrap, body > .container, body > .layout > main) { padding: 16px 14px; }

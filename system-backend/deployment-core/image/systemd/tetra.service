@@ -1,0 +1,23 @@
+[Unit]
+Description=NetCore TETRA Basisstation (Image)
+After=network.target netcore-firstboot.service
+Requires=netcore-firstboot.service
+
+[Service]
+Type=simple
+User=netcore
+Group=netcore
+SupplementaryGroups=audio spi gpio
+WorkingDirectory=/var/lib/netcore-tbs
+StateDirectory=netcore-tbs
+StateDirectoryMode=0750
+ExecStartPre=/usr/bin/python3 /usr/local/lib/netcore-image/check-hardware.py
+ExecStart=/usr/local/bin/bluestation-bs /etc/netcore/config.toml
+Restart=on-failure
+RestartSec=10
+Nice=-10
+LimitRTPRIO=95
+LimitMEMLOCK=infinity
+
+[Install]
+WantedBy=multi-user.target

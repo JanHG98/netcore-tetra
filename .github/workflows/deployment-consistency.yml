@@ -1,0 +1,83 @@
+name: Deployment inventory and source gate
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'system-backend/**'
+      - 'deploy/open-lab/**'
+      - 'tests/e2e/**'
+      - 'tests/integration/**'
+      - 'tools/**'
+      - 'config.toml'
+      - 'bins/**'
+      - 'crates/**'
+      - 'Docs/generated/full-system-integration-audit.md'
+      - '.github/workflows/deployment-consistency.yml'
+  push:
+    branches: ['main']
+    paths:
+      - 'system-backend/**'
+      - 'deploy/open-lab/**'
+      - 'tests/e2e/**'
+      - 'tests/integration/**'
+      - 'tools/**'
+      - 'config.toml'
+      - 'bins/**'
+      - 'crates/**'
+      - 'Docs/generated/full-system-integration-audit.md'
+      - '.github/workflows/deployment-consistency.yml'
+permissions:
+  contents: read
+jobs:
+  source-consistency:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      SOURCE_DATE_EPOCH: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Inventory, Ready rejection, configuration preservation and audit
+        run: python3 tools/check_z01_integration.py
+      - name: Public alert monitoring keeps the management API protected
+        run: python3 -m unittest discover -s system-backend/alert-service/tests -p test_http.py -v
+      - name: Generated audit is current
+        run: git diff --exit-code -- deploy/open-lab/generated Docs/generated/full-system-integration-audit.md
+
+  syslog-runtime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install real syslog and browser dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rsyslog rsyslog-relp
+          npm install --prefix "$RUNNER_TEMP/z01-browser" --no-save playwright@1.62.1
+          "$RUNNER_TEMP/z01-browser/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Sender validation, TCP UDP RELP and receiver reconnect
+        run: python3 -m unittest discover -s system-backend/observability/tests -p 'test_syslog*.py' -v
+      - name: Real hardware process terminates with a quiet MQTT subscriber
+        run: python3 -m unittest discover -s system-backend/hardware-gateway/tests -v
+      - name: Native observability and browser integration
+        env:
+          NODE_PATH: ${{ runner.temp }}/z01-browser/node_modules
+        run: |
+          cargo test --locked -p netcore-observability
+          cargo build --locked -p netcore-observability
+          python3 system-backend/observability/tests/native-syslog-smoke.py --browser

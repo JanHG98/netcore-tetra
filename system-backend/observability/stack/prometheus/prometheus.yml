@@ -47,32 +47,8 @@ scrape_configs:
       # Was: Legt den YAML-Bereich oder Wert `targets` fest.
       # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
       - targets: ["127.0.0.1:8210"]
-  # Replace localhost addresses with the management IPs/DNS names of the LXC services.
-  # Was: Legt den YAML-Bereich oder Wert `job_name` fest.
-  # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
+  # NMS exposes the same last-good targets it receives from deployment discovery.
   - job_name: netcore-services
-    # Was: Legt den YAML-Bereich oder Wert `metrics_path` fest.
-    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
-    metrics_path: /metrics
-    # Was: Legt den YAML-Bereich oder Wert `static_configs` fest.
-    # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
-    static_configs:
-      # Was: Legt den YAML-Bereich oder Wert `targets` fest.
-      # Warum: Die Einstellung ist ausdrücklich dokumentiert, damit der automatisierte Ablauf reproduzierbar bleibt.
-      - targets:
-          - "127.0.0.1:8080"
-          - "127.0.0.1:8090"
-          - "127.0.0.1:8100"
-          - "127.0.0.1:8110"
-          - "127.0.0.1:8120"
-          - "127.0.0.1:8130"
-          - "127.0.0.1:8140"
-          - "127.0.0.1:8150"
-          - "127.0.0.1:8160"
-          - "127.0.0.1:8170"
-          - "127.0.0.1:8180"
-          - "127.0.0.1:8190"
-          - "127.0.0.1:8200"
-          - "127.0.0.1:8220"
-          - "127.0.0.1:8230"
-          - "127.0.0.1:9010"
+    http_sd_configs:
+      - url: http://127.0.0.1:8210/api/v1/targets/prometheus
+        refresh_interval: 30s

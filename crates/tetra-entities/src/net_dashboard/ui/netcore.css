@@ -188,6 +188,7 @@ tbody tr:hover{background:color-mix(in srgb,var(--accent) 3%,var(--bg2))}
 .nc-services-intro{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:18px}
 .nc-services-intro p{color:var(--text2);font-size:13px}
 .nc-public .nc-main-nav,.nc-public .nc-station-name,.nc-public .nc-subnav,.nc-public #nc-refresh{display:none!important}
+[data-netcore-discovery][hidden]{display:none!important}
 .nc-public #page-public{max-width:1100px;margin:auto}
 .nc-public .topbar-right{margin-left:auto}
 @media(max-width:1400px){

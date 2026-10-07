@@ -91,7 +91,7 @@ max_series = 10000
 max_samples_per_series = 5760
 # Was: Setzt die Einstellung `max_logs` für retention.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
-max_logs = 100000
+max_logs = 10000
 # Was: Setzt die Einstellung `max_spans` für retention.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 max_spans = 50000
@@ -798,3 +798,66 @@ live_path = "/health/live"
 ready_path = "/health/ready"
 enabled = true
 labels = { environment = "open-lab", component = "sip-switch" }
+
+[[targets]]
+target_id = "observability"
+display_name = "Observability"
+service = "observability"
+base_url = "http://10.0.20.26:8210"
+metrics_path = "/metrics"
+live_path = "/health/live"
+ready_path = "/health/ready"
+enabled = true
+labels = { environment = "open-lab", component = "observability" }
+
+[[targets]]
+target_id = "hardware-gateway"
+display_name = "Hardware Gateway"
+service = "hardware-gateway"
+base_url = "http://10.0.20.28:8250"
+metrics_path = "/metrics"
+live_path = "/health/live"
+ready_path = "/health/ready"
+enabled = true
+labels = { environment = "open-lab", component = "hardware-gateway" }
+
+[[targets]]
+target_id = "rf-monitor"
+display_name = "Rf Monitor"
+service = "rf-monitor"
+base_url = "http://10.0.20.29:8260"
+metrics_path = "/metrics"
+live_path = "/health/live"
+ready_path = "/health/ready"
+enabled = true
+labels = { environment = "open-lab", component = "rf-monitor" }
+
+[[targets]]
+target_id = "alert-service"
+display_name = "Alert Service"
+service = "alert-service"
+base_url = "http://10.0.20.34:8310"
+metrics_path = "/metrics"
+live_path = "/health/live"
+ready_path = "/health/ready"
+enabled = true
+labels = { environment = "open-lab", component = "alert-service" }
+
+[[targets]]
+target_id = "deployment-core"
+display_name = "Deployment Core"
+service = "deployment-core"
+base_url = "http://10.0.20.35:8320"
+metrics_path = "/metrics"
+live_path = "/health/live"
+ready_path = "/health/ready"
+enabled = true
+labels = { environment = "open-lab", component = "deployment-core" }
+
+# Example network: replace controller and allowlist for the actual isolated lab.
+[discovery]
+enabled = true
+controller_url = "http://10.0.20.35:8320"
+environment = "netcore-openlab"
+interval_secs = 30
+allowed_networks = ["10.0.20.0/24"]

@@ -197,6 +197,10 @@ async function open(settings = {}, suffix = '/', viewport = { width: 1440, heigh
   scenario = { authenticated: true, auth_required: true, public_overview: true, wifi: true, ...settings };
   requests = [];
   const context = await browser.newContext({ viewport });
+  const discoveryRequests = [];
+  context.on('request', request => {
+    if (new URL(request.url()).port === '8321') discoveryRequests.push(request.url());
+  });
   await context.addInitScript(storage => {
     if (storage.blocked) {
       Object.defineProperty(window, 'localStorage', { configurable: true,
@@ -223,7 +227,7 @@ async function open(settings = {}, suffix = '/', viewport = { width: 1440, heigh
   });
   await page.goto(base + suffix);
   await page.waitForTimeout(450);
-  return { context, page, errors };
+  return { context, page, errors, discoveryRequests };
 }
 async function darkSurfaces(page, selector = '.page.active') {
   const problems = await page.evaluate(selector => {
@@ -331,6 +335,14 @@ try {
     await navigate(admin.page, 'services');
     assert.equal(await admin.page.locator('#core-services-grid .core-service-card').count(), 17);
     assert.equal(await admin.page.locator('#core-count-status').textContent(), '17 / 17');
+  });
+  await check('discovery opens only from the authenticated service workspace', async () => {
+    const link = admin.page.locator('#page-services [data-netcore-discovery]');
+    assert.equal(await link.isVisible(), true);
+    assert.equal(await link.getAttribute('href'), 'http://127.0.0.1:8321/?scan=1');
+    assert.equal(await link.getAttribute('target'), '_blank');
+    assert.equal(await link.getAttribute('rel'), 'noopener');
+    assert.deepEqual(admin.discoveryRequests, [], 'dashboard navigation must not probe or scan discovery');
   });
   await check('recording preview uses the actual audio player', async () => {
     await navigate(admin.page, 'recordings');
@@ -482,6 +494,8 @@ try {
     for (const name of ['home', 'rf', 'recordings', 'config']) { await navigate(mobile.page, name); await noOverflow(mobile.page, name); }
     await mobile.page.locator('#nc-main-nav [data-group="diagnostics"]').click();
     assert.equal(await mobile.page.locator('#page-services.active').count(), 1, 'main navigation restores the last diagnostics page');
+    assert.equal(await mobile.page.locator('#page-services [data-netcore-discovery]').isVisible(), true);
+    assert.deepEqual(mobile.discoveryRequests, [], 'theme and mobile navigation must not start discovery');
     await mobile.page.locator('#nav-health').click();
     assert.equal(await mobile.page.locator('#page-health.active').count(), 1);
     await mobile.page.evaluate(() => setUiSize('m'));
@@ -495,6 +509,8 @@ try {
     assertNoPrivilegedRequests();
     assert.ok(await anonymous.page.locator('#login-btn').isVisible());
     assert.ok(!(await anonymous.page.locator('#logout-btn').isVisible()));
+    assert.equal(await anonymous.page.locator('[data-netcore-discovery]').isVisible(), false);
+    assert.deepEqual(anonymous.discoveryRequests, []);
     await duplicateIds(anonymous.page); await noOverflow(anonymous.page, 'public');
     await anonymous.page.screenshot({ path: path.join(output, 'public.png') });
     assert.deepEqual(anonymous.errors, []);
@@ -555,6 +571,8 @@ try {
     const login = await open({ authenticated: false, public_overview: publicOverview }, '/login');
     await check(`login public_overview=${publicOverview}`, async () => {
       assert.ok(await login.page.locator('#login-form').isVisible());
+      assert.equal(await login.page.locator('[data-netcore-discovery]').count(), 0);
+      assert.deepEqual(login.discoveryRequests, []);
       assertNoPrivilegedRequests();
       if (!publicOverview) assert.ok(requests.filter(r => r.path === '/api/public').length <= 1,
         'disabled public overview must not start repeated public polling');

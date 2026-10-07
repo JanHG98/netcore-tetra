@@ -6,10 +6,10 @@ set -euo pipefail
 [[ ${EUID} -eq 0 ]] || { echo "uninstall.sh must run as root" >&2; exit 1; }
 # Was: Steuert den zugehörigen systemd-Dienst.
 # Warum: Systemd soll Start, Stopp, Neustart und automatischen Boot des Dienstes zuverlässig verwalten.
-systemctl disable --now netcore-observability.service 2>/dev/null || true
+systemctl disable --now netcore-observability.service netcore-syslog.service netcore-syslog-preview.service netcore-syslog-archive.timer netcore-syslog-archive.service 2>/dev/null || true
 # Was: Entfernt nicht mehr benötigte Dateien oder alte Zustände.
 # Warum: Veraltete Reste könnten einen erneuten Start oder eine Neuinstallation verfälschen.
-rm -f /etc/systemd/system/netcore-observability.service
+rm -f /etc/systemd/system/netcore-observability.service /etc/systemd/system/netcore-syslog{,-preview,-archive}.service /etc/systemd/system/netcore-syslog-archive.timer
 # Was: Steuert den zugehörigen systemd-Dienst.
 # Warum: Systemd soll Start, Stopp, Neustart und automatischen Boot des Dienstes zuverlässig verwalten.
 systemctl daemon-reload

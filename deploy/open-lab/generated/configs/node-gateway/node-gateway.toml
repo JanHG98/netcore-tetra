@@ -378,3 +378,17 @@ url = "http://10.0.20.33:8300/health/ready"
 critical_for_edge = false
 fallback_mode = "central_sip_routing_unavailable_existing_local_radio_and_direct_pbx_fallback_may_continue"
 depends_on = ["iot-gateway", "mobility-core"]
+
+[[service_monitor.targets]]
+name = "alert-service"
+url = "http://10.0.20.34:8310/health/ready"
+critical_for_edge = false
+fallback_mode = "central_warning_delivery_unavailable_local_radio_and_sds_continue"
+depends_on = ["control-room", "sds-router"]
+
+[[service_monitor.targets]]
+name = "deployment-core"
+url = "http://10.0.20.35:8320/health/ready"
+critical_for_edge = false
+fallback_mode = "deployment_controller_unavailable_installed_radio_services_continue"
+depends_on = []
